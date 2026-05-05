@@ -12,6 +12,24 @@ export const SAFETY_SETTINGS = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
+// Anthropic configuration — Claude model used for character chat and polish.
+// Override the model via the ANTHROPIC_MODEL env var when needed (e.g. to upgrade
+// to a newer Sonnet without code changes). See .env.example.
+export const anthropicConfig = {
+  model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5-20250929',
+  defaultMaxTokens: 4096,
+  temperatures: {
+    characterChat: 0.6,
+    characterInsight: 0.3,
+    polish: 1,
+  },
+  timeouts: {
+    characterChat: 30_000,
+    polish: 30_000,
+    insight: 15_000,
+  },
+} as const;
+
 // Per-endpoint temperature and token configuration
 export const AI_CONFIG = {
   chat: {

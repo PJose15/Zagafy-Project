@@ -392,6 +392,122 @@ describe('POST /api/ingest', () => {
       const body = await res.json();
       expect(body.extractedData.open_loops).toHaveLength(2);
     });
+
+    // ── CB-06 (Phase 1.5) — intra-batch dedup, whitespace, most-complete ──
+
+    it('collapses 5 mentions of the same character within one chunk to 1 (intra-batch)', async () => {
+      const chunk = makeExtractedData({
+        characters: [
+          { name: 'Aragorn', role: 'ranger' },
+          { name: 'aragorn', role: 'ranger' },
+          { name: 'ARAGORN', role: 'ranger' },
+          { name: 'Aragorn ', role: 'ranger' },
+          { name: ' aragorn', role: 'ranger' },
+        ],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk))
+        .mockResolvedValueOnce(mockSuccessResponse(makeExtractedData()));
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      expect(body.extractedData.characters).toHaveLength(1);
+      expect(body.extractedData.characters[0].name).toBe('Aragorn');
+    });
+
+    it('treats whitespace-equivalent character names as the same entity', async () => {
+      const chunk1 = makeExtractedData({
+        characters: [{ name: 'Frodo Baggins', role: 'hobbit' }],
+      });
+      const chunk2 = makeExtractedData({
+        characters: [{ name: '  frodo baggins  ', role: 'hobbit' }],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk1))
+        .mockResolvedValueOnce(mockSuccessResponse(chunk2));
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      expect(body.extractedData.characters).toHaveLength(1);
+    });
+
+    it('uses most-complete merge for characters: later non-empty fields fill earlier blanks', async () => {
+      const chunk1 = makeExtractedData({
+        characters: [{ name: 'Alice', role: 'protagonist', description: '' }],
+      });
+      const chunk2 = makeExtractedData({
+        characters: [{ name: 'alice', role: 'sidekick', description: 'A girl from Wonderland' }],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk1))
+        .mockResolvedValueOnce(mockSuccessResponse(chunk2));
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      expect(body.extractedData.characters).toHaveLength(1);
+      // First-occurrence wins for filled fields; blanks fill from later mentions.
+      expect(body.extractedData.characters[0].role).toBe('protagonist');
+      expect(body.extractedData.characters[0].description).toBe('A girl from Wonderland');
+    });
+
+    it('uses most-complete merge for locations as well', async () => {
+      const chunk1 = makeExtractedData({
+        locations: [{ name: 'Castle', description: '' }],
+      });
+      const chunk2 = makeExtractedData({
+        locations: [{ name: 'castle', description: 'On the hill' }],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk1))
+        .mockResolvedValueOnce(mockSuccessResponse(chunk2));
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      expect(body.extractedData.locations).toHaveLength(1);
+      expect(body.extractedData.locations[0].description).toBe('On the hill');
+    });
+
+    it('deduplicates relationships regardless of pair ordering', async () => {
+      const chunk1 = makeExtractedData({
+        relationships: [{ character_1: 'Alice', character_2: 'Bob', current_dynamic: 'allies' }],
+      });
+      const chunk2 = makeExtractedData({
+        relationships: [{ character_1: 'bob', character_2: 'alice', current_dynamic: 'rivals' }],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk1))
+        .mockResolvedValueOnce(mockSuccessResponse(chunk2));
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      expect(body.extractedData.relationships).toHaveLength(1);
+    });
+
+    it('deduplicates chapters by chapter_id (or title fallback)', async () => {
+      const chunk1 = makeExtractedData({
+        chapters: [{ chapter_id: 'ch-1', title: 'Beginnings', summary: 'They meet.' }],
+      });
+      const chunk2 = makeExtractedData({
+        chapters: [
+          { chapter_id: 'ch-1', title: 'Beginnings revised', summary: '' },
+          { chapter_id: 'ch-2', title: 'The Journey' },
+        ],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk1))
+        .mockResolvedValueOnce(mockSuccessResponse(chunk2));
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      expect(body.extractedData.chapters).toHaveLength(2);
+    });
+
+    it('skips entries with empty key fields rather than collapsing them all together', async () => {
+      const chunk = makeExtractedData({
+        characters: [{ name: '', role: 'A' }, { name: '   ', role: 'B' }, { name: 'Real', role: 'C' }],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk))
+        .mockResolvedValueOnce(mockSuccessResponse(makeExtractedData()));
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      expect(body.extractedData.characters).toHaveLength(1);
+      expect(body.extractedData.characters[0].name).toBe('Real');
+    });
   });
 
   // ── Group C: Chunk processing edge cases ───────────────────────

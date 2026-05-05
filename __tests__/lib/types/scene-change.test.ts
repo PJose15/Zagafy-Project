@@ -78,7 +78,7 @@ describe('scene-change types', () => {
 
     it('returns false when originalChapterId is missing', () => {
       const s = makeState();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       delete (s as any).originalChapterId;
       expect(isSceneChangeState(s)).toBe(false);
     });

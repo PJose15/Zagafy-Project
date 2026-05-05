@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getErrorStatus } from '@/lib/api-error';
+import { anthropicConfig } from '@/lib/ai-config';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
 import type { Character, CharacterState } from '@/lib/store';
 import type { ChatMode } from '@/lib/types/character-chat';
@@ -15,7 +16,6 @@ const VALID_INDICATOR = ['stable', 'shifting', 'under pressure', 'emotionally co
 const MAX_HISTORY_TURNS = 30;
 const MAX_HISTORY_CHARS = 30_000;
 const MAX_HISTORY_MSG_CHARS = 5_000;
-const INSIGHT_TIMEOUT_MS = 15_000;
 
 // Field caps for the sanitized character payload
 const MAX_NAME = 200;
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
     apiMessages.push({ role: 'user', content: message.trim() });
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), anthropicConfig.timeouts.characterChat);
 
     let response: Response;
     try {
@@ -159,9 +159,9 @@ export async function POST(req: NextRequest) {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: anthropicConfig.model,
           max_tokens: 2048,
-          temperature: 0.6,
+          temperature: anthropicConfig.temperatures.characterChat,
           system: systemPrompt,
           messages: apiMessages,
         }),
@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
     // Generate insight if requested and enough messages
     if (generateInsight && Array.isArray(messages) && messages.length >= 5) {
       const insightController = new AbortController();
-      const insightTimeout = setTimeout(() => insightController.abort(), INSIGHT_TIMEOUT_MS);
+      const insightTimeout = setTimeout(() => insightController.abort(), anthropicConfig.timeouts.insight);
       try {
         // Build a capped transcript for the insight prompt
         const transcript = apiMessages
@@ -208,9 +208,9 @@ export async function POST(req: NextRequest) {
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
+            model: anthropicConfig.model,
             max_tokens: 256,
-            temperature: 0.3,
+            temperature: anthropicConfig.temperatures.characterInsight,
             system: 'You are a literary analyst. Extract character insights from conversations.',
             messages: [
               {

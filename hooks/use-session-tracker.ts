@@ -39,7 +39,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
   const [pendingFlowScore, setPendingFlowScore] = useState<{ sessionId: string } | null>(null);
 
   // Compute total word count across all chapters
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+   
   const totalWordCount = useMemo(() => {
     return state.chapters.reduce((sum, ch) => {
       const words = ch.content.trim().split(/\s+/).filter(Boolean).length;
@@ -61,6 +61,11 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
   const lastWordCountRef = useRef(totalWordCount);
   const pathnameRef = useRef(pathname);
 
+  // endSession reads stable refs and module-level helpers, so manual memoization
+  // is intentional — it must keep a stable identity to feed useEffect deps below
+  // without re-firing them on every render. The React Compiler heuristic can't
+  // infer that, so we suppress its hint for this one callback.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const endSession = useCallback(() => {
     if (!isActiveRef.current || !sessionIdRef.current || !sessionStartRef.current) return;
 
@@ -141,7 +146,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
 
     sessionIdRef.current = null;
     sessionStartRef.current = null;
-  }, []);
+  }, [metricsRef]);
 
   const startSession = useCallback((wordsAtStart: number) => {
     if (isActiveRef.current) return;
@@ -246,7 +251,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       }
       clearWipSession();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // beforeunload — save WIP

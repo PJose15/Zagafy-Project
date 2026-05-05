@@ -271,7 +271,6 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       }
 
       const loaded = await hydrateFromDexie();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState(loaded);
       setIsLoaded(true);
     }

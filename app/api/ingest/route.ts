@@ -361,119 +361,135 @@ function splitTextIntoChunks(text: string): string[] {
   return chunks;
 }
 
+// ─── Deduplication helpers ────────────────────────────────────────
+// Two-pass intra-batch dedup. Pass 1 collapses case-and-whitespace-equivalent
+// entries within the incoming batch; for characters and locations we prefer
+// the entry with the most filled-in fields, so a later mention with richer
+// detail can fill in fields the first mention left blank.
+
+function normalizeKey(s: string | undefined | null): string {
+  return (s ?? '').toLowerCase().trim();
+}
+
+function isFieldEmpty(v: unknown): boolean {
+  if (v === null || v === undefined) return true;
+  if (typeof v === 'string') return v.trim().length === 0;
+  if (Array.isArray(v)) return v.length === 0;
+  return false;
+}
+
+function mergeMostComplete<T extends Record<string, unknown>>(a: T, b: T): T {
+  const result: Record<string, unknown> = { ...a };
+  for (const k of Object.keys(b)) {
+    if (isFieldEmpty(result[k]) && !isFieldEmpty(b[k])) {
+      result[k] = b[k];
+    }
+  }
+  return result as T;
+}
+
+function dedupBatch<T>(
+  items: T[] | undefined,
+  keyFn: (item: T) => string,
+  strategy: 'first-wins' | 'most-complete' = 'first-wins',
+): T[] {
+  if (!Array.isArray(items)) return [];
+  const map = new Map<string, T>();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!key) continue;
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, item);
+    } else if (strategy === 'most-complete') {
+      map.set(key, mergeMostComplete(existing as T & Record<string, unknown>, item as T & Record<string, unknown>) as T);
+    }
+    // first-wins: keep the existing entry untouched
+  }
+  return Array.from(map.values());
+}
+
+function relationshipKey(rel: { character_1?: string; character_2?: string }): string {
+  const a = normalizeKey(rel.character_1);
+  const b = normalizeKey(rel.character_2);
+  if (!a || !b) return '';
+  return [a, b].sort().join('||');
+}
+
 function mergeResults(results: ExtractedData[]): ExtractedData {
-  const merged: ExtractedData = {
-    project: results[0]?.project || {},
-    chapters: [],
-    scenes: [],
-    characters: [],
-    character_states: [],
-    relationships: [],
-    active_conflicts: [],
-    timeline_events: [],
-    world_rules: [],
-    locations: [],
-    themes: [],
-    canon_items: [],
-    ambiguities: [],
-    open_loops: [],
-    foreshadowing_elements: [],
+  // Concatenate every array field from every chunk first, then dedup once.
+  const concat = <K extends keyof ExtractedData>(key: K): NonNullable<ExtractedData[K]> => {
+    const out: unknown[] = [];
+    for (const r of results) {
+      const arr = r[key];
+      if (Array.isArray(arr)) out.push(...arr);
+    }
+    return out as NonNullable<ExtractedData[K]>;
   };
 
-  const arrayKeys = (Object.keys(merged) as (keyof ExtractedData)[]).filter(k => k !== 'project');
-
-  for (const result of results) {
-    for (const key of arrayKeys) {
-      const source = result[key];
-      const target = merged[key];
-      if (Array.isArray(source) && Array.isArray(target)) {
-        target.push(...source);
+  // Themes need bespoke merging — same theme across chunks should accumulate
+  // evidence rather than dropping the second mention.
+  const themeMap = new Map<string, ExtractedTheme>();
+  for (const t of concat('themes') as ExtractedTheme[]) {
+    const key = normalizeKey(t.theme);
+    if (!key) continue;
+    const existing = themeMap.get(key);
+    if (!existing) {
+      themeMap.set(key, { ...t, evidence: [...(t.evidence ?? [])] });
+      continue;
+    }
+    const seenEvidence = new Set((existing.evidence ?? []).map(e => e.toLowerCase()));
+    for (const e of t.evidence ?? []) {
+      if (!seenEvidence.has(e.toLowerCase())) {
+        existing.evidence = [...(existing.evidence ?? []), e];
+        seenEvidence.add(e.toLowerCase());
       }
     }
   }
 
-  // Deduplicate characters by name
-  const seenCharacters = new Map<string, ExtractedCharacter>();
-  for (const char of merged.characters!) {
-    const key = char.name?.toLowerCase();
-    if (key && !seenCharacters.has(key)) {
-      seenCharacters.set(key, char);
-    }
-  }
-  merged.characters = Array.from(seenCharacters.values());
-
-  // Deduplicate locations by name
-  const seenLocations = new Map<string, ExtractedLocation>();
-  for (const loc of merged.locations!) {
-    const key = loc.name?.toLowerCase();
-    if (key && !seenLocations.has(key)) {
-      seenLocations.set(key, loc);
-    }
-  }
-  merged.locations = Array.from(seenLocations.values());
-
-  // Deduplicate conflicts by title
-  const seenConflicts = new Map<string, ExtractedConflict>();
-  for (const conflict of merged.active_conflicts!) {
-    const key = (conflict.title || conflict.conflict_type || '')?.toLowerCase().trim();
-    if (key && !seenConflicts.has(key)) {
-      seenConflicts.set(key, conflict);
-    }
-  }
-  merged.active_conflicts = Array.from(seenConflicts.values());
-
-  // Deduplicate timeline events by event name
-  const seenTimeline = new Map<string, ExtractedTimelineEvent>();
-  for (const event of merged.timeline_events!) {
-    const key = (event.event || '')?.toLowerCase().trim();
-    if (key && !seenTimeline.has(key)) {
-      seenTimeline.set(key, event);
-    }
-  }
-  merged.timeline_events = Array.from(seenTimeline.values());
-
-  // Deduplicate world rules by rule text
-  const seenRules = new Map<string, ExtractedWorldRule>();
-  for (const rule of merged.world_rules!) {
-    const key = (rule.rule || '')?.toLowerCase().trim();
-    if (key && !seenRules.has(key)) {
-      seenRules.set(key, rule);
-    }
-  }
-  merged.world_rules = Array.from(seenRules.values());
-
-  // Deduplicate themes by theme name, merging evidence arrays
-  const seenThemes = new Map<string, ExtractedTheme>();
-  for (const theme of merged.themes!) {
-    const key = (theme.theme || '')?.toLowerCase().trim();
-    if (key) {
-      if (seenThemes.has(key)) {
-        const existing = seenThemes.get(key)!;
-        const mergedEvidence = [...(existing.evidence || [])];
-        for (const e of (theme.evidence || [])) {
-          if (!mergedEvidence.some((me: string) => me.toLowerCase() === e.toLowerCase())) {
-            mergedEvidence.push(e);
-          }
-        }
-        existing.evidence = mergedEvidence;
-      } else {
-        seenThemes.set(key, { ...theme });
-      }
-    }
-  }
-  merged.themes = Array.from(seenThemes.values());
-
-  // Deduplicate open loops by description
-  const seenLoops = new Map<string, ExtractedOpenLoop>();
-  for (const loop of merged.open_loops!) {
-    const key = (loop.description || '')?.toLowerCase().trim();
-    if (key && !seenLoops.has(key)) {
-      seenLoops.set(key, loop);
-    }
-  }
-  merged.open_loops = Array.from(seenLoops.values());
-
-  return merged;
+  return {
+    project: results[0]?.project || {},
+    chapters: dedupBatch(concat('chapters'), c => normalizeKey(c.chapter_id) || normalizeKey(c.title)),
+    scenes: dedupBatch(concat('scenes'), s => normalizeKey(s.scene_id)),
+    characters: dedupBatch<ExtractedCharacter>(
+      concat('characters'),
+      c => normalizeKey(c.name),
+      'most-complete',
+    ),
+    character_states: dedupBatch(
+      concat('character_states'),
+      s => normalizeKey(s.character_id) || normalizeKey(s.name),
+    ),
+    relationships: dedupBatch(concat('relationships'), relationshipKey),
+    active_conflicts: dedupBatch<ExtractedConflict>(
+      concat('active_conflicts'),
+      c => normalizeKey(c.title) || normalizeKey(c.conflict_type),
+    ),
+    timeline_events: dedupBatch<ExtractedTimelineEvent>(
+      concat('timeline_events'),
+      e => normalizeKey(e.event),
+    ),
+    world_rules: dedupBatch<ExtractedWorldRule>(
+      concat('world_rules'),
+      r => normalizeKey(r.rule),
+    ),
+    locations: dedupBatch<ExtractedLocation>(
+      concat('locations'),
+      l => normalizeKey(l.name),
+      'most-complete',
+    ),
+    themes: Array.from(themeMap.values()),
+    canon_items: dedupBatch(concat('canon_items'), c => normalizeKey(c.description)),
+    ambiguities: dedupBatch(concat('ambiguities'), a => normalizeKey(a.issue)),
+    open_loops: dedupBatch<ExtractedOpenLoop>(
+      concat('open_loops'),
+      l => normalizeKey(l.description),
+    ),
+    foreshadowing_elements: dedupBatch(
+      concat('foreshadowing_elements'),
+      f => normalizeKey(f.clue),
+    ),
+  };
 }
 
 // Allow up to 300s for large manuscript processing on Vercel (requires Pro plan; free tier caps at 60s)

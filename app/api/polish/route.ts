@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getErrorStatus } from '@/lib/api-error';
+import { anthropicConfig } from '@/lib/ai-config';
 
 export const maxDuration = 30;
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), anthropicConfig.timeouts.polish);
 
     let response: Response;
     try {
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: anthropicConfig.model,
           max_tokens: 4096,
           system: POLISH_SYSTEM_PROMPT,
           messages: [{ role: 'user', content: transcript.trim() }],

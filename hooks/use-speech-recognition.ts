@@ -1,4 +1,3 @@
-// @ts-nocheck — Web Speech API types not available in current tsconfig
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -24,13 +23,17 @@ export interface UseSpeechRecognitionReturn {
   reset(): void;
 }
 
-function getSpeechRecognition(): typeof SpeechRecognition | null {
+function getSpeechRecognition(): SpeechRecognitionConstructor | null {
   if (typeof window === 'undefined') return null;
-  return (
-    (window as unknown as { SpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ||
-    (window as unknown as { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition ||
-    null
-  );
+  return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+}
+
+/**
+ * Returns true when the current environment exposes the Web Speech API
+ * SpeechRecognition interface (Chrome / Edge / Safari).
+ */
+export function isSpeechRecognitionSupported(): boolean {
+  return getSpeechRecognition() !== null;
 }
 
 export function useSpeechRecognition(): UseSpeechRecognitionReturn {

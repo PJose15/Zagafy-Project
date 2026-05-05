@@ -211,25 +211,25 @@ describe('braindump types', () => {
 
     it('returns false when a required field is undefined', () => {
       const entry = makeEntry();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (entry as any).rawTranscript = undefined;
       expect(isBraindumpEntry(entry)).toBe(false);
     });
 
     it('returns false when polishedText is undefined instead of null', () => {
       const entry = makeEntry();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (entry as any).polishedText = undefined;
       expect(isBraindumpEntry(entry)).toBe(false);
     });
 
     it('returns false when wasPolished is a truthy non-boolean (1)', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect(isBraindumpEntry(makeEntry({ wasPolished: 1 as any }))).toBe(false);
     });
 
     it('returns false when wasPolished is a truthy non-boolean ("true")', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect(isBraindumpEntry(makeEntry({ wasPolished: 'true' as any }))).toBe(false);
     });
 
@@ -255,7 +255,7 @@ describe('braindump types', () => {
     });
 
     it('returns false when id is a number instead of string', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       expect(isBraindumpEntry(makeEntry({ id: 123 as any }))).toBe(false);
     });
   });

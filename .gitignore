@@ -11,3 +11,6 @@ coverage/
 
 # Phase baseline snapshots — keep summaries (PHASE_*_SUMMARY.md), exclude raw artifacts.
 phase-*-baseline-*.json
+
+# Per-developer Claude Code state.
+.claude/

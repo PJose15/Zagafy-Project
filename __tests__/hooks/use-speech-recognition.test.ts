@@ -5,7 +5,7 @@ vi.mock('@/lib/types/braindump', () => ({
   saveBraindumpTemp: vi.fn(),
 }));
 
-import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { useSpeechRecognition, isSpeechRecognitionSupported } from '@/hooks/use-speech-recognition';
 import { saveBraindumpTemp } from '@/lib/types/braindump';
 
 // Mock SpeechRecognition
@@ -81,6 +81,21 @@ describe('useSpeechRecognition', () => {
     removeSpeechRecognition();
     const { result } = renderHook(() => useSpeechRecognition());
     expect(result.current.isSupported).toBe(false);
+  });
+
+  it('isSpeechRecognitionSupported() reports true when SpeechRecognition is on window', () => {
+    expect(isSpeechRecognitionSupported()).toBe(true);
+  });
+
+  it('isSpeechRecognitionSupported() reports false when neither prefix is available', () => {
+    removeSpeechRecognition();
+    expect(isSpeechRecognitionSupported()).toBe(false);
+  });
+
+  it('isSpeechRecognitionSupported() picks up the legacy webkitSpeechRecognition prefix', () => {
+    removeSpeechRecognition();
+    (window as unknown as Record<string, unknown>).webkitSpeechRecognition = MockSpeechRecognition;
+    expect(isSpeechRecognitionSupported()).toBe(true);
   });
 
   it('starts recording and sets states', async () => {

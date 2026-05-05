@@ -9,7 +9,6 @@ import {
 } from '@/lib/types/gamification';
 import type { GamificationState, SprintTheme } from '@/lib/types/gamification';
 import { isGamificationState } from '@/lib/types/gamification';
-// L17: Removed unused calculateLevel import
 import { awardXP, xpToNextLevel } from '@/lib/gamification/xp';
 import { updateStreak, getStreakWarning } from '@/lib/gamification/writing-streak';
 import { refreshQuests, completeQuest as completeQuestFn } from '@/lib/gamification/daily-quests';
