@@ -139,28 +139,42 @@ describe('validateRateLimitConfig branches', () => {
   });
 });
 
-describe('rate-limit production memory warning', () => {
+describe('rate-limit production safeguards', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it('logs production warning once when Upstash is not configured', async () => {
+  it('returns 503 in production when Upstash is not configured (mode=disabled)', async () => {
     vi.resetModules();
     vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
     vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
     vi.stubEnv('NODE_ENV', 'production');
 
     const mod = await import('@/lib/rate-limit');
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(mod.getRateLimitMode()).toBe('disabled');
 
-    await mod.rateLimit(makeRequest('60.0.0.1'), { maxRequests: 10, windowMs: 60000 });
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy.mock.calls[0][0]).toContain('UPSTASH_REDIS_REST_URL');
+    const result = await mod.rateLimit(makeRequest('60.0.0.1'), { maxRequests: 10, windowMs: 60000 });
+    expect(result).not.toBeNull();
+    expect(result!.status).toBe(503);
+    const body = await result!.json();
+    expect(body.reason).toBe('upstash-not-configured');
+  });
 
-    // Second call should NOT warn again
-    await mod.rateLimit(makeRequest('60.0.0.2'), { maxRequests: 10, windowMs: 60000 });
-    expect(spy).toHaveBeenCalledTimes(1);
+  it('reports mode="memory" in development with no Upstash', async () => {
+    vi.resetModules();
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('NODE_ENV', 'development');
+    const mod = await import('@/lib/rate-limit');
+    expect(mod.getRateLimitMode()).toBe('memory');
+  });
 
-    spy.mockRestore();
+  it('reports mode="upstash" when both env vars are set', async () => {
+    vi.resetModules();
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://x.upstash.io');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'tok');
+    vi.stubEnv('NODE_ENV', 'production');
+    const mod = await import('@/lib/rate-limit');
+    expect(mod.getRateLimitMode()).toBe('upstash');
   });
 });

@@ -7,6 +7,35 @@ and this project follows the phased build plan in `ZAGAFY_CLAUDE_CODE_BUILD_PLAN
 
 ## [Unreleased]
 
+### Phase 2 — Security hardening
+
+- **SG-02** Rate limiter gains a mode resolver
+  (`getRateLimitMode(): 'upstash' | 'memory' | 'disabled'`) and a circuit
+  breaker around Upstash. Production with Upstash unset is now `disabled`
+  — every rate-limited endpoint responds 503 instead of silently using
+  the in-memory fallback. The breaker opens after 3 failures within 30s
+  and half-opens 60s later; success closes it. New protected
+  `/api/health/rate-limit` returns mode, breaker state, consecutive
+  failures, and last error (gated by `HEALTH_TOKEN`).
+- **SG-07** New `docs/SECURITY.md` with threat model, defense-in-depth
+  inventory, the CSP `'unsafe-inline'` trade-off (Phase 7 nonce migration),
+  reporting flow, and audit log. Cross-referenced from `next.config.ts`.
+- **SG-10** Middleware emits a structured `cors_deny` warn record on every
+  403, with a stable `reason` code (`invalid-origin-url`,
+  `invalid-referer-url`, `origin-and-referer-not-in-allowlist`). Localhost
+  dev bypass moved before the allowlist check so dev tooling never logs
+  spurious denials.
+- **Phase 2.4** New `lib/bot-signals.ts` scores requests by missing /
+  bot-shaped headers and headless / library user agents. Middleware logs
+  any score ≥ 30 as a `bot_signals` warn record. We do **not** block — the
+  rate limiter is the gate; Phase 5 may decide to deny over a threshold
+  once auth context exists.
+- **SG-09** Husky + lint-staged installed; pre-commit hook runs gitleaks
+  (when present) plus `eslint --fix` on staged TypeScript. `.gitleaks.toml`
+  extends the bundled rules with Anthropic, Google, Upstash, Stripe, and
+  Clerk patterns. README documents how to install gitleaks locally;
+  CI fallback lands in Phase 6 (SG-03).
+
 ### Phase 1 — Critical bug fixes & code hygiene
 
 - **CB-01** Centralized the Anthropic model in `lib/ai-config.ts`. Default upgraded

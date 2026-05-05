@@ -141,4 +141,102 @@ describe('middleware', () => {
     }));
     expect(res.status).toBe(403);
   });
+
+  // ── SG-10 (Phase 2.3) — structured CORS deny logging ──
+  // The middleware also logs bot signals for the same request, so we filter
+  // warn.mock.calls by event tag rather than asserting on call[0].
+
+  type WarnSpy = ReturnType<typeof vi.spyOn>;
+  function findEvent(warn: WarnSpy, event: string): Record<string, unknown> | null {
+    for (const call of warn.mock.calls) {
+      const payload = call[1] as Record<string, unknown> | undefined;
+      if (payload && payload.event === event) return payload;
+    }
+    return null;
+  }
+
+  it('emits a structured cors_deny log on 403 (allowlist miss)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { middleware } = await loadMiddleware();
+      middleware(makeRequest({
+        host: 'myapp.com',
+        origin: 'https://evil.com',
+        'user-agent': 'curl/8.0',
+        'x-forwarded-for': '203.0.113.7',
+      }));
+      const payload = findEvent(warn, 'cors_deny');
+      expect(payload).not.toBeNull();
+      expect(payload!.reason).toBe('origin-and-referer-not-in-allowlist');
+      expect(payload!.origin).toBe('https://evil.com');
+      expect(payload!.host).toBe('myapp.com');
+      expect(payload!.userAgent).toBe('curl/8.0');
+      expect(payload!.ip).toBe('203.0.113.7');
+      expect(typeof payload!.timestamp).toBe('string');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('logs reason="invalid-origin-url" when Origin is malformed', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { middleware } = await loadMiddleware();
+      middleware(makeRequest({ host: 'myapp.com', origin: 'not-a-url' }));
+      const payload = findEvent(warn, 'cors_deny');
+      expect(payload).not.toBeNull();
+      expect(payload!.reason).toBe('invalid-origin-url');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('does not emit cors_deny when an allowed embed Origin passes', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { middleware } = await loadMiddleware();
+      middleware(makeRequest({
+        host: 'myapp.vercel.app',
+        origin: 'https://ai.studio',
+      }));
+      expect(findEvent(warn, 'cors_deny')).toBeNull();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('does not emit cors_deny when localhost passes the dev allowlist', async () => {
+    vi.stubEnv('NODE_ENV', 'development');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { middleware } = await loadMiddleware();
+      middleware(makeRequest({
+        host: 'myapp.com',
+        origin: 'http://localhost:3000',
+      }));
+      expect(findEvent(warn, 'cors_deny')).toBeNull();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  // ── Phase 2.4 — bot signals integration ──
+
+  it('emits bot_signals log when the request lacks browser-shaped headers', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { middleware } = await loadMiddleware();
+      middleware(makeRequest({
+        host: 'myapp.com',
+        origin: 'https://myapp.com',
+        'user-agent': 'curl/8.0',
+      }));
+      const payload = findEvent(warn, 'bot_signals');
+      expect(payload).not.toBeNull();
+      expect(payload!.score).toBeGreaterThanOrEqual(30);
+      expect(Array.isArray(payload!.signals)).toBe(true);
+    } finally {
+      warn.mockRestore();
+    }
+  });
 });

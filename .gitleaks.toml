@@ -1,0 +1,45 @@
+# Gitleaks configuration for Zagafy.
+# Inherits the project's bundled default rules and adds patterns for the
+# specific secret formats used by this app.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API Key"
+regex = '''sk-ant-[a-zA-Z0-9_-]{20,}'''
+tags = ["key", "anthropic"]
+
+[[rules]]
+id = "google-api-key"
+description = "Google API Key (Gemini, Maps, etc.)"
+regex = '''AIzaSy[A-Za-z0-9_-]{20,}'''
+tags = ["key", "google"]
+
+[[rules]]
+id = "upstash-redis-rest-url"
+description = "Upstash Redis REST URL with embedded token"
+regex = '''https://[a-z0-9-]+\.upstash\.io[^\s'"]*'''
+tags = ["url", "upstash"]
+
+[[rules]]
+id = "stripe-secret-key"
+description = "Stripe secret key (Phase 5+)"
+regex = '''sk_(?:test|live)_[A-Za-z0-9]{16,}'''
+tags = ["key", "stripe"]
+
+[[rules]]
+id = "clerk-secret"
+description = "Clerk secret key (Phase 5+)"
+regex = '''sk_(?:test|live)_[A-Za-z0-9]{20,}\b'''
+tags = ["key", "clerk"]
+
+[allowlist]
+description = "Files we explicitly know contain only placeholders or pinned hash literals."
+files = [
+  '''\.env\.example$''',
+  '''\.gitleaks\.toml$''',
+  '''package-lock\.json$''',
+  '''^docs/SECURITY\.md$''',
+]

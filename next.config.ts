@@ -7,6 +7,9 @@ const withBundleAnalyzer = createBundleAnalyzer({
 });
 
 const isDev = process.env.NODE_ENV === 'development';
+// CSP: 'unsafe-inline' for scripts is required by Next.js 15 streaming /
+// hydration. Migrating to nonce-based CSP is on the Phase 7 roadmap. See
+// docs/SECURITY.md §3.1 for the trade-off and mitigations.
 const cspScriptSrc = isDev
   ? "'self' 'unsafe-inline' 'unsafe-eval'"
   : "'self' 'unsafe-inline'";

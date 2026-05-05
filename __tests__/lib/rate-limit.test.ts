@@ -123,14 +123,14 @@ describe('validateRateLimitConfig', () => {
     spy.mockRestore();
   });
 
-  it('warns in production when Upstash is not configured', async () => {
+  it('errors in production when Upstash is not configured', async () => {
     vi.resetModules();
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
     vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
 
     const mod = await import('@/lib/rate-limit');
-    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mod.validateRateLimitConfig();
     expect(spy).toHaveBeenCalled();
     const warning = spy.mock.calls[0][0] as string;

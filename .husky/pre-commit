@@ -1,0 +1,13 @@
+# Phase 2.5 — pre-commit hook
+# 1) Scan staged changes for secrets with gitleaks (skip if not installed).
+# 2) Format / lint staged files via lint-staged.
+
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --redact -v || exit 1
+else
+  echo "[pre-commit] gitleaks not installed; skipping secrets scan."
+  echo "  Install:  https://github.com/gitleaks/gitleaks (brew install gitleaks)"
+  echo "  Without it, secrets scanning runs only in CI (Phase 6 SG-03)."
+fi
+
+npx lint-staged
