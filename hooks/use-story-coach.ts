@@ -1,7 +1,25 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import type { CoachingInsight, CoachingSession } from '@/lib/story-coach/types';
+import type { CoachingInsight, CoachingSession, CoachingLens } from '@/lib/story-coach/types';
+import {
+  observe,
+  topWriterInsights,
+  formatInsightsForPrompt,
+  type WriterInsightCategory,
+} from '@/lib/writer-memory';
+
+// Map the coach's per-chapter lens onto the broader writer-memory category
+// space. Some lenses fold together (foreshadowing/tension/motivation are all
+// plot-shaped signals; sensory observations are descriptions).
+const LENS_TO_CATEGORY: Record<CoachingLens, WriterInsightCategory> = {
+  pacing: 'pacing',
+  dialogue: 'dialogue',
+  sensory: 'description',
+  tension: 'plot',
+  foreshadowing: 'plot',
+  motivation: 'voice',
+};
 
 interface UseStoryCoachReturn {
   insights: CoachingInsight[];
@@ -29,7 +47,7 @@ export function useStoryCoach(): UseStoryCoachReturn {
   const abortRef = useRef<AbortController | null>(null);
   const dismissedRef = useRef<Set<string>>(new Set());
 
-  const refresh = useCallback((
+  const refresh = useCallback(async (
     chapterId: string,
     options?: {
       focusLens?: string;
@@ -56,6 +74,16 @@ export function useStoryCoach(): UseStoryCoachReturn {
     setIsLoading(true);
     setError(null);
 
+    // MP-11: pull top writer insights for personalization (best-effort).
+    let writerInsightsPrompt: string | undefined;
+    try {
+      const top = await topWriterInsights();
+      const formatted = formatInsightsForPrompt(top);
+      if (formatted) writerInsightsPrompt = formatted;
+    } catch {
+      // ignore
+    }
+
     fetch('/api/story-coach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,6 +94,7 @@ export function useStoryCoach(): UseStoryCoachReturn {
         storyContext: options?.storyContext,
         focusLens: options?.focusLens,
         heteronymVoice: options?.heteronymVoice,
+        writerInsightsPrompt,
       }),
       signal: controller.signal,
     })
@@ -85,6 +114,17 @@ export function useStoryCoach(): UseStoryCoachReturn {
           fetchedAt: new Date().toISOString(),
         };
         cacheSet(chapterId, session);
+
+        // MP-11: fold each coach observation into the long-term writer
+        // memory. observe() is idempotent on duplicate observations and
+        // just bumps evidenceCount.
+        for (const ins of parsed) {
+          const category = LENS_TO_CATEGORY[ins.lens];
+          if (!category) continue;
+          observe({ category, observation: ins.observation }).catch(() => {
+            // best-effort — never block the coach UI on memory failures.
+          });
+        }
 
         // Filter dismissed
         const filtered = parsed.filter(i => !dismissedRef.current.has(i.id));

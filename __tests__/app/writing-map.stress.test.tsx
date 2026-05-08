@@ -8,6 +8,37 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+// Mock the story store — the new PacingHealth section reads it but the
+// stress test renders WritingMapPage without a real StoryProvider.
+vi.mock('@/lib/store', () => ({
+  useStory: () => ({
+    state: {
+      chapters: [],
+    },
+  }),
+}));
+
+// Phase 4.12: WriterMemoryCard reads useConfirm; stub it.
+vi.mock('@/components/antiquarian/parchment-modal', () => ({
+  useConfirm: () => ({ confirm: () => Promise.resolve(true) }),
+  ConfirmProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Phase 4.12: WriterMemoryCard hits Dexie via writer-memory; this test
+// runs without fake-indexeddb so stub the module.
+vi.mock('@/lib/writer-memory', () => ({
+  readWriterInsights: () => Promise.resolve([]),
+  refreshConfidences: () => Promise.resolve(),
+  deleteInsight: () => Promise.resolve(),
+  setInsightPinned: () => Promise.resolve(),
+  clearAllInsights: () => Promise.resolve(),
+  topWriterInsights: () => Promise.resolve([]),
+  formatInsightsForPrompt: () => '',
+  observe: () => Promise.resolve({}),
+  WRITER_INSIGHT_CATEGORIES: ['pacing', 'dialogue', 'description', 'plot', 'voice'],
+  PROMPT_INJECTION_LIMIT: 3,
+}));
+
 // Mock gamification hook
 vi.mock('@/hooks/use-gamification', () => ({
   useGamification: () => ({

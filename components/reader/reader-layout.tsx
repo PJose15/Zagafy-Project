@@ -11,7 +11,20 @@ interface ReaderLayoutProps {
   onAnalyze: () => void;
   isAnalyzing: boolean;
   issues: ProseIssue[];
+  /** CB-08: epoch-ms timestamp of the cached analysis, or null if never run on this content. */
+  analyzedAt?: number | null;
   children: React.ReactNode;
+}
+
+function formatAnalyzedAgo(ts: number): string {
+  const diffMs = Date.now() - ts;
+  const min = Math.floor(diffMs / 60_000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const d = Math.floor(hr / 24);
+  return `${d}d ago`;
 }
 
 export function ReaderLayout({
@@ -22,6 +35,7 @@ export function ReaderLayout({
   onAnalyze,
   isAnalyzing,
   issues,
+  analyzedAt,
   children,
 }: ReaderLayoutProps) {
   const hasPrev = currentChapterIndex > 0;
@@ -47,6 +61,14 @@ export function ReaderLayout({
           </select>
         </div>
         <div className="flex items-center gap-2">
+          {analyzedAt && !isAnalyzing && (
+            <span
+              className="text-[10px] text-sepia-400 italic hidden sm:inline"
+              title={`Analyzed ${new Date(analyzedAt).toLocaleString()}`}
+            >
+              Analyzed {formatAnalyzedAgo(analyzedAt)}
+            </span>
+          )}
           <button
             onClick={onAnalyze}
             disabled={isAnalyzing}

@@ -25,6 +25,8 @@ import { InsightCard } from '@/components/writing-map/insight-card';
 import { SessionsTable } from '@/components/writing-map/sessions-table';
 import { FlowTimeline } from '@/components/writing-map/flow-timeline';
 import { HeteronymAnalytics } from '@/components/writing-map/heteronym-analytics';
+import { PacingHealth } from '@/components/writing-map/pacing-health';
+import { WriterMemoryCard } from '@/components/writing-map/writer-memory-card';
 import type { WritingSession } from '@/lib/types/writing-session';
 import { useGamification } from '@/hooks/use-gamification';
 import { StreakBadge } from '@/components/gamification/streak-badge';
@@ -113,6 +115,24 @@ export default function WritingMapPage() {
         <h2 className="text-lg font-medium text-sepia-800 mb-4">Voice Analytics</h2>
         <ParchmentCard className="p-4 md:p-6">
           <HeteronymAnalytics />
+        </ParchmentCard>
+      </section>
+
+      {/* Section 5b: Pacing Health (MP-08 / Phase 4.6) */}
+      <section aria-label="Chapter pacing health">
+        <h2 className="text-lg font-medium text-sepia-800 mb-4">Pacing</h2>
+        <ParchmentCard className="p-4 md:p-6">
+          <PacingHealth />
+        </ParchmentCard>
+      </section>
+
+      {/* Section 5c: Writer memory (MP-11 / Phase 4.12) */}
+      <section aria-label="What I've noticed about your craft">
+        <h2 className="text-lg font-medium text-sepia-800 mb-4">
+          What I&apos;ve noticed about your craft
+        </h2>
+        <ParchmentCard className="p-4 md:p-6">
+          <WriterMemoryCard />
         </ParchmentCard>
       </section>
 

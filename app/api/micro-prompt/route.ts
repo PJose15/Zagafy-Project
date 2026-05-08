@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
     const { recentText, genre, protagonistName, blockType, storyContext } = body;
     const heteronym = body.heteronym && typeof body.heteronym === 'object' && typeof body.heteronym.name === 'string'
       ? body.heteronym : null;
+    // MP-11/MP-12: optional writer-memory fragment (capped to keep context lean).
+    const writerInsightsPrompt =
+      typeof body.writerInsightsPrompt === 'string'
+        ? body.writerInsightsPrompt.slice(0, 800)
+        : '';
 
     if (typeof recentText !== 'string' || recentText.trim().length < 20) {
       return err('validation_failed', 'recentText must be at least 20 characters', 400);
@@ -33,7 +38,10 @@ export async function POST(req: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const systemPrompt = buildMicroPromptSystemPrompt();
+    const baseSystemPrompt = buildMicroPromptSystemPrompt();
+    const systemPrompt = writerInsightsPrompt
+      ? `${baseSystemPrompt}\n\n${writerInsightsPrompt}`
+      : baseSystemPrompt;
 
     // Send last 600 words for better scene context
     const words = recentText.trim().split(/\s+/);

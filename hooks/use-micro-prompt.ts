@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import type { MicroPromptStoryContext } from '@/lib/prompts/micro-prompt';
 import type { Heteronym } from '@/lib/types/heteronym';
 import { getLocalMicroPrompt } from '@/lib/prompts/micro-prompt-bank';
+import { topWriterInsights, formatInsightsForPrompt } from '@/lib/writer-memory';
 
 interface MicroPromptOptions {
   recentText: string;
@@ -27,7 +28,7 @@ export function useMicroPrompt(): UseMicroPromptReturn {
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchPrompt = useCallback(
-    (options: MicroPromptOptions) => {
+    async (options: MicroPromptOptions) => {
       // Abort any in-flight request
       abortRef.current?.abort();
       abortRef.current = new AbortController();
@@ -36,10 +37,21 @@ export function useMicroPrompt(): UseMicroPromptReturn {
 
       const controller = abortRef.current;
 
+      // MP-11/MP-12: pull top writer insights for personalization. Best-effort
+      // — never block the prompt fetch on a memory read failure.
+      let writerInsightsPrompt: string | undefined;
+      try {
+        const top = await topWriterInsights();
+        const formatted = formatInsightsForPrompt(top);
+        if (formatted) writerInsightsPrompt = formatted;
+      } catch {
+        // ignore
+      }
+
       fetch('/api/micro-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(options),
+        body: JSON.stringify({ ...options, writerInsightsPrompt }),
         signal: controller.signal,
       })
         .then(res => {

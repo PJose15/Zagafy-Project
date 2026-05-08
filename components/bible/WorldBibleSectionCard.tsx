@@ -1,10 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil, Check, Trash2 } from 'lucide-react';
+import { Pencil, Check, Trash2, ChevronUp, ChevronDown, Archive } from 'lucide-react';
 import { ParchmentCard, ParchmentInput, ParchmentTextarea, WaxSealBadge, useConfirm } from '@/components/antiquarian';
 import { CATEGORY_META, type WorldBibleSection } from '@/lib/types/world-bible';
 import type { CanonStatus } from '@/lib/store';
+import {
+  promoteOne,
+  demoteOne,
+  isDiscarded,
+  requiresConfirmConfirmation,
+} from '@/lib/canon-promotion';
 
 interface WorldBibleSectionCardProps {
   section: WorldBibleSection;
@@ -42,8 +48,33 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
     if (ok) onDelete(section.id);
   };
 
-  const handleCanonChange = (newStatus: CanonStatus) => {
+  const setStatus = (newStatus: CanonStatus) =>
     onUpdate({ ...section, canonStatus: newStatus, lastUpdated: new Date().toISOString() });
+
+  const handleCanonChange = async (newStatus: CanonStatus) => {
+    if (requiresConfirmConfirmation(section.canonStatus, newStatus)) {
+      const ok = await confirm({
+        title: 'Promote to confirmed canon?',
+        message:
+          `"${section.title}" will be enforced as canon by the AI assistant. ` +
+          'Future suggestions, audits, and chat responses will treat it as authoritative truth.',
+        confirmLabel: 'Promote',
+      });
+      if (!ok) return;
+    }
+    setStatus(newStatus);
+  };
+
+  const handlePromote = () => handleCanonChange(promoteOne(section.canonStatus));
+  const handleDemote = () => setStatus(demoteOne(section.canonStatus));
+  const handleDiscard = async () => {
+    const ok = await confirm({
+      title: 'Discard section?',
+      message: `Mark "${section.title}" as discarded? It will no longer be considered canon. You can restore it later.`,
+      confirmLabel: 'Discard',
+      variant: 'danger',
+    });
+    if (ok) setStatus('discarded');
   };
 
   return (
@@ -107,7 +138,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
         </div>
       )}
 
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <WaxSealBadge status={section.canonStatus} />
           <select
@@ -120,6 +151,40 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+          {/* CB-05: explicit promote / demote / discard buttons */}
+          {!isDiscarded(section.canonStatus) && (
+            <div className="flex items-center gap-0.5 ml-1" aria-label="Canon promotion controls">
+              <button
+                type="button"
+                onClick={handlePromote}
+                disabled={section.canonStatus === 'confirmed'}
+                className="p-1 rounded text-sepia-500 hover:text-forest-700 hover:bg-forest-700/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-sepia-500"
+                aria-label="Promote canon status"
+                title={section.canonStatus === 'confirmed' ? 'Already confirmed' : `Promote to ${promoteOne(section.canonStatus)}`}
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={handleDemote}
+                disabled={section.canonStatus === 'draft'}
+                className="p-1 rounded text-sepia-500 hover:text-sepia-700 hover:bg-sepia-300/30 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-sepia-500"
+                aria-label="Demote canon status"
+                title={section.canonStatus === 'draft' ? 'Already draft' : `Demote to ${demoteOne(section.canonStatus)}`}
+              >
+                <ChevronDown size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscard}
+                className="p-1 rounded text-sepia-500 hover:text-wax-600 hover:bg-wax-500/10"
+                aria-label="Discard section"
+                title="Mark as discarded"
+              >
+                <Archive size={14} />
+              </button>
+            </div>
+          )}
         </div>
         <span className="text-[10px] text-sepia-400">
           {new Date(section.lastUpdated).toLocaleDateString()}

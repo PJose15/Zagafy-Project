@@ -1,4 +1,7 @@
+'use client';
+
 import { forwardRef } from 'react';
+import { useSpellcheckPreference } from '@/hooks/use-spellcheck-preference';
 
 interface ParchmentInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -38,8 +41,12 @@ export const ParchmentInput = forwardRef<HTMLInputElement, ParchmentInputProps>(
 );
 
 export const ParchmentTextarea = forwardRef<HTMLTextAreaElement, ParchmentTextareaProps>(
-  function ParchmentTextarea({ label, error, className = '', id, ...props }, ref) {
+  function ParchmentTextarea({ label, error, className = '', id, spellCheck, ...props }, ref) {
     const textareaId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    // Phase 4.5 / MP-07: respect the user-level spellcheck preference unless
+    // the call site explicitly overrides it (e.g. flow-editor sets false).
+    const { enabled } = useSpellcheckPreference();
+    const effectiveSpellCheck = spellCheck === undefined ? enabled : spellCheck;
     return (
       <div className="space-y-1.5">
         {label && (
@@ -50,6 +57,7 @@ export const ParchmentTextarea = forwardRef<HTMLTextAreaElement, ParchmentTextar
         <textarea
           ref={ref}
           id={textareaId}
+          spellCheck={effectiveSpellCheck}
           className={`${baseClasses} min-h-[80px] ${error ? errorClasses : ''} ${className}`}
           {...props}
         />

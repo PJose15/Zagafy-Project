@@ -1,13 +1,15 @@
 'use client';
 
 import { useStory, Chapter, CanonStatus } from '@/lib/store';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
-import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy } from 'lucide-react';
+import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy, Search } from 'lucide-react';
 import { readVersions } from '@/lib/types/chapter-version';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '@/components/confirm-dialog';
 import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
+import { readingTimeLabel } from '@/lib/analytics/pacing';
+import { FindReplaceDialog } from '@/components/manuscript/FindReplaceDialog';
 
 function VersionCount({ chapterId }: { chapterId: string }) {
   const [count, setCount] = useState(0);
@@ -101,6 +103,39 @@ export default function ManuscriptPage() {
     [state.chapters]
   );
 
+  // Phase 4.2 / MP-06 — find-and-replace dialog
+  const [findOpen, setFindOpen] = useState(false);
+
+  useEffect(() => {
+    const handle = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f' && !e.shiftKey) {
+        // Don't hijack the browser shortcut while the user is editing a
+        // textarea — they'd expect the native in-textarea find. We open the
+        // global cross-chapter dialog only when no text input has focus.
+        const active = document.activeElement;
+        const tag = active?.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea') return;
+        e.preventDefault();
+        setFindOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, []);
+
+  const handleFindReplaceApply = useCallback(
+    (edits: Array<{ chapterId: string; newContent: string }>) => {
+      const idToContent = new Map(edits.map(e => [e.chapterId, e.newContent]));
+      updateField(
+        'chapters',
+        state.chapters.map(c =>
+          idToContent.has(c.id) ? { ...c, content: idToContent.get(c.id)! } : c,
+        ),
+      );
+    },
+    [state.chapters, updateField],
+  );
+
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <CarvedHeader
@@ -110,15 +145,25 @@ export default function ManuscriptPage() {
             Write and organize your chapters.
             {state.chapters.length > 0 && (
               <span className="ml-2 text-sepia-500 font-mono">
-                {totalWordCount.toLocaleString()} total words
+                {totalWordCount.toLocaleString()} total words · {readingTimeLabel(totalWordCount)}
               </span>
             )}
           </>
         }
         actions={
-          <BrassButton onClick={handleAddChapter} icon={<Plus size={18} />}>
-            New Chapter
-          </BrassButton>
+          <div className="flex items-center gap-2">
+            <BrassButton
+              onClick={() => setFindOpen(true)}
+              icon={<Search size={16} />}
+              aria-label="Find and replace"
+              title="Find and replace (Cmd/Ctrl + F)"
+            >
+              Find
+            </BrassButton>
+            <BrassButton onClick={handleAddChapter} icon={<Plus size={18} />}>
+              New Chapter
+            </BrassButton>
+          </div>
         }
       />
 
@@ -222,6 +267,7 @@ export default function ManuscriptPage() {
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-sepia-400 font-mono">
                     <span>{wordCount(chapter.content).toLocaleString()} words</span>
+                    <span>{readingTimeLabel(wordCount(chapter.content))}</span>
                     <VersionCount chapterId={chapter.id} />
                   </div>
                   {chapter.summary && (
@@ -241,6 +287,14 @@ export default function ManuscriptPage() {
           <EmptyState variant="manuscript" title="Your manuscript is empty" subtitle="Every great story begins with a single chapter." action={{ label: 'Add your first chapter', onClick: handleAddChapter }} />
         )}
       </div>
+
+      <FindReplaceDialog
+        open={findOpen}
+        onClose={() => setFindOpen(false)}
+        chapters={state.chapters}
+        currentChapterId={editingId}
+        onApplyEdits={handleFindReplaceApply}
+      />
     </div>
   );
 }

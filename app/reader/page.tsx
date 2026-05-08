@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStory } from '@/lib/store';
 import { ReaderLayout } from '@/components/reader/reader-layout';
 import { PrintBookView } from '@/components/reader/print-book-view';
 import { KindleView } from '@/components/reader/kindle-view';
 import { AudiobookView } from '@/components/reader/audiobook-view';
-import { analyzeText } from '@/lib/prose-analysis';
 import type { ProseIssue } from '@/lib/prose-analysis';
+import { getOrAnalyze, readCachedAnalysis } from '@/lib/prose-analysis-cache';
 import { EmptyState, FeatureErrorBoundary } from '@/components/antiquarian';
 
 type ReaderMode = 'print' | 'kindle' | 'audiobook';
@@ -20,25 +20,49 @@ export default function ReaderPage() {
   const [mode, setMode] = useState<ReaderMode>('print');
   const [issues, setIssues] = useState<ProseIssue[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzedAt, setAnalyzedAt] = useState<number | null>(null);
 
   const chapters = state.chapters.filter(ch => ch.canonStatus !== 'discarded');
   const chapter = chapters[chapterIndex];
 
-  const handleAnalyze = () => {
-    if (!chapter?.content) return;
-    const content = chapter.content;
-    setIsAnalyzing(true);
-    // Run client-side analysis (synchronous but wrapped for UX)
-    requestAnimationFrame(() => {
-      const result = analyzeText(content);
-      setIssues(result);
-      setIsAnalyzing(false);
+  // CB-08: hydrate cached analysis when switching chapters so users see
+  // results from prior sessions without clicking Analyze again.
+  useEffect(() => {
+    if (!chapter?.content) {
+      setIssues([]);
+      setAnalyzedAt(null);
+      return;
+    }
+    let cancelled = false;
+    readCachedAnalysis(chapter.id, chapter.content).then(cached => {
+      if (cancelled) return;
+      if (cached) {
+        setIssues(cached.issues);
+        setAnalyzedAt(cached.analyzedAt);
+      } else {
+        setIssues([]);
+        setAnalyzedAt(null);
+      }
     });
+    return () => { cancelled = true; };
+  }, [chapter?.id, chapter?.content]);
+
+  const handleAnalyze = async () => {
+    if (!chapter?.content) return;
+    setIsAnalyzing(true);
+    try {
+      const result = await getOrAnalyze(chapter.id, chapter.content);
+      setIssues(result.issues);
+      setAnalyzedAt(result.analyzedAt);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleChapterChange = (index: number) => {
     setChapterIndex(index);
     setIssues([]);
+    setAnalyzedAt(null);
   };
 
   if (chapters.length === 0) {
@@ -64,6 +88,7 @@ export default function ReaderPage() {
       onAnalyze={handleAnalyze}
       isAnalyzing={isAnalyzing}
       issues={issues}
+      analyzedAt={analyzedAt}
     >
       {/* Mode tabs */}
       <div className="flex justify-center gap-1 py-3 border-b border-sepia-300/20">

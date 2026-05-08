@@ -7,6 +7,36 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
+// Phase 4.6: PacingHealth reads useStory(); the page-level test renders
+// without a StoryProvider, so stub the store.
+vi.mock('@/lib/store', () => ({
+  useStory: () => ({
+    state: { chapters: [] },
+  }),
+}));
+
+// Phase 4.12: WriterMemoryCard reads useConfirm; stub it for the
+// provider-less page-level test.
+vi.mock('@/components/antiquarian/parchment-modal', () => ({
+  useConfirm: () => ({ confirm: () => Promise.resolve(true) }),
+  ConfirmProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+// Phase 4.12: WriterMemoryCard hits Dexie via writer-memory; this test
+// runs without fake-indexeddb so stub the module.
+vi.mock('@/lib/writer-memory', () => ({
+  readWriterInsights: () => Promise.resolve([]),
+  refreshConfidences: () => Promise.resolve(),
+  deleteInsight: () => Promise.resolve(),
+  setInsightPinned: () => Promise.resolve(),
+  clearAllInsights: () => Promise.resolve(),
+  topWriterInsights: () => Promise.resolve([]),
+  formatInsightsForPrompt: () => '',
+  observe: () => Promise.resolve({}),
+  WRITER_INSIGHT_CATEGORIES: ['pacing', 'dialogue', 'description', 'plot', 'voice'],
+  PROMPT_INJECTION_LIMIT: 3,
+}));
+
 // Mock recharts
 vi.mock('recharts', () => ({
   BarChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

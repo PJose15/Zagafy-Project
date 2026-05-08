@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { chapterContent, chapterTitle, storyContext, focusLens, heteronymVoice, language } = body;
     const coachLanguage = typeof language === 'string' && language.trim() ? language.trim() : 'English';
+    // MP-11/MP-12: optional writer-memory fragment (capped to keep context lean).
+    const writerInsightsPrompt =
+      typeof body.writerInsightsPrompt === 'string'
+        ? body.writerInsightsPrompt.slice(0, 800)
+        : '';
 
     if (typeof chapterContent !== 'string' || chapterContent.trim().length < 50) {
       return err('validation_failed', 'chapterContent must be at least 50 characters', 400);
@@ -35,7 +40,10 @@ export async function POST(req: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const systemPrompt = buildStoryCoachPrompt(coachLanguage, heteronymVoice);
+    const baseSystemPrompt = buildStoryCoachPrompt(coachLanguage, heteronymVoice);
+    const systemPrompt = writerInsightsPrompt
+      ? `${baseSystemPrompt}\n\n${writerInsightsPrompt}`
+      : baseSystemPrompt;
 
     const content = buildStoryCoachContent({
       chapterContent: chapterContent.slice(0, 15000), // Cap at ~15K chars

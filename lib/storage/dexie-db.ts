@@ -48,6 +48,40 @@ export interface DexieStory {
   updatedAt: number;
 }
 
+export interface DexieChapterAnalysis {
+  chapterId: string;
+  contentHash: string;
+  analyzedAt: number;
+  // Serialized ProseIssue[] — keep it loose so the prose-analysis schema can
+  // evolve without a Dexie version bump (we revalidate at read time).
+  data: string;
+}
+
+export interface DexieStorySnapshot {
+  id: string;
+  storyId: string;
+  name: string;
+  description: string;
+  createdAt: number;
+  wordCount: number;
+  chapterCount: number;
+  // JSON-serialized StoryState payload — includes chapter contents at the
+  // moment the snapshot was taken.
+  data: string;
+}
+
+export interface DexieWriterInsight {
+  id: string;
+  category: string;
+  observation: string;
+  evidenceCount: number;
+  lastObservedAt: number;
+  confidence: number;
+  /** True when the writer has marked this insight as informative — used to
+   *  weight injection priority. */
+  pinned: number; // 0/1 (Dexie indexable)
+}
+
 class ZagafyDB extends Dexie {
   chapters!: Table<DexieChapter, string>;
   sessions!: Table<DexieSession, string>;
@@ -55,6 +89,9 @@ class ZagafyDB extends Dexie {
   meta!: Table<DexieMeta, string>;
   chatMessages!: Table<DexieChatMessage, string>;
   stories!: Table<DexieStory, string>;
+  chapterAnalysis!: Table<DexieChapterAnalysis, string>;
+  storySnapshots!: Table<DexieStorySnapshot, string>;
+  writerInsights!: Table<DexieWriterInsight, string>;
 
   constructor() {
     super('zagafy');
@@ -77,6 +114,40 @@ class ZagafyDB extends Dexie {
       meta: 'id',
       chatMessages: 'id, timestamp, chapterId',
       stories: 'id, updatedAt',
+    });
+    // Version 4 (Phase 4.11 / CB-08): per-chapter prose-analysis cache
+    // keyed by content hash so re-analyzing unchanged content is instant.
+    this.version(4).stores({
+      chapters: 'id, title, updatedAt',
+      sessions: 'id, startedAt',
+      chapterVersions: 'id, chapterId, createdAt',
+      meta: 'id',
+      chatMessages: 'id, timestamp, chapterId',
+      stories: 'id, updatedAt',
+      chapterAnalysis: 'chapterId, contentHash, analyzedAt',
+    });
+    // Version 5 (Phase 4.7 / MP-03): manuscript-wide snapshots store.
+    this.version(5).stores({
+      chapters: 'id, title, updatedAt',
+      sessions: 'id, startedAt',
+      chapterVersions: 'id, chapterId, createdAt',
+      meta: 'id',
+      chatMessages: 'id, timestamp, chapterId',
+      stories: 'id, updatedAt',
+      chapterAnalysis: 'chapterId, contentHash, analyzedAt',
+      storySnapshots: 'id, storyId, createdAt',
+    });
+    // Version 6 (Phase 4.12 / MP-11): writer-memory insight store.
+    this.version(6).stores({
+      chapters: 'id, title, updatedAt',
+      sessions: 'id, startedAt',
+      chapterVersions: 'id, chapterId, createdAt',
+      meta: 'id',
+      chatMessages: 'id, timestamp, chapterId',
+      stories: 'id, updatedAt',
+      chapterAnalysis: 'chapterId, contentHash, analyzedAt',
+      storySnapshots: 'id, storyId, createdAt',
+      writerInsights: 'id, category, lastObservedAt, evidenceCount, pinned',
     });
   }
 }
@@ -338,11 +409,11 @@ export async function putStory(state: Record<string, unknown>): Promise<void> {
   });
 }
 
-/** Clears all project data (stories blob, chapters, versions, sessions, chat). */
+/** Clears all project data (stories blob, chapters, versions, sessions, chat, analysis cache, snapshots, insights). */
 export async function clearAllStoryData(): Promise<void> {
   await db.transaction(
     'rw',
-    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.meta],
+    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.meta, db.chapterAnalysis, db.storySnapshots, db.writerInsights],
     async () => {
       await db.stories.clear();
       await db.chapters.clear();
@@ -350,6 +421,51 @@ export async function clearAllStoryData(): Promise<void> {
       await db.sessions.clear();
       await db.chatMessages.clear();
       await db.meta.clear();
+      await db.chapterAnalysis.clear();
+      await db.storySnapshots.clear();
+      await db.writerInsights.clear();
     }
   );
+}
+
+// ─── Chapter prose-analysis cache (Phase 4.11 / CB-08) ───
+
+export interface ChapterAnalysisRow<T = unknown> {
+  chapterId: string;
+  contentHash: string;
+  analyzedAt: number;
+  data: T;
+}
+
+export async function getChapterAnalysis<T>(chapterId: string): Promise<ChapterAnalysisRow<T> | null> {
+  const row = await db.chapterAnalysis.get(chapterId);
+  if (!row) return null;
+  try {
+    return {
+      chapterId: row.chapterId,
+      contentHash: row.contentHash,
+      analyzedAt: row.analyzedAt,
+      data: JSON.parse(row.data) as T,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function putChapterAnalysis<T>(
+  chapterId: string,
+  contentHash: string,
+  data: T,
+  analyzedAt: number = Date.now(),
+): Promise<void> {
+  await db.chapterAnalysis.put({
+    chapterId,
+    contentHash,
+    analyzedAt,
+    data: JSON.stringify(data),
+  });
+}
+
+export async function clearChapterAnalysis(chapterId: string): Promise<void> {
+  await db.chapterAnalysis.delete(chapterId);
 }

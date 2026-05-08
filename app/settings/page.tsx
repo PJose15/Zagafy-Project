@@ -1,13 +1,15 @@
 'use client';
 
 import { useStory, StoryState } from '@/lib/store';
-import { useRef, useEffect } from 'react';
-import { Settings, Download, Upload, Trash2, AlertTriangle, Globe } from 'lucide-react';
+import { useRef, useEffect, useState } from 'react';
+import { Settings, Download, Upload, Trash2, AlertTriangle, Globe, SpellCheck } from 'lucide-react';
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
 import { HeteronymSettings } from '@/components/heteronyms/heteronym-settings';
 import { BrassButton, InkStampButton, CarvedHeader, ParchmentCard } from '@/components/antiquarian';
 import { db, clearAllStoryData } from '@/lib/storage/dexie-db';
+import { useSpellcheckPreference } from '@/hooks/use-spellcheck-preference';
+import { clearAllInsights, readWriterInsights } from '@/lib/writer-memory';
 
 // Only these keys from StoryState are allowed during import
 const ALLOWED_KEYS = new Set<keyof StoryState>([
@@ -74,6 +76,31 @@ export default function SettingsPage() {
   const readerRef = useRef<FileReader | null>(null);
   const { toast } = useToast();
   const { confirm } = useConfirm();
+  const spellcheck = useSpellcheckPreference();
+  const [insightCount, setInsightCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    readWriterInsights().then(list => {
+      if (!cancelled) setInsightCount(list.length);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleClearMemory = async () => {
+    const ok = await confirm({
+      title: 'Forget writer memory?',
+      message:
+        `Clear all ${insightCount} observation${insightCount === 1 ? '' : 's'} the AI coach has built up about your craft? ` +
+        'Future suggestions will start fresh. This cannot be undone.',
+      confirmLabel: 'Forget all',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    await clearAllInsights();
+    setInsightCount(0);
+    toast('Writer memory cleared.', 'success');
+  };
 
   // Abort any in-flight FileReader on unmount
   useEffect(() => {
@@ -213,6 +240,55 @@ export default function SettingsPage() {
         </ParchmentCard>
 
         <HeteronymSettings />
+
+        {/* MP-11 / Phase 4.12 — writer memory controls */}
+        <ParchmentCard className="space-y-4">
+          <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
+            <Settings size={20} className="text-brass-500" />
+            Writer Memory
+          </h2>
+          <p className="text-sepia-600 text-sm leading-relaxed">
+            The AI coach builds up observations about your craft (pacing, dialogue,
+            description, plot, voice) as you run it. The top three are folded back
+            into future micro-prompts and coaching sessions. Browse them under{' '}
+            <a className="underline hover:text-sepia-800" href="/writing-map">Writing Map</a>.
+          </p>
+          <p className="text-xs text-sepia-500 font-mono">
+            Currently remembered: {insightCount.toLocaleString()} observation{insightCount === 1 ? '' : 's'}.
+          </p>
+          <BrassButton onClick={handleClearMemory} disabled={insightCount === 0} icon={<Trash2 size={18} />}>
+            Forget all observations
+          </BrassButton>
+        </ParchmentCard>
+
+        {/* MP-07 / Phase 4.5 — native browser spellcheck toggle */}
+        <ParchmentCard className="space-y-4">
+          <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
+            <SpellCheck size={20} className="text-brass-500" />
+            Spellcheck
+          </h2>
+          <p className="text-sepia-600 text-sm leading-relaxed">
+            Use the browser&apos;s built-in spellchecker on writing surfaces. Turn this off when
+            you&apos;re polishing dialect, made-up names, or invented vocabulary and the red
+            squiggles get in the way.
+          </p>
+          <label className="inline-flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={spellcheck.enabled}
+              onChange={spellcheck.toggle}
+              aria-label="Enable browser spellcheck"
+              className="h-4 w-4 accent-brass-500"
+            />
+            <span className="text-sm text-sepia-700">
+              Browser spellcheck is {spellcheck.enabled ? 'on' : 'off'}
+            </span>
+          </label>
+          <p className="text-xs text-sepia-500/80">
+            A richer grammar layer (LanguageTool) is on the roadmap — see{' '}
+            <code className="font-mono text-[10px] bg-parchment-200 px-1 rounded">docs/ROADMAP.md</code>.
+          </p>
+        </ParchmentCard>
 
         <ParchmentCard className="space-y-4">
           <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">

@@ -15,6 +15,7 @@ import {
 import { WorldBibleExtractButton } from '@/components/bible/WorldBibleExtractButton';
 import { WorldBibleSectionCard } from '@/components/bible/WorldBibleSectionCard';
 import { WorldBibleMergeModal } from '@/components/bible/WorldBibleMergeModal';
+import { WorldBibleReviewQueue } from '@/components/bible/WorldBibleReviewQueue';
 import {
   WORLD_BIBLE_CATEGORIES, CATEGORY_META,
   type WorldBibleSection, type WorldBibleCategory,
@@ -42,8 +43,11 @@ export default function BiblePage() {
 
   const [selectedCategory, setSelectedCategory] = useState<WorldBibleCategory>('geography');
   const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [reviewQueueOpen, setReviewQueueOpen] = useState(false);
   const [incomingSections, setIncomingSections] = useState<WorldBibleSection[]>([]);
   const [extractError, setExtractError] = useState<string | null>(null);
+
+  const draftCount = state.world_bible.filter(s => s.canonStatus === 'draft').length;
 
   useUnsavedChanges(
     title !== state.title ||
@@ -106,6 +110,38 @@ export default function BiblePage() {
     updateField('world_bible', state.world_bible.filter((s) => s.id !== id));
   }, [state.world_bible, updateField]);
 
+  const handleQueuePromote = useCallback(
+    (ids: string[], target: 'flexible' | 'confirmed') => {
+      const idSet = new Set(ids);
+      const now = new Date().toISOString();
+      updateField(
+        'world_bible',
+        state.world_bible.map(s =>
+          idSet.has(s.id)
+            ? { ...s, canonStatus: target, lastUpdated: now }
+            : s,
+        ),
+      );
+    },
+    [state.world_bible, updateField],
+  );
+
+  const handleQueueDiscard = useCallback(
+    (ids: string[]) => {
+      const idSet = new Set(ids);
+      const now = new Date().toISOString();
+      updateField(
+        'world_bible',
+        state.world_bible.map(s =>
+          idSet.has(s.id)
+            ? { ...s, canonStatus: 'discarded' as const, lastUpdated: now }
+            : s,
+        ),
+      );
+    },
+    [state.world_bible, updateField],
+  );
+
   const handleAddSection = useCallback(() => {
     const newSection: WorldBibleSection = {
       id: crypto.randomUUID(),
@@ -137,6 +173,15 @@ export default function BiblePage() {
               chapterCount={state.chapters.length}
               onError={setExtractError}
             />
+            {draftCount > 0 && (
+              <InkStampButton
+                variant="ghost"
+                onClick={() => setReviewQueueOpen(true)}
+                icon={<AlertTriangle size={16} />}
+              >
+                Review {draftCount} draft{draftCount === 1 ? '' : 's'}
+              </InkStampButton>
+            )}
             <InkStampButton onClick={handleSave} disabled={isSaving} icon={<Save size={18} />}>
               {isSaving ? 'Saved!' : 'Save Changes'}
             </InkStampButton>
@@ -312,6 +357,15 @@ export default function BiblePage() {
         incoming={incomingSections}
         existing={state.world_bible}
         onConfirm={handleMergeConfirm}
+      />
+
+      {/* Draft Review Queue (CB-05 / Phase 4.8) */}
+      <WorldBibleReviewQueue
+        open={reviewQueueOpen}
+        onClose={() => setReviewQueueOpen(false)}
+        sections={state.world_bible}
+        onPromote={handleQueuePromote}
+        onDiscard={handleQueueDiscard}
       />
     </div>
   );

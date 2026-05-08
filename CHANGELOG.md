@@ -7,6 +7,63 @@ and this project follows the phased build plan in `ZAGAFY_CLAUDE_CODE_BUILD_PLAN
 
 ## [Unreleased]
 
+### Phase 4 — Core product features (partial: 9 of 13 tasks)
+
+Shipped:
+
+- **CB-08 (4.11)** — `lib/prose-analysis-cache.ts` caches reader prose
+  analysis keyed by SHA-256 (Web Crypto, FNV-1a fallback) of chapter
+  content. Reader page hydrates cached issues on chapter switch and
+  shows "Analyzed Xh ago". Dexie v4 introduces the `chapterAnalysis`
+  store.
+- **MP-08 (4.6)** — `lib/analytics/pacing.ts` ships
+  `READING_SPEEDS`/`readingTimeMinutes`/`readingTimeLabel` plus
+  `pacingVariance` + `pacingHealthStatus` (consistent / varied /
+  erratic). Manuscript header and per-chapter rows show reading-time
+  estimates; new PacingHealth panel on `/writing-map` shows a per-chapter
+  word-count bar chart with mean line + ±σ band.
+- **CB-05 (4.8)** — Canon promotion ladder
+  (`draft → flexible → confirmed`, `discarded` as side-exit) in
+  `lib/canon-promotion.ts`. WorldBibleSectionCard grows promote/demote/
+  discard controls; new WorldBibleReviewQueue modal lists every draft
+  with bulk Promote-to-Flexible / Promote-to-Confirmed / Discard actions
+  (confirmed promotions are gated by an AI-canon-enforcement warning).
+- **MP-07 v1 (4.5)** — Browser-native spellcheck toggle
+  (`hooks/use-spellcheck-preference` via `useSyncExternalStore`).
+  ParchmentTextarea respects the preference; settings page exposes the
+  toggle. New `docs/ROADMAP.md` tracks the LanguageTool grammar layer
+  (MP-07 v2) and other deferred items.
+- **MP-03 (4.7)** — Manuscript-wide snapshots in `lib/snapshot.ts`
+  (Dexie v5, `storySnapshots` store). New `/versions` page lets writers
+  name + describe a snapshot, browse newest-first list, restore one
+  with a delta-summary confirmation, or delete. Cap of 30 with
+  oldest-first pruning; tier-aware caps land in Phase 5.
+- **MP-06 (4.2)** — Find-and-replace across chapters in
+  `lib/find-replace.ts`: `buildPattern`/`findInChapter`/`findAll`/
+  `replaceAllInChapter` with case / whole-word / regex toggles and
+  `current-chapter` vs `all-chapters` scope. Cmd/Ctrl+F on /manuscript
+  opens the dialog; replacements snapshot a chapterVersion first so
+  Replace All is reversible.
+- **MP-11 + MP-12 (4.12 / 4.13)** — Long-term writer memory in
+  `lib/writer-memory.ts` (Dexie v6, `writerInsights` store). Coach
+  insights fold into observations via a lens → category mapper;
+  confidence rises with evidence (1 - exp(-n/4)) and decays with age
+  (30-day half-life). Top 3 are injected into /api/micro-prompt and
+  /api/story-coach system prompts. New WriterMemoryCard on /writing-map
+  + Forget All Observations on settings.
+- **MP-09 (4.3)** — Outline / corkboard view at /outline. Index-card
+  layout for every chapter (grid 4×/list toggle), inline summary edit,
+  reorder with chevron buttons, canon + length filter chips. Drag-to-
+  reorder is deferred (no new dependency).
+
+Deferred to a focused future session:
+
+- **CB-11 (4.9)** — granular per-entity import review queue (current
+  /import flow already requires explicit Confirm before merging).
+- **CB-07 (4.10)** — rich-text manuscript editor (Lexical migration).
+- **MP-04 (4.1)** — DOCX / PDF industry-format export (depends on 4.10).
+- **MP-05 (4.4)** — comments / margin notes layer.
+
 ### Phase 3 — Reliability & error handling
 
 - **Phase 3.1** New `lib/api-response.ts` defines the canonical envelope:

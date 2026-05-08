@@ -22,6 +22,8 @@ import {
   BrainCircuit,
   Timer,
   MessageCircle,
+  History,
+  LayoutGrid,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useStory } from '@/lib/store';
@@ -32,6 +34,7 @@ import { XPBar } from '@/components/gamification/xp-bar';
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Manuscript', href: '/manuscript', icon: BookOpen },
+  { name: 'Outline', href: '/outline', icon: LayoutGrid },
   { name: 'Flow Mode', href: '/flow', icon: Zap },
   { name: 'Story Bible', href: '/bible', icon: BookOpen },
   { name: 'Characters', href: '/characters', icon: Users },
@@ -45,6 +48,7 @@ const navItems = [
   { name: 'Reader Mode', href: '/reader', icon: BookOpenCheck },
   { name: 'Story Brain', href: '/story-brain', icon: BrainCircuit },
   { name: 'Sprints', href: '/sprints', icon: Timer },
+  { name: 'Versions', href: '/versions', icon: History },
 ];
 
 export function ParchmentSidebar() {
