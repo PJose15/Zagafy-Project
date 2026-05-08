@@ -257,7 +257,9 @@ describe('POST /api/character-chat', () => {
     const data = await res.json();
 
     expect(data.reply).toBe('reply');
-    expect(data.insight).toBeUndefined();
+    // CB-09: insight is now always present in the shape (null if not run).
+    expect(data.insight).toBeNull();
+    expect(data.insightError).toBeUndefined();
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
@@ -267,7 +269,7 @@ describe('POST /api/character-chat', () => {
         ok: true,
         json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
       })
-      .mockRejectedValueOnce(new Error('Insight failed'));
+      .mockRejectedValue(new Error('Insight failed'));
 
     const messages = Array.from({ length: 6 }, (_, i) => ({
       role: i % 2 === 0 ? 'user' : 'character',
@@ -282,6 +284,69 @@ describe('POST /api/character-chat', () => {
     const data = await res.json();
 
     expect(data.reply).toBe('Main reply');
-    expect(data.insight).toBeUndefined();
+    expect(data.insight).toBeNull();
+    // CB-09: surfaces a stable error reason instead of silently disappearing.
+    expect(data.insightError).toBe('upstream_error');
+  });
+
+  // ── CB-09 (Phase 3.4) — explicit insight error surfacing ──
+
+  it('surfaces insightError="rate_limited" when insight upstream returns 429', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
+      })
+      .mockResolvedValueOnce({ ok: false, status: 429 });
+
+    const messages = Array.from({ length: 6 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'character',
+      content: `Message ${i}`,
+    }));
+
+    const res = await POST(makeRequest({ ...validBody, messages, generateInsight: true }));
+    const data = await res.json();
+    expect(data.reply).toBe('Main reply');
+    expect(data.insight).toBeNull();
+    expect(data.insightError).toBe('rate_limited');
+  });
+
+  it('surfaces insightError="upstream_error" when insight upstream returns 500', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
+      })
+      .mockResolvedValueOnce({ ok: false, status: 500 });
+
+    const messages = Array.from({ length: 6 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'character',
+      content: `Message ${i}`,
+    }));
+
+    const res = await POST(makeRequest({ ...validBody, messages, generateInsight: true }));
+    const data = await res.json();
+    expect(data.insightError).toBe('upstream_error');
+  });
+
+  it('surfaces insightError="parse_error" when insight body has unexpected shape', async () => {
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ /* no content array */ }),
+      });
+
+    const messages = Array.from({ length: 6 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'character',
+      content: `Message ${i}`,
+    }));
+
+    const res = await POST(makeRequest({ ...validBody, messages, generateInsight: true }));
+    const data = await res.json();
+    expect(data.insightError).toBe('parse_error');
   });
 });

@@ -7,6 +7,49 @@ and this project follows the phased build plan in `ZAGAFY_CLAUDE_CODE_BUILD_PLAN
 
 ## [Unreleased]
 
+### Phase 3 — Reliability & error handling
+
+- **Phase 3.1** New `lib/api-response.ts` defines the canonical envelope:
+  `{ ok: true, data, requestId, timestamp }` for success and
+  `{ ok: false, code, message, error, requestId, timestamp }` for errors,
+  with a stable `ApiErrorCode` vocabulary. Object payloads also flatten
+  onto the top level so existing client code keeps working —
+  `parseApiResponse<T>` is the new typed client-side counterpart and falls
+  back to legacy shapes when the envelope is absent. Migrated every API
+  route (analyze-character, audit, character-chat, chat, closing-question,
+  extract-world-bible, ingest, micro-prompt, polish, story-coach, both
+  health probes). The Gemini health probe's inner `ok` is renamed
+  `geminiReachable` to avoid colliding with the envelope.
+- **CB-10** New `lib/ai/retry.ts` ships a generic `withRetry` (3 attempts,
+  800ms→8s exponential backoff, ±20% jitter) and `isRetryableUpstream`
+  predicate that recognizes 429 / 502 / 503 / 504 / 529, ETIMEDOUT /
+  ECONNRESET, and message-shaped UNAVAILABLE / overloaded / timeout signals.
+  Applied to every Gemini call (replaces extract-world-bible's inline
+  retry loop) and to both Anthropic fetches; AbortError is excluded so the
+  per-call timeouts still fire. Test mode collapses delays so the suite
+  doesn't burn seconds in setTimeout.
+- **CB-12** `closing-question`, `micro-prompt`, and `story-coach` now flag
+  fallback responses with `degraded: true` and a stable
+  `degradationReason` (`gemini_key_missing`, `empty_response`,
+  `gemini_timeout`, `gemini_error`, `safety_blocked`, `empty_or_invalid`,
+  `parse_error`, `rate_limited`). The Closing Ritual surfaces a subtle
+  "The oracle rests; an older voice answers" hint; `useMicroPrompt`
+  swaps in a local prompt-bank suggestion so writers never see a blank
+  inline nudge.
+- **CB-09** `/api/character-chat` now always returns `insight: string | null`
+  and sets `insightError` to `'timeout' | 'parse_error' | 'rate_limited' |
+  'upstream_error'` when the optional secondary call fails.
+  `useCharacterChat` exposes `lastInsightError`; the chat panel renders an
+  antiquarian "The oracle could not see clearly this turn" hint.
+- **Phase 3.5** New `lib/logger.ts` ships a structured logger that emits
+  JSON in production (one line per call, fields indexable by Vercel log
+  capture / Sentry breadcrumbs in Phase 5) and a readable `[LEVEL] msg`
+  format in development. Every API route now creates a per-request
+  `createRouteLogger({ endpoint, requestId })` and routes every
+  `console.log/warn/error` through it; `makeRequestId` is exported from
+  `lib/api-response` so the same UUID can flow into both logs and the
+  response envelope.
+
 ### Phase 2 — Security hardening
 
 - **SG-02** Rate limiter gains a mode resolver

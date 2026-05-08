@@ -22,6 +22,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     sendMessage,
     isLoading,
     insights,
+    lastInsightError,
     saveInsightAsCanon,
     clearSession,
   } = useCharacterChat(characterId);
@@ -89,6 +90,15 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* CB-09: insight unavailable hint — non-blocking, antiquarian-styled */}
+      {lastInsightError && (
+        <div className="px-4 py-2 border-t border-mahogany-700/30">
+          <p className="text-[11px] italic text-cream-400/60">
+            The oracle could not see clearly this turn. Try again later.
+          </p>
         </div>
       )}
 

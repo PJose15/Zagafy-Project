@@ -8,8 +8,11 @@ describe('GET /api/health', () => {
 
     expect(res.status).toBe(200);
     expect(body.status).toBe('ok');
-    expect(typeof body.timestamp).toBe('number');
-    expect(body.timestamp).toBeLessThanOrEqual(Date.now());
+    // Phase 3.1 — timestamp is now an ISO string from the envelope.
+    expect(typeof body.timestamp).toBe('string');
+    expect(Number.isFinite(Date.parse(body.timestamp))).toBe(true);
+    expect(Date.parse(body.timestamp)).toBeLessThanOrEqual(Date.now());
+    expect(body.ok).toBe(true);
   });
 
   it('surfaces a basic rate-limit subsystem snapshot', async () => {

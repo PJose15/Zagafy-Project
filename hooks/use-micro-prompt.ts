@@ -47,9 +47,15 @@ export function useMicroPrompt(): UseMicroPromptReturn {
           return res.json();
         })
         .then(data => {
-          if (!controller.signal.aborted) {
-            setPrompt(data.prompt || null);
+          if (controller.signal.aborted) return;
+          // CB-12: when the server flags `degraded` (rate-limited / safety
+          // blocked / empty-or-invalid), substitute a local-bank prompt so the
+          // writer is never left without a nudge.
+          if (data?.degraded === true) {
+            setPrompt(getLocalMicroPrompt(options.blockType));
+            return;
           }
+          setPrompt(data.prompt || null);
         })
         .catch(err => {
           // Ignore aborted requests — can manifest as DOMException, Event, or other types

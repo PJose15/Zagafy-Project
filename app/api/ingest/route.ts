@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenAI, Type, FinishReason } from '@google/genai';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { rateLimit } from '@/lib/rate-limit';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
 import { getErrorStatus, getErrorMessage } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { withRetry } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 import type { ExtractedData, ExtractedCharacter, ExtractedLocation, ExtractedConflict, ExtractedTimelineEvent, ExtractedWorldRule, ExtractedTheme, ExtractedOpenLoop } from '@/lib/types/extracted-data';
 
 const responseSchema = {
@@ -504,6 +507,8 @@ const MAX_TOTAL_TEXT = 2_000_000; // ~2M chars (~10 large chunks)
 const MAX_CHUNKS = 20;
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/ingest', requestId });
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
 
@@ -512,32 +517,30 @@ export async function POST(req: NextRequest) {
     try {
       formData = await req.formData();
     } catch {
-      return NextResponse.json({ error: 'Invalid request format. Expected multipart form data.' }, { status: 400 });
+      return err('validation_failed', 'Invalid request format. Expected multipart form data.', 400);
     }
     const files = formData.getAll('files') as File[];
     const language = (formData.get('language') as string) || 'English';
 
     if (!files || files.length === 0) {
-      return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
+      return err('validation_failed', 'No files uploaded', 400);
     }
 
     if (files.length > MAX_FILES) {
-      return NextResponse.json({ error: `Too many files (max ${MAX_FILES})` }, { status: 400 });
+      return err('validation_failed', `Too many files (max ${MAX_FILES})`, 400);
     }
 
     // Validate files
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json(
-          { error: `File "${file.name}" exceeds the 50MB size limit.` },
-          { status: 400 }
-        );
+        return err('validation_failed', `File "${file.name}" exceeds the 50MB size limit.`, 400);
       }
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        return NextResponse.json(
-          { error: `File "${file.name}" has an unsupported format. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}` },
-          { status: 400 }
+        return err(
+          'validation_failed',
+          `File "${file.name}" has an unsupported format. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`,
+          400,
         );
       }
     }
@@ -567,30 +570,34 @@ export async function POST(req: NextRequest) {
 
         combinedText += `\n\n--- FILE: ${file.name} ---\n\n${text}`;
         fileParsingStatus.push({ name: file.name, status: 'success' });
-      } catch (err: unknown) {
-        console.error(`Error parsing ${file.name}:`, err);
-        fileParsingStatus.push({ name: file.name, status: 'failed', error: getErrorMessage(err, 'Unknown parse error') });
+      } catch (parseErr: unknown) {
+        log.error('Error parsing file', parseErr, { fileName: file.name });
+        fileParsingStatus.push({ name: file.name, status: 'failed', error: getErrorMessage(parseErr, 'Unknown parse error') });
       }
     }
 
     if (combinedText.trim() === '') {
-      return NextResponse.json({ error: 'No text could be extracted from the uploaded files.', fileParsingStatus }, { status: 400 });
+      return err(
+        'validation_failed',
+        'No text could be extracted from the uploaded files.',
+        400,
+        { fileParsingStatus },
+      );
     }
 
     if (combinedText.length > MAX_TOTAL_TEXT) {
-      return NextResponse.json(
-        {
-          error: `Combined manuscript text is too large (${combinedText.length.toLocaleString()} chars, max ${MAX_TOTAL_TEXT.toLocaleString()}). Please upload a smaller subset of files.`,
-          fileParsingStatus,
-        },
-        { status: 413 }
+      return err(
+        'validation_failed',
+        `Combined manuscript text is too large (${combinedText.length.toLocaleString()} chars, max ${MAX_TOTAL_TEXT.toLocaleString()}). Please upload a smaller subset of files.`,
+        413,
+        { fileParsingStatus },
       );
     }
 
     // 2. Split into chunks and analyze with Gemini
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+      return err('internal_error', 'API key not configured', 500);
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -598,16 +605,15 @@ export async function POST(req: NextRequest) {
     const chunks = splitTextIntoChunks(combinedText);
 
     if (chunks.length > MAX_CHUNKS) {
-      return NextResponse.json(
-        {
-          error: `Manuscript splits into too many processing chunks (${chunks.length}, max ${MAX_CHUNKS}). Please upload a smaller subset of files.`,
-          fileParsingStatus,
-        },
-        { status: 413 }
+      return err(
+        'validation_failed',
+        `Manuscript splits into too many processing chunks (${chunks.length}, max ${MAX_CHUNKS}). Please upload a smaller subset of files.`,
+        413,
+        { fileParsingStatus },
       );
     }
 
-    console.log(`Processing ${chunks.length} chunk(s), total ${combinedText.length} characters`);
+    log.info('Processing manuscript', { chunkCount: chunks.length, totalChars: combinedText.length });
 
     const results: ExtractedData[] = [];
 
@@ -618,59 +624,63 @@ export async function POST(req: NextRequest) {
 
       const userPrompt = `${chunkLabel}<manuscript_content>\n${chunks[i]}\n</manuscript_content>`;
 
-      console.log(`Sending chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)...`);
+      log.info('Sending chunk to Gemini', { chunkIndex: i + 1, chunkCount: chunks.length, chunkChars: chunks[i].length });
 
-      const response = await ai.models.generateContent({
-        model: AI_MODEL,
-        contents: userPrompt,
-        config: {
-          systemInstruction: systemPrompt,
-          safetySettings: SAFETY_SETTINGS,
-          responseMimeType: 'application/json',
-          responseSchema,
-        }
-      });
+      const response = await withRetry(() =>
+        ai.models.generateContent({
+          model: AI_MODEL,
+          contents: userPrompt,
+          config: {
+            systemInstruction: systemPrompt,
+            safetySettings: SAFETY_SETTINGS,
+            responseMimeType: 'application/json',
+            responseSchema,
+          },
+        }),
+      );
 
       const candidate = response.candidates?.[0];
       const finishReason = candidate?.finishReason;
       if (finishReason === FinishReason.SAFETY || finishReason === FinishReason.PROHIBITED_CONTENT || finishReason === FinishReason.BLOCKLIST) {
-        console.warn(`Chunk ${i + 1} was blocked by safety filters, skipping.`);
+        log.warn('Chunk blocked by safety filters; skipping', { chunkIndex: i + 1 });
         continue;
       }
 
       const rawText = response.text;
       if (!rawText) {
-        console.warn(`Chunk ${i + 1} returned empty response, skipping.`);
+        log.warn('Chunk returned empty response; skipping', { chunkIndex: i + 1 });
         continue;
       }
       let parsed;
       try {
         parsed = JSON.parse(rawText);
       } catch {
-        console.error(`Chunk ${i + 1}: Gemini returned invalid JSON:`, rawText.slice(0, 500));
+        log.error('Chunk returned invalid JSON', undefined, {
+          chunkIndex: i + 1,
+          rawTextSample: rawText.slice(0, 500),
+        });
         continue;
       }
       results.push(parsed);
-      console.log(`Chunk ${i + 1} done.`);
+      log.info('Chunk done', { chunkIndex: i + 1 });
     }
 
     if (results.length === 0) {
-      return NextResponse.json(
-        { error: 'AI failed to analyze the manuscript. Please try again.', fileParsingStatus },
-        { status: 502 }
+      return err(
+        'upstream_unavailable',
+        'AI failed to analyze the manuscript. Please try again.',
+        502,
+        { fileParsingStatus },
       );
     }
 
     const extractedData = results.length === 1 ? results[0] : mergeResults(results);
 
-    return NextResponse.json({
-      fileParsingStatus,
-      extractedData
-    });
+    return ok({ fileParsingStatus, extractedData });
 
   } catch (error: unknown) {
-    console.error('Ingestion error:', error);
+    log.error('Ingestion error', error);
     const status = getErrorStatus(error);
-    return NextResponse.json({ error: 'Failed to process files' }, { status });
+    return err(statusToCode(status), 'Failed to process files', status);
   }
 }

@@ -60,6 +60,7 @@ const FALLBACK_QUESTIONS = [
 export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
   const [section, setSection] = useState(0);
   const [question, setQuestion] = useState<string | null>(null);
+  const [degraded, setDegraded] = useState(false);
   const [prevOpen, setPrevOpen] = useState(false);
 
   // Derived state: reset section when opening (React 19 pattern)
@@ -67,6 +68,7 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
     setPrevOpen(true);
     setSection(0);
     setQuestion(null);
+    setDegraded(false);
   }
   if (!open && prevOpen) {
     setPrevOpen(false);
@@ -74,7 +76,7 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
 
   const bestSentence = findBestSentence(stats.content);
 
-  const fetchQuestionValue = useCallback(async (): Promise<string> => {
+  const fetchQuestionValue = useCallback(async (): Promise<{ q: string; degraded: boolean }> => {
     try {
       const res = await fetch('/api/closing-question', {
         method: 'POST',
@@ -86,19 +88,23 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.question) return data.question;
+        if (data.question) return { q: data.question, degraded: data.degraded === true };
       }
     } catch {
       // fallback
     }
-    return FALLBACK_QUESTIONS[Math.floor(Math.random() * FALLBACK_QUESTIONS.length)];
+    const fallback = FALLBACK_QUESTIONS[Math.floor(Math.random() * FALLBACK_QUESTIONS.length)];
+    return { q: fallback, degraded: true };
   }, [stats.content, stats.wordsWritten]);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetchQuestionValue().then(q => {
-      if (!cancelled) setQuestion(q);
+    fetchQuestionValue().then(({ q, degraded: deg }) => {
+      if (!cancelled) {
+        setQuestion(q);
+        setDegraded(deg);
+      }
     });
     return () => { cancelled = true; };
   }, [open, fetchQuestionValue]);
@@ -205,6 +211,14 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
                 <p className="text-xl font-serif text-cream-100 leading-relaxed">
                   {question || 'What surprised you about what you wrote today?'}
                 </p>
+                {degraded && (
+                  <p
+                    className="text-xs italic text-cream-400/70"
+                    title="The oracle rests; an older voice answers"
+                  >
+                    The oracle rests; an older voice answers.
+                  </p>
+                )}
                 <button
                   onClick={onClose}
                   className="mt-8 px-6 py-2 bg-brass-600 hover:bg-brass-500 text-cream-50 rounded-lg transition-colors text-sm font-medium"

@@ -154,4 +154,63 @@ describe('POST /api/micro-prompt', () => {
     const body = await res.json();
     expect(body.prompt).toBe('');
   });
+
+  // ── CB-12 (Phase 3.2) — degraded surfacing ──
+
+  it('flags degraded with rate_limited reason on Gemini 429', async () => {
+    mockGenerateContent.mockRejectedValue({ status: 429, message: 'Rate limited' });
+    const res = await POST(
+      makeRequest({
+        recentText: 'She walked through the dark corridor, her footsteps echoing off the stone walls.',
+      }),
+    );
+    const body = await res.json();
+    expect(body.degraded).toBe(true);
+    expect(body.degradationReason).toBe('rate_limited');
+  });
+
+  it('flags degraded with safety_blocked reason when safety filter triggers', async () => {
+    mockGenerateContent.mockResolvedValue({
+      candidates: [{ finishReason: 'SAFETY' }],
+      text: '',
+    });
+    const res = await POST(
+      makeRequest({
+        recentText: 'She walked through the dark corridor, her footsteps echoing off the stone walls.',
+      }),
+    );
+    const body = await res.json();
+    expect(body.degraded).toBe(true);
+    expect(body.degradationReason).toBe('safety_blocked');
+  });
+
+  it('flags degraded with empty_or_invalid reason when validation fails', async () => {
+    mockGenerateContent.mockResolvedValue({
+      candidates: [{ finishReason: 'STOP' }],
+      text: '   ',
+    });
+    const res = await POST(
+      makeRequest({
+        recentText: 'She walked through the dark corridor, her footsteps echoing off the stone walls.',
+      }),
+    );
+    const body = await res.json();
+    expect(body.degraded).toBe(true);
+    expect(body.degradationReason).toBe('empty_or_invalid');
+  });
+
+  it('does NOT set degraded on a successful response', async () => {
+    mockGenerateContent.mockResolvedValue({
+      candidates: [{ finishReason: 'STOP' }],
+      text: 'What does the protagonist most fear about this moment in the corridor?',
+    });
+    const res = await POST(
+      makeRequest({
+        recentText: 'She walked through the dark corridor, her footsteps echoing off the stone walls.',
+      }),
+    );
+    const body = await res.json();
+    expect(body.degraded).toBeUndefined();
+    expect(body.prompt).toContain('protagonist');
+  });
 });

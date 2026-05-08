@@ -1,13 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenAI, Type, FinishReason } from '@google/genai';
 import { buildWritingAssistantPrompt } from '@/lib/prompts/writing-assistant';
 import { rateLimit } from '@/lib/rate-limit';
 import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { withRetry } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/audit', requestId });
   const limited = await rateLimit(req, { maxRequests: 10, windowMs: 60000 });
   if (limited) return limited;
 
@@ -17,20 +22,20 @@ export async function POST(req: NextRequest) {
     const storyContext = typeof body.storyContext === 'string' ? body.storyContext : '';
 
     if (typeof userInput !== 'string' || !userInput.trim()) {
-      return NextResponse.json({ error: 'Missing required field: userInput' }, { status: 400 });
+      return err('validation_failed', 'Missing required field: userInput', 400);
     }
     if (typeof language !== 'string' || !language.trim()) {
-      return NextResponse.json({ error: 'Missing required field: language' }, { status: 400 });
+      return err('validation_failed', 'Missing required field: language', 400);
     }
 
     const totalLength = (storyContext?.length || 0) + (userInput?.length || 0);
     if (totalLength > 500000) {
-      return NextResponse.json({ error: 'Request payload too large (max 500KB of text)' }, { status: 413 });
+      return err('validation_failed', 'Request payload too large (max 500KB of text)', 413);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+      return err('internal_error', 'API key not configured', 500);
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -56,7 +61,8 @@ Analyze it against the established canon. Check for these specific dimensions:
 
 For each risk found, explain which specific story element it contradicts and why.`;
 
-    const response = await ai.models.generateContent({
+    const response = await withRetry(() =>
+      ai.models.generateContent({
       model: AI_MODEL,
       contents: prompt,
       config: {
@@ -86,13 +92,14 @@ For each risk found, explain which specific story element it contradicts and why
           }
         }
       }
-    });
+      }),
+    );
 
     // Check if the response was blocked
     const candidate = response.candidates?.[0];
     const finishReason = candidate?.finishReason;
     if (finishReason === FinishReason.SAFETY || finishReason === FinishReason.PROHIBITED_CONTENT || finishReason === FinishReason.BLOCKLIST) {
-      return NextResponse.json({
+      return ok({
         status: 'Clear',
         risks: [{ level: 'Low', description: 'The AI could not audit this content. Try rephrasing your input.', affectedElements: [] }],
         suggestedCorrections: [],
@@ -102,17 +109,17 @@ For each risk found, explain which specific story element it contradicts and why
 
     const rawText = response.text;
     if (!rawText) {
-      return NextResponse.json({ status: 'Clear', risks: [], suggestedCorrections: [], safeVersion: '' });
+      return ok({ status: 'Clear', risks: [], suggestedCorrections: [], safeVersion: '' });
     }
     let result;
     try {
       result = JSON.parse(rawText);
     } catch {
-      console.error('Audit: Gemini returned invalid JSON:', rawText.slice(0, 500));
-      return NextResponse.json({ error: 'AI returned an invalid response. Please try again.' }, { status: 502 });
+      log.error('Gemini returned invalid JSON', undefined, { rawTextSample: rawText.slice(0, 500) });
+      return err('parse_error', 'AI returned an invalid response. Please try again.', 502);
     }
     // Ensure expected shape so the client doesn't crash
-    return NextResponse.json({
+    return ok({
       status: typeof result.status === 'string' ? result.status : 'Clear',
       risks: Array.isArray(result.risks) ? result.risks : [],
       suggestedCorrections: Array.isArray(result.suggestedCorrections) ? result.suggestedCorrections : [],
@@ -120,8 +127,8 @@ For each risk found, explain which specific story element it contradicts and why
     });
 
   } catch (error: unknown) {
-    console.error('Audit API error:', error);
+    log.error('Audit API error', error);
     const status = getErrorStatus(error);
-    return NextResponse.json({ error: 'Failed to perform audit' }, { status });
+    return err(statusToCode(status), 'Failed to perform audit', status);
   }
 }

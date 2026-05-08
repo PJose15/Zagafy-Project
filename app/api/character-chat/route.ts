@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getErrorStatus } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { withRetry, isRetryableUpstream } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 import { anthropicConfig } from '@/lib/ai-config';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
 import type { Character, CharacterState } from '@/lib/store';
@@ -81,6 +84,8 @@ function sanitizeCharacter(input: unknown): Character | null {
 }
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/character-chat', requestId });
   const limited = await rateLimit(req, { maxRequests: 15, windowMs: 60000 });
   if (limited) return limited;
 
@@ -90,39 +95,31 @@ export async function POST(req: NextRequest) {
 
     // Validate message (the new turn from the user)
     if (typeof message !== 'string' || message.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'message is required and must be non-empty' },
-        { status: 400 }
-      );
+      return err('validation_failed', 'message is required and must be non-empty', 400);
     }
 
     if (message.length > 10000) {
-      return NextResponse.json(
-        { error: 'Message too large (max 10000 characters)' },
-        { status: 413 }
-      );
+      return err('validation_failed', 'Message too large (max 10000 characters)', 413);
     }
 
     if (!VALID_MODES.includes(mode)) {
-      return NextResponse.json(
-        { error: 'mode must be one of: exploration, scene, confrontation' },
-        { status: 400 }
-      );
+      return err('validation_failed', 'mode must be one of: exploration, scene, confrontation', 400);
     }
 
     // Validate the character payload — server builds the prompt from this,
     // never accepts a raw systemPrompt from the client (prevents open-proxy abuse).
     const sanitized = sanitizeCharacter(character);
     if (!sanitized) {
-      return NextResponse.json(
-        { error: 'character payload is required and must include name, role, and description' },
-        { status: 400 }
+      return err(
+        'validation_failed',
+        'character payload is required and must include name, role, and description',
+        400,
       );
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'Anthropic API key not configured' }, { status: 500 });
+      return err('internal_error', 'Anthropic API key not configured', 500);
     }
 
     const systemPrompt = buildSystemPrompt(sanitized, mode as ChatMode);
@@ -146,55 +143,85 @@ export async function POST(req: NextRequest) {
     }
     apiMessages.push({ role: 'user', content: message.trim() });
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), anthropicConfig.timeouts.characterChat);
-
     let response: Response;
     try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+      response = await withRetry(
+        async () => {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), anthropicConfig.timeouts.characterChat);
+          try {
+            const r = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+              },
+              body: JSON.stringify({
+                model: anthropicConfig.model,
+                max_tokens: 2048,
+                temperature: anthropicConfig.temperatures.characterChat,
+                system: systemPrompt,
+                messages: apiMessages,
+              }),
+              signal: controller.signal,
+            });
+            if ([429, 502, 503, 504, 529].includes(r.status)) {
+              const e: Error & { status?: number } = new Error(`Anthropic ${r.status}`);
+              e.status = r.status;
+              throw e;
+            }
+            return r;
+          } finally {
+            clearTimeout(timer);
+          }
         },
-        body: JSON.stringify({
-          model: anthropicConfig.model,
-          max_tokens: 2048,
-          temperature: anthropicConfig.temperatures.characterChat,
-          system: systemPrompt,
-          messages: apiMessages,
-        }),
-        signal: controller.signal,
-      });
+        {
+          retryableErrors: (e) =>
+            !(e instanceof Error && e.name === 'AbortError') && isRetryableUpstream(e),
+        },
+      );
     } catch (fetchError: unknown) {
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return NextResponse.json({ error: 'Chat request timed out' }, { status: 504 });
+        return err('upstream_timeout', 'Chat request timed out', 504);
+      }
+      if (fetchError && typeof fetchError === 'object' && 'status' in fetchError) {
+        const status = Number((fetchError as { status: number }).status);
+        if (status === 429) return err('rate_limited', 'Rate limited by AI provider', 429);
+        return err(statusToCode(status), 'AI provider error', status);
       }
       throw fetchError;
-    } finally {
-      clearTimeout(timeout);
     }
 
     if (!response.ok) {
       const status = response.status;
       if (status === 429) {
-        return NextResponse.json({ error: 'Rate limited by AI provider' }, { status: 429 });
+        return err('rate_limited', 'Rate limited by AI provider', 429);
       }
-      return NextResponse.json({ error: 'AI provider error' }, { status });
+      return err(statusToCode(status), 'AI provider error', status);
     }
 
     const data = await response.json();
     const reply = data.content?.[0]?.text?.trim() || '';
 
-    const result: { reply: string; insight?: string } = { reply };
+    type InsightError = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
+    const result: {
+      reply: string;
+      insight: string | null;
+      insightError?: InsightError;
+    } = { reply, insight: null };
 
-    // Generate insight if requested and enough messages
+    // Generate insight if requested and enough messages.
+    // CB-09: when this optional secondary call fails, surface a structured
+    // signal so the client can render "Insight unavailable" instead of a
+    // phantom feature.
     if (generateInsight && Array.isArray(messages) && messages.length >= 5) {
       const insightController = new AbortController();
-      const insightTimeout = setTimeout(() => insightController.abort(), anthropicConfig.timeouts.insight);
+      const insightTimeout = setTimeout(
+        () => insightController.abort(),
+        anthropicConfig.timeouts.insight,
+      );
       try {
-        // Build a capped transcript for the insight prompt
         const transcript = apiMessages
           .map(m => `${m.role}: ${m.content}`)
           .join('\n')
@@ -223,20 +250,47 @@ export async function POST(req: NextRequest) {
         });
 
         if (insightResponse.ok) {
-          const insightData = await insightResponse.json();
-          result.insight = insightData.content?.[0]?.text?.trim() || undefined;
+          let insightData: { content?: Array<{ text?: string }> } | null = null;
+          try {
+            insightData = await insightResponse.json();
+          } catch {
+            log.warn('insight: parse-error on JSON body');
+            result.insightError = 'parse_error';
+          }
+          if (insightData) {
+            const text = insightData.content?.[0]?.text?.trim();
+            if (text) {
+              result.insight = text;
+            } else {
+              result.insightError = 'parse_error';
+              log.warn('insight: empty/unrecognized response shape');
+            }
+          }
+        } else if (insightResponse.status === 429) {
+          result.insightError = 'rate_limited';
+          log.warn('insight: rate-limited by upstream');
+        } else {
+          result.insightError = 'upstream_error';
+          log.warn('insight: upstream non-ok', { status: insightResponse.status });
         }
-      } catch {
-        // Insight generation is optional — don't fail the main response
+      } catch (insightErr: unknown) {
+        if (insightErr instanceof Error && insightErr.name === 'AbortError') {
+          result.insightError = 'timeout';
+          log.warn('insight: 15s timeout');
+        } else {
+          result.insightError = 'upstream_error';
+          const msg = insightErr instanceof Error ? insightErr.message : String(insightErr);
+          log.warn('insight: upstream throw', { errorMessage: msg });
+        }
       } finally {
         clearTimeout(insightTimeout);
       }
     }
 
-    return NextResponse.json(result);
+    return ok(result);
   } catch (error: unknown) {
-    console.error('Character chat API error:', error);
+    log.error('Character chat API error', error);
     const status = getErrorStatus(error);
-    return NextResponse.json({ error: 'Failed to generate character response' }, { status });
+    return err(statusToCode(status), 'Failed to generate character response', status);
   }
 }

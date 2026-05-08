@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenAI, FinishReason } from '@google/genai';
 import { buildStoryCoachPrompt, buildStoryCoachContent } from '@/lib/prompts/story-coach';
 import { rateLimit } from '@/lib/rate-limit';
 import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { withRetry } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 import type { CoachingInsight, CoachingLens, CoachingPriority } from '@/lib/story-coach/types';
 
 export const maxDuration = 30;
@@ -12,6 +15,8 @@ const VALID_LENSES: CoachingLens[] = ['tension', 'sensory', 'motivation', 'pacin
 const VALID_PRIORITIES: CoachingPriority[] = ['low', 'medium', 'high'];
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/story-coach', requestId });
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
 
@@ -21,15 +26,12 @@ export async function POST(req: NextRequest) {
     const coachLanguage = typeof language === 'string' && language.trim() ? language.trim() : 'English';
 
     if (typeof chapterContent !== 'string' || chapterContent.trim().length < 50) {
-      return NextResponse.json(
-        { error: 'chapterContent must be at least 50 characters' },
-        { status: 400 }
-      );
+      return err('validation_failed', 'chapterContent must be at least 50 characters', 400);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+      return err('internal_error', 'API key not configured', 500);
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -44,17 +46,19 @@ export async function POST(req: NextRequest) {
 
     const config = AI_CONFIG.storyCoach ?? { temperature: 0.3, maxOutputTokens: 4096 };
 
-    const response = await ai.models.generateContent({
-      model: AI_MODEL,
-      contents: content,
-      config: {
-        systemInstruction: systemPrompt,
-        safetySettings: SAFETY_SETTINGS,
-        temperature: config.temperature,
-        maxOutputTokens: config.maxOutputTokens,
-        responseMimeType: 'application/json',
-      },
-    });
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: AI_MODEL,
+        contents: content,
+        config: {
+          systemInstruction: systemPrompt,
+          safetySettings: SAFETY_SETTINGS,
+          temperature: config.temperature,
+          maxOutputTokens: config.maxOutputTokens,
+          responseMimeType: 'application/json',
+        },
+      }),
+    );
 
     const candidate = response.candidates?.[0];
     const finishReason = candidate?.finishReason;
@@ -64,7 +68,13 @@ export async function POST(req: NextRequest) {
       finishReason === FinishReason.PROHIBITED_CONTENT ||
       finishReason === FinishReason.BLOCKLIST
     ) {
-      return NextResponse.json({ insights: [], blocked: true });
+      log.warn('degraded', { degradationReason: 'safety_blocked' });
+      return ok({
+        insights: [],
+        blocked: true,
+        degraded: true,
+        degradationReason: 'safety_blocked',
+      });
     }
 
     const rawText = (response.text || '').trim();
@@ -86,19 +96,29 @@ export async function POST(req: NextRequest) {
           }));
       }
     } catch {
-      // JSON parse failed — return empty
-      return NextResponse.json({ insights: [], parseError: true });
+      log.warn('degraded', { degradationReason: 'parse_error' });
+      return ok({
+        insights: [],
+        parseError: true,
+        degraded: true,
+        degradationReason: 'parse_error',
+      });
     }
 
-    return NextResponse.json({ insights });
+    return ok({ insights });
 
   } catch (error: unknown) {
-    console.error('Story coach API error:', error);
+    log.error('Story coach API error', error);
     const status = getErrorStatus(error);
     if (status === 429) {
-      return NextResponse.json({ insights: [], rateLimited: true });
+      return ok({
+        insights: [],
+        rateLimited: true,
+        degraded: true,
+        degradationReason: 'rate_limited',
+      });
     }
-    return NextResponse.json({ error: 'Failed to generate coaching insights' }, { status });
+    return err(statusToCode(status), 'Failed to generate coaching insights', status);
   }
 }
 

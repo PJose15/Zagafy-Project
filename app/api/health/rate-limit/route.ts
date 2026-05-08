@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { ok, err } from '@/lib/api-response';
 import { getRateLimitMode, getRateLimitHealth } from '@/lib/rate-limit';
 
 /**
@@ -14,20 +15,21 @@ export function GET(req: NextRequest) {
   const inProduction = process.env.NODE_ENV === 'production';
 
   if (inProduction && !required) {
-    return NextResponse.json(
-      { error: 'Health probe disabled. Set HEALTH_TOKEN in production to enable.' },
-      { status: 503 },
+    return err(
+      'upstream_unavailable',
+      'Health probe disabled. Set HEALTH_TOKEN in production to enable.',
+      503,
     );
   }
 
   if (required) {
     const provided = req.headers.get('x-health-token');
     if (provided !== required) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return err('forbidden', 'Forbidden', 403);
     }
   }
 
-  return NextResponse.json({
+  return ok({
     timestamp: Date.now(),
     mode: getRateLimitMode(),
     ...getRateLimitHealth(),

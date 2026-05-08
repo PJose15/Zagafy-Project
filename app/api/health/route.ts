@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { ok } from '@/lib/api-response';
 import { getRateLimitMode, getRateLimitHealth } from '@/lib/rate-limit';
 
 export function GET() {
@@ -6,7 +6,7 @@ export function GET() {
   const { reachable } = getRateLimitHealth();
   // Public surface: a single boolean per concern. Detailed health is on
   // /api/health/rate-limit, gated by HEALTH_TOKEN.
-  return NextResponse.json({
+  return ok({
     status: 'ok',
     timestamp: Date.now(),
     rateLimit: {

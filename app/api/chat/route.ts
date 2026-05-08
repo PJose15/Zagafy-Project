@@ -1,9 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenAI, FinishReason, Content } from '@google/genai';
 import { buildWritingAssistantPrompt } from '@/lib/prompts/writing-assistant';
 import { rateLimit } from '@/lib/rate-limit';
 import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { withRetry } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 import { safeParseGeminiResponse } from '@/lib/ai/safe-json-parse';
 import {
   NORMAL_RESPONSE_SCHEMA,
@@ -19,6 +22,8 @@ const MAX_HISTORY_TURNS = 10;
 const MAX_TURN_CHARS = 2000;
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/chat', requestId });
   const limited = await rateLimit(req, { maxRequests: 10, windowMs: 60000 });
   if (limited) return limited;
 
@@ -30,10 +35,10 @@ export async function POST(req: NextRequest) {
     const storyContext = typeof body.storyContext === 'string' ? body.storyContext : '';
 
     if (typeof userInput !== 'string' || !userInput.trim()) {
-      return NextResponse.json({ error: 'Missing required field: userInput' }, { status: 400 });
+      return err('validation_failed', 'Missing required field: userInput', 400);
     }
     if (typeof language !== 'string' || !language.trim()) {
-      return NextResponse.json({ error: 'Missing required field: language' }, { status: 400 });
+      return err('validation_failed', 'Missing required field: language', 400);
     }
 
     // Validate and build multi-turn history
@@ -43,12 +48,12 @@ export async function POST(req: NextRequest) {
 
     const totalLength = storyContext.length + userInput.length + historyTextLength;
     if (totalLength > 500000) {
-      return NextResponse.json({ error: 'Request payload too large (max 500KB of text)' }, { status: 413 });
+      return err('validation_failed', 'Request payload too large (max 500KB of text)', 413);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+      return err('internal_error', 'API key not configured', 500);
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -79,14 +84,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const response = await chat.sendMessage({ message: contextMessage });
+    const response = await withRetry(() => chat.sendMessage({ message: contextMessage }));
 
     // Check if the response was blocked or truncated
     const candidate = response.candidates?.[0];
     const finishReason = candidate?.finishReason;
 
     if (finishReason === FinishReason.SAFETY || finishReason === FinishReason.PROHIBITED_CONTENT || finishReason === FinishReason.BLOCKLIST) {
-      return NextResponse.json({
+      return ok({
         text: 'The AI could not generate a response for this request. Try rephrasing your input or adjusting the scene context.',
         isBlockedMode: isBlocked,
         blocked: true,
@@ -111,7 +116,7 @@ export async function POST(req: NextRequest) {
       if (finishReason === FinishReason.MAX_TOKENS && text) {
         text += '\n\n---\n*Response was truncated due to length. Ask me to continue if needed.*';
       }
-      return NextResponse.json({
+      return ok({
         text: text || 'I could not generate a response.',
         isBlockedMode: isBlocked,
       });
@@ -149,19 +154,19 @@ export async function POST(req: NextRequest) {
       finalText += '\n\n---\n*Response was truncated due to length. Ask me to continue if needed.*';
     }
 
-    return NextResponse.json({
+    return ok({
       text: finalText || 'I could not generate a response.',
       isBlockedMode: isBlocked,
       structured: validated,
     });
 
   } catch (error: unknown) {
-    console.error('Chat API error:', error);
+    log.error('Chat API error', error);
     const status = getErrorStatus(error);
     const message = status === 429
       ? 'AI quota exceeded. Please wait a few minutes and try again, or upgrade your API key.'
       : 'Failed to generate response';
-    return NextResponse.json({ error: message }, { status });
+    return err(statusToCode(status), message, status);
   }
 }
 

@@ -1,8 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { rateLimit } from '@/lib/rate-limit';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
+import { ok, err, makeRequestId } from '@/lib/api-response';
+import { withRetry } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 
 const FALLBACK_QUESTIONS = [
   'What surprised you about what you wrote today?',
@@ -17,6 +20,8 @@ function getRandomFallback(): string {
 }
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/closing-question', requestId });
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
 
@@ -25,15 +30,13 @@ export async function POST(req: NextRequest) {
     const { storyContext, wordsWritten } = body;
 
     if (typeof wordsWritten !== 'number') {
-      return NextResponse.json(
-        { error: 'wordsWritten is required and must be a number' },
-        { status: 400 }
-      );
+      return err('validation_failed', 'wordsWritten is required and must be a number', 400);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ question: getRandomFallback() });
+      log.warn('degraded', { degradationReason: 'gemini_key_missing' });
+      return ok({ question: getRandomFallback(), degraded: true, degradationReason: 'gemini_key_missing' });
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -46,30 +49,37 @@ export async function POST(req: NextRequest) {
         : ''
     }`;
 
-    const response = await ai.models.generateContent({
-      model: AI_MODEL,
-      config: {
-        temperature: 0.7,
-        maxOutputTokens: 80,
-        safetySettings: SAFETY_SETTINGS,
-        systemInstruction: systemPrompt,
-      },
-      contents: userMessage,
-    });
+    const response = await withRetry(() =>
+      ai.models.generateContent({
+        model: AI_MODEL,
+        config: {
+          temperature: 0.7,
+          maxOutputTokens: 80,
+          safetySettings: SAFETY_SETTINGS,
+          systemInstruction: systemPrompt,
+        },
+        contents: userMessage,
+      }),
+    );
 
     const question = response.text?.trim();
 
     if (!question) {
-      return NextResponse.json({ question: getRandomFallback() });
+      log.warn('degraded', { degradationReason: 'empty_response' });
+      return ok({ question: getRandomFallback(), degraded: true, degradationReason: 'empty_response' });
     }
 
-    return NextResponse.json({ question });
+    return ok({ question });
   } catch (error) {
     const status = getErrorStatus(error);
     if (status === 429) {
-      return NextResponse.json({ error: 'Rate limited by AI provider' }, { status: 429 });
+      return err('rate_limited', 'Rate limited by AI provider', 429);
     }
-    // On any error, return a fallback question instead of failing
-    return NextResponse.json({ question: getRandomFallback() });
+    // On any error, return a fallback question rather than failing the
+    // ritual. The flag lets the UI show a subtle "older voice answers" hint.
+    const message = error instanceof Error ? error.message : String(error);
+    const reason = /timeout|timed out|ETIMEDOUT/i.test(message) ? 'gemini_timeout' : 'gemini_error';
+    log.warn('degraded', { degradationReason: reason, upstreamMessage: message });
+    return ok({ question: getRandomFallback(), degraded: true, degradationReason: reason });
   }
 }

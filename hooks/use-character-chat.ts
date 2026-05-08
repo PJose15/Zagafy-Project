@@ -15,6 +15,8 @@ import {
 } from '@/lib/types/character-chat';
 import { useStory } from '@/lib/store';
 
+export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
+
 export function useCharacterChat(characterId: string | null) {
   const { state } = useStory();
   const [session, setSession] = useState<CharacterChatSession | null>(null);
@@ -22,6 +24,7 @@ export function useCharacterChat(characterId: string | null) {
   const [mode, setModeState] = useState<ChatMode>('exploration');
   const [isLoading, setIsLoading] = useState(false);
   const [insights, setInsights] = useState<CharacterInsight[]>([]);
+  const [lastInsightError, setLastInsightError] = useState<CharacterInsightErrorReason | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load or create session when characterId changes
@@ -168,8 +171,9 @@ export function useCharacterChat(characterId: string | null) {
         updatedAt: new Date().toISOString(),
       });
 
-      // Handle insight
+      // Handle insight (CB-09: server may signal insightError instead of insight)
       if (data.insight) {
+        setLastInsightError(null);
         const newInsight: CharacterInsight = {
           id: crypto.randomUUID(),
           characterId,
@@ -180,6 +184,12 @@ export function useCharacterChat(characterId: string | null) {
         };
         addInsight(newInsight);
         setInsights(prev => [...prev, newInsight]);
+      } else if (data.insightError) {
+        setLastInsightError(data.insightError as CharacterInsightErrorReason);
+      } else if (shouldGenerateInsight) {
+        // No insight and no error means the server didn't try (no upstream
+        // call). Clear any prior error so the UI returns to neutral.
+        setLastInsightError(null);
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') return;
@@ -210,6 +220,7 @@ export function useCharacterChat(characterId: string | null) {
     sendMessage,
     isLoading,
     insights,
+    lastInsightError,
     saveInsightAsCanon,
     clearSession,
   };

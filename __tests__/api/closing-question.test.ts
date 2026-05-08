@@ -137,4 +137,38 @@ describe('POST /api/closing-question', () => {
     const body = await res.json();
     expect(body.question).toBeDefined();
   });
+
+  // ── CB-12 (Phase 3.2) — degraded surfacing ──
+
+  it('flags degraded=true with reason when API key is missing', async () => {
+    delete process.env.GEMINI_API_KEY;
+    const res = await POST(makeRequest({ wordsWritten: 100 }));
+    const body = await res.json();
+    expect(body.degraded).toBe(true);
+    expect(body.degradationReason).toBe('gemini_key_missing');
+  });
+
+  it('flags degraded=true with reason when response text is empty', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: '' });
+    const res = await POST(makeRequest({ wordsWritten: 100 }));
+    const body = await res.json();
+    expect(body.degraded).toBe(true);
+    expect(body.degradationReason).toBe('empty_response');
+  });
+
+  it('flags degraded=true with reason on upstream error', async () => {
+    mockGenerateContent.mockRejectedValue(new Error('AI failed'));
+    const res = await POST(makeRequest({ wordsWritten: 100 }));
+    const body = await res.json();
+    expect(body.degraded).toBe(true);
+    expect(body.degradationReason).toBe('gemini_error');
+  });
+
+  it('does NOT set degraded on a successful response', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: 'What moved you?' });
+    const res = await POST(makeRequest({ wordsWritten: 100 }));
+    const body = await res.json();
+    expect(body.degraded).toBeUndefined();
+    expect(body.question).toBe('What moved you?');
+  });
 });

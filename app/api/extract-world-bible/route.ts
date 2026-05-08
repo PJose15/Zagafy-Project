@@ -1,13 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenAI, Type, FinishReason } from '@google/genai';
 import { rateLimit } from '@/lib/rate-limit';
 import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
 import { getErrorStatus, getErrorMessage } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { withRetry } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 import { WORLD_BIBLE_CATEGORIES, type WorldBibleSection } from '@/lib/types/world-bible';
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/extract-world-bible', requestId });
   const limited = await rateLimit(req, { maxRequests: 3, windowMs: 60000 });
   if (limited) return limited;
 
@@ -16,7 +21,7 @@ export async function POST(req: NextRequest) {
     const { chapters } = body;
 
     if (!Array.isArray(chapters) || chapters.length === 0) {
-      return NextResponse.json({ error: 'chapters must be a non-empty array' }, { status: 400 });
+      return err('validation_failed', 'chapters must be a non-empty array', 400);
     }
 
     const validChapters = chapters.filter(
@@ -29,9 +34,10 @@ export async function POST(req: NextRequest) {
     );
 
     if (validChapters.length === 0) {
-      return NextResponse.json(
-        { error: 'No chapters with content to extract from. Write chapter text on the Manuscript page first.' },
-        { status: 400 },
+      return err(
+        'validation_failed',
+        'No chapters with content to extract from. Write chapter text on the Manuscript page first.',
+        400,
       );
     }
 
@@ -41,15 +47,16 @@ export async function POST(req: NextRequest) {
     );
 
     if (totalSize > 500_000) {
-      return NextResponse.json(
-        { error: 'Manuscript too long to extract in one pass (>500KB). Try extracting with fewer chapters.' },
-        { status: 413 },
+      return err(
+        'validation_failed',
+        'Manuscript too long to extract in one pass (>500KB). Try extracting with fewer chapters.',
+        413,
       );
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
+      return err('internal_error', 'API key not configured', 500);
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -103,28 +110,22 @@ ${chapterText}
       },
     };
 
-    // Retry 503 UNAVAILABLE (peak-load overflow) with exponential backoff.
-    // Gemini regularly returns this during high-demand periods.
-    let response;
-    let lastError: unknown;
-    const MAX_ATTEMPTS = 3;
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      try {
-        response = await ai.models.generateContent(generateConfig);
-        break;
-      } catch (err: unknown) {
-        lastError = err;
-        const msg = err instanceof Error ? err.message : String(err);
-        const isTransient = /\b503\b|UNAVAILABLE|overloaded|high demand/i.test(msg);
-        if (!isTransient || attempt === MAX_ATTEMPTS - 1) throw err;
-        const backoffMs = 800 * Math.pow(2, attempt);
-        console.warn(`WorldBible: Gemini transient failure (attempt ${attempt + 1}/${MAX_ATTEMPTS}), retrying in ${backoffMs}ms`);
-        await new Promise((resolve) => setTimeout(resolve, backoffMs));
-      }
-    }
-    if (!response) {
-      throw lastError ?? new Error('Gemini call failed after retries');
-    }
+    // Gemini regularly returns 503 UNAVAILABLE during high-demand periods.
+    // withRetry wraps that with exponential backoff + jitter.
+    const response = await withRetry(
+      () => ai.models.generateContent(generateConfig),
+      {
+        onAttempt: ({ attempt, willRetry, nextDelayMs, err: attemptErr }) => {
+          if (willRetry) {
+            log.warn('Gemini transient failure, retrying', {
+              attempt,
+              nextDelayMs,
+              upstreamMessage: attemptErr instanceof Error ? attemptErr.message : String(attemptErr),
+            });
+          }
+        },
+      },
+    );
 
     const candidate = response.candidates?.[0];
     const finishReason = candidate?.finishReason;
@@ -133,24 +134,26 @@ ${chapterText}
       finishReason === FinishReason.PROHIBITED_CONTENT ||
       finishReason === FinishReason.BLOCKLIST
     ) {
-      return NextResponse.json({ sections: [] });
+      return ok({ sections: [] });
     }
 
     const rawText = response.text;
 
     if (finishReason === FinishReason.MAX_TOKENS) {
-      console.error('WorldBible: response hit MAX_TOKENS; truncated output.');
-      return NextResponse.json(
-        { error: 'Manuscript too long to extract in one pass. Try extracting with fewer chapters at a time.' },
-        { status: 413 },
+      log.error('response hit MAX_TOKENS; truncated output');
+      return err(
+        'validation_failed',
+        'Manuscript too long to extract in one pass. Try extracting with fewer chapters at a time.',
+        413,
       );
     }
 
     if (!rawText) {
-      console.error('WorldBible: empty response text. finishReason=', finishReason);
-      return NextResponse.json(
-        { error: `AI returned an empty response (finish reason: ${finishReason ?? 'unknown'}). Please try again.` },
-        { status: 502 },
+      log.error('empty response text', undefined, { finishReason });
+      return err(
+        'upstream_unavailable',
+        `AI returned an empty response (finish reason: ${finishReason ?? 'unknown'}). Please try again.`,
+        502,
       );
     }
 
@@ -158,10 +161,11 @@ ${chapterText}
     try {
       result = JSON.parse(rawText);
     } catch {
-      console.error('WorldBible: Gemini returned invalid JSON:', rawText.slice(0, 500));
-      return NextResponse.json(
-        { error: 'AI returned an invalid response. Please try again, or extract with fewer chapters.' },
-        { status: 502 },
+      log.error('Gemini returned invalid JSON', undefined, { rawTextSample: rawText.slice(0, 500) });
+      return err(
+        'parse_error',
+        'AI returned an invalid response. Please try again, or extract with fewer chapters.',
+        502,
       );
     }
 
@@ -187,18 +191,19 @@ ${chapterText}
         canonStatus: 'draft' as const,
       }));
 
-    return NextResponse.json({ sections });
+    return ok({ sections });
   } catch (error: unknown) {
-    console.error('WorldBible extraction error:', error);
+    log.error('WorldBible extraction error', error);
     const rawMessage = getErrorMessage(error, 'Failed to extract worldbuilding');
     const isOverloaded = /\b503\b|UNAVAILABLE|overloaded|high demand/i.test(rawMessage);
     if (isOverloaded) {
-      return NextResponse.json(
-        { error: 'Gemini is experiencing high demand right now. Please wait a minute and try again.' },
-        { status: 503 },
+      return err(
+        'upstream_unavailable',
+        'Gemini is experiencing high demand right now. Please wait a minute and try again.',
+        503,
       );
     }
     const status = getErrorStatus(error);
-    return NextResponse.json({ error: rawMessage }, { status });
+    return err(statusToCode(status), rawMessage, status);
   }
 }

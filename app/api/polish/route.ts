@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getErrorStatus } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { withRetry, isRetryableUpstream } from '@/lib/ai/retry';
+import { createRouteLogger } from '@/lib/logger';
 import { anthropicConfig } from '@/lib/ai-config';
 
 export const maxDuration = 30;
@@ -14,6 +17,8 @@ const POLISH_SYSTEM_PROMPT = `You are a skilled prose editor. The user will prov
 5. Output ONLY the polished text. No commentary, no explanations.`;
 
 export async function POST(req: NextRequest) {
+  const requestId = makeRequestId();
+  const log = createRouteLogger({ endpoint: '/api/polish', requestId });
   const limited = await rateLimit(req, { maxRequests: 10, windowMs: 60000 });
   if (limited) return limited;
 
@@ -22,65 +27,84 @@ export async function POST(req: NextRequest) {
     const { transcript } = body;
 
     if (typeof transcript !== 'string' || transcript.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'transcript is required and must be non-empty' },
-        { status: 400 }
-      );
+      return err('validation_failed', 'transcript is required and must be non-empty', 400);
     }
 
     if (transcript.length > 100000) {
-      return NextResponse.json({ error: 'Transcript too large (max 100KB)' }, { status: 413 });
+      return err('validation_failed', 'Transcript too large (max 100KB)', 413);
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'Anthropic API key not configured' }, { status: 500 });
+      return err('internal_error', 'Anthropic API key not configured', 500);
     }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), anthropicConfig.timeouts.polish);
 
     let response: Response;
     try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+      response = await withRetry(
+        async () => {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), anthropicConfig.timeouts.polish);
+          try {
+            const r = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+              },
+              body: JSON.stringify({
+                model: anthropicConfig.model,
+                max_tokens: 4096,
+                system: POLISH_SYSTEM_PROMPT,
+                messages: [{ role: 'user', content: transcript.trim() }],
+              }),
+              signal: controller.signal,
+            });
+            // Throw on retryable upstream statuses so withRetry kicks in.
+            if ([429, 502, 503, 504, 529].includes(r.status)) {
+              const e: Error & { status?: number } = new Error(`Anthropic ${r.status}`);
+              e.status = r.status;
+              throw e;
+            }
+            return r;
+          } finally {
+            clearTimeout(timer);
+          }
         },
-        body: JSON.stringify({
-          model: anthropicConfig.model,
-          max_tokens: 4096,
-          system: POLISH_SYSTEM_PROMPT,
-          messages: [{ role: 'user', content: transcript.trim() }],
-        }),
-        signal: controller.signal,
-      });
+        {
+          // Our deliberate timeout is not transient; do not retry on AbortError.
+          retryableErrors: (e) =>
+            !(e instanceof Error && e.name === 'AbortError') && isRetryableUpstream(e),
+        },
+      );
     } catch (fetchError: unknown) {
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return NextResponse.json({ error: 'Polish request timed out' }, { status: 504 });
+        return err('upstream_timeout', 'Polish request timed out', 504);
+      }
+      if (fetchError && typeof fetchError === 'object' && 'status' in fetchError) {
+        const status = Number((fetchError as { status: number }).status);
+        if (status === 429) return err('rate_limited', 'Rate limited by AI provider', 429);
+        return err(statusToCode(status), 'AI provider error', status);
       }
       throw fetchError;
-    } finally {
-      clearTimeout(timeout);
     }
 
     if (!response.ok) {
       const status = response.status;
       if (status === 429) {
-        return NextResponse.json({ error: 'Rate limited by AI provider' }, { status: 429 });
+        return err('rate_limited', 'Rate limited by AI provider', 429);
       }
-      return NextResponse.json({ error: 'AI provider error' }, { status });
+      return err(statusToCode(status), 'AI provider error', status);
     }
 
     const data = await response.json();
     const polishedText = data.content?.[0]?.text?.trim() || '';
 
-    return NextResponse.json({ polishedText });
+    return ok({ polishedText });
   } catch (error: unknown) {
-    console.error('Polish API error:', error);
+    log.error('Polish API error', error);
     const status = getErrorStatus(error);
-    return NextResponse.json({ error: 'Failed to polish transcript' }, { status });
+    return err(statusToCode(status), 'Failed to polish transcript', status);
   }
 }
