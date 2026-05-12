@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
+    "@sentry/nextjs": "^10.52.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.3",
     "autoprefixer": "^10.4.21",

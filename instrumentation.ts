@@ -1,5 +1,7 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./sentry.server.config');
+
     const { validateRateLimitConfig } = await import('@/lib/rate-limit');
     validateRateLimitConfig();
 
@@ -8,4 +10,10 @@ export async function register() {
       console.log(`[Zagafy] Anthropic model: ${anthropicConfig.model}`);
     }
   }
+
+  if (process.env.NEXT_RUNTIME === 'edge') {
+    await import('./sentry.edge.config');
+  }
 }
+
+export { captureRequestError as onRequestError } from '@sentry/nextjs';
