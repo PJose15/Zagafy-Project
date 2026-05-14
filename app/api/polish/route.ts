@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
+import { requireUser, isAuthError } from '@/lib/auth';
 import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { withRetry, isRetryableUpstream } from '@/lib/ai/retry';
@@ -21,6 +22,9 @@ export async function POST(req: NextRequest) {
   const log = createRouteLogger({ endpoint: '/api/polish', requestId });
   const limited = await rateLimit(req, { maxRequests: 10, windowMs: 60000 });
   if (limited) return limited;
+
+  const authResult = await requireUser();
+  if (isAuthError(authResult)) return authResult;
 
   try {
     const body = await req.json();

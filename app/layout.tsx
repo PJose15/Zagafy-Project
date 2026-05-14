@@ -2,6 +2,8 @@ import type {Metadata} from 'next';
 import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { AppShell } from '@/components/app-shell';
+import { isAuthEnabled } from '@/lib/auth';
+import { ClerkProvider } from '@clerk/nextjs';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -37,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
-  return (
+  const tree = (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${playfair.variable}`}>
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -50,4 +52,6 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
       </body>
     </html>
   );
+
+  return isAuthEnabled() ? <ClerkProvider>{tree}</ClerkProvider> : tree;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 describe('middleware', () => {
   beforeEach(() => {
@@ -15,19 +15,30 @@ describe('middleware', () => {
     return req;
   }
 
+  // Phase 5.2: middleware return type widened to a union covering both the
+  // sync embed-mode path and the async clerkMiddleware-wrapped path. Tests
+  // run in embed mode (no Clerk key set), so the actual return is always a
+  // sync NextResponse — but we await + cast so the type-narrowing is local.
   async function loadMiddleware() {
-    return await import('@/middleware');
+    const mod = await import('@/middleware');
+    return {
+      middleware: async (req: NextRequest): Promise<NextResponse> => {
+        const result = await mod.middleware(req);
+        return result as NextResponse;
+      },
+      config: mod.config,
+    };
   }
 
   it('allows requests with no Origin or Referer (server-side/SSR)', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({ host: 'myapp.com' }));
+    const res = await middleware(makeRequest({ host: 'myapp.com' }));
     expect(res.status).not.toBe(403);
   });
 
   it('allows same-origin request (Origin host matches Host header)', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.com',
       origin: 'https://myapp.com',
     }));
@@ -36,7 +47,7 @@ describe('middleware', () => {
 
   it('allows same-origin via Referer fallback when Origin is absent', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.com',
       referer: 'https://myapp.com/some-page',
     }));
@@ -45,7 +56,7 @@ describe('middleware', () => {
 
   it('blocks cross-origin request (different Origin host) with 403', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.com',
       origin: 'https://evil.com',
     }));
@@ -56,7 +67,7 @@ describe('middleware', () => {
 
   it('blocks malformed Origin URL with 403', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.com',
       origin: 'not-a-url',
     }));
@@ -65,7 +76,7 @@ describe('middleware', () => {
 
   it('blocks malformed Referer URL with 403', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.com',
       referer: 'not-a-url',
     }));
@@ -75,7 +86,7 @@ describe('middleware', () => {
   it('allows localhost Origin in development mode', async () => {
     vi.stubEnv('NODE_ENV', 'development');
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.com',
       origin: 'http://localhost:3000',
     }));
@@ -85,21 +96,27 @@ describe('middleware', () => {
   it('blocks localhost Origin in production mode', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.com',
       origin: 'http://localhost:3000',
     }));
     expect(res.status).toBe(403);
   });
 
-  it('config.matcher equals /api/:path*', async () => {
+  it('config.matcher covers /api/* and skips Next internals + static assets', async () => {
     const { config } = await loadMiddleware();
-    expect(config.matcher).toBe('/api/:path*');
+    // Phase 5.2: matcher widened to cover page routes so Clerk can enforce
+    // auth on navigations as well as API calls. The /api/* path is still
+    // matched via the second pattern.
+    expect(config.matcher).toEqual([
+      '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+      '/(api|trpc)(.*)',
+    ]);
   });
 
   it('allows ai.studio Origin (AI Studio iframe embed)', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.vercel.app',
       origin: 'https://ai.studio',
     }));
@@ -108,7 +125,7 @@ describe('middleware', () => {
 
   it('allows aistudio.google.com Origin', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.vercel.app',
       origin: 'https://aistudio.google.com',
     }));
@@ -117,7 +134,7 @@ describe('middleware', () => {
 
   it('allows subdomains of ai.studio', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.vercel.app',
       origin: 'https://apps.ai.studio',
     }));
@@ -126,7 +143,7 @@ describe('middleware', () => {
 
   it('allows ai.studio via Referer when Origin is absent', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.vercel.app',
       referer: 'https://ai.studio/apps/abc123',
     }));
@@ -135,7 +152,7 @@ describe('middleware', () => {
 
   it('does NOT allow suffix-spoofing attacks like notai.studio', async () => {
     const { middleware } = await loadMiddleware();
-    const res = middleware(makeRequest({
+    const res = await middleware(makeRequest({
       host: 'myapp.vercel.app',
       origin: 'https://notai.studio',
     }));
@@ -159,7 +176,7 @@ describe('middleware', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const { middleware } = await loadMiddleware();
-      middleware(makeRequest({
+      await middleware(makeRequest({
         host: 'myapp.com',
         origin: 'https://evil.com',
         'user-agent': 'curl/8.0',
@@ -182,7 +199,7 @@ describe('middleware', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const { middleware } = await loadMiddleware();
-      middleware(makeRequest({ host: 'myapp.com', origin: 'not-a-url' }));
+      await middleware(makeRequest({ host: 'myapp.com', origin: 'not-a-url' }));
       const payload = findEvent(warn, 'cors_deny');
       expect(payload).not.toBeNull();
       expect(payload!.reason).toBe('invalid-origin-url');
@@ -195,7 +212,7 @@ describe('middleware', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const { middleware } = await loadMiddleware();
-      middleware(makeRequest({
+      await middleware(makeRequest({
         host: 'myapp.vercel.app',
         origin: 'https://ai.studio',
       }));
@@ -210,7 +227,7 @@ describe('middleware', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const { middleware } = await loadMiddleware();
-      middleware(makeRequest({
+      await middleware(makeRequest({
         host: 'myapp.com',
         origin: 'http://localhost:3000',
       }));
@@ -226,7 +243,7 @@ describe('middleware', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       const { middleware } = await loadMiddleware();
-      middleware(makeRequest({
+      await middleware(makeRequest({
         host: 'myapp.com',
         origin: 'https://myapp.com',
         'user-agent': 'curl/8.0',
