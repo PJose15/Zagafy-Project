@@ -15,17 +15,22 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
     "prepare": "husky"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.3",
     "@google/genai": "^1.17.0",
+    "@neondatabase/serverless": "^1.1.0",
     "@sentry/nextjs": "^10.52.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.3",
     "autoprefixer": "^10.4.21",
     "clsx": "^2.1.1",
     "dexie": "^4.4.2",
+    "drizzle-orm": "^0.45.2",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.553.0",
     "mammoth": "^1.11.0",
@@ -37,6 +42,7 @@
     "react-dom": "^19.2.1",
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.0",
+    "svix": "^1.93.0",
     "tailwind-merge": "^3.3.1"
   },
   "lint-staged": {
@@ -54,6 +60,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.4",
     "@vitest/coverage-v8": "^4.0.18",
+    "drizzle-kit": "^0.31.10",
     "eslint": "9.39.1",
     "eslint-config-next": "16.0.8",
     "fake-indexeddb": "^6.2.5",

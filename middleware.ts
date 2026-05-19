@@ -24,6 +24,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/health(.*)',
+  '/api/webhooks/(.*)', // Clerk / Stripe webhooks — verified by HMAC signature
 ]);
 
 function isAllowedEmbedHost(host: string): boolean {
