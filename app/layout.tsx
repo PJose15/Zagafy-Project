@@ -4,6 +4,8 @@ import './globals.css';
 import { AppShell } from '@/components/app-shell';
 import { isAuthEnabled } from '@/lib/auth';
 import { ClerkProvider } from '@clerk/nextjs';
+import { PostHogProvider } from '@/components/analytics/posthog-provider';
+import { ConsentBanner } from '@/components/analytics/consent-banner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -48,7 +50,10 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[200] focus:top-4 focus:left-4 focus:bg-forest-700 focus:text-cream-50 focus:px-4 focus:py-2 focus:rounded-lg focus:text-sm focus:font-medium">
           Skip to content
         </a>
-        <AppShell>{children}</AppShell>
+        <PostHogProvider>
+          <AppShell>{children}</AppShell>
+          <ConsentBanner />
+        </PostHogProvider>
       </body>
     </html>
   );

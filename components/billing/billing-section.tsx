@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { CreditCard, ArrowUpRight, Crown, Loader2 } from 'lucide-react';
 import { ParchmentCard, BrassButton } from '@/components/antiquarian';
 import { useToast } from '@/components/toast';
 import { PLANS, type PlanId } from '@/lib/billing';
-import { isAuthEnabled } from '@/lib/auth';
 import { parseApiResponse } from '@/lib/api-response';
 
 /**
@@ -23,11 +22,11 @@ interface BillingSectionProps {
 export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState<string | null>(null);
-  const [authEnabled, setAuthEnabled] = useState(false);
 
-  useEffect(() => {
-    setAuthEnabled(isAuthEnabled());
-  }, []);
+  // Check auth directly from env vars (lib/auth imports server-only Clerk)
+  const authEnabled =
+    Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) &&
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'embed';
 
   const handleCheckout = useCallback(async (plan: Exclude<PlanId, 'free'>) => {
     setLoading(plan);
