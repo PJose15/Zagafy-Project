@@ -190,6 +190,13 @@ export const writerInsights = pgTable(
   }),
 );
 
+// stripe_events — Phase 5.7 webhook idempotency guard
+export const stripeEvents = pgTable('stripe_events', {
+  id: text('id').primaryKey(), // Stripe event ID (evt_xxx)
+  type: text('type').notNull(),
+  processedAt: timestamp('processed_at').defaultNow().notNull(),
+});
+
 // Type inference exports — consumers `import type { User } from '@/db/schema'`
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

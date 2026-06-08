@@ -3,6 +3,7 @@
 import { useStory, StoryState } from '@/lib/store';
 import { useRef, useEffect, useState } from 'react';
 import { Settings, Download, Upload, Trash2, AlertTriangle, Globe, SpellCheck } from 'lucide-react';
+import { BillingSection } from '@/components/billing/billing-section';
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
 import { HeteronymSettings } from '@/components/heteronyms/heteronym-settings';
@@ -211,6 +212,8 @@ export default function SettingsPage() {
       />
 
       <div className="space-y-8">
+        <BillingSection />
+
         <ParchmentCard className="space-y-4">
           <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
             <Globe size={20} className="text-brass-500" />
