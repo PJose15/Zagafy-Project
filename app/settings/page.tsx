@@ -2,7 +2,7 @@
 
 import { useStory, StoryState } from '@/lib/store';
 import { useRef, useEffect, useState } from 'react';
-import { Settings, Download, Upload, Trash2, AlertTriangle, Globe, SpellCheck } from 'lucide-react';
+import { Settings, Download, Upload, Trash2, AlertTriangle, Globe, SpellCheck, BarChart3 } from 'lucide-react';
 import { BillingSection } from '@/components/billing/billing-section';
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -10,6 +10,7 @@ import { HeteronymSettings } from '@/components/heteronyms/heteronym-settings';
 import { BrassButton, InkStampButton, CarvedHeader, ParchmentCard } from '@/components/antiquarian';
 import { db, clearAllStoryData } from '@/lib/storage/dexie-db';
 import { useSpellcheckPreference } from '@/hooks/use-spellcheck-preference';
+import { useAnalyticsConsent } from '@/hooks/use-analytics-consent';
 import { clearAllInsights, readWriterInsights } from '@/lib/writer-memory';
 
 // Only these keys from StoryState are allowed during import
@@ -78,6 +79,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
   const spellcheck = useSpellcheckPreference();
+  const { consent, dnt, setConsent } = useAnalyticsConsent();
   const [insightCount, setInsightCount] = useState(0);
 
   useEffect(() => {
@@ -324,6 +326,44 @@ export default function SettingsPage() {
           <BrassButton onClick={() => fileInputRef.current?.click()} icon={<Upload size={18} />}>
             Import JSON
           </BrassButton>
+        </ParchmentCard>
+
+        <ParchmentCard className="space-y-4">
+          <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
+            <BarChart3 size={20} className="text-brass-500" />
+            Analytics
+          </h2>
+          <p className="text-sepia-600 text-sm leading-relaxed">
+            Privacy-friendly analytics help us understand how Zagafy is used. No manuscript
+            content is ever collected. Session recordings mask all text.
+          </p>
+          {dnt ? (
+            <p className="text-xs text-sepia-500/80">
+              Your browser has Do-Not-Track enabled. Analytics are automatically disabled.
+            </p>
+          ) : (
+            <label className="inline-flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consent === 'granted'}
+                onChange={() => {
+                  const next = consent !== 'granted';
+                  setConsent(next ? 'granted' : 'denied');
+                  toast(
+                    next
+                      ? 'Analytics enabled. Reload for changes to take full effect.'
+                      : 'Analytics disabled. Reload for changes to take full effect.',
+                    'success',
+                  );
+                }}
+                aria-label="Enable analytics"
+                className="h-4 w-4 accent-brass-500"
+              />
+              <span className="text-sm text-sepia-700">
+                Analytics are {consent === 'granted' ? 'on' : 'off'}
+              </span>
+            </label>
+          )}
         </ParchmentCard>
 
         <section className="bg-wax-900/10 border border-wax-700/30 rounded-xl p-6 space-y-4">
