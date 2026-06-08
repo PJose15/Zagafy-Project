@@ -10,6 +10,8 @@ import {
   putStory,
 } from '@/lib/storage/dexie-db';
 import type { WorldBibleSection } from '@/lib/types/world-bible';
+import { recordDelta } from '@/lib/sync/sync-queue';
+import { useSync } from '@/lib/sync/sync-context';
 
 const SYNC_CHANNEL = 'zagafy_sync';
 
@@ -243,6 +245,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<StoryState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
+  const { notifyWrite: notifySyncWrite } = useSync();
   // Tracks the last state snapshot applied from another tab. The persist
   // effect compares by reference: if state === lastRemoteStateRef.current,
   // we skip persisting (avoid echo loop). Using a snapshot ref instead of a
@@ -312,6 +315,13 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
         if (saveError) setSaveError(false);
 
+        // Record sync deltas for cloud push (non-blocking, best-effort)
+        recordDelta('story', 'current', 'upsert').catch(() => {});
+        for (const ch of state.chapters) {
+          recordDelta('chapter', ch.id, 'upsert').catch(() => {});
+        }
+        notifySyncWrite();
+
         // Notify other tabs
         try {
           channelRef.current?.postMessage({ type: 'state-updated', at: Date.now() });
@@ -326,7 +336,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [state, isLoaded, saveError]);
+  }, [state, isLoaded, saveError, notifySyncWrite]);
 
   // Cross-tab sync via BroadcastChannel (Dexie writes don't fire storage events)
   useEffect(() => {

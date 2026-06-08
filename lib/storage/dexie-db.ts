@@ -82,6 +82,23 @@ export interface DexieWriterInsight {
   pinned: number; // 0/1 (Dexie indexable)
 }
 
+// ─── Phase 5.4 — Sync engine tables ───
+
+export interface DexieSyncQueueEntry {
+  id: string;
+  entityType: string;
+  entityId: string;
+  op: 'upsert' | 'delete';
+  timestamp: number;
+}
+
+export interface DexieSyncMeta {
+  id: string; // always 'sync'
+  serverStoryId: string | null;
+  lastPulledAt: string | null;
+  lastPushedAt: string | null;
+}
+
 class ZagafyDB extends Dexie {
   chapters!: Table<DexieChapter, string>;
   sessions!: Table<DexieSession, string>;
@@ -92,6 +109,8 @@ class ZagafyDB extends Dexie {
   chapterAnalysis!: Table<DexieChapterAnalysis, string>;
   storySnapshots!: Table<DexieStorySnapshot, string>;
   writerInsights!: Table<DexieWriterInsight, string>;
+  syncQueue!: Table<DexieSyncQueueEntry, string>;
+  syncMeta!: Table<DexieSyncMeta, string>;
 
   constructor() {
     super('zagafy');
@@ -148,6 +167,20 @@ class ZagafyDB extends Dexie {
       chapterAnalysis: 'chapterId, contentHash, analyzedAt',
       storySnapshots: 'id, storyId, createdAt',
       writerInsights: 'id, category, lastObservedAt, evidenceCount, pinned',
+    });
+    // Version 7 (Phase 5.4): sync engine queue + metadata.
+    this.version(7).stores({
+      chapters: 'id, title, updatedAt',
+      sessions: 'id, startedAt',
+      chapterVersions: 'id, chapterId, createdAt',
+      meta: 'id',
+      chatMessages: 'id, timestamp, chapterId',
+      stories: 'id, updatedAt',
+      chapterAnalysis: 'chapterId, contentHash, analyzedAt',
+      storySnapshots: 'id, storyId, createdAt',
+      writerInsights: 'id, category, lastObservedAt, evidenceCount, pinned',
+      syncQueue: 'id, entityType, entityId, timestamp',
+      syncMeta: 'id',
     });
   }
 }
@@ -409,11 +442,11 @@ export async function putStory(state: Record<string, unknown>): Promise<void> {
   });
 }
 
-/** Clears all project data (stories blob, chapters, versions, sessions, chat, analysis cache, snapshots, insights). */
+/** Clears all project data (stories blob, chapters, versions, sessions, chat, analysis cache, snapshots, insights, sync state). */
 export async function clearAllStoryData(): Promise<void> {
   await db.transaction(
     'rw',
-    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.meta, db.chapterAnalysis, db.storySnapshots, db.writerInsights],
+    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.meta, db.chapterAnalysis, db.storySnapshots, db.writerInsights, db.syncQueue, db.syncMeta],
     async () => {
       await db.stories.clear();
       await db.chapters.clear();
@@ -424,6 +457,8 @@ export async function clearAllStoryData(): Promise<void> {
       await db.chapterAnalysis.clear();
       await db.storySnapshots.clear();
       await db.writerInsights.clear();
+      await db.syncQueue.clear();
+      await db.syncMeta.clear();
     }
   );
 }
