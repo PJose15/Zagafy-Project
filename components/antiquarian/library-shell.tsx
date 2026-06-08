@@ -15,6 +15,7 @@ import type { FlowScore } from '@/lib/types/writing-session';
 import { readGamification } from '@/lib/types/gamification';
 import { getStreakWarning } from '@/lib/gamification/writing-streak';
 import { GamificationProvider } from '@/hooks/use-gamification';
+import { SyncProvider } from '@/lib/sync/sync-context';
 
 function StreakWarningToast() {
   const { toast } = useToast();
@@ -61,19 +62,24 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
 }
 
 export function LibraryShell({ children }: { children: React.ReactNode }) {
+  const syncEnabled =
+    Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) &&
+    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'embed';
   return (
-    <StoryProvider>
-      <SessionProvider>
-        <GamificationProvider>
-          <MotionConfig reducedMotion="user">
-            <ToastProvider>
-              <ConfirmProvider>
-                <LibraryShellInner>{children}</LibraryShellInner>
-              </ConfirmProvider>
-            </ToastProvider>
-          </MotionConfig>
-        </GamificationProvider>
-      </SessionProvider>
-    </StoryProvider>
+    <SyncProvider enabled={syncEnabled}>
+      <StoryProvider>
+        <SessionProvider>
+          <GamificationProvider>
+            <MotionConfig reducedMotion="user">
+              <ToastProvider>
+                <ConfirmProvider>
+                  <LibraryShellInner>{children}</LibraryShellInner>
+                </ConfirmProvider>
+              </ToastProvider>
+            </MotionConfig>
+          </GamificationProvider>
+        </SessionProvider>
+      </StoryProvider>
+    </SyncProvider>
   );
 }

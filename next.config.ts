@@ -1,5 +1,6 @@
 import type {NextConfig} from 'next';
 import createBundleAnalyzer from '@next/bundle-analyzer';
+import {withSentryConfig} from '@sentry/nextjs';
 
 const withBundleAnalyzer = createBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -47,4 +48,19 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+const sentryEnabled = Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN);
+
+const finalConfig = sentryEnabled
+  ? withSentryConfig(nextConfig, {
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      disableLogger: true,
+      automaticVercelMonitors: false,
+      tunnelRoute: '/monitoring',
+    })
+  : nextConfig;
+
+export default withBundleAnalyzer(finalConfig);

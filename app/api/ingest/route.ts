@@ -3,6 +3,7 @@ import { GoogleGenAI, Type, FinishReason } from '@google/genai';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { rateLimit } from '@/lib/rate-limit';
+import { requireUser, isAuthError } from '@/lib/auth';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
 import { getErrorStatus, getErrorMessage } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
@@ -511,6 +512,9 @@ export async function POST(req: NextRequest) {
   const log = createRouteLogger({ endpoint: '/api/ingest', requestId });
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
+
+  const authResult = await requireUser();
+  if (isAuthError(authResult)) return authResult;
 
   try {
     let formData: FormData;

@@ -66,6 +66,34 @@ function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';
 }
 
+function forwardToSentry(level: LogLevel, msg: string, ctx?: LogContext, err?: unknown): void {
+  if (level !== 'error' && level !== 'warn') return;
+  const dsnConfigured =
+    process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+  if (!dsnConfigured) return;
+
+  void import('@sentry/nextjs')
+    .then((Sentry) => {
+      Sentry.withScope((scope) => {
+        if (ctx) {
+          if (ctx.requestId) scope.setTag('requestId', String(ctx.requestId));
+          if (ctx.endpoint) scope.setTag('endpoint', String(ctx.endpoint));
+          if (ctx.userId) scope.setUser({ id: String(ctx.userId) });
+          scope.setContext('logger', { ...ctx });
+        }
+        if (level === 'error') {
+          if (err !== undefined && err !== null) Sentry.captureException(err);
+          else Sentry.captureMessage(msg, 'error');
+        } else {
+          Sentry.captureMessage(msg, 'warning');
+        }
+      });
+    })
+    .catch(() => {
+      /* Sentry unavailable; structured log already emitted. */
+    });
+}
+
 function emit(level: LogLevel, msg: string, ctx?: LogContext, err?: unknown): void {
   const entry: LogEntry = {
     level,
@@ -75,6 +103,8 @@ function emit(level: LogLevel, msg: string, ctx?: LogContext, err?: unknown): vo
   };
   const serialized = serializeError(err);
   if (serialized) entry.error = serialized;
+
+  forwardToSentry(level, msg, ctx, err);
 
   // In production we want one JSON line per entry so log capture indexes it.
   // In development we want a readable line plus the context object.

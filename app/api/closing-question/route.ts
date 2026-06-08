@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { rateLimit } from '@/lib/rate-limit';
+import { requireUser, isAuthError } from '@/lib/auth';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, makeRequestId } from '@/lib/api-response';
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest) {
   const log = createRouteLogger({ endpoint: '/api/closing-question', requestId });
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
+
+  const authResult = await requireUser();
+  if (isAuthError(authResult)) return authResult;
 
   try {
     const body = await req.json();

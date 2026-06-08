@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { detectBotSignals, shouldLogBotSignals } from '@/lib/bot-signals';
+import { isAuthEnabled } from '@/lib/auth';
 
 /**
  * Hosts allowed to make cross-origin API calls to this app.
@@ -17,6 +19,14 @@ type DenyReason =
   | 'invalid-referer-url'
   | 'origin-and-referer-not-in-allowlist';
 
+const isApiRoute = createRouteMatcher(['/api/(.*)']);
+const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/health(.*)',
+  '/api/webhooks/(.*)', // Clerk / Stripe webhooks — verified by HMAC signature
+]);
+
 function isAllowedEmbedHost(host: string): boolean {
   return ALLOWED_EMBED_SUFFIXES.some(
     (suffix) => host === suffix || host.endsWith('.' + suffix),
@@ -25,8 +35,7 @@ function isAllowedEmbedHost(host: string): boolean {
 
 function logCorsDeny(req: NextRequest, reason: DenyReason): void {
   // Structured log only. We deliberately exclude any user PII beyond IP and
-  // user-agent, which are routinely captured by Vercel anyway. This shape will
-  // feed Sentry breadcrumbs when SG-01 / Sentry land in Phase 5.
+  // user-agent, which are routinely captured by Vercel anyway.
   const entry = {
     level: 'warn',
     event: 'cors_deny',
@@ -63,61 +72,44 @@ function logBotSignalsIfSuspicious(req: NextRequest): void {
 }
 
 /**
- * Protect API routes from cross-origin abuse.
- * Allows requests from the same origin (checked via Origin or Referer header),
- * from allowlisted embed hosts (AI Studio), and server-side requests (no
- * Origin header, e.g. Next.js SSR).
+ * CORS + bot-signal policy applied to every /api/* request. Returns a deny
+ * response when the request fails the origin/referer allowlist; null when
+ * the request should proceed.
  */
-export function middleware(req: NextRequest) {
+function apiPolicy(req: NextRequest): NextResponse | null {
   const origin = req.headers.get('origin');
   const referer = req.headers.get('referer');
 
-  // Score bot signals on every request that reaches API middleware. We log
-  // suspicious requests but do not block — the rate limiter is the gate.
-  // Phase 5 may decide to deny over a threshold once auth context exists.
   logBotSignalsIfSuspicious(req);
 
-  // Server-side or same-origin requests without Origin header are allowed
-  if (!origin && !referer) {
-    return NextResponse.next();
-  }
+  if (!origin && !referer) return null;
 
   const host = req.headers.get('host') || '';
 
-  // Localhost in development is always allowed (dev convenience). We check
-  // this BEFORE the allowlist comparison so dev tooling on a different port
-  // never gets logged as a denial.
   if (process.env.NODE_ENV === 'development' && origin) {
     try {
       const originUrl = new URL(origin);
       if (originUrl.hostname === 'localhost' || originUrl.hostname === '127.0.0.1') {
-        return NextResponse.next();
+        return null;
       }
     } catch {
       // fall through to invalid-origin handling
     }
   }
 
-  // Check Origin header
-  let originHost: string | null = null;
   if (origin) {
     try {
-      originHost = new URL(origin).host;
-      if (originHost === host || isAllowedEmbedHost(originHost)) {
-        return NextResponse.next();
-      }
+      const originHost = new URL(origin).host;
+      if (originHost === host || isAllowedEmbedHost(originHost)) return null;
     } catch {
       return denied(req, 'invalid-origin-url');
     }
   }
 
-  // Fallback: check Referer header
   if (referer) {
     try {
       const refererHost = new URL(referer).host;
-      if (refererHost === host || isAllowedEmbedHost(refererHost)) {
-        return NextResponse.next();
-      }
+      if (refererHost === host || isAllowedEmbedHost(refererHost)) return null;
     } catch {
       return denied(req, 'invalid-referer-url');
     }
@@ -126,6 +118,47 @@ export function middleware(req: NextRequest) {
   return denied(req, 'origin-and-referer-not-in-allowlist');
 }
 
+/**
+ * In SaaS mode (Clerk configured + not embed) we wrap with `clerkMiddleware`
+ * so `auth.protect()` redirects unauthenticated users on protected routes.
+ * In embed mode or when Clerk is unconfigured we run only the CORS + bot
+ * policy on /api/* and pass everything else through unchanged — preserving
+ * the AI Studio applet's auth-free behavior.
+ *
+ * The unified call signature `(req) => NextResponse | Promise<...>` lets
+ * tests call `middleware(req)` directly; Next.js still passes the optional
+ * NextFetchEvent at runtime, which both branches happily ignore.
+ */
+type MiddlewareFn = (req: NextRequest) => NextResponse | Response | Promise<NextResponse | Response | undefined>;
+
+const middlewareImpl: MiddlewareFn = isAuthEnabled()
+  ? (clerkMiddleware(async (auth, req) => {
+      if (isApiRoute(req)) {
+        const result = apiPolicy(req);
+        if (result) return result;
+      }
+      if (!isPublicRoute(req)) {
+        await auth.protect();
+      }
+    }) as unknown as MiddlewareFn)
+  : (req: NextRequest): NextResponse => {
+      if (isApiRoute(req)) {
+        const result = apiPolicy(req);
+        if (result) return result;
+      }
+      return NextResponse.next();
+    };
+
+export default middlewareImpl;
+// Named export retained so existing CORS / bot-signal tests that import
+// `{ middleware }` keep working without rewriting the import shape.
+export const middleware = middlewareImpl;
+
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    // Run on every route except Next.js internals and common static assets,
+    // so Clerk can enforce auth on page navigations as well as API calls.
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
 };
