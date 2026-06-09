@@ -84,12 +84,45 @@ The in-memory limiter is **never** used in production after Phase 2.1.
 Production without Upstash configured fails closed (503 on every
 rate-limited endpoint) — see `lib/rate-limit.ts:getRateLimitMode()`.
 
-### 3.3 AI Studio embed mode bypasses auth (when added)
+### 3.3 AI Studio embed mode bypasses auth
 
-When Phase 5 adds Clerk-based authentication, AI Studio embed deployments
-will bypass auth via a deployment-mode flag. AI Studio runs Zagafy as a
-trusted single-tenant applet, so end-user auth is meaningless there. The
-SaaS deployment will require auth on every protected endpoint.
+`lib/auth.ts → requireUser()` returns a synthetic `embed-mode` user when
+`NEXT_PUBLIC_DEPLOYMENT_MODE=embed` or Clerk keys are absent. This means
+**every protected API route is callable without a session** in embed mode.
+
+**Why this is acceptable:** AI Studio runs Zagafy as a trusted
+single-tenant applet inside Google's infrastructure. The applet is
+rendered in an iframe with no public URL — only the Studio user can
+reach it. End-user auth is meaningless in that context.
+
+**What it means for SaaS:** In SaaS mode (Clerk keys present,
+`DEPLOYMENT_MODE` unset or not `embed`), `requireUser()` calls
+`@clerk/nextjs/server → auth()` and returns 401 if no session exists.
+All protected routes — AI endpoints, sync, billing — require a valid
+Clerk session.
+
+**Ownership enforcement (Phase 5.13):** After authentication, routes that
+access user-scoped data enforce ownership:
+
+| Route | Ownership check |
+|-------|----------------|
+| `/api/sync/push` | `stories.ownerId = userId` (403 on mismatch) |
+| `/api/sync/pull` | `stories.ownerId = userId` (returns null on mismatch) |
+| `/api/billing/checkout` | `users.id = userId` |
+| `/api/billing/portal` | `users.id = userId` |
+| AI routes (chat, audit, etc.) | Stateless — process request body only, no DB access |
+
+### 3.4 Stateless AI routes have no ownership check
+
+The 10 AI processing endpoints (`/api/chat`, `/api/character-chat`,
+`/api/audit`, `/api/analyze-character`, `/api/closing-question`,
+`/api/extract-world-bible`, `/api/ingest`, `/api/micro-prompt`,
+`/api/polish`, `/api/story-coach`) accept content in the request body,
+send it to Gemini or Anthropic, and return the AI's response.
+
+They never query user-specific database records, so there is no
+ownership to verify. The content the user sends is their own — they
+typed it or uploaded it. Rate limiting prevents abuse.
 
 ## 4. Reporting a vulnerability
 
@@ -109,3 +142,4 @@ We commit to:
 | Date       | Reviewer | Scope                                      |
 | ---------- | -------- | ------------------------------------------ |
 | 2026-05-04 | internal | Phase 2 security hardening (SG-02, SG-07)  |
+| 2026-06-09 | internal | Phase 5.13 auth gates audit (SG-01)        |
