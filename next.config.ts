@@ -16,7 +16,7 @@ const cspScriptSrc = isDev
   : "'self' 'unsafe-inline'";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['pdf-parse'],
+  serverExternalPackages: ['pdf-parse', '@react-pdf/renderer', 'docx'],
   headers: async () => [
     {
       source: '/(.*)',

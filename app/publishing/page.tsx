@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { ParchmentCard, BrassButton, CarvedHeader, ParchmentInput, ParchmentTextarea, ParchmentSelect } from '@/components/antiquarian';
 import { useStory } from '@/lib/store';
 import { wordCount } from '@/lib/editor/serialization';
-import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X } from 'lucide-react';
+import { ExportDialog } from '@/components/publishing/ExportDialog';
+import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X, Download } from 'lucide-react';
 
 type Tab = 'kdp' | 'query' | 'synopsis' | 'comp' | 'tracker';
 
@@ -33,6 +34,7 @@ function saveSubmissions(subs: Submission[]) {
 
 export default function PublishingPage() {
   const [tab, setTab] = useState<Tab>('kdp');
+  const [exportOpen, setExportOpen] = useState(false);
   const { state } = useStory();
 
   // --- KDP ---
@@ -64,7 +66,7 @@ Chapter Formatting:
   • Body paragraphs: 0.5" first-line indent
   • Scene breaks: Centered "* * *"
 
-Note: Full .docx export is coming in a future update.`;
+Use "Export manuscript" below for a standard-format .docx or .pdf.`;
 
   // --- Query Letter ---
   const [queryForm, setQueryForm] = useState({ agentName: '', agencyName: '', genrePrefs: '' });
@@ -230,10 +232,13 @@ Note: Full .docx export is coming in a future update.`;
             {kdpPreview}
           </pre>
           <div className="mt-4">
-            <BrassButton disabled>
-              <BookOpen size={16} className="mr-2" />
-              Export as .docx (Coming Soon)
+            <BrassButton onClick={() => setExportOpen(true)} disabled={state.chapters.length === 0}>
+              <Download size={16} className="mr-2" />
+              Export manuscript (.docx / .pdf)
             </BrassButton>
+            {state.chapters.length === 0 && (
+              <p className="text-xs text-cream-300/60 mt-2">Add chapters on the Manuscript page to enable export.</p>
+            )}
           </div>
         </ParchmentCard>
       )}
@@ -422,6 +427,8 @@ Note: Full .docx export is coming in a future update.`;
           </div>
         </ParchmentCard>
       )}
+
+      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>
   );
 }
