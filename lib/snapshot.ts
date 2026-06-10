@@ -1,5 +1,6 @@
 import { db, type DexieStorySnapshot } from '@/lib/storage/dexie-db';
 import type { StoryState } from '@/lib/store';
+import { getPlainText } from '@/lib/editor/serialization';
 
 /**
  * Phase 4.7 / MP-03 — manuscript-wide story snapshots.
@@ -64,7 +65,7 @@ function countWords(text: string): number {
 }
 
 function totalWordCount(state: StoryState): number {
-  return state.chapters.reduce((sum, c) => sum + countWords(c.content), 0);
+  return state.chapters.reduce((sum, c) => sum + countWords(getPlainText(c.content)), 0);
 }
 
 function chapterCount(state: StoryState): number {

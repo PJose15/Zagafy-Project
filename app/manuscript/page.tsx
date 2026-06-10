@@ -10,6 +10,9 @@ import { useConfirm } from '@/components/confirm-dialog';
 import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
 import { readingTimeLabel } from '@/lib/analytics/pacing';
 import { FindReplaceDialog } from '@/components/manuscript/FindReplaceDialog';
+import { ManuscriptEditor } from '@/components/editor/ManuscriptEditor';
+import { getPlainText, wordCount, isLexicalJson } from '@/lib/editor/serialization';
+import { addVersion } from '@/lib/types/chapter-version';
 
 function VersionCount({ chapterId }: { chapterId: string }) {
   const [count, setCount] = useState(0);
@@ -46,9 +49,24 @@ export default function ManuscriptPage() {
     setIsNewItem(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editingId) return;
     if (!editForm.title?.trim()) return;
+
+    // CB-07: snapshot the pre-migration plain text before the rich-text editor
+    // first persists Lexical JSON over it, so the conversion stays reversible.
+    const original = state.chapters.find((c) => c.id === editingId);
+    if (
+      original &&
+      original.content.trim() &&
+      !isLexicalJson(original.content) &&
+      isLexicalJson(editForm.content ?? '')
+    ) {
+      await addVersion(editingId, original.content, 'Before rich text', 'auto-snapshot').catch(() => {
+        // Snapshot is best-effort — never block the save.
+      });
+    }
+
     const updatedChapters = state.chapters.map((c) =>
       c.id === editingId ? { ...c, ...editForm } : c
     );
@@ -89,12 +107,6 @@ export default function ManuscriptPage() {
     const updated = [...state.chapters];
     [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
     updateField('chapters', updated);
-  };
-
-  const wordCount = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return 0;
-    return trimmed.split(/\s+/).length;
   };
 
   // Memoize total word count — otherwise reduces over every chapter on every render
@@ -186,10 +198,9 @@ export default function ManuscriptPage() {
                     className="text-xl font-serif font-semibold"
                     placeholder="Chapter Title"
                   />
-                  <ParchmentTextarea
-                    value={editForm.content || ''}
-                    onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                    className="h-64 font-serif leading-relaxed"
+                  <ManuscriptEditor
+                    initialContent={editForm.content || ''}
+                    onChange={(json) => setEditForm((f) => ({ ...f, content: json }))}
                     placeholder="Start writing your chapter here..."
                   />
                   <ParchmentTextarea
@@ -262,8 +273,8 @@ export default function ManuscriptPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="prose prose-sepia max-w-none font-serif text-sepia-700 leading-relaxed line-clamp-4">
-                    {chapter.content || <span className="text-sepia-400 italic">Empty chapter...</span>}
+                  <div className="prose prose-sepia max-w-none font-serif text-sepia-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                    {getPlainText(chapter.content) || <span className="text-sepia-400 italic">Empty chapter...</span>}
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-sepia-400 font-mono">
                     <span>{wordCount(chapter.content).toLocaleString()} words</span>

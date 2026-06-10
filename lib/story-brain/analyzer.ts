@@ -1,4 +1,5 @@
 import type { StoryState, Character } from '@/lib/store';
+import { getPlainText } from '@/lib/editor/serialization';
 import type {
   StoryBrainAnalysis,
   EntityCatalogEntry,
@@ -14,9 +15,9 @@ export function analyzeStoryState(state: StoryState): StoryBrainAnalysis {
   const entities: EntityCatalogEntry[] = [];
   const relationships: RelationshipPair[] = [];
 
-  // Index all chapter content for mention counting
+  // Index all chapter content for mention counting (decode Lexical JSON → prose)
   const chapterTexts = state.chapters.map(ch =>
-    `${ch.title} ${ch.content} ${ch.summary}`.toLowerCase()
+    `${ch.title} ${getPlainText(ch.content)} ${ch.summary}`.toLowerCase()
   );
 
   // ─── Characters ───
@@ -157,6 +158,8 @@ function countMentions(chapterTexts: string[], searchTerm: string): number {
   // Reject matches flanked by letters/digits so "Alex" isn't counted inside
   // "Alexandria", while still allowing names that end in punctuation (e.g.
   // "D.J." followed by whitespace or a sentence break).
+  // Dynamic by design: searchTerm is escaped via escapeRegExp above.
+  // eslint-disable-next-line security/detect-non-literal-regexp
   const re = new RegExp(
     `(?<![\\p{L}\\p{N}])${escapeRegExp(searchTerm)}(?![\\p{L}\\p{N}])`,
     'giu'

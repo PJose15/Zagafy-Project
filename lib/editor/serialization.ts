@@ -117,3 +117,76 @@ export function wordCount(content: string): number {
   if (!text) return 0;
   return text.split(/\s+/).filter(Boolean).length;
 }
+
+/**
+ * Detect whether Lexical JSON carries any rich formatting that would be lost
+ * if the content were flattened to plain text. Used to decide whether to take
+ * a recovery snapshot before a destructive conversion (e.g. entering Flow
+ * mode, which edits plain text).
+ *
+ * Plain text and a plain-paragraphs-only Lexical document both return false.
+ */
+export function hasFormatting(content: string): boolean {
+  if (!isLexicalJson(content)) return false;
+  try {
+    const state: SerializedEditorState = JSON.parse(content);
+    return nodeHasFormatting(state.root as unknown as Record<string, unknown>);
+  } catch {
+    return false;
+  }
+}
+
+function nodeHasFormatting(node: Record<string, unknown>): boolean {
+  const type = node.type;
+
+  if (type === 'text') {
+    // Bold / italic / underline / strikethrough are encoded in the numeric
+    // `format` bitfield; inline styles live in `style`.
+    if (typeof node.format === 'number' && node.format !== 0) return true;
+    if (typeof node.style === 'string' && node.style.trim() !== '') return true;
+    return false;
+  }
+
+  // Any non-paragraph block (quote, heading, list, etc.) is structural formatting.
+  if (type !== 'root' && type !== 'paragraph') return true;
+
+  // Element-level alignment such as a centered scene break ("* * *").
+  if (typeof node.format === 'string' && node.format !== '') return true;
+
+  const children = node.children as Record<string, unknown>[] | undefined;
+  if (Array.isArray(children)) {
+    return children.some(nodeHasFormatting);
+  }
+  return false;
+}
+
+/**
+ * Walk every text node in a Lexical JSON document and replace its text via
+ * `transform`, preserving each node's formatting. Returns the re-serialized
+ * JSON. Non-Lexical input is returned unchanged.
+ *
+ * Limitation: `transform` runs per text node, so a match spanning a formatting
+ * boundary (e.g. half-bold) won't be caught. This is an accepted trade-off for
+ * keeping per-run formatting intact.
+ */
+export function mapLexicalText(content: string, transform: (text: string) => string): string {
+  if (!isLexicalJson(content)) return content;
+  try {
+    const state = JSON.parse(content) as SerializedEditorState;
+    mapNodeText(state.root as unknown as Record<string, unknown>, transform);
+    return JSON.stringify(state);
+  } catch {
+    return content;
+  }
+}
+
+function mapNodeText(node: Record<string, unknown>, transform: (text: string) => string): void {
+  if (node.type === 'text' && typeof node.text === 'string') {
+    node.text = transform(node.text);
+    return;
+  }
+  const children = node.children as Record<string, unknown>[] | undefined;
+  if (Array.isArray(children)) {
+    for (const child of children) mapNodeText(child, transform);
+  }
+}

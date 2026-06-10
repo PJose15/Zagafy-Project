@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ParchmentCard, BrassButton, CarvedHeader, ParchmentInput, ParchmentTextarea, ParchmentSelect } from '@/components/antiquarian';
 import { useStory } from '@/lib/store';
+import { wordCount } from '@/lib/editor/serialization';
 import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X } from 'lucide-react';
 
 type Tab = 'kdp' | 'query' | 'synopsis' | 'comp' | 'tracker';
@@ -35,7 +36,7 @@ export default function PublishingPage() {
   const { state } = useStory();
 
   // --- KDP ---
-  const totalWords = state.chapters.reduce((s, c) => s + (c.content ? c.content.split(/\s+/).filter(Boolean).length : 0), 0);
+  const totalWords = state.chapters.reduce((s, c) => s + (c.content ? wordCount(c.content) : 0), 0);
   const kdpPreview = `KDP Formatting Preview
 ━━━━━━━━━━━━━━━━━━━━━━━━
 Title: ${state.title || 'Untitled'}

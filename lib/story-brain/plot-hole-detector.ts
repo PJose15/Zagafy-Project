@@ -1,4 +1,5 @@
 import type { StoryState } from '@/lib/store';
+import { getPlainText } from '@/lib/editor/serialization';
 import type { StoryBrainAnalysis } from './types';
 import type { PlotHole, PlotHoleType } from './plot-hole-types';
 import { PLOT_HOLE_SEVERITY } from './plot-hole-types';
@@ -47,7 +48,7 @@ function detectCharacterDisappearance(
 
   // H3: Build once, reuse for all characters
   const chapterTexts = state.chapters.map(ch =>
-    `${ch.title} ${ch.content} ${ch.summary}`.toLowerCase()
+    `${ch.title} ${getPlainText(ch.content)} ${ch.summary}`.toLowerCase()
   );
 
   for (const entity of analysis.entities) {
@@ -102,7 +103,7 @@ function detectUnresolvedConflicts(
     // Check if this conflict was introduced in the first half
     const titleLower = conflict.title.toLowerCase();
     const firstMention = state.chapters.findIndex(ch =>
-      `${ch.title} ${ch.content} ${ch.summary}`.toLowerCase().includes(titleLower)
+      `${ch.title} ${getPlainText(ch.content)} ${ch.summary}`.toLowerCase().includes(titleLower)
     );
 
     if (firstMention !== -1 && firstMention <= midpoint) {
@@ -198,7 +199,7 @@ function detectStaleOpenLoops(
 
     const recentThreshold = Math.max(0, totalChapters - 3);
     const mentionedRecently = state.chapters.slice(recentThreshold).some(ch =>
-      `${ch.content} ${ch.summary}`.toLowerCase().includes(descLower)
+      `${getPlainText(ch.content)} ${ch.summary}`.toLowerCase().includes(descLower)
     );
 
     if (!mentionedRecently && totalChapters > 3) {

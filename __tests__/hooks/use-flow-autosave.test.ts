@@ -17,6 +17,7 @@ import * as dexieDb from '@/lib/storage/dexie-db';
 import { StoryProvider, useStory } from '@/lib/store';
 import type { Chapter, StoryState } from '@/lib/store';
 import { useFlowAutosave } from '@/hooks/use-flow-autosave';
+import { getPlainText } from '@/lib/editor/serialization';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return React.createElement(StoryProvider, null, children);
@@ -108,9 +109,9 @@ describe('useFlowAutosave', () => {
       vi.advanceTimersByTime(5000);
     });
 
-    // After timer fires, state should have the final content
+    // After timer fires, state should have the final content (stored as Lexical JSON)
     const chapterAfter = result.current.story.state.chapters.find(ch => ch.id === 'ch-1');
-    expect(chapterAfter?.content).toBe('Final update');
+    expect(getPlainText(chapterAfter?.content ?? '')).toBe('Final update');
   });
 
   // ── Branch coverage: null chapterId ──
@@ -177,14 +178,14 @@ describe('useFlowAutosave', () => {
 
     // Should have saved immediately
     const chapter = result.current.story.state.chapters.find(ch => ch.id === 'ch-1');
-    expect(chapter?.content).toBe('immediate content');
+    expect(getPlainText(chapter?.content ?? '')).toBe('immediate content');
 
     // Advance past debounce — should NOT overwrite with 'debounced content' since timer was cleared
     act(() => {
       vi.advanceTimersByTime(5000);
     });
     const chapterAfter = result.current.story.state.chapters.find(ch => ch.id === 'ch-1');
-    expect(chapterAfter?.content).toBe('immediate content');
+    expect(getPlainText(chapterAfter?.content ?? '')).toBe('immediate content');
   });
 
   // ── Branch coverage: unmount saves only if timer pending ──

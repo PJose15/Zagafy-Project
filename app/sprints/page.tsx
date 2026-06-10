@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useStory } from '@/lib/store';
+import { wordCount } from '@/lib/editor/serialization';
 import { useGamification } from '@/hooks/use-gamification';
 import { CarvedHeader, ParchmentCard } from '@/components/antiquarian';
 import { SprintLauncher } from '@/components/gamification/sprint-launcher';
@@ -18,7 +19,7 @@ export default function SprintsPage() {
   const [lastResult, setLastResult] = useState<SprintResult | null>(null);
 
   const totalWords = useMemo(() =>
-    state.chapters.reduce((s, c) => s + (c.content ? c.content.split(/\s+/).filter(Boolean).length : 0), 0),
+    state.chapters.reduce((s, c) => s + (c.content ? wordCount(c.content) : 0), 0),
     [state.chapters],
   );
 
