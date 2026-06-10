@@ -1,6 +1,7 @@
 import { defineConfig } from "eslint/config";
 import next from "eslint-config-next";
 import tseslint from "typescript-eslint";
+import security from "eslint-plugin-security";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,15 +13,31 @@ const __dirname = path.dirname(__filename);
 // loaded by eslint-config-next; we register it again here so our overrides
 // resolve in this config object. Tests are exempt from the floating-promise
 // rule because `expect(...).resolves` patterns are intentional.
+//
+// Phase 6.2 — eslint-plugin-security for SAST. Catches eval(), non-literal
+// RegExp, child_process usage, prototype pollution patterns, etc.
 export default defineConfig([
   {
     extends: [...next],
   },
   {
-    plugins: { "@typescript-eslint": tseslint.plugin },
+    plugins: {
+      "@typescript-eslint": tseslint.plugin,
+      security,
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
       "react-hooks/exhaustive-deps": "error",
+      // Security rules — errors for high-risk patterns
+      "security/detect-eval-with-expression": "error",
+      "security/detect-non-literal-regexp": "warn",
+      "security/detect-non-literal-require": "warn",
+      "security/detect-possible-timing-attacks": "warn",
+      "security/detect-child-process": "error",
+      "security/detect-new-buffer": "error",
+      "security/detect-no-csrf-before-method-override": "error",
+      "security/detect-object-injection": "off", // too noisy for bracket access
+      "security/detect-unsafe-regex": "error",
     },
   },
   {

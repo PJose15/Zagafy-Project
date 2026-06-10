@@ -20,6 +20,10 @@ jobs:
 
       - run: npm ci
 
+      # Task 6.1 — SG-03: fail on moderate+ vulnerabilities
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate
+
       - name: Lint
         run: npm run lint
 
@@ -33,3 +37,38 @@ jobs:
         run: npm run build
         env:
           GEMINI_API_KEY: dummy-key-for-build
+
+  # Task 6.5 — Playwright E2E (runs on PRs and weekly against staging)
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npx playwright test
+        env:
+          GEMINI_API_KEY: dummy-key-for-build
+          BASE_URL: http://localhost:3000
+
+      - name: Upload E2E artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

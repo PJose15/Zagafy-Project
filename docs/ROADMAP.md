@@ -106,8 +106,15 @@ React Email), feature flags (PostHog), backups, auth gates.
 Architecture decisions Pedro must confirm before this phase begins are
 listed in build plan §2.
 
-## Phase 6 (CI/quality maturity)
+## Phase 6 (CI/quality maturity) — COMPLETE
 
-`npm audit` in CI, SAST (ESLint security plugin + CodeQL), prompt-
-injection adversarial suite, dependency pinning + Renovate, Playwright
-E2E, visual regression, k6 load tests, staging environment.
+All tasks landed on `phase-6-quality`:
+
+- **6.1 SG-03** — `npm audit --audit-level=moderate` in CI
+- **6.2 SG-04** — `eslint-plugin-security` + CodeQL workflow (weekly + on-PR)
+- **6.3 SG-05** — 20-input adversarial prompt-injection test suite
+- **6.4 SG-08** — runtime deps pinned to exact versions + Dependabot
+- **6.5 ME-01** — Playwright E2E tests (7 critical flows)
+- **6.6 ME-02** — visual regression with `toHaveScreenshot()` on 5 key pages
+- **6.7 ME-03** — k6 load tests (dashboard, chat, ingest)
+- **6.8 ME-04** — staging environment documented (`docs/STAGING.md`)

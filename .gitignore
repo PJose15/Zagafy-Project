@@ -12,5 +12,13 @@ coverage/
 # Phase baseline snapshots — keep summaries (PHASE_*_SUMMARY.md), exclude raw artifacts.
 phase-*-baseline-*.json
 
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
+# k6 load test output
+loadtest/*.json
+
 # Per-developer Claude Code state.
 .claude/
