@@ -322,3 +322,31 @@ textarea:focus-visible {
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(196, 155, 72, 0.25);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   CB-07 — Lexical Manuscript Editor
+   ═══════════════════════════════════════════════════════════════ */
+
+.manuscript-editor-content [data-lexical-editor] {
+  outline: none;
+}
+
+.manuscript-editor-paragraph {
+  margin-bottom: 0.5em;
+  line-height: 1.8;
+}
+
+.manuscript-editor-quote {
+  border-left: 3px solid var(--color-brass-500);
+  padding-left: 1rem;
+  margin: 0.75em 0;
+  color: var(--color-sepia-600);
+  font-style: italic;
+}
+
+.manuscript-editor-content p[style*="text-align: center"] {
+  text-align: center;
+  color: var(--color-sepia-500);
+  letter-spacing: 0.2em;
+  margin: 1.5em 0;
+}
