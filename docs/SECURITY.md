@@ -26,8 +26,12 @@ We defend against:
 - **DoS via huge uploads** — 50MB per file, 10 files max, 2M char total,
   20 chunks max in `app/api/ingest/route.ts`.
 - **Secrets in commits** — gitleaks pre-commit hook (Phase 2.5).
-- **Stale or vulnerable deps** — captured in `PHASE_0_AUDIT_SUMMARY.md`;
-  `npm audit` becomes a CI gate in Phase 6 (SG-03).
+- **Stale or vulnerable deps** — `npm audit --audit-level=moderate` runs as
+  a CI gate (Phase 6, SG-03). Dependabot keeps deps updated weekly.
+  Runtime deps are pinned to exact versions (SG-08).
+- **Static analysis** — ESLint with `eslint-plugin-security` (eval, unsafe
+  regex, child_process, timing attacks) + GitHub CodeQL weekly + on-PR
+  (Phase 6, SG-04).
 
 We do **not** defend against:
 
@@ -143,3 +147,4 @@ We commit to:
 | ---------- | -------- | ------------------------------------------ |
 | 2026-05-04 | internal | Phase 2 security hardening (SG-02, SG-07)  |
 | 2026-06-09 | internal | Phase 5.13 auth gates audit (SG-01)        |
+| 2026-06-09 | internal | Phase 6 — npm audit CI (SG-03), SAST (SG-04), adversarial prompt-injection suite (SG-05), dependency pinning (SG-08) |

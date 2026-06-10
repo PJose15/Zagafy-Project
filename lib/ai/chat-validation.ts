@@ -98,6 +98,7 @@ function findUnknownNames(text: string, entities: KnownEntities): string[] {
 
   const knownLower = new Set(entities.characters.map(n => n.toLowerCase()));
   // Extract capitalized multi-word sequences that look like names (2+ chars, not start of sentence after period)
+  // eslint-disable-next-line security/detect-unsafe-regex -- lookbehinds are fixed-length; no catastrophic backtracking risk with this input set (AI-generated text, not user-controlled regex)
   const namePattern = /(?<!\. )(?<!\.\n)\b([A-Z][a-z]{1,}(?:\s[A-Z][a-z]{1,})*)\b/g;
   const found = new Set<string>();
   let match;
