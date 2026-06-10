@@ -95,6 +95,7 @@ export default function GenesisPage() {
     setIsCreating(true);
     const storyData = convertGenesisToStory(data);
     setState(prev => ({ ...prev, ...storyData }));
+    localStorage.removeItem('zagafy_tour_completed');
     router.replace('/');
   }, [data, setState, router]);
 

@@ -32,6 +32,7 @@ function serviceUnavailableResponse(reason: string): NextResponse {
 
 export type RateLimitMode = 'upstash' | 'memory' | 'disabled';
 
+/** Determine the active rate-limiting strategy based on environment configuration. */
 export function getRateLimitMode(): RateLimitMode {
   const hasUpstash = !!(
     process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
@@ -146,6 +147,7 @@ export interface RateLimitHealth {
   lastErrorAt: number | null;
 }
 
+/** Return a snapshot of the circuit breaker's current health status. */
 export function getRateLimitHealth(): RateLimitHealth {
   return {
     reachable: breaker.state !== 'open',

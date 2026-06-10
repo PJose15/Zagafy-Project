@@ -124,12 +124,14 @@ export async function listSnapshots(
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
+/** Retrieve a full snapshot (including payload) by ID, or null if not found. */
 export async function getSnapshot(id: string): Promise<StorySnapshot | null> {
   const row = await db.storySnapshots.get(id);
   if (!row) return null;
   return rowToFull(row);
 }
 
+/** Delete a snapshot by ID from the local database. */
 export async function deleteSnapshot(id: string): Promise<void> {
   await db.storySnapshots.delete(id);
 }
@@ -141,6 +143,7 @@ export interface SnapshotDelta {
   worldBibleDelta: number;
 }
 
+/** Compute the difference in chapters, words, characters, and world bible entries between a snapshot and the current state. */
 export function computeDelta(
   snapshot: SnapshotMetadata & { payload?: StoryState },
   current: StoryState,

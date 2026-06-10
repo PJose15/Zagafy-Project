@@ -16,6 +16,7 @@ import { readGamification } from '@/lib/types/gamification';
 import { getStreakWarning } from '@/lib/gamification/writing-streak';
 import { GamificationProvider } from '@/hooks/use-gamification';
 import { SyncProvider } from '@/lib/sync/sync-context';
+import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
 
 function StreakWarningToast() {
   const { toast } = useToast();
@@ -57,6 +58,7 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
           onDismiss={dismissFlowScore}
         />
       )}
+      <OnboardingTour />
     </>
   );
 }

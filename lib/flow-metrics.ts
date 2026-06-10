@@ -40,6 +40,7 @@ export interface MetricsCollector {
   computeAutoFlowScore(): number;
 }
 
+/** Create a keystroke metrics collector for tracking WPM, pauses, deletions, and flow state. */
 export function createMetricsCollector(): MetricsCollector {
   const keystrokeTimestamps: number[] = [];
   const pauseDurations: number[] = [];

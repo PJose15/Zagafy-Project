@@ -78,6 +78,7 @@ const PLAN_RANK: Record<PlanId, number> = {
   studio: 3,
 };
 
+/** Type guard: returns true when the value is a valid PlanId string. */
 export function isPlanId(value: unknown): value is PlanId {
   return typeof value === 'string' && value in PLAN_LIMITS;
 }
@@ -87,6 +88,7 @@ export function planMeetsRequirement(userPlan: PlanId, requiredPlan: PlanId): bo
   return PLAN_RANK[userPlan] >= PLAN_RANK[requiredPlan];
 }
 
+/** Return the quota limits for the given billing plan. */
 export function getLimits(plan: PlanId): PlanLimits {
   return PLAN_LIMITS[plan];
 }

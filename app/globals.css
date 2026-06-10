@@ -296,3 +296,29 @@
   background: var(--color-forest-700);
   color: var(--color-cream-50);
 }
+
+/* Phase 7.1 — Accessibility: reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Phase 7.1 — Focus indicators */
+:focus-visible {
+  outline: 2px solid var(--color-brass-500);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-brass-500);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(196, 155, 72, 0.25);
+}

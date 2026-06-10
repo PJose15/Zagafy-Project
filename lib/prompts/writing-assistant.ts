@@ -1,11 +1,12 @@
 import { injectVoiceIntoSystemPrompt } from '@/lib/heteronym-voice';
 import type { Heteronym } from '@/lib/types/heteronym';
+import { buildLocaleBlock } from './locale';
 
 export function buildWritingAssistantPrompt(language: string, blockType?: string | null, heteronym?: Heteronym | null): string {
   const writerStateBlock = buildWriterStateBlock(blockType ?? 'default');
 
   const basePrompt = `You are a continuity-aware narrative assistant inside a story writing application.
-You respond entirely in ${language}. All output — analysis, suggestions, prose, dialogue — MUST be in ${language}.
+${buildLocaleBlock(language)}
 
 ## Grounding Rule (MANDATORY)
 

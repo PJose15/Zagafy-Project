@@ -1,5 +1,6 @@
 import type { Heteronym } from '@/lib/types/heteronym';
 import { injectVoiceIntoSystemPrompt } from '@/lib/heteronym-voice';
+import { buildLocaleBlock } from './locale';
 
 /**
  * Build the system prompt for the AI Story Coach endpoint.
@@ -10,7 +11,7 @@ export function buildStoryCoachPrompt(
   heteronym?: Heteronym | null
 ): string {
   const basePrompt = `You are a proactive story coach inside a creative writing application.
-You respond entirely in ${language}. All output MUST be in ${language}.
+${buildLocaleBlock(language)}
 
 ## Your Role
 

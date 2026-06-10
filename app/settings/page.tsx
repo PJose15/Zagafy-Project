@@ -2,7 +2,8 @@
 
 import { useStory, StoryState } from '@/lib/store';
 import { useRef, useEffect, useState } from 'react';
-import { Settings, Download, Upload, Trash2, AlertTriangle, Globe, SpellCheck, BarChart3 } from 'lucide-react';
+import { Settings, Download, Upload, Trash2, AlertTriangle, Globe, SpellCheck, BarChart3, Compass } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { BillingSection } from '@/components/billing/billing-section';
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -73,6 +74,7 @@ function validateImportShape(data: unknown): { ok: true } | { ok: false; reason:
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { state, setState, updateField } = useStory();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const readerRef = useRef<FileReader | null>(null);
@@ -364,6 +366,25 @@ export default function SettingsPage() {
               </span>
             </label>
           )}
+        </ParchmentCard>
+
+        <ParchmentCard className="space-y-4">
+          <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
+            <Compass size={20} className="text-brass-500" />
+            Onboarding Tour
+          </h2>
+          <p className="text-sepia-600 text-sm leading-relaxed">
+            Replay the guided tour that introduces the main areas of Zagafy. Useful if you skipped it during setup or want a quick refresher.
+          </p>
+          <BrassButton
+            onClick={() => {
+              localStorage.removeItem('zagafy_tour_completed');
+              router.push('/');
+            }}
+            icon={<Compass size={18} />}
+          >
+            Restart Tour
+          </BrassButton>
         </ParchmentCard>
 
         <section className="bg-wax-900/10 border border-wax-700/30 rounded-xl p-6 space-y-4">

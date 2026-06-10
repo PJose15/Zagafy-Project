@@ -177,16 +177,19 @@ export async function observe(input: ObserveInput): Promise<WriterInsight> {
   });
 }
 
+/** Delete a single writer insight by ID. */
 export async function deleteInsight(id: string): Promise<void> {
   await db.writerInsights.delete(id);
 }
 
+/** Pin or unpin an insight, affecting its injection priority in AI prompts. */
 export async function setInsightPinned(id: string, pinned: boolean): Promise<void> {
   const row = await db.writerInsights.get(id);
   if (!row) return;
   await db.writerInsights.put({ ...row, pinned: pinned ? 1 : 0 });
 }
 
+/** Remove all writer insights from the local database. */
 export async function clearAllInsights(): Promise<void> {
   await db.writerInsights.clear();
 }

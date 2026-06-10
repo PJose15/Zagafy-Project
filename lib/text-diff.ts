@@ -7,6 +7,7 @@ export interface DiffSegment {
 
 /**
  * Word-level diff using LCS (Longest Common Subsequence).
+ * Returns an array of segments marked as equal, added, or removed.
  * No external dependencies.
  */
 export function diffWords(oldText: string, newText: string): DiffSegment[] {
