@@ -29,14 +29,15 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: 'npm run dev',
-        url: 'http://localhost:3000',
-        reuseExistingServer: true,
-        timeout: 120_000,
-      },
+  // Start the app for E2E in every environment. In CI (no external staging
+  // URL is wired) Playwright boots a fresh dev server; locally it reuses one
+  // if already running. Without this, CI tests hit a dead localhost:3000.
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
+  },
   // Task 6.6 — Visual regression tolerance
   expect: {
     toHaveScreenshot: {
