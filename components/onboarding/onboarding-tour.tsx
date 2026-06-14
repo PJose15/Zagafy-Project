@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { TourProvider, useTour } from '@reactour/tour';
+import { TourProvider, useTour, type StylesObj } from '@reactour/tour';
 
 const TOUR_STORAGE_KEY = 'zagafy_tour_completed';
 
@@ -138,7 +138,7 @@ export function OnboardingTour({ children }: { children?: React.ReactNode }) {
   return (
     <TourProvider
       steps={tourSteps}
-      styles={tourStyles}
+      styles={tourStyles as StylesObj}
       onClickClose={({ setIsOpen }) => {
         setIsOpen(false);
         completeTour();

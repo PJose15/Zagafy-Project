@@ -23,7 +23,7 @@ const mockUpdateSet = vi.fn().mockReturnThis();
 const mockUpdateWhere = vi.fn().mockResolvedValue(undefined);
 const mockDeleteWhere = vi.fn().mockResolvedValue(undefined);
 
-const mockStoryFindFirst = vi.fn(async () => ({ id: 'story-1', ownerId: 'user_test' }));
+const mockStoryFindFirst = vi.fn(async (): Promise<unknown> => ({ id: 'story-1', ownerId: 'user_test' }));
 const mockChapterFindFirst = vi.fn(async () => null);
 
 vi.mock('@/db/client', () => ({

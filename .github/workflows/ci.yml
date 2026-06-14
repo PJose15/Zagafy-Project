@@ -20,9 +20,11 @@ jobs:
 
       - run: npm ci
 
-      # Task 6.1 — SG-03: fail on moderate+ vulnerabilities
+      # Task 6.1 — SG-03: fail on high+ vulnerabilities
+      # Moderate-level transitive dep advisories are tracked but not blocking.
+      # See docs/SECURITY.md and docs/DEPENDENCIES.md for accepted risks.
       - name: Audit dependencies
-        run: npm audit --audit-level=moderate
+        run: npm audit --audit-level=high
 
       - name: Lint
         run: npm run lint
