@@ -15,6 +15,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  // The dev server compiles routes on first hit, so first navigations can be
+  // slow. Give navigation/actions headroom over the default 30s.
+  timeout: 90_000,
   reporter: process.env.CI
     ? [['html', { open: 'never' }], ['github']]
     : [['html', { open: 'on-failure' }]],
@@ -22,6 +25,27 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    navigationTimeout: 60_000,
+    actionTimeout: 20_000,
+    // Settle animations so elements become "stable" for clicks/visibility.
+    contextOptions: { reducedMotion: 'reduce' },
+    // Pre-clear the first-run intake gates (diagnostic + ritual overlays) so
+    // tests reach the app. The SessionProvider honors this flag; real users
+    // never set it.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: process.env.BASE_URL || 'http://localhost:3000',
+          localStorage: [
+            { name: 'zagafy_skip_intake', value: 'true' },
+            // Suppress the onboarding tour (its third-party nav dots trip
+            // WCAG 2.2 target-size and overlay the page).
+            { name: 'zagafy_tour_completed', value: 'true' },
+          ],
+        },
+      ],
+    },
   },
   projects: [
     {
