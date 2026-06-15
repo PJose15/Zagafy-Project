@@ -14,6 +14,20 @@ updates:
       - dependencies
     commit-message:
       prefix: "deps"
+    ignore:
+      # Breaking majors the project can't take yet — Dependabot kept
+      # reopening these as un-mergeable, perpetually-red PRs:
+      #   - eslint 10 conflicts with eslint-config-next's eslint-plugin-import
+      #     peer range (caps at eslint 9)
+      #   - typescript 6 deprecates `baseUrl`, which our path aliases rely on
+      #   - pdf-parse 2 is a breaking API rewrite of the importer
+      # Minor/patch updates for these still flow through.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "pdf-parse"
+        update-types: ["version-update:semver-major"]
     groups:
       # Group patch-level updates for faster review
       patch-updates:
