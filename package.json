@@ -47,7 +47,7 @@
     "drizzle-orm": "0.45.2",
     "html-to-image": "1.11.13",
     "lexical": "^0.45.0",
-    "lucide-react": "0.553.0",
+    "lucide-react": "1.18.0",
     "mammoth": "1.11.0",
     "motion": "12.34.5",
     "next": "^15.5.19",
