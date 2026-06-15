@@ -13,16 +13,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Skip cleanly (green) when the backup destination isn't configured yet,
+      # instead of failing the scheduled run every week. Add the secrets in
+      # Settings → Secrets → Actions to enable real backups.
+      - name: Check backup secrets are configured
+        id: check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          if [ -n "$DATABASE_URL" ] && [ -n "$R2_BUCKET" ] && [ -n "$R2_ENDPOINT" ] && [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Backup secrets not configured (DATABASE_URL / R2_BUCKET / R2_ENDPOINT / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY). Skipping backup — add them in Settings → Secrets → Actions to enable."
+          fi
+
       - name: Install PostgreSQL client
+        if: steps.check.outputs.ready == 'true'
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Install AWS CLI
+        if: steps.check.outputs.ready == 'true'
         run: |
           curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -q awscliv2.zip
           sudo ./aws/install --update
 
       - name: Run backup script
+        if: steps.check.outputs.ready == 'true'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
