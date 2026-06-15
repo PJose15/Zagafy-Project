@@ -11,6 +11,7 @@ export interface ExtractedChapter {
   title?: string;
   summary?: string;
   raw_text_reference?: string;
+  confidence?: number;
 }
 
 export interface ExtractedScene {
@@ -26,6 +27,7 @@ export interface ExtractedCharacter {
   role?: string;
   description?: string;
   core_traits?: string[];
+  confidence?: number;
 }
 
 export interface ExtractedCharacterState {
@@ -56,6 +58,7 @@ export interface ExtractedConflict {
   title?: string;
   description?: string;
   status?: string;
+  confidence?: number;
 }
 
 export interface ExtractedTimelineEvent {
@@ -66,6 +69,7 @@ export interface ExtractedTimelineEvent {
   description?: string;
   immediate_effect?: string;
   latent_effect?: string;
+  confidence?: number;
 }
 
 export interface ExtractedWorldRule {
@@ -74,6 +78,7 @@ export interface ExtractedWorldRule {
   title?: string;
   rule?: string;
   description?: string;
+  confidence?: number;
 }
 
 export interface ExtractedLocation {
@@ -82,12 +87,14 @@ export interface ExtractedLocation {
   description?: string;
   importance?: string;
   associated_rules?: string[];
+  confidence?: number;
 }
 
 export interface ExtractedTheme {
   theme_id?: string;
   theme?: string;
   evidence?: string[];
+  confidence?: number;
 }
 
 export interface ExtractedCanonItem {
@@ -96,6 +103,7 @@ export interface ExtractedCanonItem {
   description?: string;
   status?: string;
   source_reference?: string;
+  confidence?: number;
 }
 
 export interface ExtractedAmbiguity {
@@ -110,6 +118,7 @@ export interface ExtractedOpenLoop {
   loop_id?: string;
   description?: string;
   status?: string;
+  confidence?: number;
 }
 
 export interface ExtractedForeshadowing {
@@ -117,6 +126,7 @@ export interface ExtractedForeshadowing {
   description?: string;
   clue?: string;
   payoff_status?: string;
+  confidence?: number;
 }
 
 export interface ExtractedData {

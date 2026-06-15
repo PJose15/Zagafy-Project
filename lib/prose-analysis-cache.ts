@@ -1,4 +1,5 @@
 import { analyzeText, type ProseIssue } from '@/lib/prose-analysis';
+import { getPlainText } from '@/lib/editor/serialization';
 import {
   getChapterAnalysis,
   putChapterAnalysis,
@@ -61,7 +62,10 @@ export async function getOrAnalyze(
   chapterId: string,
   content: string,
 ): Promise<CachedAnalysis> {
-  const contentHash = await hashContent(content);
+  // CB-07: content may be Lexical JSON — analyze and hash the plain prose so
+  // issue indices align with the rendered text and the cache tracks edits.
+  const plain = getPlainText(content);
+  const contentHash = await hashContent(plain);
   const cached: ChapterAnalysisRow<ProseIssue[]> | null =
     await getChapterAnalysis<ProseIssue[]>(chapterId);
 
@@ -74,7 +78,7 @@ export async function getOrAnalyze(
     };
   }
 
-  const issues = analyzeText(content);
+  const issues = analyzeText(plain);
   // Capture the timestamp once so the value we return matches what we
   // persist — otherwise a fresh-run + immediate cache-read can disagree by a
   // millisecond, which makes UX timestamps flicker.
@@ -95,7 +99,7 @@ export async function readCachedAnalysis(
 ): Promise<CachedAnalysis | null> {
   const cached = await getChapterAnalysis<ProseIssue[]>(chapterId);
   if (!cached) return null;
-  const contentHash = await hashContent(content);
+  const contentHash = await hashContent(getPlainText(content));
   if (cached.contentHash !== contentHash) return null;
   return {
     issues: cached.data,

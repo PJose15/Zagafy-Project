@@ -1,6 +1,7 @@
 'use client';
 
 import { useStory } from '@/lib/store';
+import { getPlainText } from '@/lib/editor/serialization';
 import { useState, useCallback } from 'react';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import {
@@ -68,8 +69,8 @@ export default function BiblePage() {
   const handleExtract = useCallback(async (): Promise<number> => {
     setExtractError(null);
     const validChapters = state.chapters
-      .filter((ch) => ch.title?.trim() && ch.content?.trim())
-      .map((ch) => ({ title: ch.title, content: ch.content }));
+      .map((ch) => ({ title: ch.title, content: getPlainText(ch.content) }))
+      .filter((ch) => ch.title?.trim() && ch.content.trim());
 
     if (validChapters.length === 0) {
       throw new Error('No chapters with written content. Add chapter text on the Manuscript page before extracting.');

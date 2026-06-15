@@ -12,16 +12,11 @@ import {
 } from '@/components/antiquarian';
 import { useConfirm } from '@/components/antiquarian/parchment-modal';
 import { readingTimeLabel } from '@/lib/analytics/pacing';
+import { wordCount } from '@/lib/editor/serialization';
 
 type Layout = 'grid' | 'list';
 type CanonFilter = 'all' | CanonStatus;
 type LengthFilter = 'all' | 'short' | 'medium' | 'long';
-
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-}
 
 function lengthBucket(words: number): 'short' | 'medium' | 'long' {
   if (words < 1500) return 'short';
@@ -52,7 +47,7 @@ export default function OutlinePage() {
       state.chapters.map((c, originalIndex) => ({
         chapter: c,
         originalIndex,
-        wordCount: countWords(c.content),
+        wordCount: wordCount(c.content),
       })),
     [state.chapters],
   );

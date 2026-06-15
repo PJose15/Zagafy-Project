@@ -43,6 +43,7 @@ export interface ApiError {
   timestamp: string;
 }
 
+/** Generate a unique request ID (UUID v4) for API response envelopes. */
 export function makeRequestId(): string {
   return crypto.randomUUID();
 }

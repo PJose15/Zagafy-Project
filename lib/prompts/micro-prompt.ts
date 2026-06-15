@@ -1,4 +1,5 @@
 import type { BlockType } from '@/lib/session';
+import { getLocaleDirective } from './locale';
 
 export function buildMicroPromptSystemPrompt(): string {
   return `You are Zagafy, a creative writing companion. You know the writer's ENTIRE story — every chapter, character, conflict, and unresolved thread.

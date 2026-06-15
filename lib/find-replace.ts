@@ -4,7 +4,14 @@
  * Pure algorithm. The UI layer maps chapters → calls findAll/replaceAll →
  * persists the result. Versioning happens at the chapter level (existing
  * chapterVersions Dexie store) so writers can roll a Replace-All back.
+ *
+ * CB-07: chapter content may be Lexical JSON. Searching runs over the plain
+ * text (so matches and previews read naturally); replacing walks the Lexical
+ * text nodes in place so rich formatting survives. Plain-text content takes
+ * the original fast path unchanged.
  */
+
+import { getPlainText, isLexicalJson, mapLexicalText } from '@/lib/editor/serialization';
 
 export type FindScope = 'current-chapter' | 'all-chapters';
 
@@ -49,6 +56,9 @@ export function buildPattern(query: string, opts: FindOptions = {}): RegExp {
   if (opts.wholeWord) {
     body = `\\b(?:${body})\\b`;
   }
+  // Dynamic by design: plain queries are escaped above; regex mode is an
+  // explicit user opt-in (invalid patterns throw and are surfaced to the UI).
+  // eslint-disable-next-line security/detect-non-literal-regexp
   return new RegExp(body, flags);
 }
 
@@ -72,14 +82,15 @@ export function findInChapter(
   opts: FindOptions = {},
 ): Match[] {
   if (!query) return [];
+  const text = getPlainText(chapter.content);
   const pattern = buildPattern(query, opts);
   const matches: Match[] = [];
   let exec: RegExpExecArray | null;
   let safety = 0;
-  while ((exec = pattern.exec(chapter.content)) !== null) {
+  while ((exec = pattern.exec(text)) !== null) {
     const start = exec.index;
     const end = start + exec[0].length;
-    const { before, after } = takeContext(chapter.content, start, end);
+    const { before, after } = takeContext(text, start, end);
     matches.push({
       chapterId: chapter.id,
       chapterTitle: chapter.title,
@@ -137,9 +148,17 @@ export function replaceAllInChapter(
   if (!query) return { newContent: content, replaced: 0 };
   const pattern = buildPattern(query, opts);
   let replaced = 0;
-  const newContent = content.replace(pattern, () => {
-    replaced += 1;
-    return replacement;
-  });
+  const apply = (text: string) =>
+    text.replace(pattern, () => {
+      replaced += 1;
+      return replacement;
+    });
+
+  // Lexical JSON: replace inside each text node so formatting is preserved.
+  // Plain text: replace directly.
+  const newContent = isLexicalJson(content)
+    ? mapLexicalText(content, apply)
+    : apply(content);
+
   return { newContent, replaced };
 }

@@ -15,8 +15,8 @@ vi.mock('@/lib/logger', () => ({
   })),
 }));
 
-const mockStoryFindFirst = vi.fn(async () => null);
-const mockChaptersFindMany = vi.fn(async () => []);
+const mockStoryFindFirst = vi.fn(async (): Promise<unknown> => null);
+const mockChaptersFindMany = vi.fn(async (): Promise<unknown[]> => []);
 const mockChapterVersionsFindMany = vi.fn(async () => []);
 const mockSnapshotsFindMany = vi.fn(async () => []);
 const mockSessionsFindMany = vi.fn(async () => []);

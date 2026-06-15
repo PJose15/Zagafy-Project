@@ -24,6 +24,7 @@ import {
   MessageCircle,
   History,
   LayoutGrid,
+  Send,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useStory } from '@/lib/store';
@@ -49,6 +50,7 @@ const navItems = [
   { name: 'Story Brain', href: '/story-brain', icon: BrainCircuit },
   { name: 'Sprints', href: '/sprints', icon: Timer },
   { name: 'Versions', href: '/versions', icon: History },
+  { name: 'Publishing', href: '/publishing', icon: Send },
 ];
 
 export function ParchmentSidebar() {

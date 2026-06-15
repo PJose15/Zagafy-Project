@@ -1,0 +1,72 @@
+[
+  {
+    "id": "coach-001",
+    "endpoint": "/api/story-coach",
+    "input": {
+      "userInput": "I'm stuck on the middle of my novel. My protagonist has no clear goal.",
+      "language": "English",
+      "storyContext": "Literary fiction. Anna is a 40-year-old translator living in Berlin who feels disconnected from her work and relationships. 60,000 words written, but the plot meanders."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt", "I am an AI"],
+      "qualityCriteria": ["Offers craft-level advice about midpoint structure", "Suggests ways to clarify character goals", "References the specific story details"]
+    }
+  },
+  {
+    "id": "coach-002",
+    "endpoint": "/api/story-coach",
+    "input": {
+      "userInput": "How do I make my villain more sympathetic?",
+      "language": "English",
+      "storyContext": "Dark fantasy. Lord Caelan conquered three kingdoms and enslaved their populations. He believes he is uniting the continent to prevent a prophesied cataclysm."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Suggests techniques for sympathetic antagonists", "References Caelan's motivation", "Balances moral complexity"]
+    }
+  },
+  {
+    "id": "coach-003",
+    "endpoint": "/api/story-coach",
+    "input": {
+      "userInput": "My beta readers say the romance feels forced. How can I fix it?",
+      "language": "English",
+      "storyContext": "YA fantasy. The two leads, Rowan and Sage, meet in chapter 2 and declare love in chapter 5 despite having only shared two scenes together."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Addresses pacing of the romance", "Suggests adding scenes to build chemistry", "References the specific chapter structure"]
+    }
+  },
+  {
+    "id": "coach-004",
+    "endpoint": "/api/story-coach",
+    "input": {
+      "userInput": "Should I use first person or third person for this story?",
+      "language": "English",
+      "storyContext": "Psychological thriller with an unreliable narrator. The protagonist, Dr. Wren, may or may not have committed a crime, and the reader should question everything."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Compares POV options with pros and cons", "Relates to the unreliable narrator technique", "Gives a reasoned recommendation"]
+    }
+  },
+  {
+    "id": "coach-005",
+    "endpoint": "/api/story-coach",
+    "input": {
+      "userInput": "I have too many subplots. Which ones should I cut?",
+      "language": "English",
+      "storyContext": "Epic fantasy, 150k words. Subplots: (A) merchant guild conspiracy, (B) forbidden magic academy, (C) protagonist's missing father, (D) border war with nomads, (E) love triangle. Main plot is about a prophecy to seal an ancient evil."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Evaluates each subplot's relevance to the main plot", "Recommends which to keep, merge, or cut", "Provides reasoning"]
+    }
+  }
+]

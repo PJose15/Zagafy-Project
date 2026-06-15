@@ -5,6 +5,7 @@ import type { StoryState } from '@/lib/store';
 function makeEmptyState(overrides: Partial<StoryState> = {}): StoryState {
   return {
     language: 'en', title: 'Test', genre: [], synopsis: '', author_intent: '',
+    author_name: '', author_email: '', author_address: '',
     chapters: [], scenes: [], characters: [], timeline_events: [], open_loops: [],
     world_rules: [], style_profile: '', active_conflicts: [], foreshadowing_elements: [],
     locations: [], themes: [], canon_items: [], ambiguities: [], chat_messages: [], world_bible: [],

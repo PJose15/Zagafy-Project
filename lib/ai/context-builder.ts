@@ -1,5 +1,6 @@
 import type { StoryState } from '@/lib/store';
 import type { KnownEntities } from '@/lib/ai/chat-validation';
+import { getPlainText } from '@/lib/editor/serialization';
 
 interface ContextResult {
   context: string;
@@ -189,7 +190,7 @@ ALL CHAPTER SUMMARIES:
 ${chapterSummaries || 'None'}
 
 LATEST CHAPTER:
-${latestChapter ? `Title: ${latestChapter.title}\nSummary: ${latestChapter.summary}\nContent (last ${latestChapterContentLimit} chars): ${latestChapter.content.slice(-latestChapterContentLimit)}` : 'None'}
+${latestChapter ? `Title: ${latestChapter.title}\nSummary: ${latestChapter.summary}\nContent (last ${latestChapterContentLimit} chars): ${getPlainText(latestChapter.content).slice(-latestChapterContentLimit)}` : 'None'}
 
 CANON LOCK STATUS:
 You must respect the following certainty levels:

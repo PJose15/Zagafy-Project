@@ -48,6 +48,7 @@ import { DetourEditor } from './detour-editor';
 import { CoachPanel } from '@/components/story-coach/coach-panel';
 import { getAdaptiveConfig } from '@/lib/adaptive-experience';
 import { ClosingRitual } from './closing-ritual';
+import { getPlainText } from '@/lib/editor/serialization';
 
 const PAUSE_TIMEOUT = 30000; // 30 seconds
 const MOMENTUM_DECAY_INTERVAL = 100; // ms
@@ -533,8 +534,11 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
                   }
                   const target = chapterVersions.switchVersion(id);
                   if (target) {
-                    setContent(target.content);
-                    scheduleAutosave(target.content);
+                    // Versions may be Lexical JSON (manuscript/pre-flow snapshots);
+                    // the flow textarea works in plain text.
+                    const plain = getPlainText(target.content);
+                    setContent(plain);
+                    scheduleAutosave(plain);
                   }
                   setVersionPanelOpen(false);
                 }}

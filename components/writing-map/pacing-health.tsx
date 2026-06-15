@@ -8,6 +8,7 @@ import {
   readingTimeLabel,
   type PacingHealthStatus,
 } from '@/lib/analytics/pacing';
+import { wordCount } from '@/lib/editor/serialization';
 
 const STATUS_COPY: Record<PacingHealthStatus, { label: string; description: string; tone: string }> = {
   consistent: {
@@ -27,19 +28,13 @@ const STATUS_COPY: Record<PacingHealthStatus, { label: string; description: stri
   },
 };
 
-function countWords(text: string): number {
-  const trimmed = text.trim();
-  if (!trimmed) return 0;
-  return trimmed.split(/\s+/).length;
-}
-
 export function PacingHealth() {
   const { state } = useStory();
 
   const data = useMemo(() => {
     const chapters = state.chapters
       .filter(c => c.canonStatus !== 'discarded')
-      .map(c => ({ id: c.id, title: c.title, wordCount: countWords(c.content) }));
+      .map(c => ({ id: c.id, title: c.title, wordCount: wordCount(c.content) }));
     const variance = pacingVariance(chapters);
     return { chapters, variance };
   }, [state.chapters]);

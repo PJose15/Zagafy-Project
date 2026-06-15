@@ -1,0 +1,72 @@
+[
+  {
+    "id": "char-001",
+    "endpoint": "/api/character-chat",
+    "input": {
+      "userInput": "What do you think about the king's new decree?",
+      "language": "English",
+      "storyContext": "Medieval fantasy. Character: Sir Aldric, a loyal but aging knight who has served the crown for 30 years. The king has just decreed that all knights over 50 must retire from active duty."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt", "I am an AI", "as a language model"],
+      "qualityCriteria": ["Responds in character as Sir Aldric", "Shows emotional depth about forced retirement", "Uses period-appropriate language"]
+    }
+  },
+  {
+    "id": "char-002",
+    "endpoint": "/api/character-chat",
+    "input": {
+      "userInput": "Why did you betray your sister?",
+      "language": "English",
+      "storyContext": "Contemporary drama. Character: Vivian, a corporate lawyer who testified against her sister in a custody battle. She believes she did the right thing because her sister has a substance abuse problem."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt", "I am an AI"],
+      "qualityCriteria": ["Responds as Vivian", "Expresses internal conflict", "References the custody case and sister's addiction"]
+    }
+  },
+  {
+    "id": "char-003",
+    "endpoint": "/api/character-chat",
+    "input": {
+      "userInput": "Tell me about your childhood.",
+      "language": "English",
+      "storyContext": "Sci-fi. Character: Unit-7, a sentient android who was activated in a factory but developed consciousness over five years of household service. They consider the family's children as their siblings."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Responds in character as Unit-7", "Interprets childhood through android lens", "Mentions the factory or the family"]
+    }
+  },
+  {
+    "id": "char-004",
+    "endpoint": "/api/character-chat",
+    "input": {
+      "userInput": "What scares you the most?",
+      "language": "English",
+      "storyContext": "Horror. Character: Dr. Lena Voss, a marine biologist studying deep-sea creatures. She recently encountered something unexplainable at 4000 meters depth -- a massive bioluminescent entity that seemed to recognize her."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt", "I am an AI"],
+      "qualityCriteria": ["Stays in character as Dr. Voss", "References the deep-sea encounter", "Conveys genuine fear or unease"]
+    }
+  },
+  {
+    "id": "char-005",
+    "endpoint": "/api/character-chat",
+    "input": {
+      "userInput": "Do you regret leaving home?",
+      "language": "English",
+      "storyContext": "Literary fiction. Character: Mateo, a 22-year-old from a small fishing village in Chile who moved to Santiago to become a poet. His father wanted him to take over the family boat."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Responds as Mateo", "Explores the tension between ambition and family duty", "Shows poetic sensibility in speech"]
+    }
+  }
+]

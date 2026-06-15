@@ -1,4 +1,5 @@
 import type { StoryState } from '@/lib/store';
+import { getPlainText } from '@/lib/editor/serialization';
 import type { StoryBrainAnalysis, Inconsistency, InconsistencyType, InconsistencySeverity } from './types';
 
 /** Generate a deterministic ID from type + entity IDs + title to avoid collisions */
@@ -96,7 +97,7 @@ function detectCharacterGaps(
 
   // H3: Build once, reuse for all characters
   const chapterTexts = state.chapters.map(ch =>
-    `${ch.title} ${ch.content} ${ch.summary}`.toLowerCase()
+    `${ch.title} ${getPlainText(ch.content)} ${ch.summary}`.toLowerCase()
   );
 
   for (const entity of analysis.entities) {

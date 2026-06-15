@@ -32,7 +32,8 @@ const responseSchema = {
           chapter_id: { type: Type.STRING },
           title: { type: Type.STRING },
           summary: { type: Type.STRING },
-          raw_text_reference: { type: Type.STRING }
+          raw_text_reference: { type: Type.STRING },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -57,7 +58,8 @@ const responseSchema = {
           name: { type: Type.STRING },
           role: { type: Type.STRING },
           description: { type: Type.STRING },
-          core_traits: { type: Type.ARRAY, items: { type: Type.STRING } }
+          core_traits: { type: Type.ARRAY, items: { type: Type.STRING } },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -102,7 +104,8 @@ const responseSchema = {
           conflict_type: { type: Type.STRING },
           title: { type: Type.STRING },
           description: { type: Type.STRING },
-          status: { type: Type.STRING }
+          status: { type: Type.STRING },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -114,7 +117,8 @@ const responseSchema = {
           timeline_event_id: { type: Type.STRING },
           event: { type: Type.STRING },
           immediate_effect: { type: Type.STRING },
-          latent_effect: { type: Type.STRING }
+          latent_effect: { type: Type.STRING },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -125,7 +129,8 @@ const responseSchema = {
         properties: {
           world_rule_id: { type: Type.STRING },
           scope: { type: Type.STRING },
-          rule: { type: Type.STRING }
+          rule: { type: Type.STRING },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -138,7 +143,8 @@ const responseSchema = {
           name: { type: Type.STRING },
           description: { type: Type.STRING },
           importance: { type: Type.STRING },
-          associated_rules: { type: Type.ARRAY, items: { type: Type.STRING } }
+          associated_rules: { type: Type.ARRAY, items: { type: Type.STRING } },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -149,7 +155,8 @@ const responseSchema = {
         properties: {
           theme_id: { type: Type.STRING },
           theme: { type: Type.STRING },
-          evidence: { type: Type.ARRAY, items: { type: Type.STRING } }
+          evidence: { type: Type.ARRAY, items: { type: Type.STRING } },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -162,7 +169,8 @@ const responseSchema = {
           category: { type: Type.STRING },
           description: { type: Type.STRING },
           status: { type: Type.STRING },
-          source_reference: { type: Type.STRING }
+          source_reference: { type: Type.STRING },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -186,7 +194,8 @@ const responseSchema = {
         properties: {
           loop_id: { type: Type.STRING },
           description: { type: Type.STRING },
-          status: { type: Type.STRING }
+          status: { type: Type.STRING },
+          confidence: { type: Type.NUMBER }
         }
       }
     },
@@ -197,7 +206,8 @@ const responseSchema = {
         properties: {
           foreshadowing_id: { type: Type.STRING },
           clue: { type: Type.STRING },
-          payoff_status: { type: Type.STRING }
+          payoff_status: { type: Type.STRING },
+          confidence: { type: Type.NUMBER }
         }
       }
     }
@@ -302,6 +312,15 @@ flexible_canon: Present in the manuscript but potentially incomplete or not full
 draft_idea: Present in brainstorming/notes but not fully established in narrative reality
 discarded: Explicitly abandoned or invalidated by the user or newer canon
 Do not over-classify uncertain material as confirmed.
+
+Confidence scoring rules
+Every extracted entity (character, conflict, timeline event, world rule, location, theme, chapter, canon item, open loop, foreshadowing element) MUST include a "confidence" field: a number between 0.0 and 1.0 representing how certain the extraction is based on the source text.
+- 0.9-1.0: Explicitly and clearly stated in the manuscript
+- 0.7-0.89: Strongly implied by the text with high certainty
+- 0.5-0.69: Moderately inferred — reasonable interpretation but not explicit
+- 0.3-0.49: Weakly inferred — speculative, limited evidence
+- 0.0-0.29: Very uncertain — minimal textual support
+Always be honest about confidence. Do not inflate scores. When in doubt, round down.
 
 Output format rules
 You must always return:

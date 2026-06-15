@@ -35,11 +35,27 @@ const defaultSession: SessionState = {
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
+/**
+ * Build the initial session. Automated runs (E2E) can set the
+ * `zagafy_skip_intake` localStorage flag to start with the diagnostic + ritual
+ * gates already cleared, so tests reach the app without driving the intake
+ * overlays. Normal users never set this flag, so production UX is unchanged.
+ */
+function readInitialSession(): SessionState {
+  const base: SessionState = { ...defaultSession, sessionStartedAt: new Date().toISOString() };
+  if (typeof window === 'undefined') return base;
+  try {
+    if (window.localStorage.getItem('zagafy_skip_intake') === 'true') {
+      return { ...base, diagnosticCompleted: true, ritualCompleted: true };
+    }
+  } catch {
+    // localStorage unavailable — fall through to the default gated session
+  }
+  return base;
+}
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<SessionState>({
-    ...defaultSession,
-    sessionStartedAt: new Date().toISOString(),
-  });
+  const [session, setSession] = useState<SessionState>(readInitialSession);
 
   const setBlockType = useCallback((type: BlockType) => {
     setSession(prev => ({ ...prev, blockType: type }));

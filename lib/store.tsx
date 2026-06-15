@@ -167,6 +167,10 @@ export interface StoryState {
   genre: string[];
   synopsis: string;
   author_intent: string;
+  /** MP-04 — manuscript export title-page metadata (Shunn standard format). */
+  author_name: string;
+  author_email: string;
+  author_address: string;
   chapters: Chapter[];
   scenes: Scene[];
   characters: Character[];
@@ -190,6 +194,9 @@ export const defaultState: StoryState = {
   genre: [],
   synopsis: '',
   author_intent: '',
+  author_name: '',
+  author_email: '',
+  author_address: '',
   chapters: [],
   scenes: [],
   characters: [],

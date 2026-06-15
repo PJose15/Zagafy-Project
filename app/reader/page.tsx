@@ -9,6 +9,7 @@ import { KindleView } from '@/components/reader/kindle-view';
 import { AudiobookView } from '@/components/reader/audiobook-view';
 import type { ProseIssue } from '@/lib/prose-analysis';
 import { getOrAnalyze, readCachedAnalysis } from '@/lib/prose-analysis-cache';
+import { getPlainText } from '@/lib/editor/serialization';
 import { EmptyState, FeatureErrorBoundary } from '@/components/antiquarian';
 
 type ReaderMode = 'print' | 'kindle' | 'audiobook';
@@ -24,17 +25,22 @@ export default function ReaderPage() {
 
   const chapters = state.chapters.filter(ch => ch.canonStatus !== 'discarded');
   const chapter = chapters[chapterIndex];
+  const chapterId = chapter?.id;
+  // CB-07: chapter content is Lexical JSON; the reader views, pagination and
+  // prose analysis all operate on plain text. Decode once so issue indices
+  // align with what the views render.
+  const plainContent = chapter ? getPlainText(chapter.content) : '';
 
   // CB-08: hydrate cached analysis when switching chapters so users see
   // results from prior sessions without clicking Analyze again.
   useEffect(() => {
-    if (!chapter?.content) {
+    if (!chapterId || !plainContent.trim()) {
       setIssues([]);
       setAnalyzedAt(null);
       return;
     }
     let cancelled = false;
-    readCachedAnalysis(chapter.id, chapter.content).then(cached => {
+    readCachedAnalysis(chapterId, plainContent).then(cached => {
       if (cancelled) return;
       if (cached) {
         setIssues(cached.issues);
@@ -45,13 +51,13 @@ export default function ReaderPage() {
       }
     });
     return () => { cancelled = true; };
-  }, [chapter?.id, chapter?.content]);
+  }, [chapterId, plainContent]);
 
   const handleAnalyze = async () => {
-    if (!chapter?.content) return;
+    if (!chapter || !plainContent.trim()) return;
     setIsAnalyzing(true);
     try {
-      const result = await getOrAnalyze(chapter.id, chapter.content);
+      const result = await getOrAnalyze(chapter.id, plainContent);
       setIssues(result.issues);
       setAnalyzedAt(result.analyzedAt);
     } finally {
@@ -105,9 +111,9 @@ export default function ReaderPage() {
         ))}
       </div>
 
-      {mode === 'print' && <PrintBookView title={chapter.title} content={chapter.content} issues={issues} />}
-      {mode === 'kindle' && <KindleView title={chapter.title} content={chapter.content} issues={issues} />}
-      {mode === 'audiobook' && <AudiobookView title={chapter.title} content={chapter.content} />}
+      {mode === 'print' && <PrintBookView title={chapter.title} content={plainContent} issues={issues} />}
+      {mode === 'kindle' && <KindleView title={chapter.title} content={plainContent} issues={issues} />}
+      {mode === 'audiobook' && <AudiobookView title={chapter.title} content={plainContent} />}
     </ReaderLayout>
     </FeatureErrorBoundary>
   );

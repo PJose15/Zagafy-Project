@@ -1,6 +1,7 @@
 import type { FinishingEngineState, Milestone, NarrativePhase } from '@/lib/types/gamification';
 import type { StoryState, Chapter } from '@/lib/store';
 import type { WritingSession } from '@/lib/types/writing-session';
+import { wordCount } from '@/lib/editor/serialization';
 
 // ─── Novel Completion Types ───
 
@@ -28,7 +29,7 @@ interface MilestoneDefinition {
 function totalWords(story: StoryState): number {
   if (!Array.isArray(story.chapters)) return 0;
   return story.chapters.reduce(
-    (sum, ch) => sum + (ch.content ? ch.content.split(/\s+/).filter(Boolean).length : 0),
+    (sum, ch) => sum + (ch.content ? wordCount(ch.content) : 0),
     0,
   );
 }
@@ -58,7 +59,7 @@ const MILESTONE_DEFINITIONS: MilestoneDefinition[] = [
     weight: 12,
     check: (s) => {
       if (!Array.isArray(s.chapters) || s.chapters.length === 0) return false;
-      const firstWords = s.chapters[0].content?.split(/\s+/).filter(Boolean).length ?? 0;
+      const firstWords = s.chapters[0].content ? wordCount(s.chapters[0].content) : 0;
       return firstWords >= 500;
     },
   },
@@ -222,7 +223,7 @@ export function generateNovelStats(
   const safeSessions = Array.isArray(sessions) ? sessions : [];
 
   const words = safeChapters.reduce(
-    (sum, ch) => sum + (ch.content ? ch.content.split(/\s+/).filter(Boolean).length : 0),
+    (sum, ch) => sum + (ch.content ? wordCount(ch.content) : 0),
     0,
   );
 

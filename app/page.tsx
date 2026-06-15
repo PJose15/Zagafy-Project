@@ -3,6 +3,7 @@
 import React, { Suspense } from 'react';
 import { useStory } from '@/lib/store';
 import { useSession } from '@/lib/session';
+import { wordCount as countWords } from '@/lib/editor/serialization';
 import { motion } from 'motion/react';
 import { BookOpen, Users, Clock, Swords, AlertCircle, Flame, BrainCircuit } from 'lucide-react';
 import Link from 'next/link';
@@ -218,7 +219,7 @@ export default function Dashboard() {
   const { novelJustCompleted, completionStats, dismissCompletion } = useNovelCompletion(finishing, isLoaded);
 
   const totalWords = state.chapters.reduce(
-    (sum, ch) => sum + (ch.content ? ch.content.split(/\s+/).filter(Boolean).length : 0),
+    (sum, ch) => sum + (ch.content ? countWords(ch.content) : 0),
     0
   );
   const activeConflicts = state.active_conflicts.filter(c => c.status === 'active').length;
@@ -393,7 +394,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3">
               {state.chapters.slice(-3).reverse().map((chapter, i) => {
-                const wordCount = chapter.content ? chapter.content.split(/\s+/).filter(Boolean).length : 0;
+                const wordCount = chapter.content ? countWords(chapter.content) : 0;
                 const statusColor = canonColors[chapter.canonStatus || 'draft'] || 'border-l-sepia-500';
                 return (
                   <motion.div key={chapter.id} {...physicalDrop}>

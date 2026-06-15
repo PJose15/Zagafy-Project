@@ -296,3 +296,57 @@
   background: var(--color-forest-700);
   color: var(--color-cream-50);
 }
+
+/* Phase 7.1 — Accessibility: reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Phase 7.1 — Focus indicators */
+:focus-visible {
+  outline: 2px solid var(--color-brass-500);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-brass-500);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(196, 155, 72, 0.25);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CB-07 — Lexical Manuscript Editor
+   ═══════════════════════════════════════════════════════════════ */
+
+.manuscript-editor-content [data-lexical-editor] {
+  outline: none;
+}
+
+.manuscript-editor-paragraph {
+  margin-bottom: 0.5em;
+  line-height: 1.8;
+}
+
+.manuscript-editor-quote {
+  border-left: 3px solid var(--color-brass-500);
+  padding-left: 1rem;
+  margin: 0.75em 0;
+  color: var(--color-sepia-600);
+  font-style: italic;
+}
+
+.manuscript-editor-content p[style*="text-align: center"] {
+  text-align: center;
+  color: var(--color-sepia-500);
+  letter-spacing: 0.2em;
+  margin: 1.5em 0;
+}

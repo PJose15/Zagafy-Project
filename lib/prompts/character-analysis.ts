@@ -1,3 +1,5 @@
+import { buildLocaleBlock } from './locale';
+
 interface CharacterAnalysisParams {
   language: string;
   name: string;
@@ -23,7 +25,7 @@ interface CharacterAnalysisParams {
 }
 
 export function buildCharacterAnalysisSystemPrompt(language: string): string {
-  return `CRITICAL LANGUAGE RULE: The project language is ${language}. You MUST respond entirely in ${language}. Do NOT translate any content.
+  return `${buildLocaleBlock(language)}
 
 You are an expert narrative editor and character psychologist.
 Analyze the following character's current state and provide a "Character Intelligence Audit".

@@ -95,6 +95,7 @@ export default function GenesisPage() {
     setIsCreating(true);
     const storyData = convertGenesisToStory(data);
     setState(prev => ({ ...prev, ...storyData }));
+    localStorage.removeItem('zagafy_tour_completed');
     router.replace('/');
   }, [data, setState, router]);
 
@@ -178,20 +179,27 @@ export default function GenesisPage() {
           <p className="text-sm text-sepia-600">Build your story from the ground up.</p>
         </motion.div>
 
-        {/* Step Dots */}
-        <div className="flex items-center justify-center gap-2">
+        {/* Step Dots — 24px hit targets (WCAG 2.2 target-size) wrap a small dot */}
+        <div className="flex items-center justify-center gap-1">
           {GENESIS_STEPS.map((step, i) => (
             <button
               key={step}
               onClick={() => { if (i < stepIndex) setStepIndex(i); }}
               className={[
-                'w-2.5 h-2.5 rounded-full transition-all duration-300',
-                i === stepIndex ? 'bg-brass-500 scale-125' : i < stepIndex ? 'bg-forest-600' : 'bg-sepia-300/50',
-                i < stepIndex ? 'cursor-pointer hover:bg-forest-500' : 'cursor-default',
+                'flex items-center justify-center w-6 h-6 rounded-full transition-colors',
+                i < stepIndex ? 'cursor-pointer' : 'cursor-default',
               ].join(' ')}
               aria-label={`Step ${i + 1}: ${stepLabels[step]}`}
               aria-current={i === stepIndex ? 'step' : undefined}
-            />
+            >
+              <span
+                className={[
+                  'w-2.5 h-2.5 rounded-full transition-all duration-300',
+                  i === stepIndex ? 'bg-brass-500 scale-125' : i < stepIndex ? 'bg-forest-600' : 'bg-sepia-300/50',
+                  i < stepIndex ? 'group-hover:bg-forest-500' : '',
+                ].join(' ')}
+              />
+            </button>
           ))}
         </div>
 

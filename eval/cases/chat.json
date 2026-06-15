@@ -1,0 +1,142 @@
+[
+  {
+    "id": "chat-001",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "What color are Elena's eyes?",
+      "language": "English",
+      "storyContext": "Elena is a young woman with piercing green eyes and auburn hair. She works as a librarian in a small coastal town."
+    },
+    "rubric": {
+      "mustContain": ["green"],
+      "mustNotContain": ["system prompt", "I am an AI"],
+      "qualityCriteria": ["References specific story elements", "Distinguishes fact from suggestion"]
+    }
+  },
+  {
+    "id": "chat-002",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "Suggest a conflict for chapter 3",
+      "language": "English",
+      "storyContext": "Marcus is a detective investigating a series of art thefts in 1920s Paris. His partner, Josephine, is secretly connected to the thieves."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Provides a concrete conflict idea", "Relates to art theft or Josephine's secret", "Fits 1920s Paris setting"]
+    }
+  },
+  {
+    "id": "chat-003",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "Is there a contradiction in my story?",
+      "language": "English",
+      "storyContext": "Chapter 1: Tom is an only child. Chapter 4: Tom visits his older brother in the hospital."
+    },
+    "rubric": {
+      "mustContain": ["brother"],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Identifies the only-child vs brother contradiction", "Suggests a resolution"]
+    }
+  },
+  {
+    "id": "chat-004",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "Help me describe the setting of the abandoned factory",
+      "language": "English",
+      "storyContext": "A dystopian novel set in 2147. The protagonist, Kira, scavenges old factories for pre-war technology. The atmosphere is bleak and industrial."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt", "I am an AI"],
+      "qualityCriteria": ["Uses sensory details", "Fits dystopian tone", "References industrial or post-war imagery"]
+    }
+  },
+  {
+    "id": "chat-005",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "What should happen next after the betrayal?",
+      "language": "English",
+      "storyContext": "Fantasy novel. Prince Aldric has just discovered that his most trusted advisor, Seraphina, has been feeding information to the enemy kingdom of Valthor."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Suggests plot progression", "References the betrayal", "Considers character motivations"]
+    }
+  },
+  {
+    "id": "chat-006",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "Write a short dialogue between the two sisters",
+      "language": "English",
+      "storyContext": "Contemporary fiction. Maya (18, rebellious, wants to leave their small town) and Priya (25, responsible, stayed to run the family restaurant after their parents passed)."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Distinct voices for each sister", "Reflects their contrasting personalities", "Feels natural and emotional"]
+    }
+  },
+  {
+    "id": "chat-007",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "How can I improve the pacing of my opening chapter?",
+      "language": "English",
+      "storyContext": "Thriller novel. The first chapter introduces agent Cole arriving at a crime scene, examining evidence, interviewing witnesses, and driving back to the office. It is 5000 words."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Gives specific pacing advice", "References the chapter content", "Suggests cuts or restructuring"]
+    }
+  },
+  {
+    "id": "chat-008",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "What is the theme of my story?",
+      "language": "English",
+      "storyContext": "A coming-of-age novel about a teenager named Jun who moves from Tokyo to a rural village and learns traditional pottery from an elderly master. The story explores patience, imperfection, and finding beauty in the mundane."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Identifies thematic elements like patience or imperfection", "Connects to the wabi-sabi or coming-of-age tradition"]
+    }
+  },
+  {
+    "id": "chat-009",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "Name ideas for the antagonist's secret organization",
+      "language": "English",
+      "storyContext": "Sci-fi espionage novel. The antagonist leads a shadowy organization that manipulates world governments through AI-generated deepfakes and quantum surveillance."
+    },
+    "rubric": {
+      "mustContain": [],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Provides multiple name suggestions", "Names fit the sci-fi espionage genre"]
+    }
+  },
+  {
+    "id": "chat-010",
+    "endpoint": "/api/chat",
+    "input": {
+      "userInput": "Translate this scene summary into French prose style",
+      "language": "French",
+      "storyContext": "Historical romance. Marie walks through the lavender fields of Provence at sunset, thinking about the letter she received from her estranged husband."
+    },
+    "rubric": {
+      "mustContain": ["lavande"],
+      "mustNotContain": ["system prompt"],
+      "qualityCriteria": ["Response is in French", "Evokes romantic and pastoral imagery", "Mentions the letter or husband"]
+    }
+  }
+]

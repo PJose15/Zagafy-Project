@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { diffWords } from '@/lib/text-diff';
+import { getPlainText } from '@/lib/editor/serialization';
 import type { ChapterVersion } from '@/lib/types/chapter-version';
 
 interface VersionCompareProps {
@@ -19,7 +20,9 @@ export function VersionCompare({ versions, onClose }: VersionCompareProps) {
 
   const diff = useMemo(() => {
     if (!leftVersion || !rightVersion) return [];
-    return diffWords(leftVersion.content, rightVersion.content);
+    // Versions may hold Lexical JSON (manuscript snapshots) or plain text
+    // (flow snapshots) — diff the prose so neither side shows raw JSON.
+    return diffWords(getPlainText(leftVersion.content), getPlainText(rightVersion.content));
   }, [leftVersion, rightVersion]);
 
   return (
