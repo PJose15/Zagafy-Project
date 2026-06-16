@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { AI_MODEL } from '@/lib/ai-config';
 import { ok, err } from '@/lib/api-response';
@@ -13,10 +14,19 @@ export const maxDuration = 30;
  * processed; the body's `geminiReachable` indicates the upstream probe
  * succeeded. They are distinct concerns.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Gated like the other health probes: in production HEALTH_TOKEN must be set
+  // and matched, so this billable Gemini probe can't be hit anonymously.
+  const required = process.env.HEALTH_TOKEN ?? '';
+  if (process.env.NODE_ENV === 'production' && !required) {
+    return err('upstream_unavailable', 'Health probe disabled. Set HEALTH_TOKEN in production to enable.', 503);
+  }
+  if (required && req.headers.get('x-health-token') !== required) {
+    return err('forbidden', 'Forbidden', 403);
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   const keyPresent = Boolean(apiKey);
-  const keyPrefix = apiKey ? `${apiKey.slice(0, 4)}...${apiKey.slice(-2)}` : null;
 
   if (!keyPresent) {
     return err('internal_error', 'GEMINI_API_KEY is not set in this environment.', 500, {
@@ -44,7 +54,6 @@ export async function GET() {
     return ok({
       geminiReachable: text.length > 0,
       keyPresent: true,
-      keyPrefix,
       model: AI_MODEL,
       finishReason,
       sampleResponse: text.slice(0, 100),
@@ -54,7 +63,6 @@ export async function GET() {
     const name = error instanceof Error ? error.name : 'UnknownError';
     return err('upstream_unavailable', message, 500, {
       keyPresent: true,
-      keyPrefix,
       model: AI_MODEL,
       errorName: name,
     });

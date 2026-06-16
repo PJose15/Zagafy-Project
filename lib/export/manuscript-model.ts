@@ -135,10 +135,13 @@ function parseLexical(content: string): ExportParagraph[] {
   for (const block of blocks) {
     const runs: ExportRun[] = [];
     collectRuns(block, runs);
+    const text = runs.map(r => r.text).join('');
+    // Drop empty paragraphs so the Lexical path matches the plain-text path —
+    // Shunn format doesn't use blank-line spacing, and Flow mode persists every
+    // textarea line (including blank separators) as a paragraph.
+    if (text.trim().length === 0) continue;
     const align = normalizeAlign(block.format);
-    const para: ExportParagraph = { runs, align, sceneBreak: false };
-    para.sceneBreak = isSceneBreak(paragraphPlainText(para));
-    paragraphs.push(para);
+    paragraphs.push({ runs, align, sceneBreak: isSceneBreak(text) });
   }
   return paragraphs;
 }

@@ -28,7 +28,10 @@ const MAX_IMPORT_FILE_BYTES = 20 * 1024 * 1024; // 20 MB raw file
 const MAX_TITLE = 500;
 const MAX_STRING_FIELD = 10_000;
 const MAX_CHAPTER_COUNT = 1_000;
-const MAX_CHAPTER_CONTENT = 500_000;
+// CB-07: chapter content is now Lexical JSON (~2-3x larger than the plain
+// text it encodes), so this byte cap is raised to keep the effective
+// writing-length headroom it had when content was plain text.
+const MAX_CHAPTER_CONTENT = 1_500_000;
 const MAX_ARRAY_ITEMS = 10_000;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
