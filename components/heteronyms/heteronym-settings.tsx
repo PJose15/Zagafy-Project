@@ -115,7 +115,7 @@ export function HeteronymSettings() {
       </p>
 
       {heteronyms.length === 0 ? (
-        <p className="text-sepia-500 text-sm italic py-4 text-center">No alter egos yet. Create one to get started.</p>
+        <p className="text-sepia-600 text-sm italic py-4 text-center">No alter egos yet. Create one to get started.</p>
       ) : (
         <div className="space-y-2" role="list" aria-label="Alter ego list">
           {heteronyms.map((h) => (
@@ -134,7 +134,7 @@ export function HeteronymSettings() {
                 <div className="flex items-center gap-2">
                   <p className="text-sepia-900 font-medium text-sm truncate">{h.name}</p>
                   {h.isDefault && (
-                    <span className="text-[10px] uppercase tracking-wider text-sepia-500 bg-parchment-200 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] uppercase tracking-wider text-sepia-600 bg-parchment-200 px-1.5 py-0.5 rounded">
                       Default
                     </span>
                   )}
@@ -145,7 +145,7 @@ export function HeteronymSettings() {
                   )}
                 </div>
                 {h.styleNote && (
-                  <p className="text-xs text-sepia-500 truncate mt-0.5">{h.styleNote}</p>
+                  <p className="text-xs text-sepia-600 truncate mt-0.5">{h.styleNote}</p>
                 )}
               </div>
 
@@ -172,7 +172,7 @@ export function HeteronymSettings() {
         </div>
       )}
 
-      <p className="text-xs text-sepia-400 pt-2">{heteronyms.length}/10 alter egos</p>
+      <p className="text-xs text-sepia-600 pt-2">{heteronyms.length}/10 alter egos</p>
 
       {modalOpen && (
         <HeteronymModal

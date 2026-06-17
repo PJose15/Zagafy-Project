@@ -42,7 +42,7 @@ export default function BlogPage() {
             key={post.title}
             className="bg-parchment-100 border border-sepia-300/50 rounded-xl p-6 shadow-parchment texture-parchment text-sepia-900"
           >
-            <p className="text-xs uppercase tracking-wide text-sepia-500 mb-1">{post.date}</p>
+            <p className="text-xs uppercase tracking-wide text-sepia-600 mb-1">{post.date}</p>
             <h2 className="font-serif text-xl font-bold mb-2">{post.title}</h2>
             <p className="text-sepia-700 leading-relaxed">{post.excerpt}</p>
           </div>

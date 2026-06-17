@@ -8,7 +8,7 @@ interface RelationshipMatrixProps {
 
 export function RelationshipMatrix({ relationships }: RelationshipMatrixProps) {
   if (relationships.length === 0) {
-    return <p className="text-sm text-sepia-500 text-center py-8">No character relationships defined.</p>;
+    return <p className="text-sm text-sepia-600 text-center py-8">No character relationships defined.</p>;
   }
 
   // Collect unique character names
@@ -60,7 +60,7 @@ export function RelationshipMatrix({ relationships }: RelationshipMatrixProps) {
                           background: `linear-gradient(to right, ${trustColor(rel.trustLevel)}, ${tensionColor(rel.tensionLevel)})`,
                         }}
                       />
-                      <span className="text-[8px] text-sepia-400">{rel.trustLevel}/{rel.tensionLevel}</span>
+                      <span className="text-[8px] text-sepia-600">{rel.trustLevel}/{rel.tensionLevel}</span>
                     </div>
                   </td>
                 );

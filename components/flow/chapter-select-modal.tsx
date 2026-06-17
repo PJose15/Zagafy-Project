@@ -31,7 +31,7 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
             <BookOpen className="text-brass-500" size={20} />
             Choose a chapter
           </h2>
-          <button onClick={onClose} className="text-sepia-500 hover:text-sepia-700 transition-colors" aria-label="Close">
+          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700 transition-colors" aria-label="Close">
             <X size={20} />
           </button>
         </div>
@@ -52,7 +52,7 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
                   {i + 1}. {chapter.title}
                 </p>
                 {chapter.summary && (
-                  <p className="text-xs text-sepia-500 mt-1 line-clamp-1">{chapter.summary}</p>
+                  <p className="text-xs text-sepia-600 mt-1 line-clamp-1">{chapter.summary}</p>
                 )}
               </button>
             ))}

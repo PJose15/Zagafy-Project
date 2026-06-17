@@ -39,7 +39,7 @@ export function XPBar({ level, current, needed, progress, compact = false }: XPB
         />
       </div>
       {!compact && (
-        <div className="flex justify-between text-[10px] font-mono text-sepia-400">
+        <div className="flex justify-between text-[10px] font-mono text-sepia-600">
           <span>{Math.max(0, current)} XP</span>
           <span>{needed} to next</span>
         </div>

@@ -43,7 +43,7 @@ export function PlotHolePanel({ plotHoles, resolutions, onResolve, onUnresolve, 
   };
 
   if (plotHoles.length === 0) {
-    return <p className="text-sm text-sepia-500 text-center py-8">No plot holes detected. Your narrative is solid!</p>;
+    return <p className="text-sm text-sepia-600 text-center py-8">No plot holes detected. Your narrative is solid!</p>;
   }
 
   const types: PlotHoleType[] = ['conflict_unresolved', 'foreshadowing_unfulfilled', 'character_disappearance', 'late_introduction', 'stale_open_loop'];
@@ -65,7 +65,7 @@ export function PlotHolePanel({ plotHoles, resolutions, onResolve, onUnresolve, 
             >
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               <span className="text-sm font-medium text-sepia-800">{TYPE_LABELS[type]}</span>
-              <span className="text-[10px] font-mono text-sepia-500">{unresolvedCount}/{items.length}</span>
+              <span className="text-[10px] font-mono text-sepia-600">{unresolvedCount}/{items.length}</span>
             </button>
             {isExpanded && (
               <div className="space-y-2 pl-6 mt-1">

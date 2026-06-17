@@ -78,7 +78,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               {/* Close button */}
               <button
                 onClick={() => handleResponse(false)}
-                className="absolute top-3 right-3 p-1 rounded-full text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
+                className="absolute top-3 right-3 p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
                 aria-label="Close"
               >
                 <X size={16} />

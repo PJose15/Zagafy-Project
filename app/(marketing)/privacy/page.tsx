@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       <h1 className="font-serif text-4xl font-bold text-cream-50 mb-8">Privacy Policy</h1>
 
       <div className="bg-parchment-100 border border-sepia-300/50 rounded-xl p-8 shadow-parchment texture-parchment text-sepia-900 space-y-6 leading-relaxed">
-        <p className="text-sm text-sepia-500">Last updated: June 2026</p>
+        <p className="text-sm text-sepia-600">Last updated: June 2026</p>
 
         <h2 className="font-serif text-xl font-bold pt-2">1. Data Collection</h2>
         <p>

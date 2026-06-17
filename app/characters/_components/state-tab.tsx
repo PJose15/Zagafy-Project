@@ -20,7 +20,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
       <div className="flex items-center justify-between bg-parchment-200 p-4 rounded-xl border border-sepia-300/50">
         <div className="flex items-center gap-4">
           <div>
-            <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-1">State Indicator</label>
+            <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-1">State Indicator</label>
             <select
               value={current.indicator || 'stable'}
               onChange={(e) => updateState({ indicator: e.target.value as CharacterState['indicator'] })}
@@ -34,7 +34,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-1">Pressure Level</label>
+            <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-1">Pressure Level</label>
             <select
               value={current.pressureLevel || 'Low'}
               onChange={(e) => updateState({ pressureLevel: e.target.value as CharacterState['pressureLevel'] })}
@@ -48,7 +48,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
           </div>
         </div>
         <div className="text-right">
-          <span className="text-xs text-sepia-500 uppercase tracking-wider block mb-1">Current Knowledge</span>
+          <span className="text-xs text-sepia-600 uppercase tracking-wider block mb-1">Current Knowledge</span>
           <input
             type="text"
             value={current.currentKnowledge || ''}
@@ -61,7 +61,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Current Emotional State</label>
+          <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Current Emotional State</label>
           <textarea
             value={current.emotionalState || ''}
             onChange={(e) => updateState({ emotionalState: e.target.value })}
@@ -70,7 +70,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Visible Goal</label>
+          <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Visible Goal</label>
           <textarea
             value={current.visibleGoal || ''}
             onChange={(e) => updateState({ visibleGoal: e.target.value })}
@@ -79,7 +79,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Hidden Need</label>
+          <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Hidden Need</label>
           <textarea
             value={current.hiddenNeed || ''}
             onChange={(e) => updateState({ hiddenNeed: e.target.value })}
@@ -88,7 +88,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Current Fear</label>
+          <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Current Fear</label>
           <textarea
             value={current.currentFear || ''}
             onChange={(e) => updateState({ currentFear: e.target.value })}
@@ -97,7 +97,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Dominant Belief</label>
+          <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Dominant Belief</label>
           <textarea
             value={current.dominantBelief || ''}
             onChange={(e) => updateState({ dominantBelief: e.target.value })}
@@ -106,7 +106,7 @@ export function StateTab({ editForm, setEditForm }: StateTabProps) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Emotional Wound</label>
+          <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Emotional Wound</label>
           <textarea
             value={current.emotionalWound || ''}
             onChange={(e) => updateState({ emotionalWound: e.target.value })}

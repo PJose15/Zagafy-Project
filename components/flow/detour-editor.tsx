@@ -43,11 +43,11 @@ export function DetourEditor({ detour, onEnd }: DetourEditorProps) {
           <h2 className="text-sm font-serif font-semibold text-brass-600">{detour.prompt.split('.')[0]}</h2>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 text-sepia-500">
+          <div className="flex items-center gap-1.5 text-sepia-600">
             <Timer size={14} />
             <span className="text-xs font-mono">{minutes}:{seconds.toString().padStart(2, '0')}</span>
           </div>
-          <span className="text-xs text-sepia-400">{wordCount} words</span>
+          <span className="text-xs text-sepia-600">{wordCount} words</span>
           <button
             onClick={() => onEnd(content)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-forest-700 text-cream-50 hover:bg-forest-600 transition-colors"

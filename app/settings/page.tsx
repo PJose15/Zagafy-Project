@@ -260,7 +260,7 @@ export default function SettingsPage() {
             into future micro-prompts and coaching sessions. Browse them under{' '}
             <a className="underline hover:text-sepia-800" href="/writing-map">Writing Map</a>.
           </p>
-          <p className="text-xs text-sepia-500 font-mono">
+          <p className="text-xs text-sepia-600 font-mono">
             Currently remembered: {insightCount.toLocaleString()} observation{insightCount === 1 ? '' : 's'}.
           </p>
           <BrassButton onClick={handleClearMemory} disabled={insightCount === 0} icon={<Trash2 size={18} />}>
@@ -291,7 +291,7 @@ export default function SettingsPage() {
               Browser spellcheck is {spellcheck.enabled ? 'on' : 'off'}
             </span>
           </label>
-          <p className="text-xs text-sepia-500/80">
+          <p className="text-xs text-sepia-600/80">
             A richer grammar layer (LanguageTool) is on the roadmap — see{' '}
             <code className="font-mono text-[10px] bg-parchment-200 px-1 rounded">docs/ROADMAP.md</code>.
           </p>
@@ -340,7 +340,7 @@ export default function SettingsPage() {
             content is ever collected. Session recordings mask all text.
           </p>
           {dnt ? (
-            <p className="text-xs text-sepia-500/80">
+            <p className="text-xs text-sepia-600/80">
               Your browser has Do-Not-Track enabled. Analytics are automatically disabled.
             </p>
           ) : (

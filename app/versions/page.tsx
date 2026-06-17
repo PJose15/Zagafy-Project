@@ -169,14 +169,14 @@ export default function VersionsPage() {
           <h2 className="text-lg font-serif font-semibold text-sepia-900">
             Saved snapshots
             {snapshots && (
-              <span className="ml-2 text-xs font-mono text-sepia-500">
+              <span className="ml-2 text-xs font-mono text-sepia-600">
                 {snapshots.length} of {DEFAULT_SNAPSHOT_CAP}
               </span>
             )}
           </h2>
 
           {snapshots === null && (
-            <p className="text-sm text-sepia-500 italic">Loading…</p>
+            <p className="text-sm text-sepia-600 italic">Loading…</p>
           )}
 
           {snapshots && snapshots.length === 0 && (
@@ -197,7 +197,7 @@ export default function VersionsPage() {
                   {snap.description && (
                     <p className="text-sm text-sepia-600 mt-1">{snap.description}</p>
                   )}
-                  <div className="mt-2 flex items-center gap-3 text-xs text-sepia-500 font-mono flex-wrap">
+                  <div className="mt-2 flex items-center gap-3 text-xs text-sepia-600 font-mono flex-wrap">
                     <span title={new Date(snap.createdAt).toLocaleString()}>
                       {formatRelative(snap.createdAt)}
                     </span>
@@ -219,7 +219,7 @@ export default function VersionsPage() {
                   <button
                     type="button"
                     onClick={() => handleDelete(snap)}
-                    className="p-2 rounded-md text-sepia-500 hover:text-wax-600 hover:bg-wax-500/10 transition-colors"
+                    className="p-2 rounded-md text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10 transition-colors"
                     aria-label={`Delete snapshot ${snap.name}`}
                   >
                     <Trash2 size={14} />

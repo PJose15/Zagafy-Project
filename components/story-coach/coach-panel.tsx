@@ -57,14 +57,14 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
             <button
               onClick={onRefresh}
               disabled={isLoading}
-              className="p-1.5 text-sepia-500 hover:text-sepia-700 rounded-lg hover:bg-parchment-200 transition-colors disabled:opacity-50"
+              className="p-1.5 text-sepia-600 hover:text-sepia-700 rounded-lg hover:bg-parchment-200 transition-colors disabled:opacity-50"
               aria-label="Refresh insights"
             >
               <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-sepia-500 hover:text-sepia-700 rounded-lg hover:bg-parchment-200 transition-colors"
+              className="p-1.5 text-sepia-600 hover:text-sepia-700 rounded-lg hover:bg-parchment-200 transition-colors"
               aria-label="Close coach panel"
             >
               <X size={14} />
@@ -88,7 +88,7 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
                   <div className="h-2.5 w-3/4 rounded bg-sepia-200/40 animate-pulse" />
                 </div>
               ))}
-              <p className="text-center text-sm text-sepia-500 pt-1">Analyzing your chapter...</p>
+              <p className="text-center text-sm text-sepia-600 pt-1">Analyzing your chapter...</p>
             </div>
           )}
 
@@ -99,7 +99,7 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
           {!isLoading && sorted.length === 0 && !error && (
             <div className="text-center py-12">
               <Lightbulb size={24} className="mx-auto text-sepia-300 mb-2" />
-              <p className="text-sm text-sepia-500">No insights yet. Click refresh to analyze your chapter.</p>
+              <p className="text-sm text-sepia-600">No insights yet. Click refresh to analyze your chapter.</p>
             </div>
           )}
 

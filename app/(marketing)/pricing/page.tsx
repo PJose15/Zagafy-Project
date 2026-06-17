@@ -74,7 +74,7 @@ export default function PricingPage() {
             <h2 className="font-serif text-2xl font-bold mb-1">{tier.name}</h2>
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-3xl font-bold text-brass-700">{tier.price}</span>
-              <span className="text-sepia-500 text-sm">{tier.period}</span>
+              <span className="text-sepia-600 text-sm">{tier.period}</span>
             </div>
             <p className="text-sepia-600 mb-6">{tier.description}</p>
 

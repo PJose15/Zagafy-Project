@@ -19,7 +19,7 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);
 
   if (!content.trim()) {
-    return <div className="text-center py-16 text-sepia-400">This chapter is empty.</div>;
+    return <div className="text-center py-16 text-sepia-600">This chapter is empty.</div>;
   }
 
   return (
@@ -40,7 +40,7 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
           )}
         </div>
         {/* Page number */}
-        <div className="absolute bottom-6 left-0 right-0 text-center text-xs text-sepia-400">
+        <div className="absolute bottom-6 left-0 right-0 text-center text-xs text-sepia-600">
           {currentPage + 1}
         </div>
       </ParchmentCard>
@@ -55,7 +55,7 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
         >
           <ChevronLeft size={20} />
         </button>
-        <span className="text-sm text-sepia-500">
+        <span className="text-sm text-sepia-600">
           Page {currentPage + 1} of {pages.length} &middot; {readingTime.display}
         </span>
         <button

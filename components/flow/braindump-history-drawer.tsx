@@ -62,7 +62,7 @@ export function BraindumpHistoryDrawer({ braindump }: BraindumpHistoryDrawerProp
         <h3 className="text-sm font-medium text-sepia-700">Voice History</h3>
         <button
           onClick={braindump.closeHistory}
-          className="p-1 rounded-lg text-sepia-500 hover:text-sepia-700 hover:bg-parchment-200 transition-colors"
+          className="p-1 rounded-lg text-sepia-600 hover:text-sepia-700 hover:bg-parchment-200 transition-colors"
           aria-label="Close history"
         >
           <X size={14} />
@@ -72,7 +72,7 @@ export function BraindumpHistoryDrawer({ braindump }: BraindumpHistoryDrawerProp
       {/* Entries */}
       <div className="flex-1 overflow-y-auto">
         {braindump.history.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-sepia-400 px-6">
+          <div className="flex flex-col items-center justify-center h-full text-sepia-600 px-6">
             <FileText size={32} className="mb-3 opacity-50" />
             <p className="text-sm text-center">No voice recordings yet.</p>
             <p className="text-xs text-center mt-1">Your braindump sessions will appear here.</p>
@@ -85,15 +85,15 @@ export function BraindumpHistoryDrawer({ braindump }: BraindumpHistoryDrawerProp
                 className="bg-parchment-100/50 border border-sepia-300/30 rounded-xl p-3 group"
               >
                 {/* Meta row */}
-                <div className="flex items-center gap-2 text-xs text-sepia-500 mb-2">
+                <div className="flex items-center gap-2 text-xs text-sepia-600 mb-2">
                   <Clock size={10} />
                   <span>{formatDate(entry.timestamp)}</span>
-                  <span className="text-sepia-400">|</span>
+                  <span className="text-sepia-600">|</span>
                   <span>{formatDuration(entry.durationSeconds)}</span>
-                  <span className="text-sepia-400">|</span>
+                  <span className="text-sepia-600">|</span>
                   <Languages size={10} />
                   <span>{entry.language}</span>
-                  <span className="text-sepia-400">|</span>
+                  <span className="text-sepia-600">|</span>
                   <span>{entry.wordCount} words</span>
                 </div>
 
@@ -132,7 +132,7 @@ export function BraindumpHistoryDrawer({ braindump }: BraindumpHistoryDrawerProp
                   )}
                   <button
                     onClick={() => braindump.deleteHistoryEntry(entry.id)}
-                    className="flex items-center gap-1 px-2 py-1 rounded text-xs text-sepia-400 hover:text-wax-500 hover:bg-parchment-200 transition-colors ml-auto"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-xs text-sepia-600 hover:text-wax-500 hover:bg-parchment-200 transition-colors ml-auto"
                     aria-label="Delete entry"
                   >
                     <Trash2 size={12} />

@@ -28,7 +28,7 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
         <Compass size={16} className="text-brass-600" aria-hidden="true" />
         <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">Story Progress</h2>
         <DecorativeDivider variant="section" className="flex-1" />
-        <span className="text-xs font-mono text-sepia-500">{finishing.overallProgress}%</span>
+        <span className="text-xs font-mono text-sepia-600">{finishing.overallProgress}%</span>
       </div>
 
       {/* M2: Accessible segmented progress bar */}
@@ -59,7 +59,7 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
             key={phase.key}
             className={[
               'flex-1 text-center text-[9px] font-mono uppercase tracking-wider',
-              i === phaseIndex ? 'text-forest-700 font-semibold' : 'text-sepia-400',
+              i === phaseIndex ? 'text-forest-700 font-semibold' : 'text-sepia-600',
             ].join(' ')}
           >
             <abbr title={phase.key} className="no-underline">{phase.label}</abbr>

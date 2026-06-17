@@ -50,7 +50,7 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
       >
         <AvatarCircle color={active.avatarColor} emoji={active.avatarEmoji} size={24} />
         <span className="text-xs text-sepia-600 max-w-[100px] truncate">{active.name}</span>
-        <ChevronDown size={12} className={`text-sepia-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={12} className={`text-sepia-600 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -76,7 +76,7 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-sepia-800 truncate">{h.name}</p>
                 {h.styleNote && (
-                  <p className="text-[11px] text-sepia-500 truncate">{h.styleNote}</p>
+                  <p className="text-[11px] text-sepia-600 truncate">{h.styleNote}</p>
                 )}
               </div>
               {h.id === activeId && (

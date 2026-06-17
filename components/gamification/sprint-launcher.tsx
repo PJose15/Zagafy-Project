@@ -31,7 +31,7 @@ export function SprintLauncher({ onStart }: SprintLauncherProps) {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-sepia-800">{config.name}</h3>
-                <p className="text-[10px] font-mono text-sepia-400 mt-0.5">
+                <p className="text-[10px] font-mono text-sepia-600 mt-0.5">
                   {config.durationMinutes}m · {config.targetWords}w target
                 </p>
               </div>

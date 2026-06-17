@@ -54,11 +54,11 @@ export function QuestCard({ quest, onComplete }: QuestCardProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-sepia-400 uppercase">{questLabels[quest.type] ?? quest.type}</span>
+            <span className="text-[10px] font-mono text-sepia-600 uppercase">{questLabels[quest.type] ?? quest.type}</span>
             <span className="text-[10px] font-mono text-brass-500">+{quest.xpReward} XP</span>
           </div>
           <h4 className="text-sm font-medium text-sepia-800 mt-0.5">{quest.title}</h4>
-          <p className="text-xs text-sepia-500 mt-1 leading-relaxed">{quest.description}</p>
+          <p className="text-xs text-sepia-600 mt-1 leading-relaxed">{quest.description}</p>
           {!isCompleted && (
             <BrassButton
               size="sm"

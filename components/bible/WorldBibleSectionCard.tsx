@@ -81,7 +81,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
     <ParchmentCard padding="md" className="group">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs uppercase tracking-wider text-sepia-500 shrink-0">{meta.label}</span>
+          <span className="text-xs uppercase tracking-wider text-sepia-600 shrink-0">{meta.label}</span>
           {section.source === 'ai-extracted' && (
             <span className="text-[10px] bg-brass-500/10 text-brass-700 px-1.5 py-0.5 rounded-full shrink-0">AI</span>
           )}
@@ -98,7 +98,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="p-1.5 rounded-md hover:bg-sepia-300/30 text-sepia-500 transition-colors"
+              className="p-1.5 rounded-md hover:bg-sepia-300/30 text-sepia-600 transition-colors"
               aria-label="Edit section"
             >
               <Pencil size={16} />
@@ -106,7 +106,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
           )}
           <button
             onClick={handleDelete}
-            className="p-1.5 rounded-md hover:bg-wax-500/10 text-sepia-500 hover:text-wax-600 transition-colors"
+            className="p-1.5 rounded-md hover:bg-wax-500/10 text-sepia-600 hover:text-wax-600 transition-colors"
             aria-label="Delete section"
           >
             <Trash2 size={16} />
@@ -144,7 +144,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
           <select
             value={section.canonStatus}
             onChange={(e) => handleCanonChange(e.target.value as CanonStatus)}
-            className="text-xs bg-transparent text-sepia-500 border-none cursor-pointer focus:outline-none"
+            className="text-xs bg-transparent text-sepia-600 border-none cursor-pointer focus:outline-none"
             aria-label="Canon status"
           >
             {CANON_OPTIONS.map((s) => (
@@ -158,7 +158,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
                 type="button"
                 onClick={handlePromote}
                 disabled={section.canonStatus === 'confirmed'}
-                className="p-1 rounded text-sepia-500 hover:text-forest-700 hover:bg-forest-700/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-sepia-500"
+                className="p-1 rounded text-sepia-600 hover:text-forest-700 hover:bg-forest-700/10 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-sepia-600"
                 aria-label="Promote canon status"
                 title={section.canonStatus === 'confirmed' ? 'Already confirmed' : `Promote to ${promoteOne(section.canonStatus)}`}
               >
@@ -168,7 +168,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
                 type="button"
                 onClick={handleDemote}
                 disabled={section.canonStatus === 'draft'}
-                className="p-1 rounded text-sepia-500 hover:text-sepia-700 hover:bg-sepia-300/30 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-sepia-500"
+                className="p-1 rounded text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/30 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-sepia-600"
                 aria-label="Demote canon status"
                 title={section.canonStatus === 'draft' ? 'Already draft' : `Demote to ${demoteOne(section.canonStatus)}`}
               >
@@ -177,7 +177,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
               <button
                 type="button"
                 onClick={handleDiscard}
-                className="p-1 rounded text-sepia-500 hover:text-wax-600 hover:bg-wax-500/10"
+                className="p-1 rounded text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10"
                 aria-label="Discard section"
                 title="Mark as discarded"
               >
@@ -186,7 +186,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
             </div>
           )}
         </div>
-        <span className="text-[10px] text-sepia-400">
+        <span className="text-[10px] text-sepia-600">
           {new Date(section.lastUpdated).toLocaleDateString()}
         </span>
       </div>

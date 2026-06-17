@@ -86,7 +86,7 @@ export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMome
     <ParchmentCard className="p-4" data-testid="flow-timeline">
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-sm font-medium text-sepia-700">Flow Timeline</h4>
-        <div className="flex items-center gap-3 text-xs text-sepia-500">
+        <div className="flex items-center gap-3 text-xs text-sepia-600">
           {autoFlowScore !== null && (
             <span>Flow: <strong className="text-sepia-800">{autoFlowScore}/100</strong></span>
           )}
@@ -132,7 +132,7 @@ export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMome
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mt-2 text-[10px] text-sepia-500">
+      <div className="flex items-center gap-4 mt-2 text-[10px] text-sepia-600">
         <span className="flex items-center gap-1">
           <span className="w-3 h-2 rounded-sm bg-sepia-300 inline-block" /> Normal
         </span>

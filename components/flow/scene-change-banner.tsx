@@ -60,7 +60,7 @@ export function SceneChangeBanner({
           </button>
         )}
         {!isExpired && extensionsLeft === 0 && (
-          <span className="text-xs text-sepia-500">(no more extensions)</span>
+          <span className="text-xs text-sepia-600">(no more extensions)</span>
         )}
         <button
           onClick={onReturn}

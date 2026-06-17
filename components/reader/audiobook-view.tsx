@@ -16,14 +16,14 @@ export function AudiobookView({ title, content }: AudiobookViewProps) {
 
   if (!tts.isSupported) {
     return (
-      <div className="text-center py-16 text-sepia-400" data-testid="audiobook-unsupported">
+      <div className="text-center py-16 text-sepia-600" data-testid="audiobook-unsupported">
         Speech synthesis is not supported in your browser.
       </div>
     );
   }
 
   if (!content.trim()) {
-    return <div className="text-center py-16 text-sepia-400">This chapter is empty.</div>;
+    return <div className="text-center py-16 text-sepia-600">This chapter is empty.</div>;
   }
 
   // Highlight current sentence region
@@ -100,7 +100,7 @@ export function AudiobookView({ title, content }: AudiobookViewProps) {
         )}
       </div>
 
-      <div className="text-center mt-8 text-xs text-sepia-400">{readingTime.display}</div>
+      <div className="text-center mt-8 text-xs text-sepia-600">{readingTime.display}</div>
     </div>
   );
 }

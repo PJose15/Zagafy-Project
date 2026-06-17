@@ -79,7 +79,7 @@ export function RitualOverlay() {
                   <Sparkles size={20} className="text-brass-500 shrink-0" />
                   <div>
                     <p className="text-sepia-800 font-medium">Inspiration</p>
-                    <p className="text-xs text-sepia-500 mt-0.5">A quote to spark your session</p>
+                    <p className="text-xs text-sepia-600 mt-0.5">A quote to spark your session</p>
                   </div>
                 </button>
                 <button
@@ -89,7 +89,7 @@ export function RitualOverlay() {
                   <Wind size={20} className="text-forest-400 shrink-0" />
                   <div>
                     <p className="text-sepia-800 font-medium">Mindfulness</p>
-                    <p className="text-xs text-sepia-500 mt-0.5">Breathe first, then write</p>
+                    <p className="text-xs text-sepia-600 mt-0.5">Breathe first, then write</p>
                   </div>
                 </button>
               </div>

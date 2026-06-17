@@ -74,7 +74,7 @@ export default function DocsPage() {
         placeholder="Filter sections..."
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        className="w-full mb-8 px-4 py-3 rounded-lg bg-parchment-100 border border-sepia-300/50 text-sepia-900 placeholder:text-sepia-400 focus:outline-none focus:ring-2 focus:ring-brass-500/50"
+        className="w-full mb-8 px-4 py-3 rounded-lg bg-parchment-100 border border-sepia-300/50 text-sepia-900 placeholder:text-sepia-600 focus:outline-none focus:ring-2 focus:ring-brass-500/50"
       />
 
       <div className="space-y-3">
@@ -94,7 +94,7 @@ export default function DocsPage() {
                 {section.title}
                 <ChevronDown
                   size={20}
-                  className={`text-sepia-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                  className={`text-sepia-600 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                 />
               </button>
               {isOpen && (

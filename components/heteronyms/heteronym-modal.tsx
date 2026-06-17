@@ -108,7 +108,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
               <AvatarCircle color={avatarColor} emoji={avatarEmoji} size={48} />
               <div>
                 <p className="text-sepia-900 font-medium">{name || 'Unnamed'}</p>
-                <p className="text-xs text-sepia-500">{styleNote || 'No style note'}</p>
+                <p className="text-xs text-sepia-600">{styleNote || 'No style note'}</p>
               </div>
             </div>
 
@@ -134,7 +134,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                 ) : (
                   <span />
                 )}
-                <span className="text-xs text-sepia-500">{name.length}/30</span>
+                <span className="text-xs text-sepia-600">{name.length}/30</span>
               </div>
             </div>
 
@@ -149,7 +149,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                 className="w-full bg-parchment-200 border border-sepia-300/40 rounded-lg px-3 py-2 text-sepia-900 resize-none focus:outline-none focus:border-brass-500/60"
                 placeholder="Who is this writer? Where do they come from?"
               />
-              <p className="text-xs text-sepia-500 text-right mt-1">{bio.length}/150</p>
+              <p className="text-xs text-sepia-600 text-right mt-1">{bio.length}/150</p>
             </div>
 
             {/* Voice & Style */}
@@ -180,7 +180,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                   />
                 ))}
                 <label className="w-8 h-8 rounded-full border-2 border-dashed border-sepia-300/50 flex items-center justify-center cursor-pointer hover:border-sepia-400 transition-colors relative overflow-hidden">
-                  <span className="text-xs text-sepia-500">+</span>
+                  <span className="text-xs text-sepia-600">+</span>
                   <input
                     type="color"
                     value={avatarColor}
@@ -212,7 +212,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-sepia-500">Or type:</span>
+                <span className="text-xs text-sepia-600">Or type:</span>
                 <input
                   type="text"
                   value={customEmoji}

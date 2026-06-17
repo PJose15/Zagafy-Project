@@ -100,7 +100,7 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
           className="w-full bg-parchment-200 border border-sepia-300/40 rounded-lg px-3 py-2 text-sepia-900 text-sm resize-none focus:outline-none focus:border-brass-500/60"
           placeholder="e.g. 'Uses metaphors from the sea, avoids contractions'"
         />
-        <p className="text-xs text-sepia-500 text-right mt-1">{freeformNote.length}/200</p>
+        <p className="text-xs text-sepia-600 text-right mt-1">{freeformNote.length}/200</p>
       </div>
 
       {/* Legacy style note */}
@@ -114,7 +114,7 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
           className="w-full bg-parchment-200 border border-sepia-300/40 rounded-lg px-3 py-2 text-sepia-900 text-sm resize-none focus:outline-none focus:border-brass-500/60"
           placeholder="How do they write? e.g. 'Fragmented sentences, raw emotion'"
         />
-        <p className="text-xs text-sepia-500 text-right mt-1">{styleNote.length}/200</p>
+        <p className="text-xs text-sepia-600 text-right mt-1">{styleNote.length}/200</p>
       </div>
     </div>
   );

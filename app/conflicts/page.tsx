@@ -145,13 +145,13 @@ export default function ConflictsPage() {
                       <button
                         onClick={() => toggleStatus(conflict.id)}
                         className={`p-1 rounded-full transition-colors ${
-                          conflict.status === 'resolved' ? 'text-forest-700 bg-forest-700/10' : 'text-sepia-400 hover:text-brass-600 hover:bg-brass-500/10'
+                          conflict.status === 'resolved' ? 'text-forest-700 bg-forest-700/10' : 'text-sepia-600 hover:text-brass-600 hover:bg-brass-500/10'
                         }`}
                         aria-label={conflict.status === 'resolved' ? `Mark "${conflict.title}" active` : `Mark "${conflict.title}" resolved`}
                       >
                         <CheckCircle2 size={20} />
                       </button>
-                      <h2 className={`text-xl font-serif font-semibold ${conflict.status === 'resolved' ? 'text-sepia-500 line-through decoration-sepia-400' : 'text-sepia-900'}`}>
+                      <h2 className={`text-xl font-serif font-semibold ${conflict.status === 'resolved' ? 'text-sepia-600 line-through decoration-sepia-400' : 'text-sepia-900'}`}>
                         {conflict.title}
                       </h2>
                       {conflict.canonStatus && (
@@ -164,14 +164,14 @@ export default function ConflictsPage() {
                           setEditingId(conflict.id);
                           setEditForm(conflict);
                         }}
-                        className="p-2 text-sepia-500 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
+                        className="p-2 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={`Edit ${conflict.title}`}
                       >
                         <Edit3 size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(conflict.id)}
-                        className="p-2 text-sepia-500 hover:text-wax-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
+                        className="p-2 text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={`Delete ${conflict.title}`}
                       >
                         <Trash2 size={18} />
@@ -179,8 +179,8 @@ export default function ConflictsPage() {
                     </div>
                   </div>
                   <div className="pl-10">
-                    <p className={`text-sm leading-relaxed whitespace-pre-wrap ${conflict.status === 'resolved' ? 'text-sepia-500' : 'text-sepia-700'}`}>
-                      {conflict.description || <span className="italic text-sepia-400">No description provided.</span>}
+                    <p className={`text-sm leading-relaxed whitespace-pre-wrap ${conflict.status === 'resolved' ? 'text-sepia-600' : 'text-sepia-700'}`}>
+                      {conflict.description || <span className="italic text-sepia-600">No description provided.</span>}
                     </p>
                   </div>
                 </div>

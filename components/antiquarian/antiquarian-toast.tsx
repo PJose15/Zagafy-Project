@@ -37,7 +37,7 @@ const iconColors: Record<ToastType, string> = {
   success: 'text-forest-600',
   error: 'text-wax-500',
   warning: 'text-brass-600',
-  info: 'text-sepia-500',
+  info: 'text-sepia-600',
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -77,7 +77,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 <p className="text-sm flex-1 font-medium">{t.message}</p>
                 <button
                   onClick={() => removeToast(t.id)}
-                  className="shrink-0 p-0.5 rounded hover:bg-sepia-300/30 transition-colors text-sepia-500"
+                  className="shrink-0 p-0.5 rounded hover:bg-sepia-300/30 transition-colors text-sepia-600"
                   aria-label="Dismiss notification"
                 >
                   <X size={14} />

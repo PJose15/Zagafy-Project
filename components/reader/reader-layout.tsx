@@ -46,7 +46,7 @@ export function ReaderLayout({
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-3 border-b border-sepia-300/30 bg-parchment-50">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-sepia-500 hover:text-sepia-700 transition-colors" aria-label="Back to manuscript">
+          <button onClick={onBack} className="text-sepia-600 hover:text-sepia-700 transition-colors" aria-label="Back to manuscript">
             <ArrowLeft size={18} />
           </button>
           <select
@@ -63,7 +63,7 @@ export function ReaderLayout({
         <div className="flex items-center gap-2">
           {analyzedAt && !isAnalyzing && (
             <span
-              className="text-[10px] text-sepia-400 italic hidden sm:inline"
+              className="text-[10px] text-sepia-600 italic hidden sm:inline"
               title={`Analyzed ${new Date(analyzedAt).toLocaleString()}`}
             >
               Analyzed {formatAnalyzedAgo(analyzedAt)}
@@ -73,7 +73,7 @@ export function ReaderLayout({
             onClick={onAnalyze}
             disabled={isAnalyzing}
             className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg transition-colors ${
-              isAnalyzing ? 'bg-sepia-200 text-sepia-400' : 'bg-parchment-200 hover:bg-parchment-300 text-sepia-700'
+              isAnalyzing ? 'bg-sepia-200 text-sepia-600' : 'bg-parchment-200 hover:bg-parchment-300 text-sepia-700'
             }`}
             aria-label="Analyze prose"
           >
@@ -96,7 +96,7 @@ export function ReaderLayout({
         >
           <ChevronLeft size={16} /> Previous
         </button>
-        <span className="text-xs text-sepia-400">
+        <span className="text-xs text-sepia-600">
           Chapter {currentChapterIndex + 1} of {chapters.length}
         </span>
         <button

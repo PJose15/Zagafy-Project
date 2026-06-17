@@ -152,7 +152,7 @@ export default function GenesisPage() {
         <div className="w-full max-w-3xl">
           <button
             onClick={handleBack}
-            className="flex items-center gap-1 text-sm text-sepia-500 hover:text-sepia-700 transition-colors mb-6"
+            className="flex items-center gap-1 text-sm text-sepia-600 hover:text-sepia-700 transition-colors mb-6"
           >
             <ChevronLeft size={16} /> Back to editing
           </button>
@@ -390,7 +390,7 @@ export default function GenesisPage() {
                             <button
                               type="button"
                               onClick={() => removeWorldRule(i)}
-                              className="text-sepia-400 hover:text-wax-500 transition-colors text-sm px-2"
+                              className="text-sepia-600 hover:text-wax-500 transition-colors text-sm px-2"
                               aria-label="Remove rule"
                             >
                               x
@@ -417,7 +417,7 @@ export default function GenesisPage() {
         <div className="flex items-center justify-between">
           <button
             onClick={stepIndex === 0 ? handleSkip : handleBack}
-            className="flex items-center gap-1 text-sm text-sepia-500 hover:text-sepia-700 transition-colors"
+            className="flex items-center gap-1 text-sm text-sepia-600 hover:text-sepia-700 transition-colors"
           >
             <ChevronLeft size={16} />
             {stepIndex === 0 ? 'Skip' : 'Back'}

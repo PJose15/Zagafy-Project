@@ -234,7 +234,7 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
       )}
 
       {/* Legend */}
-      <div className="flex items-center gap-1 mt-2 text-[10px] text-sepia-500 justify-end">
+      <div className="flex items-center gap-1 mt-2 text-[10px] text-sepia-600 justify-end">
         <span>Less</span>
         {COLORS.map((color, i) => (
           <svg key={i} width={CELL_SIZE} height={CELL_SIZE}>

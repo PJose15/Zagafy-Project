@@ -95,7 +95,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
           {currentPlanInfo.name}
         </span>
         {currentPlanInfo.monthlyPrice > 0 && (
-          <span className="text-sepia-500 text-xs">
+          <span className="text-sepia-600 text-xs">
             ${currentPlanInfo.monthlyPrice}/mo
           </span>
         )}
@@ -119,7 +119,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
                     ${plan.monthlyPrice}/mo
                   </span>
                 </div>
-                <p className="text-xs text-sepia-500 leading-relaxed">
+                <p className="text-xs text-sepia-600 leading-relaxed">
                   {plan.description}
                 </p>
                 <BrassButton
@@ -153,7 +153,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
           >
             {loading === 'portal' ? 'Loading...' : 'Manage billing'}
           </BrassButton>
-          <p className="text-xs text-sepia-500 mt-2">
+          <p className="text-xs text-sepia-600 mt-2">
             Update payment method, download invoices, or cancel your subscription.
           </p>
         </div>

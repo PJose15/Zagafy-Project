@@ -123,7 +123,7 @@ export default function OutlinePage() {
                 type="button"
                 onClick={() => setLayout('grid')}
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                  layout === 'grid' ? 'bg-parchment-100 text-sepia-900 shadow-sm' : 'text-sepia-500 hover:text-sepia-800'
+                  layout === 'grid' ? 'bg-parchment-100 text-sepia-900 shadow-sm' : 'text-sepia-600 hover:text-sepia-800'
                 }`}
                 aria-label="Grid layout"
                 aria-pressed={layout === 'grid'}
@@ -134,7 +134,7 @@ export default function OutlinePage() {
                 type="button"
                 onClick={() => setLayout('list')}
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
-                  layout === 'list' ? 'bg-parchment-100 text-sepia-900 shadow-sm' : 'text-sepia-500 hover:text-sepia-800'
+                  layout === 'list' ? 'bg-parchment-100 text-sepia-900 shadow-sm' : 'text-sepia-600 hover:text-sepia-800'
                 }`}
                 aria-label="List layout"
                 aria-pressed={layout === 'list'}
@@ -147,7 +147,7 @@ export default function OutlinePage() {
 
         {/* Filter chips */}
         <div className="flex items-center gap-3 flex-wrap" role="toolbar" aria-label="Outline filters">
-          <span className="text-xs uppercase tracking-wider text-sepia-500">Canon:</span>
+          <span className="text-xs uppercase tracking-wider text-sepia-600">Canon:</span>
           <div className="flex items-center gap-1 flex-wrap">
             {(['all', 'confirmed', 'flexible', 'draft', 'discarded'] as CanonFilter[]).map(s => (
               <button
@@ -157,7 +157,7 @@ export default function OutlinePage() {
                 className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
                   canonFilter === s
                     ? 'bg-brass-500/20 border-brass-500/40 text-brass-800'
-                    : 'border-sepia-300/40 text-sepia-500 hover:text-sepia-800 hover:border-sepia-400/60'
+                    : 'border-sepia-300/40 text-sepia-600 hover:text-sepia-800 hover:border-sepia-400/60'
                 }`}
                 aria-pressed={canonFilter === s}
               >
@@ -165,7 +165,7 @@ export default function OutlinePage() {
               </button>
             ))}
           </div>
-          <span className="text-xs uppercase tracking-wider text-sepia-500 ml-3">Length:</span>
+          <span className="text-xs uppercase tracking-wider text-sepia-600 ml-3">Length:</span>
           <div className="flex items-center gap-1 flex-wrap">
             {(['all', 'short', 'medium', 'long'] as LengthFilter[]).map(s => (
               <button
@@ -175,7 +175,7 @@ export default function OutlinePage() {
                 className={`px-2 py-0.5 rounded-full text-xs border transition-colors ${
                   lengthFilter === s
                     ? 'bg-brass-500/20 border-brass-500/40 text-brass-800'
-                    : 'border-sepia-300/40 text-sepia-500 hover:text-sepia-800 hover:border-sepia-400/60'
+                    : 'border-sepia-300/40 text-sepia-600 hover:text-sepia-800 hover:border-sepia-400/60'
                 }`}
                 aria-pressed={lengthFilter === s}
                 title={LENGTH_LABELS[s]}
@@ -184,7 +184,7 @@ export default function OutlinePage() {
               </button>
             ))}
           </div>
-          <span className="text-xs text-sepia-500 ml-auto">
+          <span className="text-xs text-sepia-600 ml-auto">
             {filtered.length} of {state.chapters.length} chapter{state.chapters.length === 1 ? '' : 's'}
           </span>
         </div>
@@ -200,7 +200,7 @@ export default function OutlinePage() {
 
         {state.chapters.length > 0 && filtered.length === 0 && (
           <ParchmentCard padding="lg">
-            <p className="text-sm text-sepia-500 italic">
+            <p className="text-sm text-sepia-600 italic">
               No chapters match the current filters.
             </p>
           </ParchmentCard>
@@ -216,7 +216,7 @@ export default function OutlinePage() {
                 {chapter.canonStatus && <WaxSealBadge status={chapter.canonStatus} />}
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-sepia-500 font-mono">
+              <div className="flex items-center gap-2 text-xs text-sepia-600 font-mono">
                 <span>#{originalIndex + 1}</span>
                 <span>·</span>
                 <span>{wordCount.toLocaleString()} words</span>
@@ -249,7 +249,7 @@ export default function OutlinePage() {
                   className="text-left text-sm text-sepia-700 hover:text-sepia-900 leading-relaxed line-clamp-4 min-h-[2.5em]"
                   aria-label={`Edit summary for ${chapter.title}`}
                 >
-                  {chapter.summary || <span className="italic text-sepia-400">No summary yet — tap to add.</span>}
+                  {chapter.summary || <span className="italic text-sepia-600">No summary yet — tap to add.</span>}
                 </button>
               )}
 
@@ -259,7 +259,7 @@ export default function OutlinePage() {
                     type="button"
                     onClick={() => handleReorder(originalIndex, -1)}
                     disabled={originalIndex === 0}
-                    className="p-1 rounded text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
+                    className="p-1 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
                     aria-label={`Move ${chapter.title} up`}
                   >
                     <ChevronUp size={14} />
@@ -268,7 +268,7 @@ export default function OutlinePage() {
                     type="button"
                     onClick={() => handleReorder(originalIndex, 1)}
                     disabled={originalIndex === state.chapters.length - 1}
-                    className="p-1 rounded text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
+                    className="p-1 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
                     aria-label={`Move ${chapter.title} down`}
                   >
                     <ChevronDown size={14} />
@@ -278,7 +278,7 @@ export default function OutlinePage() {
                   <button
                     type="button"
                     onClick={() => router.push('/manuscript')}
-                    className="p-1.5 rounded text-sepia-500 hover:text-brass-600 hover:bg-brass-500/10"
+                    className="p-1.5 rounded text-sepia-600 hover:text-brass-600 hover:bg-brass-500/10"
                     aria-label="Open in manuscript editor"
                     title="Open in Manuscript"
                   >
@@ -287,7 +287,7 @@ export default function OutlinePage() {
                   <button
                     type="button"
                     onClick={() => router.push('/flow')}
-                    className="p-1.5 rounded text-sepia-500 hover:text-forest-700 hover:bg-forest-700/10"
+                    className="p-1.5 rounded text-sepia-600 hover:text-forest-700 hover:bg-forest-700/10"
                     aria-label="Open in flow mode"
                     title="Open in Flow Mode"
                   >
@@ -296,7 +296,7 @@ export default function OutlinePage() {
                   <button
                     type="button"
                     onClick={() => handleStartEditSummary(chapter)}
-                    className="p-1.5 rounded text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30"
+                    className="p-1.5 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30"
                     aria-label="Edit summary"
                     title="Edit summary"
                   >
@@ -305,7 +305,7 @@ export default function OutlinePage() {
                   <button
                     type="button"
                     onClick={() => handleDelete(chapter)}
-                    className="p-1.5 rounded text-sepia-500 hover:text-wax-600 hover:bg-wax-500/10"
+                    className="p-1.5 rounded text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10"
                     aria-label="Delete chapter"
                     title="Delete chapter"
                   >

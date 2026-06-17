@@ -306,7 +306,7 @@ export function ImportReviewQueue({
       <ParchmentCard className="!p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-6 text-sm">
-            <span className="text-sepia-500">
+            <span className="text-sepia-600">
               <strong className="text-sepia-800">{stats.total}</strong> entities extracted
             </span>
             <span className="text-forest-700">
@@ -317,7 +317,7 @@ export function ImportReviewQueue({
               <X size={14} className="inline -mt-0.5 mr-1" />
               {stats.rejected} rejected
             </span>
-            <span className="text-sepia-500">
+            <span className="text-sepia-600">
               {stats.pending} pending
             </span>
             {stats.duplicates > 0 && (
@@ -339,7 +339,7 @@ export function ImportReviewQueue({
               <option value="accepted">Accepted</option>
               <option value="rejected">Rejected</option>
             </select>
-            <Filter size={14} className="text-sepia-400" />
+            <Filter size={14} className="text-sepia-600" />
           </div>
         </div>
       </ParchmentCard>
@@ -400,7 +400,7 @@ export function ImportReviewQueue({
               className="w-full flex items-center justify-between p-1 group"
             >
               <div className="flex items-center gap-2">
-                {isExpanded ? <ChevronDown size={16} className="text-sepia-500" /> : <ChevronRight size={16} className="text-sepia-500" />}
+                {isExpanded ? <ChevronDown size={16} className="text-sepia-600" /> : <ChevronRight size={16} className="text-sepia-600" />}
                 <span className={`${meta.color}`}>{meta.icon}</span>
                 <h4 className="text-sm font-medium text-sepia-700 uppercase tracking-wider">{meta.label}</h4>
                 <span className="bg-parchment-200 text-sepia-600 px-2 py-0.5 rounded text-xs">
@@ -469,7 +469,7 @@ export function ImportReviewQueue({
 
       {/* Footer actions */}
       <div className="flex items-center justify-between pt-6 border-t border-sepia-300/50">
-        <div className="text-sm text-sepia-500">
+        <div className="text-sm text-sepia-600">
           {stats.accepted} of {stats.total} entities will be imported
           {stats.pending > 0 && (
             <span className="text-brass-700 ml-2">
@@ -537,14 +537,14 @@ function ReviewItemRow({
           {item.status === 'accepted' ? (
             <CheckSquare size={18} className="text-forest-700" />
           ) : (
-            <Square size={18} className="text-sepia-400 hover:text-forest-600" />
+            <Square size={18} className="text-sepia-600 hover:text-forest-600" />
           )}
         </button>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`font-serif font-semibold text-sm ${item.status === 'rejected' ? 'text-sepia-500 line-through' : 'text-sepia-900'}`}>
+            <span className={`font-serif font-semibold text-sm ${item.status === 'rejected' ? 'text-sepia-600 line-through' : 'text-sepia-900'}`}>
               {item.label}
             </span>
             {/* Confidence badge */}
@@ -566,7 +566,7 @@ function ReviewItemRow({
             )}
           </div>
           {item.subtitle && (
-            <p className="text-xs text-sepia-500 mt-1 line-clamp-2">{item.subtitle}</p>
+            <p className="text-xs text-sepia-600 mt-1 line-clamp-2">{item.subtitle}</p>
           )}
 
           {/* Inline edit form */}
@@ -584,7 +584,7 @@ function ReviewItemRow({
           <button
             type="button"
             onClick={onEdit}
-            className="p-1.5 text-sepia-400 hover:text-brass-600 hover:bg-brass-400/10 rounded transition-colors"
+            className="p-1.5 text-sepia-600 hover:text-brass-600 hover:bg-brass-400/10 rounded transition-colors"
             aria-label="Edit"
           >
             <Edit3 size={14} />
@@ -593,7 +593,7 @@ function ReviewItemRow({
             <button
               type="button"
               onClick={onAccept}
-              className="p-1.5 text-sepia-400 hover:text-forest-600 hover:bg-forest-600/10 rounded transition-colors"
+              className="p-1.5 text-sepia-600 hover:text-forest-600 hover:bg-forest-600/10 rounded transition-colors"
               aria-label="Accept"
             >
               <Check size={14} />
@@ -603,7 +603,7 @@ function ReviewItemRow({
             <button
               type="button"
               onClick={onReject}
-              className="p-1.5 text-sepia-400 hover:text-wax-600 hover:bg-wax-500/10 rounded transition-colors"
+              className="p-1.5 text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10 rounded transition-colors"
               aria-label="Reject"
             >
               <X size={14} />
@@ -643,7 +643,7 @@ function InlineEditForm({ item, onSave, onCancel }: InlineEditFormProps) {
     >
       {fields.map(({ key, label }) => (
         <div key={key}>
-          <label className="text-[10px] text-sepia-500 uppercase tracking-wider block mb-0.5">
+          <label className="text-[10px] text-sepia-600 uppercase tracking-wider block mb-0.5">
             {label}
           </label>
           {typeof draft[key] === 'string' && (draft[key] as string).length > 80 ? (
@@ -673,7 +673,7 @@ function InlineEditForm({ item, onSave, onCancel }: InlineEditFormProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-sepia-500 hover:bg-sepia-300/20 px-3 py-1.5 rounded"
+          className="text-xs text-sepia-600 hover:bg-sepia-300/20 px-3 py-1.5 rounded"
         >
           Cancel
         </button>

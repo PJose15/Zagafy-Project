@@ -10,7 +10,7 @@ import type { ChatResponseNormal, ChatResponseBlocked } from '@/lib/types/chat-r
 // doesn't need the markdown renderer (or remark/rehype/micromark).
 const Markdown = dynamic(() => import('react-markdown'), {
   ssr: false,
-  loading: () => <span className="text-xs italic text-sepia-400">…</span>,
+  loading: () => <span className="text-xs italic text-sepia-600">…</span>,
 });
 
 interface StructuredNormalResponseProps {
@@ -139,7 +139,7 @@ export function StructuredNormalResponse({ data }: StructuredNormalResponseProps
 
       {/* Confidence notes — subtle footer */}
       {confidenceNotes.length > 0 && (
-        <div className="text-xs text-sepia-500 space-y-0.5 pt-2 border-t border-sepia-300/30">
+        <div className="text-xs text-sepia-600 space-y-0.5 pt-2 border-t border-sepia-300/30">
           {confidenceNotes.map((n, i) => (
             <p key={i}>{n}</p>
           ))}
@@ -155,7 +155,7 @@ export function StructuredBlockedResponse({ data }: StructuredBlockedResponsePro
       {/* Current state */}
       {data.currentState && (
         <div className="text-sm text-sepia-700 leading-relaxed">
-          <div className="text-xs font-medium text-sepia-500 uppercase tracking-wider mb-1">Where Your Story Stands</div>
+          <div className="text-xs font-medium text-sepia-600 uppercase tracking-wider mb-1">Where Your Story Stands</div>
           <Markdown>{data.currentState}</Markdown>
         </div>
       )}
@@ -173,7 +173,7 @@ export function StructuredBlockedResponse({ data }: StructuredBlockedResponsePro
       {/* Next paths */}
       {data.nextPaths.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-medium text-sepia-500 uppercase tracking-wider">Possible Next Moves</div>
+          <div className="text-xs font-medium text-sepia-600 uppercase tracking-wider">Possible Next Moves</div>
           {data.nextPaths.map((path, i) => (
             <div key={i} className="bg-parchment-200 border border-sepia-300/50 rounded-lg p-3">
               <div className="text-sm font-medium text-brass-500 mb-1">{path.label}</div>
@@ -196,7 +196,7 @@ export function StructuredBlockedResponse({ data }: StructuredBlockedResponsePro
       {/* Scene starter */}
       {data.sceneStarter && (
         <div className="bg-parchment-200 border border-sepia-300/40/30 rounded-lg p-4 mt-2">
-          <div className="text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Scene Starter</div>
+          <div className="text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Scene Starter</div>
           <div className="prose prose-sepia max-w-none text-sm italic leading-relaxed">
             <Markdown>{data.sceneStarter}</Markdown>
           </div>

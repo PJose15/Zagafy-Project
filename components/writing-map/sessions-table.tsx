@@ -101,7 +101,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
 
   if (sessions.length === 0) {
     return (
-      <div className="text-center py-8 text-sepia-500 text-sm" data-testid="sessions-table-empty">
+      <div className="text-center py-8 text-sepia-600 text-sm" data-testid="sessions-table-empty">
         No writing sessions recorded yet.
       </div>
     );
@@ -153,7 +153,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
                       className={`font-medium ${
                         session.autoFlowScore >= 70 ? 'text-forest-700' :
                         session.autoFlowScore >= 40 ? 'text-amber-600' :
-                        'text-sepia-500'
+                        'text-sepia-600'
                       }`}
                       title={`Auto flow: ${session.autoFlowScore}/100`}
                     >
@@ -162,14 +162,14 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
                     <FlowMomentsBadge count={session.flowMoments?.length ?? 0} />
                   </div>
                 ) : (
-                  <span className="text-sepia-400">—</span>
+                  <span className="text-sepia-600">—</span>
                 )}
               </td>
               <td className="py-2 px-3 text-center">
                 {session.flowScore ? (
                   <span title={`Flow: ${session.flowScore}/5`}>{FLOW_EMOJIS[session.flowScore]}</span>
                 ) : (
-                  <span className="text-sepia-400">—</span>
+                  <span className="text-sepia-600">—</span>
                 )}
               </td>
             </tr>

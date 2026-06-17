@@ -13,7 +13,7 @@ const FlowEditor = dynamic(
     ssr: false,
     loading: () => (
       <div className="fixed inset-0 z-[150] bg-parchment-200 flex items-center justify-center">
-        <div className="text-sepia-500 text-sm animate-pulse">Loading editor...</div>
+        <div className="text-sepia-600 text-sm animate-pulse">Loading editor...</div>
       </div>
     ),
   }

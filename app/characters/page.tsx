@@ -206,7 +206,7 @@ export default function CharactersPage() {
           <div className="col-span-full text-center py-20">
             <Users size={48} className="mx-auto text-sepia-300 mb-4" aria-hidden="true" />
             <p className="text-sepia-600 text-lg">Your cast is empty.</p>
-            <p className="text-sepia-500 text-sm mt-2">Add your first character to begin building your world.</p>
+            <p className="text-sepia-600 text-sm mt-2">Add your first character to begin building your world.</p>
           </div>
         )}
       </div>

@@ -22,7 +22,7 @@ function SectionHeader({ icon, title, onEdit }: { icon: React.ReactNode; title: 
       </div>
       <button
         onClick={onEdit}
-        className="text-sepia-500 hover:text-brass-600 transition-colors p-1 rounded"
+        className="text-sepia-600 hover:text-brass-600 transition-colors p-1 rounded"
         aria-label={`Edit ${title}`}
       >
         <Edit2 size={14} />
@@ -66,7 +66,7 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
           />
           <p className="text-sm text-sepia-700">{data.world.setting}</p>
           {data.world.timePeriod && (
-            <p className="text-xs text-sepia-500 mt-1">{data.world.timePeriod}</p>
+            <p className="text-xs text-sepia-600 mt-1">{data.world.timePeriod}</p>
           )}
           {data.world.rules.filter(Boolean).length > 0 && (
             <ul className="mt-2 space-y-1">
@@ -89,10 +89,10 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
             <p className="text-xs text-sepia-600 mt-1">{data.protagonist.description}</p>
           )}
           {data.protagonist.goal && (
-            <p className="text-xs text-sepia-500 mt-1">Goal: {data.protagonist.goal}</p>
+            <p className="text-xs text-sepia-600 mt-1">Goal: {data.protagonist.goal}</p>
           )}
           {data.protagonist.fear && (
-            <p className="text-xs text-sepia-500">Fear: {data.protagonist.fear}</p>
+            <p className="text-xs text-sepia-600">Fear: {data.protagonist.fear}</p>
           )}
         </ParchmentCard>
 
@@ -105,13 +105,13 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
           />
           <p className="text-sm font-medium text-sepia-800">
             {data.antagonist.name}
-            <span className="text-xs text-sepia-500 ml-2">({data.antagonist.type})</span>
+            <span className="text-xs text-sepia-600 ml-2">({data.antagonist.type})</span>
           </p>
           {data.antagonist.description && (
             <p className="text-xs text-sepia-600 mt-1">{data.antagonist.description}</p>
           )}
           {data.antagonist.motivation && (
-            <p className="text-xs text-sepia-500 mt-1">Motivation: {data.antagonist.motivation}</p>
+            <p className="text-xs text-sepia-600 mt-1">Motivation: {data.antagonist.motivation}</p>
           )}
         </ParchmentCard>
       </div>

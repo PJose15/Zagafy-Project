@@ -35,7 +35,7 @@ export const blockCards: BlockCardData[] = [
     label: 'Direction',
     description: "I don't know where to go next",
     icon: Compass,
-    accent: 'text-sepia-500',
+    accent: 'text-sepia-600',
     bgAccent: 'border-sepia-500/30 hover:border-sepia-500/60 hover:bg-sepia-500/5',
   },
   {

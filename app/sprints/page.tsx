@@ -88,19 +88,19 @@ export default function SprintsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.completedSprints}</span>
-              <span className="block text-[10px] text-sepia-400 uppercase mt-0.5">Sprints</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Sprints</span>
             </ParchmentCard>
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.totalWordsWritten.toLocaleString()}</span>
-              <span className="block text-[10px] text-sepia-400 uppercase mt-0.5">Words</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Words</span>
             </ParchmentCard>
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.avgWordsPerSprint}</span>
-              <span className="block text-[10px] text-sepia-400 uppercase mt-0.5">Avg/Sprint</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Avg/Sprint</span>
             </ParchmentCard>
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.targetMetRate}%</span>
-              <span className="block text-[10px] text-sepia-400 uppercase mt-0.5">Target Rate</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Target Rate</span>
             </ParchmentCard>
           </div>
         </section>
@@ -120,11 +120,11 @@ export default function SprintsPage() {
                       {sprint.status === 'completed' ? (
                         <Trophy size={14} className="text-forest-600" aria-hidden="true" />
                       ) : (
-                        <Pen size={14} className="text-sepia-400" aria-hidden="true" />
+                        <Pen size={14} className="text-sepia-600" aria-hidden="true" />
                       )}
                       <div>
                         <span className="text-sm font-medium text-sepia-800">{config.name}</span>
-                        <span className="text-[10px] text-sepia-400 ml-2">
+                        <span className="text-[10px] text-sepia-600 ml-2">
                           {new Date(sprint.startTime).toLocaleDateString()}
                         </span>
                       </div>
@@ -135,7 +135,7 @@ export default function SprintsPage() {
                       </span>
                       <span className={[
                         'text-[10px] ml-2',
-                        sprint.status === 'completed' ? 'text-forest-600' : 'text-sepia-400',
+                        sprint.status === 'completed' ? 'text-forest-600' : 'text-sepia-600',
                       ].join(' ')}>
                         {sprint.status}
                       </span>

@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // /assistant First Load JS.
 const Markdown = dynamic(() => import('react-markdown'), {
   ssr: false,
-  loading: () => <span className="text-xs italic text-sepia-400">…</span>,
+  loading: () => <span className="text-xs italic text-sepia-600">…</span>,
 });
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -338,7 +338,7 @@ export default function AssistantPage() {
             <button
               onClick={handleClearChat}
               disabled={messages.length <= 1 || isLoading || isAuditing}
-              className="flex items-center gap-2 text-sm text-sepia-500 hover:text-wax-500 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-500 disabled:hover:bg-transparent"
+              className="flex items-center gap-2 text-sm text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
               aria-label="Clear chat history"
             >
               <Trash2 size={16} />
@@ -446,7 +446,7 @@ export default function AssistantPage() {
                   </h3>
                   <button
                     onClick={() => setPendingAudit(null)}
-                    className="p-1.5 rounded-lg text-sepia-400 hover:text-sepia-700 hover:bg-sepia-300/20 transition-colors"
+                    className="p-1.5 rounded-lg text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/20 transition-colors"
                     aria-label="Dismiss audit results"
                   >
                     <X size={18} />
@@ -456,7 +456,7 @@ export default function AssistantPage() {
                 <div className="px-5 pb-5 space-y-5 max-h-[40vh] overflow-y-auto">
                   {/* Status */}
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-sepia-500 uppercase tracking-wider font-medium">Status</span>
+                    <span className="text-xs text-sepia-600 uppercase tracking-wider font-medium">Status</span>
                     <AuditStatusBadge status={pendingAudit.result.status} />
                   </div>
 

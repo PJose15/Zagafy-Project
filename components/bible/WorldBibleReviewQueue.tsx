@@ -131,7 +131,7 @@ export function WorldBibleReviewQueue({
                 <h2 id="review-queue-title" className="text-lg font-serif font-semibold text-sepia-900">
                   Draft Review Queue
                 </h2>
-                <p className="text-sm text-sepia-500 mt-0.5">
+                <p className="text-sm text-sepia-600 mt-0.5">
                   {drafts.length === 0
                     ? 'Nothing waiting — every section has a settled status.'
                     : `${drafts.length} draft section${drafts.length === 1 ? '' : 's'} across the world bible.`}
@@ -139,7 +139,7 @@ export function WorldBibleReviewQueue({
               </div>
               <button
                 onClick={onClose}
-                className="p-1 rounded-full text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
+                className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -148,7 +148,7 @@ export function WorldBibleReviewQueue({
 
             <div className="flex-1 overflow-y-auto p-5 space-y-3">
               {drafts.length === 0 ? (
-                <p className="text-sm text-sepia-500 italic">
+                <p className="text-sm text-sepia-600 italic">
                   Run extraction or add new sections to populate the queue.
                 </p>
               ) : (
@@ -174,7 +174,7 @@ export function WorldBibleReviewQueue({
                         </span>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-wider text-sepia-500">
+                            <span className="text-[10px] uppercase tracking-wider text-sepia-600">
                               {meta?.label ?? s.category}
                             </span>
                             {s.source === 'ai-extracted' && (
@@ -195,7 +195,7 @@ export function WorldBibleReviewQueue({
 
             {drafts.length > 0 && (
               <div className="flex items-center justify-between p-5 border-t border-sepia-300/30 gap-3 flex-wrap">
-                <span className="text-sm text-sepia-500">
+                <span className="text-sm text-sepia-600">
                   {selected.size} of {drafts.length} selected
                 </span>
                 <div className="flex items-center gap-2">

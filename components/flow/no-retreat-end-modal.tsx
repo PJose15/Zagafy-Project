@@ -52,13 +52,13 @@ export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndM
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="bg-parchment-200 rounded-lg p-4">
                 <p className="text-2xl font-mono font-bold text-sepia-900">{stats.wordsWritten}</p>
-                <p className="text-xs text-sepia-500 mt-1">Words Written</p>
+                <p className="text-xs text-sepia-600 mt-1">Words Written</p>
               </div>
               <div className="bg-parchment-200 rounded-lg p-4">
                 <p className="text-2xl font-mono font-bold text-sepia-900">
                   {formatDuration(stats.sessionDurationMs)}
                 </p>
-                <p className="text-xs text-sepia-500 mt-1">Duration</p>
+                <p className="text-xs text-sepia-600 mt-1">Duration</p>
               </div>
             </div>
 

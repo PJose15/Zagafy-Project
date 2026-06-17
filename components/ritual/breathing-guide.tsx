@@ -80,7 +80,7 @@ export function BreathingGuide({ onComplete }: BreathingGuideProps) {
         </motion.p>
       </AnimatePresence>
 
-      <p className="text-xs text-sepia-500">
+      <p className="text-xs text-sepia-600">
         Cycle {Math.min(cycle + 1, TOTAL_CYCLES)} of {TOTAL_CYCLES}
       </p>
     </div>

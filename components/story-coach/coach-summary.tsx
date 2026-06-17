@@ -27,7 +27,7 @@ export function CoachSummary({ insights, chapterTitle }: CoachSummaryProps) {
               {highCount > 0 ? `${highCount} high-priority insight${highCount !== 1 ? 's' : ''}` : `${total} coaching insight${total !== 1 ? 's' : ''}`}
               {chapterTitle ? ` for "${chapterTitle}"` : ''}
             </p>
-            <p className="text-[10px] text-sepia-500 mt-0.5">Open Flow Mode to review</p>
+            <p className="text-[10px] text-sepia-600 mt-0.5">Open Flow Mode to review</p>
           </div>
         </div>
       </ParchmentCard>
