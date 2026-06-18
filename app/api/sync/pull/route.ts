@@ -3,6 +3,7 @@ import { eq, and, gte } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 
@@ -25,6 +26,11 @@ export async function GET(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
   const { userId } = authResult;
+
+  // Throttle per-IP — pull is auth-gated but should not be abusable as a
+  // rapid-fire data exfiltration/DoS vector.
+  const limited = await rateLimit(req, { maxRequests: 60, windowMs: 60_000 });
+  if (limited) return limited;
 
   if (!isDatabaseConfigured()) {
     return err('internal_error', 'Database not configured', 500, undefined, { requestId });

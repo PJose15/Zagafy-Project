@@ -5,9 +5,9 @@ import { AnimatePresence, motion } from 'motion/react';
 import { X, Download, Loader2, FileText, FileType2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { springs } from '@/lib/animations';
 import { useStory } from '@/lib/store';
-import { wordCount } from '@/lib/editor/serialization';
 import { InkStampButton, ParchmentInput, ParchmentTextarea } from '@/components/antiquarian';
 import { requestManuscriptExport, type ExportRequest } from '@/lib/export/client';
+import { contentToParagraphs } from '@/lib/export/manuscript-model';
 
 interface ExportDialogProps {
   open: boolean;
@@ -15,6 +15,21 @@ interface ExportDialogProps {
 }
 
 type Format = 'docx' | 'pdf';
+
+/**
+ * Word count that mirrors the server's export model exactly: it runs the same
+ * `contentToParagraphs` parser and excludes scene-break separators ("* * *").
+ * Using the plain `wordCount` here counted scene-break glyphs as words, so a
+ * scene-break-only chapter looked exportable but the server returned
+ * "Nothing to export".
+ */
+function manuscriptWordCount(content: string): number {
+  return contentToParagraphs(content).reduce((sum, p) => {
+    if (p.sceneBreak) return sum;
+    const t = p.runs.map(r => r.text).join('').trim();
+    return t ? sum + t.split(/\s+/).filter(Boolean).length : sum;
+  }, 0);
+}
 
 export function ExportDialog({ open, onClose }: ExportDialogProps) {
   const { state, updateField } = useStory();
@@ -60,7 +75,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
   };
 
   const selectedChapters = exportableChapters.filter(c => selected.has(c.id));
-  const totalWords = selectedChapters.reduce((sum, c) => sum + wordCount(c.content), 0);
+  const totalWords = selectedChapters.reduce((sum, c) => sum + manuscriptWordCount(c.content), 0);
   const canExport = selectedChapters.length > 0 && totalWords > 0 && !busy;
 
   const handleExport = async () => {
@@ -234,7 +249,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                           />
                           <span className="flex-1 text-sm text-sepia-800 truncate">{c.title || 'Untitled'}</span>
                           <span className="text-xs text-sepia-600 font-mono">
-                            {wordCount(c.content).toLocaleString()}w
+                            {manuscriptWordCount(c.content).toLocaleString()}w
                           </span>
                         </label>
                       </li>

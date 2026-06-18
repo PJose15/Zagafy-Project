@@ -47,6 +47,7 @@ export function FindReplaceDialog({
   const [regex, setRegex] = useState(false);
   const [scope, setScope] = useState<FindScope>('all-chapters');
   const [working, setWorking] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const { confirm } = useConfirm();
 
   // Reorder chapters so the current one is first when scope is current-chapter.
@@ -93,6 +94,7 @@ export function FindReplaceDialog({
   if (open && !prevOpen) {
     setPrevOpen(true);
     setWorking(false);
+    setNotice(null);
   }
   if (!open && prevOpen) {
     setPrevOpen(false);
@@ -122,8 +124,13 @@ export function FindReplaceDialog({
     if (!ok) return;
 
     setWorking(true);
+    setNotice(null);
     try {
       const idSet = new Set(targetIds);
+      // Expected count comes from findAll (runs over concatenated plain text).
+      // replaceAllInChapter replaces per Lexical text-node, so a match that
+      // spans a formatting boundary (e.g. half-bold) is found but not replaced.
+      const expected = matches.reduce((n, m) => (idSet.has(m.chapterId) ? n + 1 : n), 0);
       const edits: Array<{ chapterId: string; newContent: string }> = [];
       let totalReplaced = 0;
       for (const ch of orderedChapters) {
@@ -146,6 +153,12 @@ export function FindReplaceDialog({
       }
       // Surface in console for now; no toast plumbing in this dialog.
       console.info(`[find-replace] replaced ${totalReplaced} occurrence(s) across ${edits.length} chapter(s)`);
+      if (totalReplaced < expected) {
+        const gap = expected - totalReplaced;
+        setNotice(
+          `${gap} match${gap === 1 ? '' : 'es'} ${gap === 1 ? 'spans' : 'span'} a formatting boundary and ${gap === 1 ? 'was' : 'were'} left unchanged — edit ${gap === 1 ? 'it' : 'them'} manually.`,
+        );
+      }
     } finally {
       setWorking(false);
     }
@@ -211,7 +224,7 @@ export function FindReplaceDialog({
               <ParchmentInput
                 type="text"
                 value={query}
-                onChange={e => setQuery(e.target.value)}
+                onChange={e => { setQuery(e.target.value); setNotice(null); }}
                 placeholder="Find…"
                 aria-label="Find query"
                 autoFocus
@@ -257,6 +270,16 @@ export function FindReplaceDialog({
                 <div className="flex items-start gap-2 text-xs text-wax-700 bg-wax-500/10 border border-wax-500/30 rounded-lg p-2">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   <span>Invalid regex: {error}</span>
+                </div>
+              )}
+
+              {notice && (
+                <div
+                  role="status"
+                  className="flex items-start gap-2 text-xs text-brass-800 bg-brass-300/20 border border-brass-400/40 rounded-lg p-2"
+                >
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                  <span>{notice}</span>
                 </div>
               )}
             </div>

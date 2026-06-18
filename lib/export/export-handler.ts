@@ -110,6 +110,22 @@ export async function prepareExport(req: NextRequest): Promise<PrepareResult> {
   return { ok: true, model, filenameBase: sanitizeFilename(title || 'manuscript') };
 }
 
+/**
+ * Build an RFC 6266 Content-Disposition value. `sanitizeFilename` keeps Unicode
+ * letters, so the raw name can't go in the quoted `filename="..."` token without
+ * browsers garbling it. We emit an ASCII-folded `filename` for legacy parsers
+ * plus an RFC 5987 `filename*=UTF-8''<percent-encoded>` that modern browsers
+ * prefer and decode correctly.
+ */
+export function contentDisposition(filename: string): string {
+  const ascii = filename
+    .replace(/[^\x20-\x7E]/g, '_') // non-ASCII → underscore
+    .replace(/["\\]/g, '_')        // quote/backslash break the quoted-string
+    || 'manuscript';
+  const encoded = encodeURIComponent(filename);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
 /** Build a binary download response from a generated buffer. */
 export function downloadResponse(buffer: Buffer, contentType: string, filename: string): NextResponse {
   // Convert to a fresh ArrayBuffer-backed Uint8Array for a clean BodyInit.
@@ -118,7 +134,7 @@ export function downloadResponse(buffer: Buffer, contentType: string, filename: 
     status: 200,
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': contentDisposition(filename),
       'Content-Length': String(body.byteLength),
       'Cache-Control': 'no-store',
     },

@@ -271,9 +271,17 @@ export function useBraindump({
 
   const rePolishFromHistory = useCallback(async (entryId: string) => {
     const entry = history.find(e => e.id === entryId);
-    if (!entry) return;
+    if (!entry || isPolishingRef.current) return;
+
+    // Own an AbortController (cancel any previous in-flight request) so an
+    // unmount or a concurrent re-polish can't leave the spinner stuck or the
+    // shared message-timer interval running.
+    polishAbortRef.current?.abort();
+    const abortController = new AbortController();
+    polishAbortRef.current = abortController;
 
     setIsPolishing(true);
+    isPolishingRef.current = true;
     setPolishError(null);
     startPolishMessages();
 
@@ -282,6 +290,7 @@ export function useBraindump({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: entry.rawTranscript }),
+        signal: abortController.signal,
       });
 
       if (!res.ok) {
@@ -296,11 +305,18 @@ export function useBraindump({
       refreshHistory();
       toast('History entry polished!', 'success');
     } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return; // cancelled/unmounted
       const message = err instanceof Error ? err.message : 'Failed to polish';
       toast(message, 'error');
     } finally {
-      setIsPolishing(false);
-      stopPolishMessages();
+      // Only the latest request clears shared state — a superseded request
+      // must not stop the newer one's spinner/timer.
+      if (polishAbortRef.current === abortController) {
+        setIsPolishing(false);
+        isPolishingRef.current = false;
+        polishAbortRef.current = null;
+        stopPolishMessages();
+      }
     }
   }, [history, refreshHistory, toast, startPolishMessages, stopPolishMessages]);
 

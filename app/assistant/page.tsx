@@ -456,14 +456,14 @@ export default function AssistantPage() {
                 <div className="px-5 pb-5 space-y-5 max-h-[40vh] overflow-y-auto">
                   {/* Status */}
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-sepia-600 uppercase tracking-wider font-medium">Status</span>
+                    <span className="text-xs text-sepia-700 uppercase tracking-wider font-medium">Status</span>
                     <AuditStatusBadge status={pendingAudit.result.status} />
                   </div>
 
                   {/* Risks */}
                   {pendingAudit.result.risks && pendingAudit.result.risks.length > 0 && (
                     <div className="space-y-3">
-                      <h4 className="text-xs font-semibold text-sepia-600 uppercase tracking-wider">Risks Found</h4>
+                      <h4 className="text-xs font-semibold text-sepia-700 uppercase tracking-wider">Risks Found</h4>
                       {pendingAudit.result.risks.map((risk, idx) => (
                         <ParchmentCard key={idx} variant="inset" padding="sm">
                           <div className="flex items-start gap-3">
@@ -473,7 +473,7 @@ export default function AssistantPage() {
                               {risk.affectedElements && risk.affectedElements.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-1.5">
                                   {risk.affectedElements.map((el, i) => (
-                                    <span key={i} className="text-[10px] bg-parchment-300/60 text-sepia-600 px-2 py-0.5 rounded-full border border-sepia-300/30 font-medium">
+                                    <span key={i} className="text-[10px] bg-parchment-300/60 text-sepia-700 px-2 py-0.5 rounded-full border border-sepia-300/30 font-medium">
                                       {el}
                                     </span>
                                   ))}
@@ -489,8 +489,8 @@ export default function AssistantPage() {
                   {/* Corrections */}
                   {pendingAudit.result.suggestedCorrections && pendingAudit.result.suggestedCorrections.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-sepia-600 uppercase tracking-wider">Suggested Corrections</h4>
-                      <ul className="list-none text-sm text-sepia-600 space-y-1.5">
+                      <h4 className="text-xs font-semibold text-sepia-700 uppercase tracking-wider">Suggested Corrections</h4>
+                      <ul className="list-none text-sm text-sepia-700 space-y-1.5">
                         {pendingAudit.result.suggestedCorrections.map((corr, idx) => (
                           <li key={idx} className="flex items-start gap-2">
                             <span className="w-1 h-1 rounded-full bg-brass-500/60 mt-2 shrink-0" />
@@ -504,7 +504,7 @@ export default function AssistantPage() {
                   {/* Safe Version */}
                   {pendingAudit.result.safeVersion && (
                     <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-sepia-600 uppercase tracking-wider">Safe Version</h4>
+                      <h4 className="text-xs font-semibold text-sepia-700 uppercase tracking-wider">Safe Version</h4>
                       <ParchmentCard variant="inset" padding="sm">
                         <p className="text-sm text-sepia-700 italic leading-relaxed">{pendingAudit.result.safeVersion}</p>
                       </ParchmentCard>

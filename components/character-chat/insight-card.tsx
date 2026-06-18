@@ -18,13 +18,13 @@ export function InsightCard({ insight, onSaveAsCanon }: InsightCardProps) {
         <div className="flex items-start gap-2">
           <Sparkles size={16} className="text-brass-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-cream-200 leading-relaxed">{insight.content}</p>
+            <p className="text-sm text-sepia-800 leading-relaxed">{insight.content}</p>
             <div className="flex items-center justify-between mt-2">
-              <span className="text-[10px] text-cream-400/40 font-mono">
+              <span className="text-[10px] text-sepia-700 font-mono">
                 {new Date(insight.createdAt).toLocaleDateString()}
               </span>
               {insight.savedAsCanon ? (
-                <span className="text-[10px] text-forest-400 font-mono uppercase tracking-wider">
+                <span className="text-[10px] text-forest-700 font-mono uppercase tracking-wider">
                   Saved as Canon
                 </span>
               ) : (
