@@ -155,6 +155,6 @@ describe('PlotHoleCard', () => {
     const plotHole = makePlotHole({ narrativeImpact: 25 });
     const { container } = render(<PlotHoleCard {...defaultProps} plotHole={plotHole} />);
     const impactSpan = screen.getByText(/Impact: 25/);
-    expect(impactSpan.className).toContain('text-sepia-500');
+    expect(impactSpan.className).toContain('text-sepia-600');
   });
 });
