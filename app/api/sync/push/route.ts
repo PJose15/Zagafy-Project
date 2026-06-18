@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireUser, isAuthError } from '@/lib/auth';
@@ -141,7 +141,7 @@ async function applyDelta(
     case 'chapter':
       return applyChapterUpsert(storyId, entityId, payload);
     case 'chapterVersion':
-      return applyChapterVersionUpsert(entityId, payload);
+      return applyChapterVersionUpsert(storyId, entityId, payload);
     case 'storySnapshot':
       return applySnapshotUpsert(storyId, entityId, payload);
     case 'session':
@@ -168,7 +168,17 @@ async function applyDelete(
       );
       break;
     case 'chapterVersion':
-      await db().delete(schema.chapterVersions).where(eq(schema.chapterVersions.id, entityId));
+      // chapterVersions has no storyId column — scope through the parent
+      // chapter so a version can only be deleted within the caller's story.
+      await db().delete(schema.chapterVersions).where(
+        and(
+          eq(schema.chapterVersions.id, entityId),
+          inArray(
+            schema.chapterVersions.chapterId,
+            db().select({ id: schema.chapters.id }).from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
+          ),
+        ),
+      );
       break;
     case 'storySnapshot':
       await db().delete(schema.storySnapshots).where(
@@ -216,9 +226,10 @@ async function applyChapterUpsert(
   const wordCount = content.split(/\s+/).filter(Boolean).length;
   const clientVersion = typeof payload.version === 'number' ? payload.version : 1;
 
-  // Check for optimistic concurrency conflict
+  // Check for optimistic concurrency conflict. Scope to the owned story so a
+  // chapter ID belonging to another user's story is never matched here.
   const existing = await db().query.chapters.findFirst({
-    where: eq(schema.chapters.id, entityId),
+    where: and(eq(schema.chapters.id, entityId), eq(schema.chapters.storyId, storyId)),
     columns: { version: true, updatedAt: true },
   });
 
@@ -258,6 +269,9 @@ async function applyChapterUpsert(
     })
     .onConflictDoUpdate({
       target: schema.chapters.id,
+      // Only update when the existing row belongs to the caller's story —
+      // blocks cross-tenant overwrite of a chapter by guessing its ID.
+      where: eq(schema.chapters.storyId, storyId),
       set: {
         title: (payload.title as string) ?? '',
         content,
@@ -275,13 +289,15 @@ async function applyChapterUpsert(
 }
 
 async function applyChapterVersionUpsert(
+  storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
   const chapterId = (payload.chapterId as string) ?? '';
-  // chapter_versions FK requires the chapter to exist; skip if orphaned
+  // Require the parent chapter to exist AND belong to the caller's story —
+  // prevents attaching version blobs to another user's chapter.
   const chapter = await db().query.chapters.findFirst({
-    where: eq(schema.chapters.id, chapterId),
+    where: and(eq(schema.chapters.id, chapterId), eq(schema.chapters.storyId, storyId)),
     columns: { id: true },
   });
   if (!chapter) return {};

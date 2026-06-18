@@ -21,6 +21,7 @@ const errorClasses = 'border-wax-500/60 focus:ring-wax-500/30';
 export const ParchmentInput = forwardRef<HTMLInputElement, ParchmentInputProps>(
   function ParchmentInput({ label, error, className = '', id, ...props }, ref) {
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    const errorId = error && inputId ? `${inputId}-error` : undefined;
     return (
       <div className="space-y-1.5">
         {label && (
@@ -32,9 +33,11 @@ export const ParchmentInput = forwardRef<HTMLInputElement, ParchmentInputProps>(
           ref={ref}
           id={inputId}
           className={`${baseClasses} ${error ? errorClasses : ''} ${className}`}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
           {...props}
         />
-        {error && <p className="text-xs text-wax-500">{error}</p>}
+        {error && <p id={errorId} className="text-xs text-wax-700">{error}</p>}
       </div>
     );
   },
@@ -43,6 +46,7 @@ export const ParchmentInput = forwardRef<HTMLInputElement, ParchmentInputProps>(
 export const ParchmentTextarea = forwardRef<HTMLTextAreaElement, ParchmentTextareaProps>(
   function ParchmentTextarea({ label, error, className = '', id, spellCheck, ...props }, ref) {
     const textareaId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+    const errorId = error && textareaId ? `${textareaId}-error` : undefined;
     // Phase 4.5 / MP-07: respect the user-level spellcheck preference unless
     // the call site explicitly overrides it (e.g. flow-editor sets false).
     const { enabled } = useSpellcheckPreference();
@@ -59,9 +63,11 @@ export const ParchmentTextarea = forwardRef<HTMLTextAreaElement, ParchmentTextar
           id={textareaId}
           spellCheck={effectiveSpellCheck}
           className={`${baseClasses} min-h-[80px] ${error ? errorClasses : ''} ${className}`}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
           {...props}
         />
-        {error && <p className="text-xs text-wax-500">{error}</p>}
+        {error && <p id={errorId} className="text-xs text-wax-700">{error}</p>}
       </div>
     );
   },
