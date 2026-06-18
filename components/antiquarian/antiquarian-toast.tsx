@@ -60,32 +60,43 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     timersRef.current.set(id, timer);
   }, [removeToast]);
 
+  const renderToast = (t: Toast) => {
+    const Icon = icons[t.type];
+    return (
+      <motion.div
+        key={t.id}
+        {...toastSlam}
+        className={`flex items-start gap-3 border rounded-xl px-4 py-3 shadow-parchment texture-parchment ${styles[t.type]}`}
+      >
+        <Icon size={18} aria-hidden="true" className={`shrink-0 mt-0.5 ${iconColors[t.type]}`} />
+        <p className="text-sm flex-1 font-medium">{t.message}</p>
+        <button
+          onClick={() => removeToast(t.id)}
+          className="shrink-0 p-0.5 rounded hover:bg-sepia-300/30 transition-colors text-sepia-600"
+          aria-label="Dismiss notification"
+        >
+          <X size={14} aria-hidden="true" />
+        </button>
+      </motion.div>
+    );
+  };
+
+  // Errors interrupt (assertive); everything else is announced politely.
+  // Two sibling live regions so each carries the right politeness — nesting a
+  // single container can't vary politeness per toast.
+  const assertiveToasts = toasts.filter(t => t.type === 'error');
+  const politeToasts = toasts.filter(t => t.type !== 'error');
+
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm" role="status" aria-live="polite">
-        <AnimatePresence>
-          {toasts.map(t => {
-            const Icon = icons[t.type];
-            return (
-              <motion.div
-                key={t.id}
-                {...toastSlam}
-                className={`flex items-start gap-3 border rounded-xl px-4 py-3 shadow-parchment texture-parchment ${styles[t.type]}`}
-              >
-                <Icon size={18} className={`shrink-0 mt-0.5 ${iconColors[t.type]}`} />
-                <p className="text-sm flex-1 font-medium">{t.message}</p>
-                <button
-                  onClick={() => removeToast(t.id)}
-                  className="shrink-0 p-0.5 rounded hover:bg-sepia-300/30 transition-colors text-sepia-600"
-                  aria-label="Dismiss notification"
-                >
-                  <X size={14} />
-                </button>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+        <div role="alert" aria-live="assertive" className="flex flex-col gap-2">
+          <AnimatePresence>{assertiveToasts.map(renderToast)}</AnimatePresence>
+        </div>
+        <div role="status" aria-live="polite" className="flex flex-col gap-2">
+          <AnimatePresence>{politeToasts.map(renderToast)}</AnimatePresence>
+        </div>
       </div>
     </ToastContext.Provider>
   );

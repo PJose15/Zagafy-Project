@@ -216,7 +216,7 @@ export default function OutlinePage() {
                 {chapter.canonStatus && <WaxSealBadge status={chapter.canonStatus} />}
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-sepia-600 font-mono">
+              <div className="flex items-center gap-2 text-xs text-sepia-700 font-mono">
                 <span>#{originalIndex + 1}</span>
                 <span>·</span>
                 <span>{wordCount.toLocaleString()} words</span>
@@ -249,7 +249,7 @@ export default function OutlinePage() {
                   className="text-left text-sm text-sepia-700 hover:text-sepia-900 leading-relaxed line-clamp-4 min-h-[2.5em]"
                   aria-label={`Edit summary for ${chapter.title}`}
                 >
-                  {chapter.summary || <span className="italic text-sepia-600">No summary yet — tap to add.</span>}
+                  {chapter.summary || <span className="italic text-sepia-700">No summary yet — tap to add.</span>}
                 </button>
               )}
 

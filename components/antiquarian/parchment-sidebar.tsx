@@ -84,7 +84,7 @@ export function ParchmentSidebar() {
           <p className="text-xs text-brass-400/70 mt-2 font-mono">CanonKeeper v1.0</p>
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto" aria-label="Primary">
           {navItems.map((item, index) => {
             const isActive = pathname === item.href;
             return (
@@ -92,13 +92,14 @@ export function ParchmentSidebar() {
                 <Link
                   href={item.href}
                   onClick={() => setIsOpen(false)}
+                  aria-current={isActive ? 'page' : undefined}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                     isActive
                       ? 'nav-brushstroke-active text-cream-50'
                       : 'text-cream-300/70 hover:bg-mahogany-800/50 hover:text-cream-100'
                   }`}
                 >
-                  <item.icon size={18} className={isActive ? 'text-cream-50' : 'text-cream-400/50'} />
+                  <item.icon size={18} aria-hidden="true" className={isActive ? 'text-cream-50' : 'text-cream-400/50'} />
                   {item.name}
                 </Link>
               </motion.div>
@@ -135,13 +136,14 @@ export function ParchmentSidebar() {
           <Link
             href="/settings"
             onClick={() => setIsOpen(false)}
+            aria-current={pathname === '/settings' ? 'page' : undefined}
             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
               pathname === '/settings'
                 ? 'nav-brushstroke-active text-cream-50'
                 : 'text-cream-300/70 hover:bg-mahogany-800/50 hover:text-cream-100'
             }`}
           >
-            <Settings size={18} className={pathname === '/settings' ? 'text-cream-50' : 'text-cream-400/50'} />
+            <Settings size={18} aria-hidden="true" className={pathname === '/settings' ? 'text-cream-50' : 'text-cream-400/50'} />
             Settings
           </Link>
         </div>

@@ -3,6 +3,7 @@ import { eq, and, inArray } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import type { PushRequest, SyncDelta, ConflictRecord } from '@/lib/sync/types';
@@ -27,6 +28,11 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
   const { userId } = authResult;
+
+  // Sync is auth-gated and batch-capped, but still throttle per-IP so a
+  // compromised/abusive client can't hammer the DB with rapid pushes.
+  const limited = await rateLimit(req, { maxRequests: 60, windowMs: 60_000 });
+  if (limited) return limited;
 
   if (!isDatabaseConfigured()) {
     return err('internal_error', 'Database not configured', 500, undefined, { requestId });

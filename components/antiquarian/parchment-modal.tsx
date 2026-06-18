@@ -23,6 +23,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
     setOptions(opts);
@@ -42,7 +43,31 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => cancelBtnRef.current?.focus(), 50);
 
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleResponse(false);
+      if (e.key === 'Escape') {
+        handleResponse(false);
+        return;
+      }
+      // Trap Tab within the dialog so focus can't escape to the page behind it.
+      if (e.key === 'Tab') {
+        const root = dialogRef.current;
+        if (!root) return;
+        const focusables = root.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey) {
+          if (active === first || !root.contains(active)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (active === last || !root.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -69,6 +94,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             <div className="absolute inset-0 bg-sepia-900/60 backdrop-blur-sm" onClick={() => handleResponse(false)} />
 
             <motion.div
+              ref={dialogRef}
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}

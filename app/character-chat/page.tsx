@@ -36,7 +36,7 @@ function CharacterChatContent() {
 
       {state.characters.length === 0 && (
         <ParchmentCard variant="aged" className="p-6 text-center">
-          <p className="text-cream-400/60 text-sm">
+          <p className="text-sepia-700 text-sm">
             No characters yet. Add characters in the Characters page first.
           </p>
         </ParchmentCard>

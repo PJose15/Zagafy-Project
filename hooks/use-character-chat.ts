@@ -118,7 +118,8 @@ export function useCharacterChat(characterId: string | null) {
 
     // Cancel any in-flight request
     if (abortRef.current) abortRef.current.abort();
-    abortRef.current = new AbortController();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const characterMessages = updatedMessages.filter(m => m.role === 'character');
@@ -147,7 +148,7 @@ export function useCharacterChat(characterId: string | null) {
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           generateInsight: shouldGenerateInsight,
         }),
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       });
 
       if (!res.ok) {
@@ -196,7 +197,9 @@ export function useCharacterChat(characterId: string | null) {
       // Remove the optimistic user message on failure
       setMessages(messages);
     } finally {
-      setIsLoading(false);
+      // A newer request may have aborted this one; if so, leave the spinner
+      // up for the request still in flight instead of clearing it here.
+      if (!controller.signal.aborted) setIsLoading(false);
     }
   }, [session, characterId, messages, mode, state.characters]);
 
