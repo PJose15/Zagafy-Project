@@ -27,7 +27,7 @@ export function ProfileTab({ editForm, setEditForm }: ProfileTabProps) {
         />
       </div>
       <div>
-        <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Core Identity (Permanent Traits)</label>
+        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Core Identity (Permanent Traits)</label>
         <textarea
           value={editForm.coreIdentity || ''}
           onChange={(e) => setEditForm({ ...editForm, coreIdentity: e.target.value })}
@@ -36,7 +36,7 @@ export function ProfileTab({ editForm, setEditForm }: ProfileTabProps) {
         />
       </div>
       <div>
-        <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">Physical Description & Background</label>
+        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Physical Description & Background</label>
         <textarea
           value={editForm.description || ''}
           onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}

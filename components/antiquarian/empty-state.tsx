@@ -303,7 +303,7 @@ export function EmptyState({ variant, title, subtitle, action }: EmptyStateProps
       </div>
       <h3 className="text-lg font-serif font-semibold text-sepia-700">{title}</h3>
       {subtitle && (
-        <p className="text-sm text-sepia-500 mt-2 max-w-sm">{subtitle}</p>
+        <p className="text-sm text-sepia-600 mt-2 max-w-sm">{subtitle}</p>
       )}
       {action && (
         <div className="mt-5">

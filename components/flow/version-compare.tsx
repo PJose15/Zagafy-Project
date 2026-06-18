@@ -31,7 +31,7 @@ export function VersionCompare({ versions, onClose }: VersionCompareProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-sepia-300/30">
           <h3 className="text-lg font-medium text-sepia-800">Compare Versions</h3>
-          <button onClick={onClose} className="text-sepia-400 hover:text-sepia-700" aria-label="Close comparison">
+          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700" aria-label="Close comparison">
             <X size={18} />
           </button>
         </div>
@@ -39,7 +39,7 @@ export function VersionCompare({ versions, onClose }: VersionCompareProps) {
         {/* Selectors */}
         <div className="flex gap-4 px-6 py-3 border-b border-sepia-300/20">
           <div className="flex-1">
-            <label className="text-xs text-sepia-500 block mb-1">Left</label>
+            <label className="text-xs text-sepia-600 block mb-1">Left</label>
             <select
               value={leftId}
               onChange={e => setLeftId(e.target.value)}
@@ -52,7 +52,7 @@ export function VersionCompare({ versions, onClose }: VersionCompareProps) {
             </select>
           </div>
           <div className="flex-1">
-            <label className="text-xs text-sepia-500 block mb-1">Right</label>
+            <label className="text-xs text-sepia-600 block mb-1">Right</label>
             <select
               value={rightId}
               onChange={e => setRightId(e.target.value)}

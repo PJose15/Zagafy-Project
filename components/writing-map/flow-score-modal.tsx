@@ -70,7 +70,7 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
         <button
           onClick={onDismiss}
           aria-label="Close"
-          className="absolute top-2 right-2 text-sepia-500 hover:text-sepia-700 transition-colors rounded p-0.5"
+          className="absolute top-2 right-2 text-sepia-600 hover:text-sepia-700 transition-colors rounded p-0.5"
         >
           <X size={16} />
         </button>
@@ -88,7 +88,7 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
               <span className="text-2xl" role="img" aria-hidden="true">
                 {emoji}
               </span>
-              <span className="text-[10px] text-sepia-500">{label}</span>
+              <span className="text-[10px] text-sepia-600">{label}</span>
             </button>
           ))}
         </div>

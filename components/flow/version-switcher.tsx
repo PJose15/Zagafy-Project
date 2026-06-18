@@ -48,7 +48,7 @@ export function VersionSwitcher({
       <ParchmentCard className="p-3 shadow-lg">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-sepia-800">Versions</h3>
-          <button onClick={onClose} className="text-sepia-400 hover:text-sepia-700" aria-label="Close version panel">
+          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700" aria-label="Close version panel">
             <X size={14} />
           </button>
         </div>
@@ -81,17 +81,17 @@ export function VersionSwitcher({
                     {v.label}
                     {v.isCanonical && <Crown size={10} className="inline ml-1 text-brass-500" />}
                   </button>
-                  <span className="text-[10px] text-sepia-400 shrink-0">{v.wordCount}w</span>
-                  <button onClick={() => startRename(v)} className="text-sepia-400 hover:text-sepia-700 shrink-0" aria-label="Rename version">
+                  <span className="text-[10px] text-sepia-600 shrink-0">{v.wordCount}w</span>
+                  <button onClick={() => startRename(v)} className="text-sepia-600 hover:text-sepia-700 shrink-0" aria-label="Rename version">
                     <Pencil size={10} />
                   </button>
                   {!v.isCanonical && (
-                    <button onClick={() => onMarkCanonical(v.id)} className="text-sepia-400 hover:text-brass-600 shrink-0" aria-label="Mark as canonical" title="Mark as canonical">
+                    <button onClick={() => onMarkCanonical(v.id)} className="text-sepia-600 hover:text-brass-600 shrink-0" aria-label="Mark as canonical" title="Mark as canonical">
                       <Crown size={10} />
                     </button>
                   )}
                   {versions.length > 1 && (
-                    <button onClick={() => onDelete(v.id)} className="text-sepia-400 hover:text-wax-500 shrink-0" aria-label="Delete version">
+                    <button onClick={() => onDelete(v.id)} className="text-sepia-600 hover:text-wax-500 shrink-0" aria-label="Delete version">
                       <Trash2 size={10} />
                     </button>
                   )}

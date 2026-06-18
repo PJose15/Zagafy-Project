@@ -41,7 +41,7 @@ export function PacingHealth() {
 
   if (data.chapters.length === 0) {
     return (
-      <p className="text-sm text-sepia-500" data-testid="pacing-empty">
+      <p className="text-sm text-sepia-600" data-testid="pacing-empty">
         Add chapters to see how their lengths compare.
       </p>
     );
@@ -63,9 +63,9 @@ export function PacingHealth() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
         <div>
           <p className={`text-sm font-medium ${copy.tone}`}>Pacing: {copy.label}</p>
-          <p className="text-xs text-sepia-500">{copy.description}</p>
+          <p className="text-xs text-sepia-600">{copy.description}</p>
         </div>
-        <div className="text-xs font-mono text-sepia-500">
+        <div className="text-xs font-mono text-sepia-600">
           mean {Math.round(variance.mean).toLocaleString()} words ·{' '}
           {readingTimeLabel(Math.round(variance.mean))} ·{' '}
           σ {Math.round(variance.stdDev).toLocaleString()} ·{' '}
@@ -100,7 +100,7 @@ export function PacingHealth() {
                     title={`mean ${Math.round(variance.mean)} words`}
                   />
                 </div>
-                <span className="w-20 text-right text-sepia-500 font-mono">
+                <span className="w-20 text-right text-sepia-600 font-mono">
                   {ch.wordCount.toLocaleString()}
                 </span>
               </div>

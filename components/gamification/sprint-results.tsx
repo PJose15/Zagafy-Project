@@ -38,14 +38,14 @@ export function SprintResults({ result, onDismiss }: SprintResultsProps) {
         <h3 className="text-xl font-serif font-bold text-sepia-900 mb-1">
           {result.targetMet ? 'Target Smashed!' : 'Sprint Complete'}
         </h3>
-        <p className="text-xs text-sepia-500 mb-4">
+        <p className="text-xs text-sepia-600 mb-4">
           {result.durationMinutes} min · {result.percentOfTarget}% of target
         </p>
 
         <div className="flex justify-center gap-6 mb-4">
           <div>
             <span className="text-3xl font-mono font-bold text-sepia-800">{result.wordsWritten}</span>
-            <span className="block text-[10px] text-sepia-400 uppercase mt-0.5">Words Written</span>
+            <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Words Written</span>
           </div>
         </div>
 

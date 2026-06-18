@@ -59,7 +59,7 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
       {/* Search + Filter */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-sepia-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-sepia-600" />
           <input
             type="text"
             value={search}
@@ -100,7 +100,7 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
 
       {/* Entity List */}
       {filtered.length === 0 ? (
-        <p className="text-sm text-sepia-500 text-center py-8">No entities found.</p>
+        <p className="text-sm text-sepia-600 text-center py-8">No entities found.</p>
       ) : (
         filterType === 'all' ? (
           types.map(type => {
@@ -156,9 +156,9 @@ function EntityRow({ entity, index, onClick }: { entity: EntityCatalogEntry; ind
             )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-[10px] font-mono text-sepia-400">{entity.mentionCount} mentions</span>
+            <span className="text-[10px] font-mono text-sepia-600">{entity.mentionCount} mentions</span>
             {entity.firstAppearanceChapter >= 0 && (
-              <span className="text-[10px] font-mono text-sepia-400">Ch.{entity.firstAppearanceChapter + 1}</span>
+              <span className="text-[10px] font-mono text-sepia-600">Ch.{entity.firstAppearanceChapter + 1}</span>
             )}
           </div>
         </div>

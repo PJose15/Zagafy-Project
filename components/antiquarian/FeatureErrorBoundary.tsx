@@ -52,7 +52,7 @@ export class FeatureErrorBoundary extends React.Component<
                 This module encountered an error and could not render.
               </p>
               {this.state.error && (
-                <p className="text-xs font-mono text-sepia-400 mt-2 max-w-md truncate">
+                <p className="text-xs font-mono text-sepia-600 mt-2 max-w-md truncate">
                   {this.state.error.message}
                 </p>
               )}

@@ -68,13 +68,13 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
                 <h2 id="merge-title" className="text-lg font-serif font-semibold text-sepia-900">
                   Review Extracted Worldbuilding
                 </h2>
-                <p className="text-sm text-sepia-500 mt-0.5">
+                <p className="text-sm text-sepia-600 mt-0.5">
                   {incoming.length} section{incoming.length !== 1 ? 's' : ''} found — select which to add
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="p-1 rounded-full text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
+                className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -124,7 +124,7 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
 
             {/* Footer */}
             <div className="flex items-center justify-between p-5 border-t border-sepia-300/30">
-              <span className="text-sm text-sepia-500">
+              <span className="text-sm text-sepia-600">
                 {selected.size} of {incoming.length} selected
               </span>
               <div className="flex gap-3">

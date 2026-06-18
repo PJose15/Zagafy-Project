@@ -74,19 +74,19 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
 
       <div className="text-center space-y-1">
         <h3 className="text-lg font-serif font-semibold text-sepia-800">{config.name}</h3>
-        <p className="text-xs text-sepia-500 italic max-w-md">{sprint.prompt}</p>
+        <p className="text-xs text-sepia-600 italic max-w-md">{sprint.prompt}</p>
       </div>
 
       {/* L10: Accessible stat labels */}
       <div className="flex items-center gap-6 text-center" role="group" aria-label="Sprint statistics">
         <div aria-label={`${wordsWritten} words written`}>
           <span className="text-2xl font-mono font-bold text-sepia-800">{wordsWritten}</span>
-          <span className="block text-[10px] text-sepia-400 uppercase" aria-hidden="true">Words</span>
+          <span className="block text-[10px] text-sepia-600 uppercase" aria-hidden="true">Words</span>
         </div>
         <div className="w-px h-8 bg-sepia-300/30" aria-hidden="true" />
         <div aria-label={`${sprint.targetWords} word target`}>
           <span className="text-2xl font-mono font-bold text-sepia-800">{sprint.targetWords}</span>
-          <span className="block text-[10px] text-sepia-400 uppercase" aria-hidden="true">Target</span>
+          <span className="block text-[10px] text-sepia-600 uppercase" aria-hidden="true">Target</span>
         </div>
       </div>
 

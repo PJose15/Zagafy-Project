@@ -438,7 +438,7 @@ export default function ImportPage() {
               </div>
             </div>
             <h3 className="text-lg font-medium text-sepia-800 mb-2">Drag & Drop Files Here</h3>
-            <p className="text-sm text-sepia-500 mb-6">Supports PDF, DOCX, TXT, and Markdown files.</p>
+            <p className="text-sm text-sepia-600 mb-6">Supports PDF, DOCX, TXT, and Markdown files.</p>
             <BrassButton>
               Browse Files
             </BrassButton>
@@ -455,10 +455,10 @@ export default function ImportPage() {
                       <span className="text-sm text-sepia-800 font-medium">{file.name}</span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-xs text-sepia-500">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                      <span className="text-xs text-sepia-600">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => moveFile(idx, 'up')} disabled={idx === 0} className="p-1 text-sepia-500 hover:text-sepia-700 disabled:opacity-30" aria-label={`Move ${file.name} up`}><ChevronUp size={16} /></button>
-                        <button onClick={() => moveFile(idx, 'down')} disabled={idx === files.length - 1} className="p-1 text-sepia-500 hover:text-sepia-700 disabled:opacity-30" aria-label={`Move ${file.name} down`}><ChevronDown size={16} /></button>
+                        <button onClick={() => moveFile(idx, 'up')} disabled={idx === 0} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={`Move ${file.name} up`}><ChevronUp size={16} /></button>
+                        <button onClick={() => moveFile(idx, 'down')} disabled={idx === files.length - 1} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={`Move ${file.name} down`}><ChevronDown size={16} /></button>
                         <button onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="p-1 text-wax-600 hover:text-wax-500 ml-2" aria-label={`Remove ${file.name}`}><X size={16} /></button>
                       </div>
                     </div>
@@ -482,7 +482,7 @@ export default function ImportPage() {
             <h3 className="text-xl font-medium text-sepia-800 mb-2">
               {uploadStatus === 'uploading' ? 'Uploading Files...' : 'Analyzing Manuscript...'}
             </h3>
-            <p className="text-sepia-500 text-sm max-w-md mx-auto">
+            <p className="text-sepia-600 text-sm max-w-md mx-auto">
               {uploadStatus === 'uploading'
                 ? 'Transferring your documents securely.'
                 : 'Our AI is reading your text, extracting chapters, characters, conflicts, and worldbuilding details. This may take a minute for large files.'}
@@ -513,7 +513,7 @@ export default function ImportPage() {
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-sepia-500 block mb-1">Title</label>
+                  <label className="text-xs text-sepia-600 block mb-1">Title</label>
                   <input
                     type="text"
                     value={extractedData.project?.title || ''}
@@ -522,7 +522,7 @@ export default function ImportPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-sepia-500 block mb-1">Genre</label>
+                  <label className="text-xs text-sepia-600 block mb-1">Genre</label>
                   <input
                     type="text"
                     value={(extractedData.project?.genre || []).join(', ')}
@@ -531,7 +531,7 @@ export default function ImportPage() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-xs text-sepia-500 block mb-1">Global Summary</label>
+                  <label className="text-xs text-sepia-600 block mb-1">Global Summary</label>
                   <textarea
                     value={extractedData.project?.summary_global || ''}
                     onChange={(e) => setExtractedData({ ...extractedData, project: { ...extractedData.project, summary_global: e.target.value } })}

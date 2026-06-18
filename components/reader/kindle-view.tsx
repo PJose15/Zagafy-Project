@@ -30,7 +30,7 @@ export function KindleView({ title, content, issues }: KindleViewProps) {
   const lineHeightMap = { normal: '1.5', relaxed: '1.8', loose: '2.2' };
 
   if (!content.trim()) {
-    return <div className="text-center py-16 text-sepia-400">This chapter is empty.</div>;
+    return <div className="text-center py-16 text-sepia-600">This chapter is empty.</div>;
   }
 
   return (
@@ -50,7 +50,7 @@ export function KindleView({ title, content, issues }: KindleViewProps) {
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1 text-xs text-sepia-500">
+          <label className="flex items-center gap-1 text-xs text-sepia-600">
             <span>Aa</span>
             <input
               type="range"
@@ -91,7 +91,7 @@ export function KindleView({ title, content, issues }: KindleViewProps) {
       </div>
 
       {/* Progress */}
-      <div className="sticky bottom-0 px-4 py-2 text-xs text-sepia-400 text-center border-t border-sepia-300/20">
+      <div className="sticky bottom-0 px-4 py-2 text-xs text-sepia-600 text-center border-t border-sepia-300/20">
         {wordCount.toLocaleString()} words &middot; {readingTime.display}
       </div>
     </div>

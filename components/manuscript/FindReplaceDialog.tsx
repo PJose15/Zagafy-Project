@@ -200,7 +200,7 @@ export function FindReplaceDialog({
               </div>
               <button
                 onClick={onClose}
-                className="p-1 rounded-full text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30"
+                className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -263,19 +263,19 @@ export function FindReplaceDialog({
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {!query && (
-                <p className="text-sm text-sepia-500 italic">
+                <p className="text-sm text-sepia-600 italic">
                   Type a query above to start searching.
                 </p>
               )}
               {query && !error && matches.length === 0 && (
-                <p className="text-sm text-sepia-500 italic">No matches.</p>
+                <p className="text-sm text-sepia-600 italic">No matches.</p>
               )}
               {Array.from(grouped.entries()).map(([chapterId, group]) => (
                 <div key={chapterId} className="border border-sepia-300/30 rounded-lg p-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div className="min-w-0">
                       <p className="font-serif font-semibold text-sepia-900 text-sm">{group.title}</p>
-                      <p className="text-[10px] text-sepia-500 font-mono">
+                      <p className="text-[10px] text-sepia-600 font-mono">
                         {group.matches.length} match{group.matches.length === 1 ? '' : 'es'}
                       </p>
                     </div>
@@ -291,7 +291,7 @@ export function FindReplaceDialog({
                   <ul className="mt-2 space-y-1">
                     {group.matches.slice(0, PREVIEW_LIMIT).map((m, i) => (
                       <li key={`${m.chapterId}-${m.index}-${i}`} className="text-xs text-sepia-700 font-mono leading-relaxed">
-                        <span className="text-sepia-500">…{m.contextBefore}</span>
+                        <span className="text-sepia-600">…{m.contextBefore}</span>
                         <mark className="bg-brass-300/60 text-sepia-900 rounded px-0.5">
                           {m.contextBefore.length > 0 || m.contextAfter.length > 0
                             ? // Reconstruct the matched text from the chapter (we don't store the raw match).
@@ -299,11 +299,11 @@ export function FindReplaceDialog({
                               query
                             : query}
                         </mark>
-                        <span className="text-sepia-500">{m.contextAfter}…</span>
+                        <span className="text-sepia-600">{m.contextAfter}…</span>
                       </li>
                     ))}
                     {group.matches.length > PREVIEW_LIMIT && (
-                      <li className="text-[10px] text-sepia-400 italic">
+                      <li className="text-[10px] text-sepia-600 italic">
                         + {group.matches.length - PREVIEW_LIMIT} more not shown
                       </li>
                     )}
@@ -313,7 +313,7 @@ export function FindReplaceDialog({
             </div>
 
             <div className="flex items-center justify-between p-4 border-t border-sepia-300/30 gap-3">
-              <span className="text-sm text-sepia-500 font-mono">
+              <span className="text-sm text-sepia-600 font-mono">
                 {error ? 'invalid regex' : `${matches.length} match${matches.length === 1 ? '' : 'es'}`}
                 {grouped.size > 0 && ` · ${grouped.size} chapter${grouped.size === 1 ? '' : 's'}`}
               </span>

@@ -132,7 +132,7 @@ function ToolbarPlugin() {
   };
 
   const btnClass =
-    'p-1.5 rounded text-sepia-500 hover:text-sepia-800 hover:bg-parchment-200/60 transition-colors';
+    'p-1.5 rounded text-sepia-600 hover:text-sepia-800 hover:bg-parchment-200/60 transition-colors';
   const dividerClass = 'w-px h-5 bg-sepia-300/40 mx-0.5';
 
   return (
@@ -369,7 +369,7 @@ export function ManuscriptEditor({
               />
             }
             placeholder={
-              <div className="absolute top-3 left-4 text-sepia-400 pointer-events-none font-serif text-base">
+              <div className="absolute top-3 left-4 text-sepia-600 pointer-events-none font-serif text-base">
                 {placeholder}
               </div>
             }

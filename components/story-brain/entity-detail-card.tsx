@@ -19,28 +19,28 @@ export function EntityDetailCard({ entity, relationships, onClose }: EntityDetai
     <ParchmentCard padding="lg" className="relative">
       <button
         onClick={onClose}
-        className="absolute top-3 right-3 p-1 text-sepia-500 hover:text-sepia-700 rounded"
+        className="absolute top-3 right-3 p-1 text-sepia-600 hover:text-sepia-700 rounded"
         aria-label="Close detail"
       >
         <X size={16} />
       </button>
 
       <h3 className="text-lg font-serif font-semibold text-sepia-900 mb-1">{entity.name}</h3>
-      <p className="text-xs text-sepia-500 uppercase tracking-wider mb-4">{entity.type}</p>
+      <p className="text-xs text-sepia-600 uppercase tracking-wider mb-4">{entity.type}</p>
 
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div>
-          <span className="text-[10px] text-sepia-400 block">Mentions</span>
+          <span className="text-[10px] text-sepia-600 block">Mentions</span>
           <span className="text-lg font-mono text-sepia-800">{entity.mentionCount}</span>
         </div>
         <div>
-          <span className="text-[10px] text-sepia-400 block">First</span>
+          <span className="text-[10px] text-sepia-600 block">First</span>
           <span className="text-lg font-mono text-sepia-800">
             {entity.firstAppearanceChapter >= 0 ? `Ch.${entity.firstAppearanceChapter + 1}` : '—'}
           </span>
         </div>
         <div>
-          <span className="text-[10px] text-sepia-400 block">Last</span>
+          <span className="text-[10px] text-sepia-600 block">Last</span>
           <span className="text-lg font-mono text-sepia-800">
             {entity.lastAppearanceChapter >= 0 ? `Ch.${entity.lastAppearanceChapter + 1}` : '—'}
           </span>

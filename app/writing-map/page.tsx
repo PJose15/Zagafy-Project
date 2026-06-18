@@ -13,7 +13,7 @@ const WordsByHour = dynamic(
     ssr: false,
     loading: () => (
       <div
-        className="h-48 flex items-center justify-center text-sepia-500 text-sm"
+        className="h-48 flex items-center justify-center text-sepia-600 text-sm"
         data-testid="words-by-hour-loading"
       >
         Loading hourly patterns…
@@ -69,7 +69,7 @@ export default function WritingMapPage() {
               progress={xpProgress.progress}
             />
           </div>
-          <div className="text-xs font-mono text-sepia-500">
+          <div className="text-xs font-mono text-sepia-600">
             Longest streak: {streak.longestStreak}d
           </div>
         </div>

@@ -75,12 +75,12 @@ export function WriterMemoryCard() {
   };
 
   if (insights === null) {
-    return <p className="text-sm text-sepia-500 italic">Loading…</p>;
+    return <p className="text-sm text-sepia-600 italic">Loading…</p>;
   }
 
   if (insights.length === 0) {
     return (
-      <p className="text-sm text-sepia-500" data-testid="writer-memory-empty">
+      <p className="text-sm text-sepia-600" data-testid="writer-memory-empty">
         Run the story coach on a chapter to start building a memory of your craft.
       </p>
     );
@@ -92,7 +92,7 @@ export function WriterMemoryCard() {
         <button
           type="button"
           onClick={handleClearAll}
-          className="text-[10px] uppercase tracking-wider text-sepia-500 hover:text-wax-600 transition-colors"
+          className="text-[10px] uppercase tracking-wider text-sepia-600 hover:text-wax-600 transition-colors"
         >
           Clear memory
         </button>
@@ -105,10 +105,10 @@ export function WriterMemoryCard() {
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[10px] uppercase tracking-wider font-mono ${CATEGORY_TONE[i.category] ?? 'text-sepia-500'}`}>
+                <span className={`text-[10px] uppercase tracking-wider font-mono ${CATEGORY_TONE[i.category] ?? 'text-sepia-600'}`}>
                   {i.category}
                 </span>
-                <span className="text-[10px] text-sepia-400 font-mono">
+                <span className="text-[10px] text-sepia-600 font-mono">
                   conf {(i.confidence * 100).toFixed(0)}% · {i.evidenceCount}× · {formatRelative(i.lastObservedAt)}
                 </span>
               </div>
@@ -121,7 +121,7 @@ export function WriterMemoryCard() {
                 className={`p-1.5 rounded-md transition-colors ${
                   i.pinned
                     ? 'text-brass-600 bg-brass-500/10'
-                    : 'text-sepia-500 hover:text-brass-600 hover:bg-brass-500/10'
+                    : 'text-sepia-600 hover:text-brass-600 hover:bg-brass-500/10'
                 }`}
                 aria-label={i.pinned ? 'Unpin insight' : 'Pin insight'}
                 title={i.pinned ? 'Pinned — always injected into prompts' : 'Pin to prioritize this insight in prompts'}
@@ -131,7 +131,7 @@ export function WriterMemoryCard() {
               <button
                 type="button"
                 onClick={() => handleDelete(i)}
-                className="p-1.5 rounded-md text-sepia-500 hover:text-wax-600 hover:bg-wax-500/10 transition-colors"
+                className="p-1.5 rounded-md text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10 transition-colors"
                 aria-label="Forget insight"
               >
                 <Trash2 size={14} />
@@ -144,7 +144,7 @@ export function WriterMemoryCard() {
         <button
           type="button"
           onClick={refresh}
-          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-sepia-500 hover:text-sepia-800 transition-colors"
+          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-sepia-600 hover:text-sepia-800 transition-colors"
           aria-label="Refresh confidences"
         >
           <RefreshCw size={10} /> Recompute

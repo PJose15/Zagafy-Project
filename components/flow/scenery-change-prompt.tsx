@@ -28,13 +28,13 @@ export function SceneryChangePrompt({ signal, suggestions, onSelect, onDismiss }
             </div>
             <button
               onClick={onDismiss}
-              className="p-1 text-sepia-400 hover:text-sepia-600 rounded"
+              className="p-1 text-sepia-600 hover:text-sepia-600 rounded"
               aria-label="Dismiss"
             >
               <X size={14} />
             </button>
           </div>
-          <p className="text-xs text-sepia-500 mb-3">
+          <p className="text-xs text-sepia-600 mb-3">
             A short creative exercise can reignite your flow. Pick one:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -47,7 +47,7 @@ export function SceneryChangePrompt({ signal, suggestions, onSelect, onDismiss }
                 <h4 className="text-sm font-medium text-sepia-800 group-hover:text-brass-600 transition-colors">
                   {s.title}
                 </h4>
-                <p className="text-[10px] text-sepia-500 mt-1">{s.durationMinutes} min</p>
+                <p className="text-[10px] text-sepia-600 mt-1">{s.durationMinutes} min</p>
               </button>
             ))}
           </div>

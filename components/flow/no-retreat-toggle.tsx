@@ -13,7 +13,7 @@ export function NoRetreatToggle({ active, onToggle }: NoRetreatToggleProps) {
       onClick={onToggle}
       className={[
         'relative text-sm transition-all p-1.5 rounded-lg hover:bg-parchment-200 group',
-        active ? 'text-wax-500' : 'text-sepia-400',
+        active ? 'text-wax-500' : 'text-sepia-600',
       ].join(' ')}
       aria-label={active ? 'Disable No-Retreat Mode' : 'Enable No-Retreat Mode'}
       aria-pressed={active}

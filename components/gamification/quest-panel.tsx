@@ -20,7 +20,7 @@ export function QuestPanel({ quests, onComplete }: QuestPanelProps) {
       </div>
       {/* M11: Empty state */}
       {quests.length === 0 ? (
-        <p className="text-xs text-sepia-400 italic py-4 text-center">No quests available today. Check back tomorrow!</p>
+        <p className="text-xs text-sepia-600 italic py-4 text-center">No quests available today. Check back tomorrow!</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {quests.map((quest) => (

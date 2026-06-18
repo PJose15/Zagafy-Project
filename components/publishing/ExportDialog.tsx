@@ -122,7 +122,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               <button
                 onClick={onClose}
                 disabled={busy}
-                className="p-1 rounded-full text-sepia-500 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-40"
+                className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-40"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -154,7 +154,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-sepia-500 mt-1.5">
+                <p className="text-xs text-sepia-600 mt-1.5">
                   Standard manuscript format — 12pt, double-spaced, 1″ margins.
                 </p>
               </div>
@@ -220,7 +220,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                 </div>
 
                 {exportableChapters.length === 0 ? (
-                  <p className="text-sm text-sepia-500 italic">No chapters to export.</p>
+                  <p className="text-sm text-sepia-600 italic">No chapters to export.</p>
                 ) : (
                   <ul className="space-y-1 border border-sepia-300/40 rounded-lg p-2 max-h-48 overflow-y-auto">
                     {exportableChapters.map(c => (
@@ -233,7 +233,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                             className="accent-brass-500"
                           />
                           <span className="flex-1 text-sm text-sepia-800 truncate">{c.title || 'Untitled'}</span>
-                          <span className="text-xs text-sepia-500 font-mono">
+                          <span className="text-xs text-sepia-600 font-mono">
                             {wordCount(c.content).toLocaleString()}w
                           </span>
                         </label>
@@ -258,7 +258,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
             </div>
 
             <div className="flex items-center justify-between p-4 border-t border-sepia-300/30 gap-3">
-              <span className="text-sm text-sepia-500 font-mono">
+              <span className="text-sm text-sepia-600 font-mono">
                 {selectedChapters.length} chapter{selectedChapters.length === 1 ? '' : 's'} · {totalWords.toLocaleString()} words
               </span>
               <div className="flex items-center gap-2">

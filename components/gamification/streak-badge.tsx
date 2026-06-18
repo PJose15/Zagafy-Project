@@ -14,8 +14,8 @@ export function StreakBadge({ streak, warning, compact = false }: StreakBadgePro
 
   if (streak === 0 && !warning) {
     return compact ? null : (
-      <div className="flex items-center gap-1.5 text-xs text-sepia-400">
-        <Flame size={14} className="text-sepia-400/50" aria-hidden="true" />
+      <div className="flex items-center gap-1.5 text-xs text-sepia-600">
+        <Flame size={14} className="text-sepia-600/50" aria-hidden="true" />
         <span>No streak</span>
       </div>
     );
@@ -35,7 +35,7 @@ export function StreakBadge({ streak, warning, compact = false }: StreakBadgePro
       >
         <Flame
           size={compact ? 12 : 14}
-          className={isMilestone ? 'text-brass-500' : 'text-sepia-500'}
+          className={isMilestone ? 'text-brass-500' : 'text-sepia-600'}
           aria-hidden="true"
         />
         <span>Day {streak}</span>

@@ -105,7 +105,7 @@ function StoryAnatomyBar({ chapters, characters, events, conflicts }: {
       </div>
       <div className="flex gap-4 mt-2">
         {segments.map((seg) => (
-          <div key={seg.label} className="flex items-center gap-1.5 text-[10px] text-sepia-500">
+          <div key={seg.label} className="flex items-center gap-1.5 text-[10px] text-sepia-600">
             <span className={`w-2 h-2 rounded-full ${seg.color}`} />
             {seg.label}
           </div>
@@ -173,7 +173,7 @@ function StoryHealthCard() {
               <p className="text-sm font-medium text-sepia-800">
                 {total} story health issue{total !== 1 ? 's' : ''} detected
               </p>
-              <p className="text-[10px] text-sepia-500 mt-0.5">
+              <p className="text-[10px] text-sepia-600 mt-0.5">
                 {counts.unresolved > 0 && `${counts.unresolved} inconsistenc${counts.unresolved !== 1 ? 'ies' : 'y'}`}
                 {counts.unresolved > 0 && counts.plotHoles > 0 && ' · '}
                 {counts.plotHoles > 0 && `${counts.plotHoles} plot hole${counts.plotHoles !== 1 ? 's' : ''}`}
@@ -266,7 +266,7 @@ export default function Dashboard() {
               </div>
               <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">Chapters</h3>
               {totalWords > 0 && (
-                <p className="text-[10px] font-mono text-sepia-400 mt-1">{totalWords.toLocaleString()} words</p>
+                <p className="text-[10px] font-mono text-sepia-600 mt-1">{totalWords.toLocaleString()} words</p>
               )}
             </ParchmentCard>
           </motion.div>
@@ -287,7 +287,7 @@ export default function Dashboard() {
                     <CharacterAvatar key={c.id} name={c.name} size="sm" indicator={c.currentState?.indicator} />
                   ))}
                   {state.characters.length > 4 && (
-                    <span className="text-[10px] font-mono text-sepia-400 ml-2">+{state.characters.length - 4}</span>
+                    <span className="text-[10px] font-mono text-sepia-600 ml-2">+{state.characters.length - 4}</span>
                   )}
                 </div>
               )}
@@ -313,7 +313,7 @@ export default function Dashboard() {
                     </span>
                   ))}
                   {state.timeline_events.length > 0 && (
-                    <span className="text-[10px] font-mono text-sepia-400 ml-1">
+                    <span className="text-[10px] font-mono text-sepia-600 ml-1">
                       {state.timeline_events[0]?.date || ''}
                     </span>
                   )}
@@ -348,7 +348,7 @@ export default function Dashboard() {
                       />
                     )}
                   </div>
-                  <span className="text-[10px] font-mono text-sepia-400">{activeConflicts}a/{resolvedConflicts}r</span>
+                  <span className="text-[10px] font-mono text-sepia-600">{activeConflicts}a/{resolvedConflicts}r</span>
                 </div>
               )}
             </ParchmentCard>
@@ -406,11 +406,11 @@ export default function Dashboard() {
                           </span>
                           <div className="min-w-0">
                             <h3 className="font-medium text-sepia-800 truncate">{chapter.title}</h3>
-                            <p className="text-sm text-sepia-500 mt-1 line-clamp-2">{chapter.summary}</p>
+                            <p className="text-sm text-sepia-600 mt-1 line-clamp-2">{chapter.summary}</p>
                           </div>
                         </div>
                         {wordCount > 0 && (
-                          <span className="shrink-0 text-[10px] font-mono text-sepia-400 bg-parchment-200/60 px-2 py-0.5 rounded">
+                          <span className="shrink-0 text-[10px] font-mono text-sepia-600 bg-parchment-200/60 px-2 py-0.5 rounded">
                             {wordCount.toLocaleString()}w
                           </span>
                         )}

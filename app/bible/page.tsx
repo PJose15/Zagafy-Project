@@ -246,7 +246,7 @@ export default function BiblePage() {
             className="py-4 h-32"
             placeholder="What are you currently working toward? (e.g., 'Building tension for the betrayal reveal in Chapter 12', 'Developing the romantic subplot before the climax')..."
           />
-          <p className="text-xs text-sepia-500">This guides the AI assistant with your current creative direction. Update it as your focus changes.</p>
+          <p className="text-xs text-sepia-600">This guides the AI assistant with your current creative direction. Update it as your focus changes.</p>
         </section>
       </motion.div>
 
@@ -302,12 +302,12 @@ export default function BiblePage() {
                         : 'text-sepia-600 hover:bg-parchment-200/50 border border-transparent',
                     ].join(' ')}
                   >
-                    <Icon size={16} className={isActive ? 'text-brass-700' : 'text-sepia-400'} />
+                    <Icon size={16} className={isActive ? 'text-brass-700' : 'text-sepia-600'} />
                     <span className="flex-1">{meta.label}</span>
                     {count > 0 && (
                       <span className={[
                         'text-xs px-1.5 py-0.5 rounded-full',
-                        isActive ? 'bg-brass-500/20 text-brass-800' : 'bg-sepia-300/30 text-sepia-500',
+                        isActive ? 'bg-brass-500/20 text-brass-800' : 'bg-sepia-300/30 text-sepia-600',
                       ].join(' ')}>
                         {count}
                       </span>

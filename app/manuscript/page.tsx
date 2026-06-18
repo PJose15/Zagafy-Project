@@ -21,7 +21,7 @@ function VersionCount({ chapterId }: { chapterId: string }) {
   }, [chapterId]);
   if (count === 0) return null;
   return (
-    <span className="inline-flex items-center gap-0.5 text-sepia-500">
+    <span className="inline-flex items-center gap-0.5 text-sepia-600">
       <BookCopy size={10} /> {count} version{count !== 1 ? 's' : ''}
     </span>
   );
@@ -156,7 +156,7 @@ export default function ManuscriptPage() {
           <>
             Write and organize your chapters.
             {state.chapters.length > 0 && (
-              <span className="ml-2 text-sepia-500 font-mono">
+              <span className="ml-2 text-sepia-600 font-mono">
                 {totalWordCount.toLocaleString()} total words · {readingTimeLabel(totalWordCount)}
               </span>
             )}
@@ -241,7 +241,7 @@ export default function ManuscriptPage() {
                       <button
                         onClick={() => handleMoveUp(index)}
                         disabled={index === 0}
-                        className="p-1.5 text-sepia-500 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-500 disabled:hover:bg-transparent"
+                        className="p-1.5 text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
                         aria-label={`Move ${chapter.title} up`}
                       >
                         <ChevronUp size={16} />
@@ -249,7 +249,7 @@ export default function ManuscriptPage() {
                       <button
                         onClick={() => handleMoveDown(index)}
                         disabled={index === state.chapters.length - 1}
-                        className="p-1.5 text-sepia-500 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-500 disabled:hover:bg-transparent"
+                        className="p-1.5 text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
                         aria-label={`Move ${chapter.title} down`}
                       >
                         <ChevronDown size={16} />
@@ -259,14 +259,14 @@ export default function ManuscriptPage() {
                           setEditingId(chapter.id);
                           setEditForm(chapter);
                         }}
-                        className="p-2 text-sepia-500 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
+                        className="p-2 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={`Edit ${chapter.title}`}
                       >
                         <Edit3 size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(chapter.id)}
-                        className="p-2 text-sepia-500 hover:text-wax-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
+                        className="p-2 text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={`Delete ${chapter.title}`}
                       >
                         <Trash2 size={18} />
@@ -274,16 +274,16 @@ export default function ManuscriptPage() {
                     </div>
                   </div>
                   <div className="prose prose-sepia max-w-none font-serif text-sepia-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                    {getPlainText(chapter.content) || <span className="text-sepia-400 italic">Empty chapter...</span>}
+                    {getPlainText(chapter.content) || <span className="text-sepia-600 italic">Empty chapter...</span>}
                   </div>
-                  <div className="mt-2 flex items-center gap-3 text-xs text-sepia-400 font-mono">
+                  <div className="mt-2 flex items-center gap-3 text-xs text-sepia-600 font-mono">
                     <span>{wordCount(chapter.content).toLocaleString()} words</span>
                     <span>{readingTimeLabel(wordCount(chapter.content))}</span>
                     <VersionCount chapterId={chapter.id} />
                   </div>
                   {chapter.summary && (
                     <div className="mt-6 pt-4 border-t border-sepia-300/50">
-                      <p className="text-sm font-medium text-sepia-500 uppercase tracking-wider mb-2">Summary</p>
+                      <p className="text-sm font-medium text-sepia-600 uppercase tracking-wider mb-2">Summary</p>
                       <p className="text-sm text-sepia-600">{chapter.summary}</p>
                     </div>
                   )}

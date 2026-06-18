@@ -48,19 +48,19 @@ export default function StoryBrainPage() {
       {/* Summary Stats — M2: dim while deferred value is stale */}
       <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 transition-opacity ${isStale ? 'opacity-60' : ''}`}>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Characters</span>
+          <span className="text-[10px] text-sepia-600 block">Characters</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.entityCountByType.character}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Locations</span>
+          <span className="text-[10px] text-sepia-600 block">Locations</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.entityCountByType.location}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Relationships</span>
+          <span className="text-[10px] text-sepia-600 block">Relationships</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.relationships.length}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Total Mentions</span>
+          <span className="text-[10px] text-sepia-600 block">Total Mentions</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.totalMentions}</span>
         </ParchmentCard>
       </div>
@@ -76,7 +76,7 @@ export default function StoryBrainPage() {
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors relative ${
               activeTab === tab.id
                 ? 'bg-parchment-100 text-sepia-900 border border-sepia-300/30 border-b-transparent -mb-px'
-                : 'text-sepia-500 hover:text-sepia-700 hover:bg-parchment-200/50'
+                : 'text-sepia-600 hover:text-sepia-700 hover:bg-parchment-200/50'
             }`}
           >
             {tab.label}
@@ -126,7 +126,7 @@ export default function StoryBrainPage() {
         {activeTab === 'alerts' && (
           <div className="space-y-2">
             {inconsistencies.length === 0 ? (
-              <p className="text-sm text-sepia-500 text-center py-8">No inconsistencies detected. Your story is clean!</p>
+              <p className="text-sm text-sepia-600 text-center py-8">No inconsistencies detected. Your story is clean!</p>
             ) : (
               inconsistencies.map(inc => (
                 <InconsistencyAlert

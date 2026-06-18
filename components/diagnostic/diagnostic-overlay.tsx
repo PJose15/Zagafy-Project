@@ -89,7 +89,7 @@ export function DiagnosticOverlay() {
               How are you feeling about writing today? This helps Zagafy adapt to where you are right now.
             </p>
             {streak > 0 && (
-              <p className="text-xs text-sepia-500">
+              <p className="text-xs text-sepia-600">
                 Check-in streak: {streak} {streak === 1 ? 'day' : 'days'}
               </p>
             )}
@@ -114,7 +114,7 @@ export function DiagnosticOverlay() {
           >
             <button
               onClick={handleSkip}
-              className="text-sm text-sepia-500 hover:text-sepia-700 transition-colors underline underline-offset-4"
+              className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors underline underline-offset-4"
             >
               Skip check-in
             </button>

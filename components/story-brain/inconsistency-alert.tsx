@@ -41,7 +41,7 @@ export function InconsistencyAlert({ inconsistency, resolution, onResolve, onUnr
               </span>
               <button
                 onClick={() => onUnresolve(inconsistency.id)}
-                className="text-[10px] text-sepia-500 hover:text-sepia-700 underline"
+                className="text-[10px] text-sepia-600 hover:text-sepia-700 underline"
               >
                 Undo
               </button>

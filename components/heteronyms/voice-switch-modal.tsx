@@ -65,16 +65,16 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
                 }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-parchment-200 transition-colors border border-dashed border-sepia-300/40"
               >
-                <div className="w-7 h-7 rounded-full bg-parchment-200 flex items-center justify-center text-xs text-sepia-500">↩</div>
+                <div className="w-7 h-7 rounded-full bg-parchment-200 flex items-center justify-center text-xs text-sepia-600">↩</div>
                 <div>
                   <p className="text-sm text-sepia-700">Return to own voice</p>
-                  <p className="text-[11px] text-sepia-500">Stop writing as someone else</p>
+                  <p className="text-[11px] text-sepia-600">Stop writing as someone else</p>
                 </div>
               </button>
             )}
 
             {otherVoices.length === 0 ? (
-              <p className="text-sm text-sepia-500 text-center py-6">No other voices available. Create alter egos in Settings.</p>
+              <p className="text-sm text-sepia-600 text-center py-6">No other voices available. Create alter egos in Settings.</p>
             ) : (
               otherVoices.map((h) => (
                 <button
@@ -89,7 +89,7 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-sepia-800 truncate">{h.name}</p>
                     {h.styleNote && (
-                      <p className="text-[11px] text-sepia-500 truncate">{h.styleNote}</p>
+                      <p className="text-[11px] text-sepia-600 truncate">{h.styleNote}</p>
                     )}
                   </div>
                 </button>

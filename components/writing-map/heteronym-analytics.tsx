@@ -82,19 +82,19 @@ export function HeteronymAnalytics() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Total Words</span>
+          <span className="text-[10px] text-sepia-600 block">Total Words</span>
           <span className="text-lg font-mono text-sepia-800">{currentStats.words.toLocaleString()}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Sessions</span>
+          <span className="text-[10px] text-sepia-600 block">Sessions</span>
           <span className="text-lg font-mono text-sepia-800">{currentStats.sessions}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Avg Flow Score</span>
+          <span className="text-[10px] text-sepia-600 block">Avg Flow Score</span>
           <span className="text-lg font-mono text-sepia-800">{Math.round(currentStats.avgFlow)}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-400 block">Best Hour</span>
+          <span className="text-[10px] text-sepia-600 block">Best Hour</span>
           <span className="text-lg font-mono text-sepia-800">
             {currentStats.bestHour !== null ? `${currentStats.bestHour}:00` : '—'}
           </span>

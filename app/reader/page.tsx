@@ -103,7 +103,7 @@ export default function ReaderPage() {
             key={m}
             onClick={() => setMode(m)}
             className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${
-              mode === m ? 'bg-sepia-300/40 text-sepia-900 font-medium' : 'text-sepia-500 hover:text-sepia-700'
+              mode === m ? 'bg-sepia-300/40 text-sepia-900 font-medium' : 'text-sepia-600 hover:text-sepia-700'
             }`}
           >
             {m === 'print' ? 'Print Book' : m === 'kindle' ? 'Kindle' : 'Audiobook'}

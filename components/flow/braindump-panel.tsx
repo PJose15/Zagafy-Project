@@ -59,7 +59,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
           )}
 
           {/* Timer */}
-          <span className="text-xs text-sepia-500 tabular-nums">
+          <span className="text-xs text-sepia-600 tabular-nums">
             {formatTime(speech.elapsedSeconds)}
           </span>
 
@@ -119,7 +119,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
           {/* Close */}
           <button
             onClick={braindump.closePanel}
-            className="p-1.5 rounded-lg text-sepia-500 hover:text-sepia-700 hover:bg-parchment-200 transition-colors"
+            className="p-1.5 rounded-lg text-sepia-600 hover:text-sepia-700 hover:bg-parchment-200 transition-colors"
             aria-label="Close braindump panel"
           >
             <X size={14} />
@@ -130,7 +130,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
       {/* Transcript area */}
       <div className="flex-1 overflow-y-auto px-6 py-4" style={{ height: 'calc(100% - 84px)' }}>
         {isEmpty && speech.isRecording && (
-          <p className="text-sepia-400 text-sm italic">Listening... start speaking.</p>
+          <p className="text-sepia-600 text-sm italic">Listening... start speaking.</p>
         )}
 
         {speech.error && !isStopped && (
@@ -140,7 +140,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
         <div className="text-sepia-800 text-base leading-relaxed font-serif whitespace-pre-wrap" aria-live="polite">
           {speech.finalTranscript}
           {speech.interimTranscript && (
-            <span className="text-sepia-500">
+            <span className="text-sepia-600">
               {speech.finalTranscript ? ' ' : ''}{speech.interimTranscript}
               <span style={{ animation: 'braindump-cursor-blink 1s step-end infinite' }}>|</span>
             </span>
@@ -148,7 +148,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
         </div>
 
         {isStopped && !hasTranscript && (
-          <p className="text-sepia-500 text-sm mt-2">No words captured. Try recording again.</p>
+          <p className="text-sepia-600 text-sm mt-2">No words captured. Try recording again.</p>
         )}
       </div>
 
@@ -184,7 +184,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
               </button>
               <button
                 onClick={braindump.reRecord}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-sepia-500 hover:text-sepia-700 hover:bg-parchment-200 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-sepia-600 hover:text-sepia-700 hover:bg-parchment-200 transition-colors"
               >
                 <RotateCcw size={14} />
                 Re-record

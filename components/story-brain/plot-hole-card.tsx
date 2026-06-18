@@ -8,7 +8,7 @@ import type { InconsistencyResolution, ResolutionAction } from '@/lib/story-brai
 const IMPACT_COLORS: Record<'high' | 'medium' | 'low', string> = {
   high: 'text-wax-600',
   medium: 'text-brass-600',
-  low: 'text-sepia-500',
+  low: 'text-sepia-600',
 };
 
 interface PlotHoleCardProps {
@@ -51,7 +51,7 @@ export function PlotHoleCard({ plotHole, resolution, onResolve, onUnresolve, onG
               </>
             )}
             {isResolved && (
-              <button onClick={() => onUnresolve(plotHole.id)} className="text-[10px] text-sepia-500 hover:text-sepia-700 underline">
+              <button onClick={() => onUnresolve(plotHole.id)} className="text-[10px] text-sepia-600 hover:text-sepia-700 underline">
                 Undo
               </button>
             )}

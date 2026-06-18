@@ -68,7 +68,7 @@ export function WordsByHour({ sessions }: WordsByHourProps) {
 
   if (!hasData) {
     return (
-      <div className="h-48 flex items-center justify-center text-sepia-500 text-sm" data-testid="words-by-hour-empty">
+      <div className="h-48 flex items-center justify-center text-sepia-600 text-sm" data-testid="words-by-hour-empty">
         No session data yet. Start writing to see your hourly patterns.
       </div>
     );

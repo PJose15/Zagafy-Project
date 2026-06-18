@@ -19,7 +19,7 @@ export function RelationshipsTab({ editForm, setEditForm, characters, currentCha
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-      <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider mb-2">General Relationship Notes</label>
+      <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">General Relationship Notes</label>
       <textarea
         value={editForm.relationships || ''}
         onChange={(e) => setEditForm({ ...editForm, relationships: e.target.value })}
@@ -29,7 +29,7 @@ export function RelationshipsTab({ editForm, setEditForm, characters, currentCha
 
       <div className="mt-6">
         <div className="flex items-center justify-between mb-4">
-          <label className="block text-xs font-medium text-sepia-500 uppercase tracking-wider">Dynamic Relationship Map</label>
+          <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider">Dynamic Relationship Map</label>
           <button
             onClick={() => {
               const newRel: CharacterRelationship = { targetId: '', trustLevel: 50, tensionLevel: 50, dynamics: '' };
@@ -61,7 +61,7 @@ export function RelationshipsTab({ editForm, setEditForm, characters, currentCha
               <div className="w-2/3 space-y-3">
                 <div className="flex items-center gap-4">
                   <div className="flex-1">
-                    <div className="flex justify-between text-xs text-sepia-500 mb-1">
+                    <div className="flex justify-between text-xs text-sepia-600 mb-1">
                       <span>Trust ({rel.trustLevel}%)</span>
                     </div>
                     <input
@@ -75,7 +75,7 @@ export function RelationshipsTab({ editForm, setEditForm, characters, currentCha
                     />
                   </div>
                   <div className="flex-1">
-                    <div className="flex justify-between text-xs text-sepia-500 mb-1">
+                    <div className="flex justify-between text-xs text-sepia-600 mb-1">
                       <span>Tension ({rel.tensionLevel}%)</span>
                     </div>
                     <input
@@ -105,7 +105,7 @@ export function RelationshipsTab({ editForm, setEditForm, characters, currentCha
                   newRels.splice(idx, 1);
                   updateRels(newRels);
                 }}
-                className="p-2 text-sepia-500 hover:text-wax-500 hover:bg-parchment-200 rounded-lg transition-colors"
+                className="p-2 text-sepia-600 hover:text-wax-500 hover:bg-parchment-200 rounded-lg transition-colors"
                 aria-label="Remove relationship"
               >
                 <Trash2 size={16} />
@@ -113,7 +113,7 @@ export function RelationshipsTab({ editForm, setEditForm, characters, currentCha
             </div>
           ))}
           {rels.length === 0 && (
-            <div className="text-center py-6 text-sm text-sepia-500 border border-dashed border-sepia-300/50 rounded-xl">
+            <div className="text-center py-6 text-sm text-sepia-600 border border-dashed border-sepia-300/50 rounded-xl">
               No dynamic relationships mapped yet.
             </div>
           )}

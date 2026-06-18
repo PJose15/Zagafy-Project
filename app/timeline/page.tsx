@@ -93,7 +93,7 @@ export default function TimelinePage() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
             >
-              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-parchment-50 ${markerColorByCanon[event.canonStatus || ''] || 'bg-brass-600'} text-sepia-500 group-hover:text-brass-500 group-hover:bg-brass-700 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-colors`}>
+              <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-parchment-50 ${markerColorByCanon[event.canonStatus || ''] || 'bg-brass-600'} text-sepia-600 group-hover:text-brass-500 group-hover:bg-brass-700 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-colors`}>
                 <Clock size={16} />
               </div>
 
@@ -153,14 +153,14 @@ export default function TimelinePage() {
                             setEditingId(event.id);
                             setEditForm(event);
                           }}
-                          className="p-1.5 text-sepia-500 hover:text-brass-500 hover:bg-sepia-300/20 rounded-md transition-colors"
+                          className="p-1.5 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-md transition-colors"
                           aria-label={`Edit event: ${event.date}`}
                         >
                           <Edit3 size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(event.id)}
-                          className="p-1.5 text-sepia-500 hover:text-wax-500 hover:bg-sepia-300/20 rounded-md transition-colors"
+                          className="p-1.5 text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 rounded-md transition-colors"
                           aria-label={`Delete event: ${event.date}`}
                         >
                           <Trash2 size={16} />
@@ -170,7 +170,7 @@ export default function TimelinePage() {
                     <p className="text-sepia-700 leading-relaxed text-sm mt-3">{event.description}</p>
                     {event.impact && (
                       <div className="mt-4 pt-3 border-t border-sepia-300/50">
-                        <span className="text-xs font-medium text-sepia-500 uppercase tracking-wider block mb-1">Impact</span>
+                        <span className="text-xs font-medium text-sepia-600 uppercase tracking-wider block mb-1">Impact</span>
                         <p className="text-sm text-sepia-600">{event.impact}</p>
                       </div>
                     )}

@@ -507,13 +507,13 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           <h2 className="text-sm font-medium text-sepia-600 truncate max-w-xs">
             {chapter?.title || 'Flow Mode'}
           </h2>
-          <span className="text-xs text-sepia-400">{wordCount} words</span>
+          <span className="text-xs text-sepia-600">{wordCount} words</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
               onClick={() => setVersionPanelOpen(!versionPanelOpen)}
-              className="text-sm text-sepia-500 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
+              className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
               aria-label="Version history"
             >
               <BookCopy size={16} />
@@ -570,7 +570,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
               }
             }}
             className={`text-sm transition-colors p-1.5 rounded-lg hover:bg-parchment-200 ${
-              coachPanelOpen ? 'text-brass-500' : 'text-sepia-500 hover:text-sepia-700'
+              coachPanelOpen ? 'text-brass-500' : 'text-sepia-600 hover:text-sepia-700'
             }`}
             aria-label="Story coach"
             aria-pressed={coachPanelOpen}
@@ -581,7 +581,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           {heteronyms.length > 1 && (
             <button
               onClick={() => setVoiceSwitchOpen(true)}
-              className="text-sm text-sepia-500 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
+              className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
               aria-label="Switch writing voice"
             >
               <Theater size={16} />
@@ -590,7 +590,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           {sceneChange.canActivate && (
             <button
               onClick={handleSceneChangeDepart}
-              className="text-sm text-sepia-500 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
+              className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
               aria-label="Scene change"
             >
               <Shuffle size={16} />
@@ -610,7 +610,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
               braindump.openPanel();
             }}
             className={`text-sm transition-colors p-1.5 rounded-lg hover:bg-parchment-200 ${
-              braindump.panelOpen ? 'text-red-400' : 'text-sepia-500 hover:text-sepia-700'
+              braindump.panelOpen ? 'text-red-400' : 'text-sepia-600 hover:text-sepia-700'
             }`}
             aria-label="Voice braindump"
           >
@@ -618,14 +618,14 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           </button>
           <button
             onClick={braindump.openHistory}
-            className="text-sm text-sepia-500 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
+            className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
             aria-label="Braindump history"
           >
             <ClipboardList size={16} />
           </button>
           <button
             onClick={handleExitWithGuard}
-            className="text-sm text-sepia-500 hover:text-sepia-700 transition-colors px-3 py-1 rounded-lg hover:bg-parchment-200"
+            className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors px-3 py-1 rounded-lg hover:bg-parchment-200"
           >
             Exit Flow
           </button>

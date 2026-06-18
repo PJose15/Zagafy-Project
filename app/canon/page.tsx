@@ -138,7 +138,7 @@ export default function CanonLockPage() {
                 </p>
 
                 <div className="flex items-center gap-2 pt-4 border-t border-sepia-300/30 mt-auto">
-                  <span className="text-xs text-sepia-500 mr-auto">Change status:</span>
+                  <span className="text-xs text-sepia-600 mr-auto">Change status:</span>
                   {(Object.keys(statusConfig) as CanonStatus[]).map((status) => {
                     const btnConfig = statusConfig[status];
                     const BtnIcon = btnConfig.icon;
@@ -152,7 +152,7 @@ export default function CanonLockPage() {
                         className={`p-1.5 rounded-md transition-colors ${
                           isActive
                             ? `${btnConfig.bg} ${btnConfig.color}`
-                            : 'text-sepia-400 hover:bg-parchment-200 hover:text-sepia-700'
+                            : 'text-sepia-600 hover:bg-parchment-200 hover:text-sepia-700'
                         }`}
                       >
                         <BtnIcon size={16} />

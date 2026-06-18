@@ -14,7 +14,7 @@ interface ParchmentTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAr
 }
 
 const baseClasses =
-  'w-full bg-parchment-200 border border-sepia-300/60 text-sepia-900 placeholder:text-sepia-500/60 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40 focus:border-brass-500/60 transition-colors';
+  'w-full bg-parchment-200 border border-sepia-300/60 text-sepia-900 placeholder:text-sepia-600/60 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40 focus:border-brass-500/60 transition-colors';
 
 const errorClasses = 'border-wax-500/60 focus:ring-wax-500/30';
 
