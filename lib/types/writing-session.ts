@@ -3,10 +3,10 @@ import {
   putSession as dexiePutSession,
   putAllSessions as dexiePutAllSessions,
 } from '@/lib/storage/dexie-db';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 
 const SESSIONS_KEY = 'zagafy_sessions';
 const WIP_KEY = 'zagafy_session_wip';
-const PROJECT_ID_KEY = 'zagafy_project_id';
 
 export type FlowScore = 1 | 2 | 3 | 4 | 5;
 
@@ -168,18 +168,12 @@ export async function updateSessionFlowScore(sessionId: string, score: FlowScore
   }
 }
 
+/**
+ * The current project id used to tag sessions/braindumps. Delegates to the
+ * multi-project active-project pointer so this value follows project switches.
+ */
 export function getProjectId(): string {
-  try {
-    const existing = localStorage.getItem(PROJECT_ID_KEY);
-    if (existing && typeof existing === 'string' && existing.length > 0) {
-      return existing;
-    }
-    const newId = crypto.randomUUID();
-    localStorage.setItem(PROJECT_ID_KEY, newId);
-    return newId;
-  } catch {
-    return crypto.randomUUID();
-  }
+  return getActiveProjectId();
 }
 
 type WipSession = Omit<WritingSession, 'endedAt' | 'wordsEnd' | 'wordsAdded' | 'flowScore' | 'keystrokeMetrics' | 'autoFlowScore' | 'flowMoments'> & { currentWords: number };

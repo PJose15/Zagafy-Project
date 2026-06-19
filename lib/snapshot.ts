@@ -1,6 +1,7 @@
 import { db, type DexieStorySnapshot } from '@/lib/storage/dexie-db';
 import type { StoryState } from '@/lib/store';
 import { getPlainText } from '@/lib/editor/serialization';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 
 /**
  * Phase 4.7 / MP-03 — manuscript-wide story snapshots.
@@ -85,7 +86,7 @@ export async function createSnapshot(
     cap?: number;
   },
 ): Promise<SnapshotMetadata> {
-  const storyId = options.storyId ?? DEFAULT_STORY_ID;
+  const storyId = options.storyId ?? getActiveProjectId();
   const cap = options.cap ?? DEFAULT_SNAPSHOT_CAP;
   const trimmedName = options.name.trim() || `Snapshot ${new Date().toLocaleString()}`;
   const row: DexieStorySnapshot = {
@@ -117,7 +118,7 @@ export async function createSnapshot(
 
 /** Newest-first list of snapshot metadata for the given story. */
 export async function listSnapshots(
-  storyId: string = DEFAULT_STORY_ID,
+  storyId: string = getActiveProjectId(),
 ): Promise<SnapshotMetadata[]> {
   const rows = await db.storySnapshots.where('storyId').equals(storyId).toArray();
   return rows

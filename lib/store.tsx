@@ -12,6 +12,12 @@ import {
 import type { WorldBibleSection } from '@/lib/types/world-bible';
 import { recordDelta } from '@/lib/sync/sync-queue';
 import { useSync } from '@/lib/sync/sync-context';
+import { wordCount as countWords } from '@/lib/editor/serialization';
+import {
+  getActiveProjectId,
+  PROJECT_CHANGED,
+  PROJECT_CHANGED_EVENT,
+} from '@/lib/projects/active-project';
 
 const SYNC_CHANNEL = 'zagafy_sync';
 
@@ -222,8 +228,8 @@ interface StoryContextType {
 
 const StoryContext = createContext<StoryContextType | undefined>(undefined);
 
-async function hydrateFromDexie(): Promise<StoryState> {
-  const saved = await getStory();
+async function hydrateFromDexie(projectId: string = getActiveProjectId()): Promise<StoryState> {
+  const saved = await getStory(projectId);
   let loadedState: StoryState = defaultState;
   if (saved) {
     loadedState = { ...defaultState, ...(saved as Partial<StoryState>) };
@@ -231,7 +237,7 @@ async function hydrateFromDexie(): Promise<StoryState> {
 
   // Load chapter contents from Dexie and merge back
   try {
-    const contentMap = await getAllChapterContents();
+    const contentMap = await getAllChapterContents(projectId);
     if (contentMap.size > 0 && Array.isArray(loadedState.chapters)) {
       loadedState = {
         ...loadedState,
@@ -252,6 +258,9 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<StoryState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
+  // The project the store is currently bound to. Persist writes target this id;
+  // a project switch updates it and re-hydrates.
+  const activeProjectIdRef = useRef<string>('current');
   const { notifyWrite: notifySyncWrite } = useSync();
   // Tracks the last state snapshot applied from another tab. The persist
   // effect compares by reference: if state === lastRemoteStateRef.current,
@@ -280,7 +289,16 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
         // Ignore — legacy cleanup is best-effort
       }
 
-      const loaded = await hydrateFromDexie();
+      const activeId = getActiveProjectId();
+      activeProjectIdRef.current = activeId;
+
+      // Guarantee the active project has a stories row so it appears in the
+      // project library even before its first save (fresh / just-migrated user).
+      if ((await getStory(activeId)) === null) {
+        await putStory({ ...defaultState } as unknown as Record<string, unknown>, { projectId: activeId });
+      }
+
+      const loaded = await hydrateFromDexie(activeId);
       setState(loaded);
       setIsLoaded(true);
     }
@@ -303,18 +321,26 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
+      const projectId = activeProjectIdRef.current;
       try {
         // Save full state (minus chapter content) to Dexie stories table
         const stateForStore = {
           ...state,
           chapters: state.chapters.map(ch => ({ ...ch, content: '' })),
         };
-        await putStory(stateForStore as unknown as Record<string, unknown>);
+        const totalWords = state.chapters.reduce(
+          (sum, ch) => sum + (ch.content ? countWords(ch.content) : 0),
+          0,
+        );
+        await putStory(stateForStore as unknown as Record<string, unknown>, {
+          projectId,
+          wordCount: totalWords,
+        });
 
         // Save chapter contents to Dexie (separate table, best-effort)
         await Promise.all(
           state.chapters.map(ch =>
-            putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source).catch(() => {
+            putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source, projectId).catch(() => {
               // Individual chapter write failed — content remains in memory
             })
           )
@@ -323,7 +349,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
         if (saveError) setSaveError(false);
 
         // Record sync deltas for cloud push (non-blocking, best-effort)
-        recordDelta('story', 'current', 'upsert').catch(() => {});
+        recordDelta('story', projectId, 'upsert').catch(() => {});
         for (const ch of state.chapters) {
           recordDelta('chapter', ch.id, 'upsert').catch(() => {});
         }
@@ -364,7 +390,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       if (hydrateTimer) clearTimeout(hydrateTimer);
       hydrateTimer = setTimeout(() => {
         hydrateTimer = null;
-        hydrateFromDexie().then(next => {
+        hydrateFromDexie(activeProjectIdRef.current).then(next => {
           lastRemoteStateRef.current = next;
           setState(next);
         }).catch(() => {
@@ -373,15 +399,33 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       }, 250);
     };
 
+    // The active project changed (in this tab or another). Re-bind the store to
+    // the now-active project and load its state. Active project is a per-browser
+    // value (localStorage), so every tab follows the switch.
+    const switchActive = () => {
+      const id = getActiveProjectId();
+      activeProjectIdRef.current = id;
+      hydrateFromDexie(id).then(next => {
+        lastRemoteStateRef.current = next;
+        setState(next);
+      }).catch(() => {
+        // Ignore — switch hydration failed
+      });
+    };
+
     const handleMessage = (e: MessageEvent) => {
-      if (!e.data || e.data.type !== 'state-updated') return;
-      scheduleHydrate();
+      if (!e.data) return;
+      if (e.data.type === 'state-updated') scheduleHydrate();
+      else if (e.data.type === PROJECT_CHANGED) switchActive();
     };
 
     channel.addEventListener('message', handleMessage);
+    // Same-tab switch signal (BroadcastChannel does not deliver to the poster).
+    window.addEventListener(PROJECT_CHANGED_EVENT, switchActive);
     return () => {
       if (hydrateTimer) clearTimeout(hydrateTimer);
       channel.removeEventListener('message', handleMessage);
+      window.removeEventListener(PROJECT_CHANGED_EVENT, switchActive);
       channel.close();
       channelRef.current = null;
     };

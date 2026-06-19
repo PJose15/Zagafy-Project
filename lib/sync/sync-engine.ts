@@ -9,6 +9,7 @@
  */
 
 import { db as dexieDb } from '@/lib/storage/dexie-db';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 import type {
   SyncDelta,
   SyncStatus,
@@ -285,14 +286,27 @@ export class SyncEngine {
 
   private async applyPulledData(data: PullResponse): Promise<Record<string, number>> {
     const counts: Record<string, number> = {};
+    // All pulled rows belong to the active project (active-project-only sync).
+    const projectId = getActiveProjectId();
 
     // Apply story state
     if (data.story?.state) {
       const state = data.story.state as Record<string, unknown>;
       // Merge server state into local Dexie story blob
+      const existingStory = await dexieDb.stories.get(projectId);
+      let chapterCount = existingStory?.chapterCount ?? 0;
+      const stateChapters = (state as { chapters?: unknown[] }).chapters;
+      if (Array.isArray(stateChapters)) chapterCount = stateChapters.length;
       await dexieDb.stories.put({
-        id: 'current',
+        id: projectId,
         data: JSON.stringify(state),
+        title: typeof (state as { title?: unknown }).title === 'string'
+          ? (state as { title: string }).title
+          : existingStory?.title ?? 'Untitled Project',
+        chapterCount,
+        wordCount: existingStory?.wordCount ?? 0,
+        status: existingStory?.status ?? 'draft',
+        createdAt: existingStory?.createdAt ?? Date.now(),
         updatedAt: Date.now(),
       });
       counts.story = 1;
@@ -303,6 +317,7 @@ export class SyncEngine {
       for (const ch of data.chapters) {
         await dexieDb.chapters.put({
           id: ch.id as string,
+          projectId,
           title: (ch.title as string) ?? '',
           content: (ch.content as string) ?? '',
           summary: (ch.summary as string) ?? '',
@@ -323,6 +338,7 @@ export class SyncEngine {
         if (!existing) {
           await dexieDb.chapterVersions.put({
             id: v.id as string,
+            projectId,
             chapterId: (v.chapterId as string) ?? '',
             createdAt: (v.createdAt as string) ?? new Date().toISOString(),
             data: typeof v.data === 'string' ? v.data : JSON.stringify(v.data),
@@ -359,6 +375,7 @@ export class SyncEngine {
         if (!existing) {
           await dexieDb.sessions.put({
             id: s.id as string,
+            projectId,
             startedAt: (s.startedAt as string) ?? '',
             endedAt: (s.endedAt as string) ?? '',
             wordsAdded: (s.wordsAdded as number) ?? 0,
@@ -378,6 +395,7 @@ export class SyncEngine {
         if (!existing) {
           await dexieDb.chatMessages.put({
             id: m.id as string,
+            projectId,
             role: (m.role as 'user' | 'assistant') ?? 'user',
             content: (m.content as string) ?? '',
             timestamp: (m.timestamp as number) ?? Date.now(),
@@ -393,6 +411,7 @@ export class SyncEngine {
       for (const i of data.writerInsights) {
         await dexieDb.writerInsights.put({
           id: i.id as string,
+          projectId,
           category: (i.category as string) ?? 'voice',
           observation: (i.observation as string) ?? '',
           evidenceCount: (i.evidenceCount as number) ?? 1,
@@ -469,7 +488,7 @@ async function resolvePayload(
 ): Promise<Record<string, unknown> | null> {
   switch (entityType) {
     case 'story': {
-      const row = await dexieDb.stories.get('current');
+      const row = await dexieDb.stories.get(getActiveProjectId());
       if (!row) return null;
       try {
         return JSON.parse(row.data) as Record<string, unknown>;
@@ -554,7 +573,7 @@ async function resolvePayload(
 /** Read the story title from Dexie for the push request. */
 async function getStoryTitle(): Promise<string> {
   try {
-    const row = await dexieDb.stories.get('current');
+    const row = await dexieDb.stories.get(getActiveProjectId());
     if (!row) return 'Untitled';
     const state = JSON.parse(row.data);
     return (state?.title as string) || 'Untitled';
