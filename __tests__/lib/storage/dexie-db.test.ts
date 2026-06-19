@@ -16,6 +16,7 @@ import {
   putStory,
   clearAllStoryData,
 } from '@/lib/storage/dexie-db';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 
 describe('dexie-db', () => {
   let storage: Record<string, string>;
@@ -66,13 +67,18 @@ describe('dexie-db', () => {
       // Legacy localStorage key removed after migration
       expect(storage['zagafy_state']).toBeUndefined();
 
-      // Full state blob now lives in Dexie stories table (content stripped)
-      const row = await db.stories.get('current');
+      // Full state blob now lives in Dexie stories table (content stripped),
+      // keyed by the active project id (multi-project).
+      const row = await db.stories.get(getActiveProjectId());
       expect(row).toBeTruthy();
       const parsed = JSON.parse(row!.data);
       expect(parsed.title).toBe('My Novel');
       expect(parsed.chapters[0].content).toBe('');
       expect(parsed.chapters[1].content).toBe('');
+
+      // Migrated chapters are tagged with the active project.
+      const migratedCh1 = await db.chapters.get('ch1');
+      expect(migratedCh1?.projectId).toBe(getActiveProjectId());
     });
 
     it('migrates chapter versions and removes localStorage key', async () => {
@@ -228,7 +234,7 @@ describe('dexie-db', () => {
     });
 
     it('getStory returns null when stored JSON is corrupt', async () => {
-      await db.stories.put({ id: 'current', data: '{not-json', updatedAt: Date.now() });
+      await db.stories.put({ id: getActiveProjectId(), data: '{not-json', updatedAt: Date.now() });
       expect(await getStory()).toBeNull();
     });
   });

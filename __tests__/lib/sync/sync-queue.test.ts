@@ -1,16 +1,32 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+const PROJECT_ID = 'p1';
+
 const syncQueueStore = new Map<string, any>();
 const syncMetaStore = new Map<string, any>();
+
+// The active project scopes the queue + sync-meta rows.
+vi.mock('@/lib/projects/active-project', () => ({
+  getActiveProjectId: () => PROJECT_ID,
+}));
+
+// where('projectId').equals(value) → a collection scoped to that project.
+function projectCollection(value: string) {
+  const matches = () => Array.from(syncQueueStore.values()).filter((e: any) => e.projectId === value);
+  return {
+    sortBy: vi.fn(async (key: string) => matches().sort((a: any, b: any) => a[key] - b[key])),
+    delete: vi.fn(async () => { matches().forEach((e: any) => syncQueueStore.delete(e.id)); }),
+    count: vi.fn(async () => matches().length),
+    toArray: vi.fn(async () => matches()),
+  };
+}
 
 vi.mock('@/lib/storage/dexie-db', () => ({
   db: {
     syncQueue: {
       put: vi.fn(async (entry: any) => { syncQueueStore.set(entry.id, entry); }),
       get: vi.fn(async (id: string) => syncQueueStore.get(id) ?? undefined),
-      orderBy: vi.fn(() => ({
-        toArray: vi.fn(async () => Array.from(syncQueueStore.values())),
-      })),
+      where: vi.fn((_field: string) => ({ equals: (value: string) => projectCollection(value) })),
       bulkDelete: vi.fn(async (ids: string[]) => { ids.forEach(id => syncQueueStore.delete(id)); }),
       clear: vi.fn(async () => { syncQueueStore.clear(); }),
       count: vi.fn(async () => syncQueueStore.size),
@@ -69,21 +85,30 @@ describe('sync-queue', () => {
 
   describe('readQueue', () => {
     it('returns all entries', async () => {
-      syncQueueStore.set('q1', { id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
-      syncQueueStore.set('q2', { id: 'q2', entityType: 'session', entityId: 's-1', op: 'upsert', timestamp: 200 });
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q2', { id: 'q2', projectId: PROJECT_ID, entityType: 'session', entityId: 's-1', op: 'upsert', timestamp: 200 });
 
       const result = await readQueue();
       expect(result).toHaveLength(2);
     });
 
     it('deduplicates by entityType+entityId keeping latest timestamp', async () => {
-      syncQueueStore.set('q1', { id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
-      syncQueueStore.set('q2', { id: 'q2', entityType: 'chapter', entityId: 'ch-1', op: 'delete', timestamp: 200 });
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q2', { id: 'q2', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'delete', timestamp: 200 });
 
       const result = await readQueue();
       expect(result).toHaveLength(1);
       expect(result[0].op).toBe('delete');
       expect(result[0].id).toBe('q2');
+    });
+
+    it('excludes entries belonging to other projects', async () => {
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q2', { id: 'q2', projectId: 'other', entityType: 'chapter', entityId: 'ch-2', op: 'upsert', timestamp: 200 });
+
+      const result = await readQueue();
+      expect(result).toHaveLength(1);
+      expect(result[0].entityId).toBe('ch-1');
     });
   });
 
@@ -104,9 +129,9 @@ describe('sync-queue', () => {
   // ─── clearQueue ───
 
   describe('clearQueue', () => {
-    it('empties the entire queue', async () => {
-      syncQueueStore.set('q1', { id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
-      syncQueueStore.set('q2', { id: 'q2', entityType: 'session', entityId: 's-1', op: 'upsert', timestamp: 200 });
+    it('empties the active project queue', async () => {
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q2', { id: 'q2', projectId: PROJECT_ID, entityType: 'session', entityId: 's-1', op: 'upsert', timestamp: 200 });
 
       await clearQueue();
       expect(syncQueueStore.size).toBe(0);
@@ -117,7 +142,7 @@ describe('sync-queue', () => {
 
   describe('hasPendingDeltas', () => {
     it('returns true when queue has entries', async () => {
-      syncQueueStore.set('q1', { id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
 
       const result = await hasPendingDeltas();
       expect(result).toBe(true);
@@ -138,8 +163,8 @@ describe('sync-queue', () => {
     });
 
     it('returns the stored ID', async () => {
-      syncMetaStore.set('sync', {
-        id: 'sync',
+      syncMetaStore.set(PROJECT_ID, {
+        id: PROJECT_ID,
         serverStoryId: 'server-story-123',
         lastPulledAt: null,
         lastPushedAt: null,
@@ -153,20 +178,20 @@ describe('sync-queue', () => {
   // ─── updateSyncMeta ───
 
   describe('updateSyncMeta', () => {
-    it('creates initial metadata', async () => {
+    it('creates initial metadata keyed by the active project', async () => {
       await updateSyncMeta({ serverStoryId: 'story-abc' });
 
-      const stored = syncMetaStore.get('sync');
+      const stored = syncMetaStore.get(PROJECT_ID);
       expect(stored).toBeDefined();
-      expect(stored.id).toBe('sync');
+      expect(stored.id).toBe(PROJECT_ID);
       expect(stored.serverStoryId).toBe('story-abc');
       expect(stored.lastPulledAt).toBeNull();
       expect(stored.lastPushedAt).toBeNull();
     });
 
     it('merges updates with existing metadata', async () => {
-      syncMetaStore.set('sync', {
-        id: 'sync',
+      syncMetaStore.set(PROJECT_ID, {
+        id: PROJECT_ID,
         serverStoryId: 'story-abc',
         lastPulledAt: null,
         lastPushedAt: null,
@@ -174,7 +199,7 @@ describe('sync-queue', () => {
 
       await updateSyncMeta({ lastPushedAt: '2026-01-01T00:00:00Z' });
 
-      const stored = syncMetaStore.get('sync');
+      const stored = syncMetaStore.get(PROJECT_ID);
       expect(stored.serverStoryId).toBe('story-abc');
       expect(stored.lastPushedAt).toBe('2026-01-01T00:00:00Z');
       expect(stored.lastPulledAt).toBeNull();
