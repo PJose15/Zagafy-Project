@@ -25,15 +25,18 @@ import {
   History,
   LayoutGrid,
   Send,
+  Library,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useStory } from '@/lib/store';
 import { useGamification } from '@/hooks/use-gamification';
 import { StreakBadge } from '@/components/gamification/streak-badge';
 import { XPBar } from '@/components/gamification/xp-bar';
+import { ProjectSwitcher } from '@/components/projects/project-switcher';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Projects', href: '/projects', icon: Library },
   { name: 'Manuscript', href: '/manuscript', icon: BookOpen },
   { name: 'Outline', href: '/outline', icon: LayoutGrid },
   { name: 'Flow Mode', href: '/flow', icon: Zap },
@@ -82,6 +85,9 @@ export function ParchmentSidebar() {
           </h1>
           <div className="mt-1.5 h-0.5 w-10 bg-gradient-to-r from-brass-500 to-brass-500/0 rounded-full" />
           <p className="text-xs text-brass-400/70 mt-2 font-mono">CanonKeeper v1.0</p>
+          <div className="mt-4">
+            <ProjectSwitcher onNavigate={() => setIsOpen(false)} />
+          </div>
         </div>
 
         <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto" aria-label="Primary">
