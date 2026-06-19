@@ -10,6 +10,7 @@
  */
 
 import { db } from '@/lib/storage/dexie-db';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 import type { SyncEntityType, SyncQueueEntry } from './types';
 
 /**
@@ -27,6 +28,7 @@ export async function recordDelta(
   try {
     await db.syncQueue.put({
       id: crypto.randomUUID(),
+      projectId: getActiveProjectId(),
       entityType,
       entityId,
       op,
@@ -44,7 +46,12 @@ export async function recordDelta(
  * If the latest op is 'delete', earlier 'upsert' entries are discarded.
  */
 export async function readQueue(): Promise<SyncQueueEntry[]> {
-  const all = await db.syncQueue.orderBy('timestamp').toArray();
+  // Active-project-only sync: never push another project's queued deltas under
+  // the active project's server story.
+  const all = await db.syncQueue
+    .where('projectId')
+    .equals(getActiveProjectId())
+    .sortBy('timestamp');
 
   // Deduplicate: keep the latest entry per entityType+entityId
   const map = new Map<string, SyncQueueEntry>();
@@ -66,38 +73,39 @@ export async function clearEntries(ids: string[]): Promise<void> {
   await db.syncQueue.bulkDelete(ids);
 }
 
-/** Clear the entire sync queue (used on project reset). */
+/** Clear the active project's sync queue (used on project reset). */
 export async function clearQueue(): Promise<void> {
-  await db.syncQueue.clear();
+  await db.syncQueue.where('projectId').equals(getActiveProjectId()).delete();
 }
 
-/** Returns true if the sync queue has any pending entries. */
+/** Returns true if the active project's sync queue has any pending entries. */
 export async function hasPendingDeltas(): Promise<boolean> {
-  const count = await db.syncQueue.count();
+  const count = await db.syncQueue.where('projectId').equals(getActiveProjectId()).count();
   return count > 0;
 }
 
-// ─── Sync metadata ───
+// ─── Sync metadata (one row per project) ───
 
-/** Read sync metadata. Returns null if not yet initialized. */
+/** Read the active project's sync metadata. Returns null if not yet initialized. */
 export async function getSyncMeta(): Promise<SyncQueueEntry | null> {
-  const row = await db.syncMeta.get('sync');
+  const row = await db.syncMeta.get(getActiveProjectId());
   return (row as SyncQueueEntry | undefined) ?? null;
 }
 
-/** Read the server story ID, or null if first sync hasn't happened. */
+/** Read the active project's server story ID, or null if first sync hasn't happened. */
 export async function getServerStoryId(): Promise<string | null> {
-  const row = await db.syncMeta.get('sync');
+  const row = await db.syncMeta.get(getActiveProjectId());
   return row?.serverStoryId ?? null;
 }
 
-/** Initialize or update sync metadata. */
+/** Initialize or update the active project's sync metadata. */
 export async function updateSyncMeta(
   updates: Partial<Omit<import('./types').SyncMeta, 'id'>>,
 ): Promise<void> {
-  const existing = await db.syncMeta.get('sync');
+  const projectId = getActiveProjectId();
+  const existing = await db.syncMeta.get(projectId);
   await db.syncMeta.put({
-    id: 'sync',
+    id: projectId,
     serverStoryId: existing?.serverStoryId ?? null,
     lastPulledAt: existing?.lastPulledAt ?? null,
     lastPushedAt: existing?.lastPushedAt ?? null,

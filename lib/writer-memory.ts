@@ -1,4 +1,5 @@
 import { db, type DexieWriterInsight } from '@/lib/storage/dexie-db';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 
 /**
  * Phase 4.12 / MP-11 — long-term observations about how this writer works.
@@ -55,9 +56,10 @@ function rowToInsight(row: DexieWriterInsight): WriterInsight | null {
   };
 }
 
-function insightToRow(insight: WriterInsight): DexieWriterInsight {
+function insightToRow(insight: WriterInsight, projectId: string = getActiveProjectId()): DexieWriterInsight {
   return {
     id: insight.id,
+    projectId,
     category: insight.category,
     observation: insight.observation,
     evidenceCount: insight.evidenceCount,
@@ -87,7 +89,7 @@ function makeKey(category: WriterInsightCategory, observation: string): string {
 
 /** Read every insight, newest-first. Filters out rows whose category is no longer recognized. */
 export async function readWriterInsights(): Promise<WriterInsight[]> {
-  const rows = await db.writerInsights.toArray();
+  const rows = await db.writerInsights.where('projectId').equals(getActiveProjectId()).toArray();
   return rows
     .map(rowToInsight)
     .filter((x): x is WriterInsight => x !== null)
@@ -142,12 +144,15 @@ export async function observe(input: ObserveInput): Promise<WriterInsight> {
   const key = makeKey(input.category, observation);
   const weight = input.evidenceWeight ?? 1;
 
+  const projectId = getActiveProjectId();
   return db.transaction('rw', db.writerInsights, async () => {
     const existingRows = await db.writerInsights
       .where('category')
       .equals(input.category)
       .toArray();
-    const match = existingRows.find(r => makeKey(input.category, r.observation) === key);
+    const match = existingRows.find(
+      r => r.projectId === projectId && makeKey(input.category, r.observation) === key,
+    );
 
     if (match) {
       const updated: WriterInsight = {
@@ -159,7 +164,7 @@ export async function observe(input: ObserveInput): Promise<WriterInsight> {
         confidence: computeConfidence(match.evidenceCount + weight, Date.now()),
         pinned: match.pinned === 1,
       };
-      await db.writerInsights.put(insightToRow(updated));
+      await db.writerInsights.put(insightToRow(updated, projectId));
       return updated;
     }
 
@@ -172,7 +177,7 @@ export async function observe(input: ObserveInput): Promise<WriterInsight> {
       confidence: computeConfidence(weight, Date.now()),
       pinned: false,
     };
-    await db.writerInsights.put(insightToRow(fresh));
+    await db.writerInsights.put(insightToRow(fresh, projectId));
     return fresh;
   });
 }
@@ -189,17 +194,17 @@ export async function setInsightPinned(id: string, pinned: boolean): Promise<voi
   await db.writerInsights.put({ ...row, pinned: pinned ? 1 : 0 });
 }
 
-/** Remove all writer insights from the local database. */
+/** Remove the active project's writer insights from the local database. */
 export async function clearAllInsights(): Promise<void> {
-  await db.writerInsights.clear();
+  await db.writerInsights.where('projectId').equals(getActiveProjectId()).delete();
 }
 
 /**
- * Recompute confidence for every insight (e.g. after a long pause).
- * Called from the writing-map view so age-decayed scores stay current.
+ * Recompute confidence for every insight in the active project (e.g. after a
+ * long pause). Called from the writing-map view so age-decayed scores stay current.
  */
 export async function refreshConfidences(): Promise<void> {
-  const rows = await db.writerInsights.toArray();
+  const rows = await db.writerInsights.where('projectId').equals(getActiveProjectId()).toArray();
   const now = Date.now();
   await db.writerInsights.bulkPut(
     rows.map(r => ({
