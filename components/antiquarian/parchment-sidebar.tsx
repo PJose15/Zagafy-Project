@@ -33,6 +33,7 @@ import { useGamification } from '@/hooks/use-gamification';
 import { StreakBadge } from '@/components/gamification/streak-badge';
 import { XPBar } from '@/components/gamification/xp-bar';
 import { ProjectSwitcher } from '@/components/projects/project-switcher';
+import { ProfileBadge } from '@/components/profile/profile-badge';
 
 const navItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -139,6 +140,7 @@ export function ParchmentSidebar() {
         </div>
 
         <div className="p-4 border-t border-mahogany-700/50">
+          <ProfileBadge onNavigate={() => setIsOpen(false)} />
           <Link
             href="/settings"
             onClick={() => setIsOpen(false)}
