@@ -96,7 +96,8 @@ describe('POST /api/chat', () => {
     );
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toMatch(/API key/);
+    expect(body.error).toMatch(/GEMINI_API_KEY/);
+    expect(body.details?.reason).toBe('ai_not_configured');
   });
 
   it('returns structured normal response on success', async () => {
