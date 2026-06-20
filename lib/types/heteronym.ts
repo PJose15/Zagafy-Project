@@ -1,11 +1,44 @@
 import type { HeteronymVoice } from '@/lib/heteronym-voice';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 
 export type { HeteronymVoice };
 
-const HETERONYMS_KEY = 'zagafy_heteronyms';
-const INITIALIZED_KEY = 'zagafy_heteronyms_initialized';
-const ACTIVE_KEY = 'zagafy_active_heteronym';
-const GUEST_KEY = 'zagafy_guest_heteronym';
+// Heteronyms (alter egos) are scoped PER PROJECT — each project keeps its own
+// personas + active voice, so they don't bleed across projects. Keys are
+// suffixed with the active project id.
+const HETERONYMS_PREFIX = 'zagafy_heteronyms';
+const ACTIVE_PREFIX = 'zagafy_active_heteronym';
+const GUEST_PREFIX = 'zagafy_guest_heteronym';
+
+// Legacy (pre-multi-project) global keys — migrated onto the active project once.
+const LEGACY_HETERONYMS_KEY = 'zagafy_heteronyms';
+const LEGACY_ACTIVE_KEY = 'zagafy_active_heteronym';
+const LEGACY_INITIALIZED_KEY = 'zagafy_heteronyms_initialized';
+
+function hetKey(pid: string = getActiveProjectId()): string { return `${HETERONYMS_PREFIX}_${pid}`; }
+function activeKey(pid: string = getActiveProjectId()): string { return `${ACTIVE_PREFIX}_${pid}`; }
+function guestKey(pid: string = getActiveProjectId()): string { return `${GUEST_PREFIX}_${pid}`; }
+
+/**
+ * One-time migration: move the legacy GLOBAL heteronyms onto the active project
+ * the first time it reads, then delete the legacy keys so other projects start
+ * fresh (no cross-project bleed).
+ */
+function migrateLegacy(pid: string): void {
+  try {
+    if (localStorage.getItem(hetKey(pid)) !== null) return; // already scoped
+    const legacy = localStorage.getItem(LEGACY_HETERONYMS_KEY);
+    if (legacy === null) return;
+    localStorage.setItem(hetKey(pid), legacy);
+    const legacyActive = localStorage.getItem(LEGACY_ACTIVE_KEY);
+    if (legacyActive) localStorage.setItem(activeKey(pid), legacyActive);
+    localStorage.removeItem(LEGACY_HETERONYMS_KEY);
+    localStorage.removeItem(LEGACY_ACTIVE_KEY);
+    localStorage.removeItem(LEGACY_INITIALIZED_KEY);
+  } catch {
+    // best effort
+  }
+}
 
 const MAX_HETERONYMS = 10;
 const DEFAULT_COLOR = '#6366f1'; // indigo-500
@@ -39,7 +72,9 @@ function isHeteronym(v: unknown): v is Heteronym {
 
 export function readHeteronyms(): Heteronym[] {
   try {
-    const raw = localStorage.getItem(HETERONYMS_KEY);
+    const pid = getActiveProjectId();
+    migrateLegacy(pid);
+    const raw = localStorage.getItem(hetKey(pid));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -51,7 +86,7 @@ export function readHeteronyms(): Heteronym[] {
 
 export function writeHeteronyms(heteronyms: Heteronym[]): void {
   try {
-    localStorage.setItem(HETERONYMS_KEY, JSON.stringify(heteronyms));
+    localStorage.setItem(hetKey(), JSON.stringify(heteronyms));
   } catch {
     // Storage quota exceeded
   }
@@ -91,13 +126,6 @@ export function initializeDefaultHeteronym(displayName?: string): Heteronym[] {
   const existing = readHeteronyms();
   if (existing.length > 0) return existing;
 
-  try {
-    const initialized = localStorage.getItem(INITIALIZED_KEY);
-    if (initialized === 'true' && existing.length > 0) return existing;
-  } catch {
-    // Continue to create default
-  }
-
   const defaultHeteronym: Heteronym = {
     id: crypto.randomUUID(),
     name: displayName || 'Myself',
@@ -113,18 +141,12 @@ export function initializeDefaultHeteronym(displayName?: string): Heteronym[] {
   writeHeteronyms(heteronyms);
   setActiveHeteronymId(defaultHeteronym.id);
 
-  try {
-    localStorage.setItem(INITIALIZED_KEY, 'true');
-  } catch {
-    // best effort
-  }
-
   return heteronyms;
 }
 
 export function getActiveHeteronymId(): string | null {
   try {
-    return localStorage.getItem(ACTIVE_KEY);
+    return localStorage.getItem(activeKey());
   } catch {
     return null;
   }
@@ -132,7 +154,7 @@ export function getActiveHeteronymId(): string | null {
 
 export function setActiveHeteronymId(id: string): void {
   try {
-    localStorage.setItem(ACTIVE_KEY, id);
+    localStorage.setItem(activeKey(), id);
   } catch {
     // best effort
   }
@@ -140,7 +162,7 @@ export function setActiveHeteronymId(id: string): void {
 
 export function getGuestHeteronymId(): string | null {
   try {
-    return sessionStorage.getItem(GUEST_KEY);
+    return sessionStorage.getItem(guestKey());
   } catch {
     return null;
   }
@@ -149,9 +171,9 @@ export function getGuestHeteronymId(): string | null {
 export function setGuestHeteronymId(id: string | null): void {
   try {
     if (id === null) {
-      sessionStorage.removeItem(GUEST_KEY);
+      sessionStorage.removeItem(guestKey());
     } else {
-      sessionStorage.setItem(GUEST_KEY, id);
+      sessionStorage.setItem(guestKey(), id);
     }
   } catch {
     // best effort
@@ -164,7 +186,7 @@ export function setGuestHeteronymId(id: string | null): void {
  */
 export function onHeteronymChange(callback: (heteronyms: Heteronym[]) => void): () => void {
   const handler = (e: StorageEvent) => {
-    if (e.key === HETERONYMS_KEY) {
+    if (e.key === hetKey()) {
       callback(readHeteronyms());
     }
   };
