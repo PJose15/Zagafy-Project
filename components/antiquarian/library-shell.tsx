@@ -17,6 +17,7 @@ import { getStreakWarning } from '@/lib/gamification/writing-streak';
 import { GamificationProvider } from '@/hooks/use-gamification';
 import { SyncProvider } from '@/lib/sync/sync-context';
 import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
+import { AiStatusBanner } from '@/components/ai/ai-status-banner';
 
 function StreakWarningToast() {
   const { toast } = useToast();
@@ -49,6 +50,7 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
         id="main-content"
         className="flex-1 overflow-y-auto md:rounded-tl-3xl border-t md:border-t-0 md:border-l border-mahogany-700/30 relative"
       >
+        <AiStatusBanner />
         <DiagnosticGate>{children}</DiagnosticGate>
       </main>
       {pendingFlowScore && (

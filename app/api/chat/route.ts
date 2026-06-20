@@ -57,7 +57,12 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return err('internal_error', 'API key not configured', 500);
+      return err(
+        'internal_error',
+        'The AI assistant is not configured. Set GEMINI_API_KEY in this environment to enable it.',
+        500,
+        { reason: 'ai_not_configured', provider: 'gemini' },
+      );
     }
 
     const ai = new GoogleGenAI({ apiKey });
