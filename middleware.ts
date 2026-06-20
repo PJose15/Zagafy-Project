@@ -24,6 +24,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/health(.*)',
+  '/api/ai-status(.*)', // boolean-only config probe — must be readable when signed out
   '/api/webhooks/(.*)', // Clerk / Stripe webhooks — verified by HMAC signature
 ]);
 
