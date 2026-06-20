@@ -19,8 +19,14 @@ const mockSession = vi.hoisted(() => ({
   resetSession: vi.fn(),
 }));
 
+const mockNav = vi.hoisted(() => ({ pathname: '/' }));
+
 vi.mock('@/lib/session', () => ({
   useSession: () => mockSession,
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockNav.pathname,
 }));
 
 vi.mock('@/components/diagnostic/diagnostic-overlay', () => ({
@@ -36,6 +42,7 @@ import { DiagnosticGate } from '@/components/diagnostic/diagnostic-gate';
 describe('DiagnosticGate', () => {
   beforeEach(() => {
     cleanup();
+    mockNav.pathname = '/';
     mockSession.session = {
       blockType: null,
       diagnosticCompleted: false,
@@ -45,6 +52,21 @@ describe('DiagnosticGate', () => {
       sessionStartedAt: '2025-01-01T00:00:00.000Z',
       flowChapterId: null,
     };
+  });
+
+  it('does NOT gate setup/library routes — children render even before the ritual', () => {
+    for (const path of ['/genesis', '/projects', '/import', '/settings', '/projects/abc']) {
+      cleanup();
+      mockNav.pathname = path;
+      render(
+        <DiagnosticGate>
+          <div data-testid="children">Main content</div>
+        </DiagnosticGate>
+      );
+      expect(screen.queryByTestId('diagnostic-overlay')).toBeNull();
+      expect(screen.queryByTestId('ritual-overlay')).toBeNull();
+      expect(screen.getByTestId('children')).toBeDefined();
+    }
   });
 
   it('shows DiagnosticOverlay when diagnostic not completed', () => {

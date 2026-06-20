@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { Plus, Pencil, Trash2, BookOpen, Check, X, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, BookOpen, Check, X, FileText, UploadCloud } from 'lucide-react';
 import { stagger, hoverLift } from '@/lib/animations';
 import {
   CarvedHeader,
@@ -72,6 +72,21 @@ export default function ProjectsPage() {
     }
   };
 
+  // Create a blank project and go straight to Import — for writers bringing an
+  // existing manuscript rather than starting from scratch.
+  const handleImport = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await createProject('Imported Manuscript');
+      router.push('/import');
+    } catch {
+      toast('Could not start the import.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const startRename = (p: ProjectSummary) => {
     setEditingId(p.id);
     setDraftTitle(p.title);
@@ -105,15 +120,26 @@ export default function ProjectsPage() {
           title="Your Stories"
           subtitle="Every project keeps its own manuscript, characters, history, and writing stats."
         />
-        <InkStampButton
-          variant="primary"
-          size="md"
-          icon={<Plus size={16} />}
-          onClick={handleCreate}
-          loading={busy}
-        >
-          New project
-        </InkStampButton>
+        <div className="flex items-center gap-2">
+          <InkStampButton
+            variant="ghost"
+            size="md"
+            icon={<UploadCloud size={16} />}
+            onClick={handleImport}
+            disabled={busy}
+          >
+            Import
+          </InkStampButton>
+          <InkStampButton
+            variant="primary"
+            size="md"
+            icon={<Plus size={16} />}
+            onClick={handleCreate}
+            loading={busy}
+          >
+            New project
+          </InkStampButton>
+        </div>
       </div>
 
       {loading ? (

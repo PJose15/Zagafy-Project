@@ -224,6 +224,13 @@ interface StoryContextType {
   state: StoryState;
   setState: React.Dispatch<React.SetStateAction<StoryState>>;
   updateField: <K extends keyof StoryState>(field: K, value: StoryState[K]) => void;
+  /**
+   * Persist immediately (bypassing the 500ms debounce) and resolve when the
+   * Dexie write completes. Pass the exact state to save; the store also adopts
+   * it. Used by flows that navigate right after writing (e.g. Genesis) so the
+   * next route sees the saved data instead of racing the debounce.
+   */
+  saveNow: (next?: StoryState) => Promise<void>;
 }
 
 const StoryContext = createContext<StoryContextType | undefined>(undefined);
@@ -308,6 +315,42 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveError, setSaveError] = useState(false);
+
+  // Core persistence: write one project's state (blob + chapter contents) to
+  // Dexie, record sync deltas, and notify other tabs. Shared by the debounced
+  // autosave and the imperative saveNow().
+  const persistState = useCallback(async (next: StoryState, projectId: string) => {
+    const stateForStore = {
+      ...next,
+      chapters: next.chapters.map(ch => ({ ...ch, content: '' })),
+    };
+    const totalWords = next.chapters.reduce(
+      (sum, ch) => sum + (ch.content ? countWords(ch.content) : 0),
+      0,
+    );
+    await putStory(stateForStore as unknown as Record<string, unknown>, {
+      projectId,
+      wordCount: totalWords,
+    });
+    await Promise.all(
+      next.chapters.map(ch =>
+        putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source, projectId).catch(() => {
+          // Individual chapter write failed — content remains in memory
+        })
+      )
+    );
+    recordDelta('story', projectId, 'upsert').catch(() => {});
+    for (const ch of next.chapters) {
+      recordDelta('chapter', ch.id, 'upsert').catch(() => {});
+    }
+    notifySyncWrite();
+    try {
+      channelRef.current?.postMessage({ type: 'state-updated', at: Date.now() });
+    } catch {
+      // BroadcastChannel post failures are non-fatal
+    }
+  }, [notifySyncWrite]);
+
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -321,46 +364,9 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
-      const projectId = activeProjectIdRef.current;
       try {
-        // Save full state (minus chapter content) to Dexie stories table
-        const stateForStore = {
-          ...state,
-          chapters: state.chapters.map(ch => ({ ...ch, content: '' })),
-        };
-        const totalWords = state.chapters.reduce(
-          (sum, ch) => sum + (ch.content ? countWords(ch.content) : 0),
-          0,
-        );
-        await putStory(stateForStore as unknown as Record<string, unknown>, {
-          projectId,
-          wordCount: totalWords,
-        });
-
-        // Save chapter contents to Dexie (separate table, best-effort)
-        await Promise.all(
-          state.chapters.map(ch =>
-            putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source, projectId).catch(() => {
-              // Individual chapter write failed — content remains in memory
-            })
-          )
-        );
-
+        await persistState(state, activeProjectIdRef.current);
         if (saveError) setSaveError(false);
-
-        // Record sync deltas for cloud push (non-blocking, best-effort)
-        recordDelta('story', projectId, 'upsert').catch(() => {});
-        for (const ch of state.chapters) {
-          recordDelta('chapter', ch.id, 'upsert').catch(() => {});
-        }
-        notifySyncWrite();
-
-        // Notify other tabs
-        try {
-          channelRef.current?.postMessage({ type: 'state-updated', at: Date.now() });
-        } catch {
-          // BroadcastChannel post failures are non-fatal
-        }
       } catch {
         if (!saveError) setSaveError(true);
       }
@@ -369,7 +375,18 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [state, isLoaded, saveError, notifySyncWrite]);
+  }, [state, isLoaded, saveError, persistState]);
+
+  // Imperative flush — persist now and resolve when written. Adopts `next` into
+  // store state and suppresses the debounce's duplicate write of the same ref.
+  const saveNow = useCallback(async (next?: StoryState) => {
+    const target = next ?? state;
+    if (next) {
+      lastRemoteStateRef.current = next;
+      setState(next);
+    }
+    await persistState(target, activeProjectIdRef.current);
+  }, [state, persistState]);
 
   // Cross-tab sync via BroadcastChannel (Dexie writes don't fire storage events)
   useEffect(() => {
@@ -440,7 +457,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <StoryContext.Provider value={{ state, setState, updateField }}>
+    <StoryContext.Provider value={{ state, setState, updateField, saveNow }}>
       {saveError && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-red-900/90 text-red-100 text-sm text-center px-4 py-2 backdrop-blur">
           Storage quota exceeded — your changes may not be saved. Export your project from Settings.

@@ -100,4 +100,25 @@ describe('useStory() inside StoryProvider', () => {
 
     expect(result.current.state.genre).toEqual(['Fantasy', 'Adventure']);
   });
+
+  it('saveNow persists immediately and adopts the passed state', async () => {
+    const { putStory } = await import('@/lib/storage/dexie-db');
+    const { result } = renderHook(() => useStory(), { wrapper });
+    await waitFor(() => {
+      expect(result.current).not.toBeNull();
+    });
+
+    vi.mocked(putStory).mockClear();
+    const next: StoryState = { ...defaultState, title: 'Saved Novel', synopsis: 'A flushed tale' };
+    await act(async () => {
+      await result.current.saveNow(next);
+    });
+
+    // Store adopted the passed state...
+    expect(result.current.state.title).toBe('Saved Novel');
+    // ...and the persist actually ran with that title (the Genesis race fix).
+    expect(putStory).toHaveBeenCalled();
+    const lastArgs = vi.mocked(putStory).mock.calls.at(-1);
+    expect((lastArgs?.[0] as { title?: string }).title).toBe('Saved Novel');
+  });
 });
