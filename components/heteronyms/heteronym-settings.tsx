@@ -111,7 +111,10 @@ export function HeteronymSettings() {
       </div>
 
       <p className="text-sepia-600 text-sm leading-relaxed">
-        Create writing personas with unique voices and styles. Each alter ego can have its own style note that influences how you write.
+        An <strong>alter ego</strong> is a writing voice — a persona with its own tone, vocabulary, and
+        pacing. Pick one in Flow mode and the AI (micro-prompts, coach, chat) shapes its
+        suggestions to match that voice. Use them to write distinct POVs or characters
+        in their own style. Alter egos are saved <strong>per project</strong>.
       </p>
 
       {heteronyms.length === 0 ? (

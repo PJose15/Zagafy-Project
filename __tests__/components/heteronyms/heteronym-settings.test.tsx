@@ -26,8 +26,13 @@ vi.mock('@/components/confirm-dialog', () => ({
   useConfirm: () => ({ confirm: mockConfirm }),
 }));
 
-const HETERONYMS_KEY = 'zagafy_heteronyms';
-const ACTIVE_KEY = 'zagafy_active_heteronym';
+// Heteronyms are scoped per active project; pin it so the scoped keys are stable.
+vi.mock('@/lib/projects/active-project', () => ({
+  getActiveProjectId: () => 'test-proj',
+}));
+
+const HETERONYMS_KEY = 'zagafy_heteronyms_test-proj';
+const ACTIVE_KEY = 'zagafy_active_heteronym_test-proj';
 
 function makeHeteronym(overrides: Partial<Heteronym> = {}): Heteronym {
   return {
