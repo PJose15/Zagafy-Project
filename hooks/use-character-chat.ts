@@ -25,6 +25,10 @@ export function useCharacterChat(characterId: string | null) {
   const [isLoading, setIsLoading] = useState(false);
   const [insights, setInsights] = useState<CharacterInsight[]>([]);
   const [lastInsightError, setLastInsightError] = useState<CharacterInsightErrorReason | null>(null);
+  // Surfaced when a send fails so the chat shows a clear message instead of the
+  // user's message silently vanishing. `notConfigured` means the server is
+  // missing ANTHROPIC_API_KEY; `lastInput` lets the UI offer a one-click retry.
+  const [error, setError] = useState<{ message: string; notConfigured: boolean; lastInput: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load or create session when characterId changes
@@ -115,6 +119,7 @@ export function useCharacterChat(characterId: string | null) {
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setIsLoading(true);
+    setError(null);
 
     // Cancel any in-flight request
     if (abortRef.current) abortRef.current.abort();
@@ -152,7 +157,16 @@ export function useCharacterChat(characterId: string | null) {
       });
 
       if (!res.ok) {
-        throw new Error(`Chat failed: ${res.status}`);
+        const body = await res.json().catch(() => null);
+        const reason = body?.details?.reason;
+        const message = typeof body?.message === 'string'
+          ? body.message
+          : typeof body?.error === 'string'
+            ? body.error
+            : `The character couldn't respond (error ${res.status}).`;
+        const e = new Error(message) as Error & { notConfigured?: boolean };
+        e.notConfigured = reason === 'ai_not_configured';
+        throw e;
       }
 
       const data = await res.json();
@@ -192,10 +206,14 @@ export function useCharacterChat(characterId: string | null) {
         // call). Clear any prior error so the UI returns to neutral.
         setLastInsightError(null);
       }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') return;
-      // Remove the optimistic user message on failure
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      // Revert the optimistic user message and surface a visible, retryable error
+      // (instead of the message silently disappearing).
       setMessages(messages);
+      const message = err instanceof Error ? err.message : 'Something went wrong reaching the character.';
+      const notConfigured = !!(err as { notConfigured?: boolean })?.notConfigured;
+      setError({ message, notConfigured, lastInput: content.trim() });
     } finally {
       // A newer request may have aborted this one; if so, leave the spinner
       // up for the request still in flight instead of clearing it here.
@@ -215,6 +233,15 @@ export function useCharacterChat(characterId: string | null) {
     updateChatSession(session.id, { messages: cleared, updatedAt: new Date().toISOString() });
   }, [session]);
 
+  const clearError = useCallback(() => setError(null), []);
+
+  const retry = useCallback(() => {
+    if (!error) return;
+    const input = error.lastInput;
+    setError(null);
+    sendMessage(input);
+  }, [error, sendMessage]);
+
   return {
     session,
     messages,
@@ -226,5 +253,8 @@ export function useCharacterChat(characterId: string | null) {
     lastInsightError,
     saveInsightAsCanon,
     clearSession,
+    error,
+    clearError,
+    retry,
   };
 }

@@ -123,7 +123,12 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return err('internal_error', 'Anthropic API key not configured', 500);
+      return err(
+        'internal_error',
+        'Character Chat is not configured. Set ANTHROPIC_API_KEY in this environment to enable it.',
+        500,
+        { reason: 'ai_not_configured', provider: 'anthropic' },
+      );
     }
 
     const systemPrompt = buildSystemPrompt(sanitized, mode as ChatMode);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { CarvedHeader, BrassButton } from '@/components/antiquarian';
 import { useCharacterChat } from '@/hooks/use-character-chat';
 import { ChatModeSelector } from './chat-mode-selector';
@@ -25,6 +25,9 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     lastInsightError,
     saveInsightAsCanon,
     clearSession,
+    error,
+    clearError,
+    retry,
   } = useCharacterChat(characterId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -99,6 +102,39 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
           <p className="text-[11px] italic text-cream-400/60">
             The oracle could not see clearly this turn. Try again later.
           </p>
+        </div>
+      )}
+
+      {/* Send failure — visible + retryable (replaces the old silent revert) */}
+      {error && (
+        <div role="alert" className="px-4 py-3 border-t border-wax-500/30 bg-wax-500/10">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-wax-400" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-wax-200">
+                {error.notConfigured
+                  ? 'Character Chat isn’t configured on this deployment yet.'
+                  : 'The character couldn’t respond.'}
+              </p>
+              <p className="text-xs text-cream-400/70 mt-0.5">{error.message}</p>
+              <div className="flex items-center gap-3 mt-2">
+                {!error.notConfigured && (
+                  <button
+                    onClick={retry}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-brass-300 hover:text-brass-200"
+                  >
+                    <RotateCcw size={12} aria-hidden="true" /> Try again
+                  </button>
+                )}
+                <button
+                  onClick={clearError}
+                  className="inline-flex items-center gap-1 text-xs text-cream-400/60 hover:text-cream-300"
+                >
+                  <X size={12} aria-hidden="true" /> Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

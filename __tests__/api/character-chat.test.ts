@@ -109,12 +109,15 @@ describe('POST /api/character-chat', () => {
     expect(fetchBody.system).toContain('Alice');
   });
 
-  it('returns 500 when API key is missing', async () => {
+  it('returns 500 with a typed not-configured reason when API key is missing', async () => {
     delete process.env.ANTHROPIC_API_KEY;
     const res = await POST(makeRequest(validBody));
     const data = await res.json();
     expect(res.status).toBe(500);
-    expect(data.error).toContain('API key');
+    expect(data.error).toContain('ANTHROPIC_API_KEY');
+    // Typed reason lets the client show a clear "not configured" message + skip retry.
+    expect(data.details?.reason).toBe('ai_not_configured');
+    expect(data.details?.provider).toBe('anthropic');
   });
 
   it('returns 429 when rate limited by middleware', async () => {
