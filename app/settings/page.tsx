@@ -8,6 +8,7 @@ import { BillingSection } from '@/components/billing/billing-section';
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
 import { HeteronymSettings } from '@/components/heteronyms/heteronym-settings';
+import { ProfileSettings } from '@/components/profile/profile-settings';
 import { BrassButton, InkStampButton, CarvedHeader, ParchmentCard } from '@/components/antiquarian';
 import { db, clearAllStoryData } from '@/lib/storage/dexie-db';
 import { useSpellcheckPreference } from '@/hooks/use-spellcheck-preference';
@@ -219,6 +220,8 @@ export default function SettingsPage() {
       />
 
       <div className="space-y-8">
+        <ProfileSettings />
+
         <BillingSection />
 
         <ParchmentCard className="space-y-4">
