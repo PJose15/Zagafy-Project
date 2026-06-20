@@ -16,7 +16,7 @@ import type { GenesisStep, GenesisData, AntagonistType } from '@/lib/types/genes
 import { GenesisSummary } from '@/components/genesis/genesis-summary';
 import { ParchmentCard, BrassButton, ParchmentInput, ParchmentTextarea } from '@/components/antiquarian';
 import { fadeUp, springs } from '@/lib/animations';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, X, UploadCloud } from 'lucide-react';
 
 const stepLabels: Record<GenesisStep, string> = {
   'name': 'Project Name',
@@ -38,7 +38,7 @@ const stepDescriptions: Record<GenesisStep, string> = {
 
 export default function GenesisPage() {
   const router = useRouter();
-  const { setState } = useStory();
+  const { state, saveNow } = useStory();
   const [stepIndex, setStepIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -90,14 +90,20 @@ export default function GenesisPage() {
     setStepIndex(GENESIS_STEPS.indexOf(step));
   }, []);
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!isGenesisComplete(data)) return;
     setIsCreating(true);
     const storyData = convertGenesisToStory(data);
-    setState(prev => ({ ...prev, ...storyData }));
+    const merged = { ...state, ...storyData } as typeof state;
     localStorage.removeItem('zagafy_tour_completed');
-    router.replace('/');
-  }, [data, setState, router]);
+    // Persist BEFORE navigating so GenesisGuard sees the saved project and
+    // doesn't bounce the dashboard straight back to Genesis (the old race).
+    try {
+      await saveNow(merged);
+    } finally {
+      router.replace('/');
+    }
+  }, [data, state, saveNow, router]);
 
   const toggleGenre = useCallback((genre: string) => {
     setData(prev => {
@@ -119,8 +125,25 @@ export default function GenesisPage() {
     });
   }, []);
 
-  const handleSkip = useCallback(() => {
-    router.replace('/');
+  // Leave Genesis without completing it. Go to the dashboard if the active
+  // project already has content; otherwise to the project library (avoids the
+  // empty-project → GenesisGuard → /genesis redirect loop).
+  const exitGenesis = useCallback(() => {
+    const hasContent =
+      state.chapters.length > 0 ||
+      state.characters.length > 0 ||
+      (state.synopsis?.trim().length ?? 0) > 0 ||
+      (!!state.title && state.title !== 'Untitled Project');
+    router.replace(hasContent ? '/' : '/projects');
+  }, [state, router]);
+
+  const handleSkip = exitGenesis;
+
+  // Import an existing manuscript instead of building from scratch. The import
+  // page merges into the active project; this is the escape for writers who
+  // already have a novel and shouldn't be forced to start from zero.
+  const goImport = useCallback(() => {
+    router.push('/import');
   }, [router]);
 
   // World rules management
@@ -148,7 +171,14 @@ export default function GenesisPage() {
 
   if (showSummary && isGenesisComplete(data)) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-8">
+      <div className="min-h-screen flex items-center justify-center p-8 relative">
+        <button
+          onClick={exitGenesis}
+          className="absolute top-4 right-4 p-2 rounded-full text-sepia-600 hover:text-sepia-900 hover:bg-sepia-300/30 transition-colors"
+          aria-label="Exit Genesis"
+        >
+          <X size={20} />
+        </button>
         <div className="w-full max-w-3xl">
           <button
             onClick={handleBack}
@@ -168,7 +198,14 @@ export default function GenesisPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 relative">
+      <button
+        onClick={exitGenesis}
+        className="absolute top-4 right-4 p-2 rounded-full text-sepia-600 hover:text-sepia-900 hover:bg-sepia-300/30 transition-colors"
+        aria-label="Exit Genesis"
+      >
+        <X size={20} />
+      </button>
       <div className="w-full max-w-xl space-y-8">
         {/* Header */}
         <motion.div {...fadeUp} className="text-center space-y-2">
@@ -177,6 +214,12 @@ export default function GenesisPage() {
             <h1 className="text-2xl font-serif font-bold text-sepia-900">Genesis Mode</h1>
           </div>
           <p className="text-sm text-sepia-600">Build your story from the ground up.</p>
+          <button
+            onClick={goImport}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brass-700 hover:text-brass-900 transition-colors mt-1"
+          >
+            <UploadCloud size={15} aria-hidden="true" /> Already have a manuscript? Import it instead
+          </button>
         </motion.div>
 
         {/* Step Dots — 24px hit targets (WCAG 2.2 target-size) wrap a small dot */}
