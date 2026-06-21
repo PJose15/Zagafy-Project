@@ -12,19 +12,16 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const requestId = makeRequestId();
-  const log = createRouteLogger({ endpoint: '/api/publishing/synopsis', requestId });
+  const log = createRouteLogger({ endpoint: '/api/publishing/blurb', requestId });
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
   try {
-    const { length, title, genre, synopsis, chapters, characters, language } = await req.json();
-    if (!length || !title) {
-      return err('validation_failed', 'Missing required fields: length, title', 400);
-    }
-    if (length !== '1-page' && length !== '5-page') {
-      return err('validation_failed', 'Length must be "1-page" or "5-page"', 400);
+    const { title, genre, synopsis, protagonistName, tone, language } = await req.json();
+    if (!title || !genre) {
+      return err('validation_failed', 'Missing required fields: title, genre', 400);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -39,26 +36,23 @@ export async function POST(req: NextRequest) {
 
     const lang = language || 'English';
     const ai = new GoogleGenAI({ apiKey });
-    const wordTarget = length === '1-page' ? '500-600' : '2500-3000';
     const prompt = `${buildLocaleBlock(lang)}
 
-Generate a professional ${length} synopsis for a novel.
+Write a back-cover blurb (book description / jacket copy) for a novel, the kind that appears on the back cover and on a retailer's product page.
 Title: ${title}
-Genre: ${genre || 'Not specified'}
-Brief Synopsis: ${synopsis || 'Not provided'}
-Characters: ${characters || 'Not provided'}
-Chapter Summaries: ${chapters || 'Not provided'}
+Genre: ${genre}
+Synopsis: ${synopsis || 'Not provided'}
+Protagonist: ${protagonistName || 'Not specified'}
+Tone: ${tone || 'Match the genre'}
 
-Write a compelling, industry-standard ${length} synopsis (approximately ${wordTarget} words).
-Include: main character introduction, inciting incident, major plot points, climax, and resolution.
-Reveal the ending — this is a synopsis, not a blurb.`;
+Write 120-180 words of compelling, market-ready copy that hooks the reader and conveys stakes and atmosphere WITHOUT spoiling the ending (this is a blurb, not a synopsis). Use vivid, evocative language. Open with a hook line, build tension, and end on an intriguing question or cliffhanger. Do not include the word count, headings, or commentary — return only the blurb prose.`;
 
     const response = await withRetry(
       () =>
         ai.models.generateContent({
           model: AI_MODEL,
           contents: prompt,
-          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.7, maxOutputTokens: length === '5-page' ? 4096 : 2048 },
+          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.8, maxOutputTokens: 1024 },
         }),
       {
         onAttempt: ({ attempt, willRetry, nextDelayMs, err: attemptErr }) => {
@@ -73,9 +67,9 @@ Reveal the ending — this is a synopsis, not a blurb.`;
       },
     );
 
-    return ok({ synopsis: response.text || '' });
+    return ok({ blurb: response.text || '' });
   } catch (error: unknown) {
-    log.error('Synopsis generation error', error);
-    return err('internal_error', 'Failed to generate synopsis', 500);
+    log.error('Blurb generation error', error);
+    return err('internal_error', 'Failed to generate blurb', 500);
   }
 }

@@ -5,6 +5,8 @@ import { requireUser, isAuthError } from '@/lib/auth';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
+import { withRetry } from '@/lib/ai/retry';
+import { buildLocaleBlock } from '@/lib/prompts/locale';
 
 export const maxDuration = 60;
 
@@ -23,15 +25,24 @@ export async function POST(req: NextRequest) {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return err('internal_error', 'API key not configured', 500);
+    if (!apiKey) {
+      return err(
+        'internal_error',
+        'The AI publishing tools are not configured. Set GEMINI_API_KEY in this environment to enable them.',
+        500,
+        { reason: 'ai_not_configured', provider: 'gemini' },
+      );
+    }
 
+    const lang = language || 'English';
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = `Suggest 3 comparable published titles (comp titles) for a novel being queried to literary agents.
+    const prompt = `${buildLocaleBlock(lang)}
+
+Suggest 3 comparable published titles (comp titles) for a novel being queried to literary agents.
 Title: ${title}
 Genre: ${genre}
 Tones: ${tones || 'Not specified'}
 Themes: ${themes || 'Not specified'}
-Language: ${language || 'English'}
 
 For each comp title, provide:
 1. The book title and author
@@ -50,13 +61,27 @@ You MUST respond with ONLY a valid JSON array, no markdown fences. Format:
   }
 ]
 
-Respond in ${language || 'English'} for the rationale text.`;
+Respond in ${lang} for the rationale text.`;
 
-    const response = await ai.models.generateContent({
-      model: AI_MODEL,
-      contents: prompt,
-      config: { safetySettings: SAFETY_SETTINGS, temperature: 0.7, maxOutputTokens: 2048 },
-    });
+    const response = await withRetry(
+      () =>
+        ai.models.generateContent({
+          model: AI_MODEL,
+          contents: prompt,
+          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.7, maxOutputTokens: 2048 },
+        }),
+      {
+        onAttempt: ({ attempt, willRetry, nextDelayMs, err: attemptErr }) => {
+          if (willRetry) {
+            log.warn('Gemini transient failure, retrying', {
+              attempt,
+              nextDelayMs,
+              upstreamMessage: attemptErr instanceof Error ? attemptErr.message : String(attemptErr),
+            });
+          }
+        },
+      },
+    );
 
     const raw = response.text || '[]';
     let compTitles;
