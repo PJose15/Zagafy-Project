@@ -1,6 +1,7 @@
 'use client';
 
 import { UserCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { ParchmentCard, ParchmentInput } from '@/components/antiquarian';
 import { useProfile } from '@/hooks/use-profile';
 import { AVATAR_EMOJIS, AVATAR_COLORS } from '@/lib/profiles/profile';
@@ -8,15 +9,16 @@ import { AVATAR_EMOJIS, AVATAR_COLORS } from '@/lib/profiles/profile';
 /** Local profile editor — display name, avatar, and preferences. No login. */
 export function ProfileSettings() {
   const { profile, save, setPreferences } = useProfile();
+  const t = useTranslations('profile');
 
   return (
     <ParchmentCard className="space-y-4">
       <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
         <UserCircle size={20} aria-hidden="true" className="text-brass-500" />
-        Profile
+        {t('heading')}
       </h2>
       <p className="text-sepia-600 text-sm leading-relaxed">
-        Your local identity in Zagafy. Stored in this browser only — no account or sign-in required.
+        {t('description')}
       </p>
 
       <div className="flex items-center gap-4">
@@ -29,20 +31,20 @@ export function ProfileSettings() {
         </div>
         <div className="flex-1 min-w-0">
           <label htmlFor="profile-name" className="block text-xs font-medium text-sepia-600 mb-1">
-            Display name
+            {t('displayName')}
           </label>
           <ParchmentInput
             id="profile-name"
             value={profile.displayName}
             onChange={e => save({ displayName: e.target.value })}
-            placeholder="Your name"
+            placeholder={t('namePlaceholder')}
             maxLength={60}
           />
         </div>
       </div>
 
       <div>
-        <p className="text-xs font-medium text-sepia-600 mb-2">Avatar</p>
+        <p className="text-xs font-medium text-sepia-600 mb-2">{t('avatar')}</p>
         <div className="flex flex-wrap gap-2">
           {AVATAR_EMOJIS.map(emoji => (
             <button
@@ -54,7 +56,7 @@ export function ProfileSettings() {
                   ? 'bg-brass-300/40 ring-2 ring-brass-500/60'
                   : 'bg-parchment-200/60 hover:bg-parchment-300/60'
               }`}
-              aria-label={`Use ${emoji} avatar`}
+              aria-label={t('useAvatar', { emoji })}
               aria-pressed={profile.avatarEmoji === emoji}
             >
               {emoji}
@@ -64,7 +66,7 @@ export function ProfileSettings() {
       </div>
 
       <div>
-        <p className="text-xs font-medium text-sepia-600 mb-2">Colour</p>
+        <p className="text-xs font-medium text-sepia-600 mb-2">{t('colour')}</p>
         <div className="flex flex-wrap gap-2">
           {AVATAR_COLORS.map(color => (
             <button
@@ -75,7 +77,7 @@ export function ProfileSettings() {
                 profile.avatarColor === color ? 'ring-2 ring-offset-2 ring-offset-parchment-100 ring-sepia-700 scale-110' : 'hover:scale-105'
               }`}
               style={{ backgroundColor: color }}
-              aria-label={`Use colour ${color}`}
+              aria-label={t('useColour', { color })}
               aria-pressed={profile.avatarColor === color}
             />
           ))}
@@ -89,7 +91,7 @@ export function ProfileSettings() {
           onChange={e => setPreferences({ reducedMotion: e.target.checked })}
           className="accent-brass-500"
         />
-        Reduce motion &amp; animations
+        {t('reduceMotion')}
       </label>
     </ParchmentCard>
   );

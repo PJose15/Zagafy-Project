@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, Theater } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AvatarCircle } from './avatar-circle';
@@ -16,6 +17,7 @@ interface VoiceSwitchModalProps {
 }
 
 export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onClearGuest, onClose }: VoiceSwitchModalProps) {
+  const t = useTranslations('heteronyms.switch');
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -36,7 +38,7 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
         className="fixed inset-0 z-[110] flex items-center justify-center p-4"
         role="dialog"
         aria-modal="true"
-        aria-label="Switch writing voice"
+        aria-label={t('aria')}
       >
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
@@ -49,7 +51,7 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
           <div className="flex items-center justify-between p-4 border-b border-sepia-300/50">
             <h2 className="text-base font-serif font-semibold text-sepia-900 flex items-center gap-2">
               <Theater size={18} className="text-brass-500" />
-              Switch Voice
+              {t('title')}
             </h2>
             <button onClick={onClose} className="p-1 text-sepia-600 hover:text-sepia-800 rounded-lg hover:bg-parchment-200">
               <X size={18} />
@@ -67,14 +69,14 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
               >
                 <div className="w-7 h-7 rounded-full bg-parchment-200 flex items-center justify-center text-xs text-sepia-600">↩</div>
                 <div>
-                  <p className="text-sm text-sepia-700">Return to own voice</p>
-                  <p className="text-[11px] text-sepia-600">Stop writing as someone else</p>
+                  <p className="text-sm text-sepia-700">{t('returnVoice')}</p>
+                  <p className="text-[11px] text-sepia-600">{t('returnDesc')}</p>
                 </div>
               </button>
             )}
 
             {otherVoices.length === 0 ? (
-              <p className="text-sm text-sepia-600 text-center py-6">No other voices available. Create alter egos in Settings.</p>
+              <p className="text-sm text-sepia-600 text-center py-6">{t('noOthers')}</p>
             ) : (
               otherVoices.map((h) => (
                 <button

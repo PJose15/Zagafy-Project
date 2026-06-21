@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AvatarCircle } from './avatar-circle';
@@ -25,6 +26,7 @@ interface HeteronymModalProps {
 }
 
 export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalProps) {
+  const t = useTranslations('heteronyms.modal');
   const [name, setName] = useState(heteronym?.name || '');
   const [bio, setBio] = useState(heteronym?.bio || '');
   const [styleNote, setStyleNote] = useState(heteronym?.styleNote || '');
@@ -51,7 +53,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setNameError('Name is required');
+      setNameError(t('nameRequired'));
       return;
     }
     onSave({
@@ -83,7 +85,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
         className="fixed inset-0 z-[110] flex items-center justify-center p-4"
         role="dialog"
         aria-modal="true"
-        aria-label={isEditing ? 'Edit heteronym' : 'Create heteronym'}
+        aria-label={isEditing ? t('editAria') : t('createAria')}
       >
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
@@ -95,7 +97,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
         >
           <div className="flex items-center justify-between p-6 border-b border-sepia-300/50">
             <h2 className="text-lg font-serif font-semibold text-sepia-900">
-              {isEditing ? 'Edit Alter Ego' : 'New Alter Ego'}
+              {isEditing ? t('editTitle') : t('newTitle')}
             </h2>
             <button onClick={onClose} className="p-1 text-sepia-600 hover:text-sepia-800 rounded-lg hover:bg-parchment-200">
               <X size={20} />
@@ -107,14 +109,14 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
             <div className="flex items-center gap-3 pb-4 border-b border-sepia-300/50">
               <AvatarCircle color={avatarColor} emoji={avatarEmoji} size={48} />
               <div>
-                <p className="text-sepia-900 font-medium">{name || 'Unnamed'}</p>
-                <p className="text-xs text-sepia-600">{styleNote || 'No style note'}</p>
+                <p className="text-sepia-900 font-medium">{name || t('unnamed')}</p>
+                <p className="text-xs text-sepia-600">{styleNote || t('noStyleNote')}</p>
               </div>
             </div>
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-sepia-700 mb-1">Name *</label>
+              <label className="block text-sm font-medium text-sepia-700 mb-1">{t('nameLabel')}</label>
               <input
                 ref={nameInputRef}
                 type="text"
@@ -126,7 +128,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                 }}
                 maxLength={30}
                 className="w-full bg-parchment-200 border border-sepia-300/40 rounded-lg px-3 py-2 text-sepia-900 focus:outline-none focus:border-brass-500/60"
-                placeholder="e.g. Álvaro de Campos"
+                placeholder={t('namePlaceholder')}
               />
               <div className="flex justify-between mt-1">
                 {nameError ? (
@@ -140,21 +142,21 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
 
             {/* Bio */}
             <div>
-              <label className="block text-sm font-medium text-sepia-700 mb-1">Bio</label>
+              <label className="block text-sm font-medium text-sepia-700 mb-1">{t('bioLabel')}</label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value.slice(0, 150))}
                 maxLength={150}
                 rows={2}
                 className="w-full bg-parchment-200 border border-sepia-300/40 rounded-lg px-3 py-2 text-sepia-900 resize-none focus:outline-none focus:border-brass-500/60"
-                placeholder="Who is this writer? Where do they come from?"
+                placeholder={t('bioPlaceholder')}
               />
               <p className="text-xs text-sepia-600 text-right mt-1">{bio.length}/150</p>
             </div>
 
             {/* Voice & Style */}
             <div>
-              <label className="block text-sm font-medium text-sepia-700 mb-2">Voice & Style</label>
+              <label className="block text-sm font-medium text-sepia-700 mb-2">{t('voiceStyleLabel')}</label>
               <VoiceToneEditor
                 initialVoice={voice}
                 styleNote={styleNote}
@@ -165,7 +167,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
 
             {/* Avatar Color */}
             <div>
-              <label className="block text-sm font-medium text-sepia-700 mb-2">Avatar Color</label>
+              <label className="block text-sm font-medium text-sepia-700 mb-2">{t('avatarColor')}</label>
               <div className="flex flex-wrap gap-2">
                 {COLOR_SWATCHES.map((color) => (
                   <button
@@ -176,7 +178,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                       avatarColor === color ? 'ring-2 ring-white outline-offset-2 scale-110' : 'hover:scale-105'
                     }`}
                     style={{ backgroundColor: color }}
-                    aria-label={`Color ${color}`}
+                    aria-label={t('colorAria', { color })}
                   />
                 ))}
                 <label className="w-8 h-8 rounded-full border-2 border-dashed border-sepia-300/50 flex items-center justify-center cursor-pointer hover:border-sepia-400 transition-colors relative overflow-hidden">
@@ -186,7 +188,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                     value={avatarColor}
                     onChange={(e) => setAvatarColor(e.target.value)}
                     className="absolute inset-0 opacity-0 cursor-pointer"
-                    aria-label="Custom color"
+                    aria-label={t('customColor')}
                   />
                 </label>
               </div>
@@ -194,7 +196,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
 
             {/* Avatar Emoji */}
             <div>
-              <label className="block text-sm font-medium text-sepia-700 mb-2">Avatar Emoji</label>
+              <label className="block text-sm font-medium text-sepia-700 mb-2">{t('avatarEmoji')}</label>
               <div className="grid grid-cols-8 gap-1.5 mb-2">
                 {EMOJI_OPTIONS.map((emoji) => (
                   <button
@@ -212,7 +214,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-sepia-600">Or type:</span>
+                <span className="text-xs text-sepia-600">{t('orType')}</span>
                 <input
                   type="text"
                   value={customEmoji}
@@ -230,13 +232,13 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                 onClick={onClose}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-sepia-700 hover:bg-parchment-200 transition-colors"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="submit"
                 className="px-4 py-2 rounded-lg text-sm font-medium bg-forest-700 text-cream-50 hover:bg-forest-600 transition-colors"
               >
-                {isEditing ? 'Save Changes' : 'Create Alter Ego'}
+                {isEditing ? t('saveChanges') : t('createAlterEgo')}
               </button>
             </div>
           </form>

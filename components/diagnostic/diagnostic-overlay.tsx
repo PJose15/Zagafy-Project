@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { useSession } from '@/lib/session';
 import { incrementStreak, getStreak } from '@/lib/diagnostic-streak';
 import { BlockCard, blockCards } from './block-card';
@@ -9,6 +10,7 @@ import { getAdaptiveConfig } from '@/lib/adaptive-experience';
 import { useState } from 'react';
 
 export function DiagnosticOverlay() {
+  const t = useTranslations('diagnostic');
   const { setBlockType, completeDiagnostic } = useSession();
   const [streak, setStreak] = useState(() => {
     // Read streak on initial render (client-side only)
@@ -83,14 +85,14 @@ export function DiagnosticOverlay() {
               id="diagnostic-title"
               className="text-3xl font-serif font-bold text-sepia-900 tracking-tight"
             >
-              Before you begin...
+              {t('title')}
             </h2>
             <p className="text-sepia-600 text-sm max-w-md mx-auto">
-              How are you feeling about writing today? This helps Zagafy adapt to where you are right now.
+              {t('subtitle')}
             </p>
             {streak > 0 && (
               <p className="text-xs text-sepia-600">
-                Check-in streak: {streak} {streak === 1 ? 'day' : 'days'}
+                {t('streak', { count: streak })}
               </p>
             )}
           </motion.div>
@@ -116,7 +118,7 @@ export function DiagnosticOverlay() {
               onClick={handleSkip}
               className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors underline underline-offset-4"
             >
-              Skip check-in
+              {t('skip')}
             </button>
           </motion.div>
         </div>

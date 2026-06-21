@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import type { HeteronymVoice, VoiceTone, VoiceVocabulary, VoicePacing } from '@/lib/heteronym-voice';
-import { TONE_LABELS, VOCABULARY_LABELS, PACING_LABELS } from '@/lib/heteronym-voice';
 
 interface VoiceToneEditorProps {
   initialVoice?: HeteronymVoice | null;
@@ -16,6 +16,7 @@ const VOCABULARIES: VoiceVocabulary[] = ['simple', 'literary', 'technical', 'arc
 const PACINGS: VoicePacing[] = ['staccato', 'flowing', 'measured', 'breathless', 'languid'];
 
 export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyleNoteChange }: VoiceToneEditorProps) {
+  const t = useTranslations('heteronyms.editor');
   const [tone, setTone] = useState<VoiceTone>(initialVoice?.tone || 'casual');
   const [vocabulary, setVocabulary] = useState<VoiceVocabulary>(initialVoice?.vocabulary || 'mixed');
   const [pacing, setPacing] = useState<VoicePacing>(initialVoice?.pacing || 'measured');
@@ -34,18 +35,18 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
     <div className="space-y-4">
       {/* Tone */}
       <div>
-        <label className="block text-sm font-medium text-sepia-700 mb-1.5">Tone</label>
+        <label className="block text-sm font-medium text-sepia-700 mb-1.5">{t('toneLabel')}</label>
         <div className="grid grid-cols-3 gap-1.5">
-          {TONES.map(t => (
+          {TONES.map(tn => (
             <button
-              key={t}
+              key={tn}
               type="button"
-              onClick={() => setTone(t)}
+              onClick={() => setTone(tn)}
               className={`px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                tone === t ? 'bg-brass-500 text-cream-50' : 'bg-parchment-200 text-sepia-600 hover:bg-parchment-300'
+                tone === tn ? 'bg-brass-500 text-cream-50' : 'bg-parchment-200 text-sepia-600 hover:bg-parchment-300'
               }`}
             >
-              {TONE_LABELS[t].split(' & ')[0]}
+              {t(`tone.${tn}`)}
             </button>
           ))}
         </div>
@@ -53,7 +54,7 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
 
       {/* Vocabulary */}
       <div>
-        <label className="block text-sm font-medium text-sepia-700 mb-1.5">Vocabulary</label>
+        <label className="block text-sm font-medium text-sepia-700 mb-1.5">{t('vocabularyLabel')}</label>
         <div className="grid grid-cols-3 gap-1.5">
           {VOCABULARIES.map(v => (
             <button
@@ -64,7 +65,7 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
                 vocabulary === v ? 'bg-brass-500 text-cream-50' : 'bg-parchment-200 text-sepia-600 hover:bg-parchment-300'
               }`}
             >
-              {VOCABULARY_LABELS[v].split(' & ')[0]}
+              {t(`vocabulary.${v}`)}
             </button>
           ))}
         </div>
@@ -72,7 +73,7 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
 
       {/* Pacing */}
       <div>
-        <label className="block text-sm font-medium text-sepia-700 mb-1.5">Pacing</label>
+        <label className="block text-sm font-medium text-sepia-700 mb-1.5">{t('pacingLabel')}</label>
         <div className="grid grid-cols-3 gap-1.5">
           {PACINGS.map(p => (
             <button
@@ -83,7 +84,7 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
                 pacing === p ? 'bg-brass-500 text-cream-50' : 'bg-parchment-200 text-sepia-600 hover:bg-parchment-300'
               }`}
             >
-              {PACING_LABELS[p].split(' — ')[0]}
+              {t(`pacing.${p}`)}
             </button>
           ))}
         </div>
@@ -91,28 +92,28 @@ export function VoiceToneEditor({ initialVoice, styleNote, onVoiceChange, onStyl
 
       {/* Freeform note */}
       <div>
-        <label className="block text-sm font-medium text-sepia-700 mb-1">Additional Voice Notes</label>
+        <label className="block text-sm font-medium text-sepia-700 mb-1">{t('additionalNotes')}</label>
         <textarea
           value={freeformNote}
           onChange={(e) => setFreeformNote(e.target.value.slice(0, 200))}
           maxLength={200}
           rows={2}
           className="w-full bg-parchment-200 border border-sepia-300/40 rounded-lg px-3 py-2 text-sepia-900 text-sm resize-none focus:outline-none focus:border-brass-500/60"
-          placeholder="e.g. 'Uses metaphors from the sea, avoids contractions'"
+          placeholder={t('additionalPlaceholder')}
         />
         <p className="text-xs text-sepia-600 text-right mt-1">{freeformNote.length}/200</p>
       </div>
 
       {/* Legacy style note */}
       <div>
-        <label className="block text-sm font-medium text-sepia-700 mb-1">Style Note (legacy)</label>
+        <label className="block text-sm font-medium text-sepia-700 mb-1">{t('styleNoteLegacy')}</label>
         <textarea
           value={styleNote}
           onChange={(e) => onStyleNoteChange(e.target.value.slice(0, 200))}
           maxLength={200}
           rows={2}
           className="w-full bg-parchment-200 border border-sepia-300/40 rounded-lg px-3 py-2 text-sepia-900 text-sm resize-none focus:outline-none focus:border-brass-500/60"
-          placeholder="How do they write? e.g. 'Fragmented sentences, raw emotion'"
+          placeholder={t('styleNotePlaceholder')}
         />
         <p className="text-xs text-sepia-600 text-right mt-1">{styleNote.length}/200</p>
       </div>

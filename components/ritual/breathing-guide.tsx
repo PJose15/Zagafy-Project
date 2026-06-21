@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslations } from 'next-intl';
 
 type BreathPhase = 'inhale' | 'hold' | 'exhale';
 
-const phases: { phase: BreathPhase; duration: number; label: string }[] = [
-  { phase: 'inhale', duration: 4000, label: 'Breathe in...' },
-  { phase: 'hold', duration: 4000, label: 'Hold...' },
-  { phase: 'exhale', duration: 4000, label: 'Breathe out...' },
+const phases: { phase: BreathPhase; duration: number; labelKey: string }[] = [
+  { phase: 'inhale', duration: 4000, labelKey: 'breatheIn' },
+  { phase: 'hold', duration: 4000, labelKey: 'hold' },
+  { phase: 'exhale', duration: 4000, labelKey: 'breatheOut' },
 ];
 
 // 12s per cycle, 5 cycles = 60s total
@@ -19,6 +20,7 @@ interface BreathingGuideProps {
 }
 
 export function BreathingGuide({ onComplete }: BreathingGuideProps) {
+  const t = useTranslations('ritual');
   const [currentPhase, setCurrentPhase] = useState(0);
   const [cycle, setCycle] = useState(0);
   const [done, setDone] = useState(false);
@@ -76,12 +78,12 @@ export function BreathingGuide({ onComplete }: BreathingGuideProps) {
           exit={{ opacity: 0, y: -10 }}
           className="text-lg text-sepia-700 font-serif"
         >
-          {phase.label}
+          {t(phase.labelKey)}
         </motion.p>
       </AnimatePresence>
 
       <p className="text-xs text-sepia-600">
-        Cycle {Math.min(cycle + 1, TOTAL_CYCLES)} of {TOTAL_CYCLES}
+        {t('cycle', { current: Math.min(cycle + 1, TOTAL_CYCLES), total: TOTAL_CYCLES })}
       </p>
     </div>
   );
