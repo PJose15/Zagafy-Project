@@ -6,7 +6,6 @@ import { useSession } from '@/lib/session';
 import { incrementStreak, getStreak } from '@/lib/diagnostic-streak';
 import { BlockCard, blockCards } from './block-card';
 import type { BlockType } from '@/lib/session';
-import { getAdaptiveConfig } from '@/lib/adaptive-experience';
 import { useState } from 'react';
 
 export function DiagnosticOverlay() {
@@ -26,9 +25,8 @@ export function DiagnosticOverlay() {
     const newStreak = incrementStreak();
     setStreak(newStreak);
 
-    // Show preparation message for 3 seconds
-    const config = getAdaptiveConfig(type);
-    setPreparationMessage(config.preparationMessage);
+    // Show preparation message for 3 seconds (localized by block type)
+    setPreparationMessage(t(`prep.${type}`));
     setTimeout(() => {
       setPreparationMessage(null);
       completeDiagnostic(false);
