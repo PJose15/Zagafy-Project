@@ -12,19 +12,16 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const requestId = makeRequestId();
-  const log = createRouteLogger({ endpoint: '/api/publishing/synopsis', requestId });
+  const log = createRouteLogger({ endpoint: '/api/publishing/marketing', requestId });
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
   try {
-    const { length, title, genre, synopsis, chapters, characters, language } = await req.json();
-    if (!length || !title) {
-      return err('validation_failed', 'Missing required fields: length, title', 400);
-    }
-    if (length !== '1-page' && length !== '5-page') {
-      return err('validation_failed', 'Length must be "1-page" or "5-page"', 400);
+    const { title, genre, synopsis, tones, themes, language } = await req.json();
+    if (!title || !genre) {
+      return err('validation_failed', 'Missing required fields: title, genre', 400);
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -39,26 +36,30 @@ export async function POST(req: NextRequest) {
 
     const lang = language || 'English';
     const ai = new GoogleGenAI({ apiKey });
-    const wordTarget = length === '1-page' ? '500-600' : '2500-3000';
     const prompt = `${buildLocaleBlock(lang)}
 
-Generate a professional ${length} synopsis for a novel.
+Generate a complete Amazon / KDP marketing copy package for a self-published novel.
 Title: ${title}
-Genre: ${genre || 'Not specified'}
-Brief Synopsis: ${synopsis || 'Not provided'}
-Characters: ${characters || 'Not provided'}
-Chapter Summaries: ${chapters || 'Not provided'}
+Genre: ${genre}
+Synopsis: ${synopsis || 'Not provided'}
+Tones: ${tones || 'Not specified'}
+Themes: ${themes || 'Not specified'}
 
-Write a compelling, industry-standard ${length} synopsis (approximately ${wordTarget} words).
-Include: main character introduction, inciting incident, major plot points, climax, and resolution.
-Reveal the ending — this is a synopsis, not a blurb.`;
+Produce, with clear plain-text section labels (no markdown fences):
+1. PRODUCT DESCRIPTION — 150-200 words of retail sales copy optimized for the Amazon product page (hook, stakes, no spoilers).
+2. EDITORIAL HOOK — one punchy sentence (under 20 words) for the top of the listing.
+3. KEYWORDS — 7 search keyword phrases buyers in this genre would type, comma-separated.
+4. CATEGORIES — 3 recommended Amazon/KDP browse categories.
+5. A+ BULLET POINTS — 4 short bullet selling points (benefit-driven).
+
+Use persuasive, genre-appropriate marketing language. Keep it ready to paste into KDP.`;
 
     const response = await withRetry(
       () =>
         ai.models.generateContent({
           model: AI_MODEL,
           contents: prompt,
-          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.7, maxOutputTokens: length === '5-page' ? 4096 : 2048 },
+          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.8, maxOutputTokens: 2048 },
         }),
       {
         onAttempt: ({ attempt, willRetry, nextDelayMs, err: attemptErr }) => {
@@ -73,9 +74,9 @@ Reveal the ending — this is a synopsis, not a blurb.`;
       },
     );
 
-    return ok({ synopsis: response.text || '' });
+    return ok({ marketing: response.text || '' });
   } catch (error: unknown) {
-    log.error('Synopsis generation error', error);
-    return err('internal_error', 'Failed to generate synopsis', 500);
+    log.error('Marketing copy error', error);
+    return err('internal_error', 'Failed to generate marketing copy', 500);
   }
 }

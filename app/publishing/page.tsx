@@ -5,9 +5,9 @@ import { ParchmentCard, BrassButton, CarvedHeader, ParchmentInput, ParchmentText
 import { useStory } from '@/lib/store';
 import { wordCount } from '@/lib/editor/serialization';
 import { ExportDialog } from '@/components/publishing/ExportDialog';
-import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X, Download } from 'lucide-react';
+import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X, Download, Megaphone, Sparkles, Quote } from 'lucide-react';
 
-type Tab = 'kdp' | 'query' | 'synopsis' | 'comp' | 'tracker';
+type Tab = 'kdp' | 'query' | 'synopsis' | 'comp' | 'blurb' | 'marketing' | 'logline' | 'tracker';
 
 interface Submission {
   id: string;
@@ -159,6 +159,92 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
     }
   }, [state]);
 
+  // --- Back-Cover Blurb ---
+  const [blurb, setBlurb] = useState('');
+  const [blurbLoading, setBlurbLoading] = useState(false);
+
+  const generateBlurb = useCallback(async () => {
+    setBlurbLoading(true);
+    try {
+      const res = await fetch('/api/publishing/blurb', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: state.title,
+          genre: state.genre || '',
+          synopsis: state.synopsis || '',
+          protagonistName: state.characters?.[0]?.name || '',
+          tone: '',
+          language: state.language || 'English',
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) setBlurb(data.blurb || data.data?.blurb || '');
+      else setBlurb(`Error: ${data.message || data.error || 'Failed to generate'}`);
+    } catch {
+      setBlurb('Error: Network request failed');
+    } finally {
+      setBlurbLoading(false);
+    }
+  }, [state]);
+
+  // --- Marketing / Amazon Copy ---
+  const [marketing, setMarketing] = useState('');
+  const [marketingLoading, setMarketingLoading] = useState(false);
+
+  const generateMarketing = useCallback(async () => {
+    setMarketingLoading(true);
+    try {
+      const res = await fetch('/api/publishing/marketing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: state.title,
+          genre: state.genre || '',
+          synopsis: state.synopsis || '',
+          tones: '',
+          themes: '',
+          language: state.language || 'English',
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) setMarketing(data.marketing || data.data?.marketing || '');
+      else setMarketing(`Error: ${data.message || data.error || 'Failed to generate'}`);
+    } catch {
+      setMarketing('Error: Network request failed');
+    } finally {
+      setMarketingLoading(false);
+    }
+  }, [state]);
+
+  // --- Logline / Elevator Pitch ---
+  const [logline, setLogline] = useState('');
+  const [loglineLoading, setLoglineLoading] = useState(false);
+
+  const generateLogline = useCallback(async () => {
+    setLoglineLoading(true);
+    try {
+      const res = await fetch('/api/publishing/logline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: state.title,
+          genre: state.genre || '',
+          synopsis: state.synopsis || '',
+          protagonistName: state.characters?.[0]?.name || '',
+          language: state.language || 'English',
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) setLogline(data.logline || data.data?.logline || '');
+      else setLogline(`Error: ${data.message || data.error || 'Failed to generate'}`);
+    } catch {
+      setLogline('Error: Network request failed');
+    } finally {
+      setLoglineLoading(false);
+    }
+  }, [state]);
+
   // --- Submission Tracker ---
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -192,6 +278,9 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
     { key: 'query', label: 'Query Letter', icon: <FileText size={16} /> },
     { key: 'synopsis', label: 'Synopsis', icon: <Send size={16} /> },
     { key: 'comp', label: 'Comp Titles', icon: <Search size={16} /> },
+    { key: 'blurb', label: 'Back-Cover Blurb', icon: <Quote size={16} /> },
+    { key: 'marketing', label: 'Marketing Copy', icon: <Megaphone size={16} /> },
+    { key: 'logline', label: 'Logline', icon: <Sparkles size={16} /> },
     { key: 'tracker', label: 'Submissions', icon: <Table2 size={16} /> },
   ];
 
@@ -330,6 +419,87 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                   <p className="text-cream-300/70 text-sm mt-2">{ct.rationale}</p>
                 </div>
               ))}
+            </div>
+          )}
+        </ParchmentCard>
+      )}
+
+      {/* Back-Cover Blurb Tab */}
+      {tab === 'blurb' && (
+        <ParchmentCard>
+          <h3 className="font-serif text-lg text-cream-100 mb-2">Back-Cover Blurb</h3>
+          <p className="text-sm text-cream-300/60 mb-4">
+            Generate market-ready jacket copy / book description — a hooky, spoiler-free pitch for the back cover and your retail product page.
+          </p>
+          <BrassButton onClick={generateBlurb} disabled={blurbLoading || !state.title}>
+            <Quote size={16} className="mr-2" />
+            {blurbLoading ? 'Generating...' : 'Generate Blurb'}
+          </BrassButton>
+          {!state.title && (
+            <p className="text-xs text-cream-300/60 mt-2">Set a title in Story Setup to enable generation.</p>
+          )}
+          {blurb && (
+            <div className="mt-4">
+              <ParchmentTextarea
+                label="Generated Blurb (editable)"
+                value={blurb}
+                onChange={e => setBlurb(e.target.value)}
+                rows={10}
+              />
+            </div>
+          )}
+        </ParchmentCard>
+      )}
+
+      {/* Marketing Copy Tab */}
+      {tab === 'marketing' && (
+        <ParchmentCard>
+          <h3 className="font-serif text-lg text-cream-100 mb-2">Marketing / Amazon Copy</h3>
+          <p className="text-sm text-cream-300/60 mb-4">
+            A full KDP listing package: product description, editorial hook, search keywords, browse categories, and A+ bullet points.
+          </p>
+          <BrassButton onClick={generateMarketing} disabled={marketingLoading || !state.title}>
+            <Megaphone size={16} className="mr-2" />
+            {marketingLoading ? 'Generating...' : 'Generate Marketing Copy'}
+          </BrassButton>
+          {!state.title && (
+            <p className="text-xs text-cream-300/60 mt-2">Set a title in Story Setup to enable generation.</p>
+          )}
+          {marketing && (
+            <div className="mt-4">
+              <ParchmentTextarea
+                label="Generated Marketing Copy (editable)"
+                value={marketing}
+                onChange={e => setMarketing(e.target.value)}
+                rows={20}
+              />
+            </div>
+          )}
+        </ParchmentCard>
+      )}
+
+      {/* Logline Tab */}
+      {tab === 'logline' && (
+        <ParchmentCard>
+          <h3 className="font-serif text-lg text-cream-100 mb-2">Logline &amp; Elevator Pitch</h3>
+          <p className="text-sm text-cream-300/60 mb-4">
+            One-sentence loglines, a 30-second elevator pitch, a punchy tagline, and an &quot;X meets Y&quot; comp line — for queries, conferences, and quick pitches.
+          </p>
+          <BrassButton onClick={generateLogline} disabled={loglineLoading || !state.title}>
+            <Sparkles size={16} className="mr-2" />
+            {loglineLoading ? 'Generating...' : 'Generate Logline & Pitch'}
+          </BrassButton>
+          {!state.title && (
+            <p className="text-xs text-cream-300/60 mt-2">Set a title in Story Setup to enable generation.</p>
+          )}
+          {logline && (
+            <div className="mt-4">
+              <ParchmentTextarea
+                label="Generated Loglines & Pitches (editable)"
+                value={logline}
+                onChange={e => setLogline(e.target.value)}
+                rows={12}
+              />
             </div>
           )}
         </ParchmentCard>
