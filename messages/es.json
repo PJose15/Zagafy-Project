@@ -356,6 +356,12 @@
     "streak": "Racha de registros: {count, plural, one {# día} other {# días}}",
     "skip": "Omitir registro",
     "selectAria": "Seleccionar {label}: {description}",
+    "prep": {
+      "fear": "Escribe con libertad. Nadie está mirando.",
+      "perfectionism": "Tu editor interior está fuera de servicio.",
+      "direction": "Sigue las indicaciones.",
+      "exhaustion": "Solo 15 minutos. Nada más."
+    },
     "blocks": {
       "fearLabel": "Miedo",
       "fearDesc": "Pesado... como si alguien estuviera mirando",

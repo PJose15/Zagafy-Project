@@ -14,6 +14,7 @@ vi.mock('next-intl', async (importOriginal) => {
   type TranslatorOpts = Parameters<typeof createTranslator>[0];
   return {
     ...actual,
+    useLocale: () => 'en',
     useTranslations: (namespace?: string) =>
       createTranslator(
         { locale: 'en', messages: en, namespace } as unknown as TranslatorOpts,

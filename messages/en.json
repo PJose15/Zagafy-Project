@@ -356,6 +356,12 @@
     "streak": "Check-in streak: {count, plural, one {# day} other {# days}}",
     "skip": "Skip check-in",
     "selectAria": "Select {label}: {description}",
+    "prep": {
+      "fear": "Write freely. No one is watching.",
+      "perfectionism": "Your inner editor is off duty.",
+      "direction": "Follow the prompts.",
+      "exhaustion": "Just 15 minutes. That's all."
+    },
     "blocks": {
       "fearLabel": "Fear",
       "fearDesc": "Heavy... like someone's watching",
