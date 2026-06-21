@@ -1,0 +1,198 @@
+{
+  "app": {
+    "name": "Zagafy",
+    "version": "CanonKeeper v1.0"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "projects": "Proyectos",
+    "manuscript": "Manuscrito",
+    "outline": "Esquema",
+    "flow": "Modo Flujo",
+    "bible": "Biblia de la Historia",
+    "characters": "Personajes",
+    "characterChat": "Chat de Personajes",
+    "timeline": "Cronología",
+    "conflicts": "Conflictos",
+    "canon": "Bloqueo de Canon",
+    "assistant": "Asistente",
+    "import": "Importar",
+    "writingMap": "Mapa de Escritura",
+    "reader": "Modo Lectura",
+    "storyBrain": "Cerebro de la Historia",
+    "sprints": "Sprints",
+    "versions": "Versiones",
+    "publishing": "Publicación",
+    "settings": "Ajustes"
+  },
+  "sidebar": {
+    "openNav": "Abrir navegación",
+    "closeNav": "Cerrar navegación",
+    "project": "Proyecto",
+    "words": "Palabras",
+    "chapters": "Capítulos",
+    "streak": "Racha",
+    "streakDays": "{count}d",
+    "level": "Nivel"
+  },
+  "common": {
+    "on": "activado",
+    "off": "desactivado",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "generating": "Generando...",
+    "loading": "Cargando...",
+    "networkError": "Error: Falló la solicitud de red"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "subtitle": "Gestiona los datos y preferencias de tu proyecto.",
+    "appLanguage": {
+      "heading": "Idioma de la Aplicación",
+      "description": "Elige el idioma de la interfaz de Zagafy: menús, botones y etiquetas. Es independiente del idioma de escritura de tu proyecto que aparece abajo y nunca afecta a tu manuscrito ni a las respuestas de la IA.",
+      "ariaLabel": "Idioma de la aplicación"
+    },
+    "projectLanguage": {
+      "heading": "Idioma del Proyecto",
+      "description": "Establece el idioma de tu proyecto. Todos los análisis de IA, la ingesta y las respuestas del asistente usarán este idioma. El contenido nunca se traducirá.",
+      "ariaLabel": "Idioma del proyecto"
+    },
+    "writerMemory": {
+      "heading": "Memoria del Escritor",
+      "description": "El entrenador de IA acumula observaciones sobre tu oficio (ritmo, diálogo, descripción, trama, voz) a medida que lo usas. Las tres principales se reincorporan a futuros micro-consejos y sesiones de entrenamiento. Consúltalas en <link>Mapa de Escritura</link>.",
+      "remembered": "Recordadas actualmente: {count, plural, one {# observación} other {# observaciones}}.",
+      "forgetAll": "Olvidar todas las observaciones",
+      "confirmTitle": "¿Olvidar la memoria del escritor?",
+      "confirmMessage": "¿Borrar las {count, plural, one {# observación} other {# observaciones}} que el entrenador de IA ha acumulado sobre tu oficio? Las sugerencias futuras empezarán de cero. Esto no se puede deshacer.",
+      "confirmLabel": "Olvidar todas",
+      "cleared": "Memoria del escritor borrada."
+    },
+    "spellcheck": {
+      "heading": "Corrección Ortográfica",
+      "description": "Usa el corrector ortográfico integrado del navegador en las superficies de escritura. Desactívalo cuando estés puliendo dialectos, nombres inventados o vocabulario propio y los subrayados rojos te estorben.",
+      "ariaLabel": "Activar la corrección ortográfica del navegador",
+      "status": "La corrección ortográfica del navegador está {state}",
+      "roadmap": "Una capa gramatical más rica (LanguageTool) está en la hoja de ruta — consulta <code>docs/ROADMAP.md</code>."
+    },
+    "exportProject": {
+      "heading": "Exportar Proyecto",
+      "description": "Descarga toda tu Biblia de la Historia, manuscrito, personajes y cronología como un archivo JSON. Puedes usarlo como copia de seguridad o para procesarlo con otras herramientas.",
+      "button": "Exportar JSON",
+      "success": "Proyecto exportado correctamente."
+    },
+    "restoreProject": {
+      "heading": "Restaurar Proyecto",
+      "description": "Importa un archivo JSON exportado previamente para restaurar tu Biblia de la Historia. Esto reemplazará todos los datos actuales.",
+      "button": "Importar JSON",
+      "confirmTitle": "¿Reemplazar los datos del proyecto?",
+      "confirmMessage": "Esto reemplazará TODOS los datos actuales del proyecto con el archivo importado. Se guardará automáticamente una copia de seguridad de tus datos actuales.",
+      "confirmLabel": "Reemplazar Datos",
+      "success": "Datos del proyecto importados correctamente.",
+      "parseError": "No se pudo analizar el archivo JSON. Asegúrate de que sea una exportación válida de la Biblia de la Historia.",
+      "tooLarge": "El archivo de importación es demasiado grande (máx. {mb} MB).",
+      "invalidFile": "Archivo no válido: {reason}."
+    },
+    "analytics": {
+      "heading": "Analíticas",
+      "description": "Las analíticas respetuosas con la privacidad nos ayudan a entender cómo se usa Zagafy. Nunca se recopila el contenido del manuscrito. Las grabaciones de sesión ocultan todo el texto.",
+      "dntNote": "Tu navegador tiene activado No Rastrear. Las analíticas se desactivan automáticamente.",
+      "ariaLabel": "Activar analíticas",
+      "status": "Las analíticas están {state}",
+      "enabled": "Analíticas activadas. Recarga para que los cambios surtan pleno efecto.",
+      "disabled": "Analíticas desactivadas. Recarga para que los cambios surtan pleno efecto."
+    },
+    "onboarding": {
+      "heading": "Tour de Bienvenida",
+      "description": "Vuelve a ver el tour guiado que presenta las áreas principales de Zagafy. Útil si lo omitiste durante la configuración o quieres un repaso rápido.",
+      "button": "Reiniciar Tour"
+    },
+    "danger": {
+      "heading": "Zona de Peligro",
+      "description": "Elimina permanentemente todos los datos del proyecto del almacenamiento local de tu navegador. Asegúrate de haber exportado tus datos primero si quieres conservarlos.",
+      "button": "Borrar Todos los Datos",
+      "confirmTitle": "¿Eliminar todos los datos del proyecto?",
+      "confirmMessage": "Esto eliminará permanentemente todos los datos de tu proyecto del almacenamiento local. Esto no se puede deshacer. Asegúrate de haber exportado tus datos primero.",
+      "confirmLabel": "Eliminar Todo"
+    }
+  },
+  "publishing": {
+    "title": "Canal de Publicación",
+    "subtitle": "Prepara tu manuscrito para enviarlo",
+    "tabs": {
+      "kdp": "Exportar KDP",
+      "query": "Carta de Consulta",
+      "synopsis": "Sinopsis",
+      "comp": "Títulos Comparables",
+      "blurb": "Texto de Contraportada",
+      "marketing": "Texto de Marketing",
+      "logline": "Logline",
+      "tracker": "Envíos"
+    },
+    "errorPrefix": "Error",
+    "failedToGenerate": "No se pudo generar",
+    "kdp": {
+      "heading": "Vista Previa de Formato KDP",
+      "exportButton": "Exportar manuscrito (.docx / .pdf)",
+      "noChapters": "Añade capítulos en la página de Manuscrito para habilitar la exportación."
+    },
+    "query": {
+      "heading": "Generador de Cartas de Consulta con IA",
+      "targetAgent": "Agente Objetivo",
+      "agentPlaceholder": "Nombre del agente",
+      "agency": "Agencia",
+      "agencyPlaceholder": "Nombre de la agencia",
+      "genrePrefs": "Preferencias de Género",
+      "genrePlaceholder": "p. ej. Ficción Literaria",
+      "generate": "Generar Carta de Consulta",
+      "resultLabel": "Carta de Consulta Generada (editable)"
+    },
+    "synopsis": {
+      "heading": "Generador de Sinopsis",
+      "generate1": "Generar Sinopsis de 1 Página",
+      "generate5": "Generar Sinopsis de 5 Páginas",
+      "resultLabel": "Sinopsis Generada (editable)"
+    },
+    "comp": {
+      "heading": "Títulos Comparables",
+      "find": "Buscar Títulos Comparables",
+      "searching": "Buscando...",
+      "by": "de"
+    },
+    "blurb": {
+      "heading": "Texto de Contraportada",
+      "description": "Genera un texto de cubierta listo para el mercado / descripción del libro: un gancho sin spoilers para la contraportada y la página de tu producto.",
+      "generate": "Generar Texto",
+      "needTitle": "Establece un título en la Configuración de la Historia para habilitar la generación.",
+      "resultLabel": "Texto de Contraportada Generado (editable)"
+    },
+    "marketing": {
+      "heading": "Texto de Marketing / Amazon",
+      "description": "Un paquete completo para la ficha de KDP: descripción del producto, gancho editorial, palabras clave de búsqueda, categorías y puntos destacados A+.",
+      "generate": "Generar Texto de Marketing",
+      "needTitle": "Establece un título en la Configuración de la Historia para habilitar la generación.",
+      "resultLabel": "Texto de Marketing Generado (editable)"
+    },
+    "logline": {
+      "heading": "Logline y Pitch de Ascensor",
+      "description": "Loglines de una frase, un pitch de ascensor de 30 segundos, un eslogan contundente y una comparación tipo «X se encuentra con Y», para consultas, congresos y presentaciones rápidas.",
+      "generate": "Generar Logline y Pitch",
+      "needTitle": "Establece un título en la Configuración de la Historia para habilitar la generación.",
+      "resultLabel": "Loglines y Pitches Generados (editable)"
+    },
+    "tracker": {
+      "heading": "Seguimiento de Envíos",
+      "add": "Añadir Envío",
+      "agent": "Agente",
+      "agency": "Agencia",
+      "dateSent": "Fecha de Envío",
+      "status": "Estado",
+      "notes": "Notas",
+      "actions": "Acciones",
+      "empty": "Aún no hay envíos registrados. Haz clic en «Añadir Envío» para empezar.",
+      "statusQueried": "Consultado",
+      "statusRequested": "Solicitado",
+      "statusRejected": "Rechazado",
+      "statusAccepted": "Aceptado"
+    }
+  }
+}

@@ -28,6 +28,7 @@ import {
   Library,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { useGamification } from '@/hooks/use-gamification';
 import { StreakBadge } from '@/components/gamification/streak-badge';
@@ -36,30 +37,33 @@ import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { ProfileBadge } from '@/components/profile/profile-badge';
 
 const navItems = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Projects', href: '/projects', icon: Library },
-  { name: 'Manuscript', href: '/manuscript', icon: BookOpen },
-  { name: 'Outline', href: '/outline', icon: LayoutGrid },
-  { name: 'Flow Mode', href: '/flow', icon: Zap },
-  { name: 'Story Bible', href: '/bible', icon: BookOpen },
-  { name: 'Characters', href: '/characters', icon: Users },
-  { name: 'Character Chat', href: '/character-chat', icon: MessageCircle },
-  { name: 'Timeline', href: '/timeline', icon: Clock },
-  { name: 'Conflicts', href: '/conflicts', icon: Swords },
-  { name: 'Canon Lock', href: '/canon', icon: Lock },
-  { name: 'Assistant', href: '/assistant', icon: MessageSquareText },
-  { name: 'Import', href: '/import', icon: UploadCloud },
-  { name: 'Writing Map', href: '/writing-map', icon: Map },
-  { name: 'Reader Mode', href: '/reader', icon: BookOpenCheck },
-  { name: 'Story Brain', href: '/story-brain', icon: BrainCircuit },
-  { name: 'Sprints', href: '/sprints', icon: Timer },
-  { name: 'Versions', href: '/versions', icon: History },
-  { name: 'Publishing', href: '/publishing', icon: Send },
-];
+  { key: 'dashboard', href: '/', icon: LayoutDashboard },
+  { key: 'projects', href: '/projects', icon: Library },
+  { key: 'manuscript', href: '/manuscript', icon: BookOpen },
+  { key: 'outline', href: '/outline', icon: LayoutGrid },
+  { key: 'flow', href: '/flow', icon: Zap },
+  { key: 'bible', href: '/bible', icon: BookOpen },
+  { key: 'characters', href: '/characters', icon: Users },
+  { key: 'characterChat', href: '/character-chat', icon: MessageCircle },
+  { key: 'timeline', href: '/timeline', icon: Clock },
+  { key: 'conflicts', href: '/conflicts', icon: Swords },
+  { key: 'canon', href: '/canon', icon: Lock },
+  { key: 'assistant', href: '/assistant', icon: MessageSquareText },
+  { key: 'import', href: '/import', icon: UploadCloud },
+  { key: 'writingMap', href: '/writing-map', icon: Map },
+  { key: 'reader', href: '/reader', icon: BookOpenCheck },
+  { key: 'storyBrain', href: '/story-brain', icon: BrainCircuit },
+  { key: 'sprints', href: '/sprints', icon: Timer },
+  { key: 'versions', href: '/versions', icon: History },
+  { key: 'publishing', href: '/publishing', icon: Send },
+] as const;
 
 export function ParchmentSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const t = useTranslations('nav');
+  const tSide = useTranslations('sidebar');
+  const tApp = useTranslations('app');
   const { state } = useStory();
   const { gamification, xpProgress, streak } = useGamification();
   const totalWords = state.chapters.reduce((s, c) => s + (c.content ? c.content.split(/\s+/).filter(Boolean).length : 0), 0);
@@ -68,8 +72,8 @@ export function ParchmentSidebar() {
     <>
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-4 bg-mahogany-900 border-b border-mahogany-700/50">
-        <span className="font-serif font-semibold text-cream-100 tracking-tight">Zagafy</span>
-        <button onClick={() => setIsOpen(!isOpen)} className="text-cream-300 hover:text-cream-50" aria-label={isOpen ? 'Close navigation' : 'Open navigation'}>
+        <span className="font-serif font-semibold text-cream-100 tracking-tight">{tApp('name')}</span>
+        <button onClick={() => setIsOpen(!isOpen)} className="text-cream-300 hover:text-cream-50" aria-label={isOpen ? tSide('closeNav') : tSide('openNav')}>
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -82,10 +86,10 @@ export function ParchmentSidebar() {
       >
         <div className="p-6 hidden md:block">
           <h1 className="font-serif text-xl font-semibold text-cream-50 tracking-tight letterpress">
-            Zagafy
+            {tApp('name')}
           </h1>
           <div className="mt-1.5 h-0.5 w-10 bg-gradient-to-r from-brass-500 to-brass-500/0 rounded-full" />
-          <p className="text-xs text-brass-400/70 mt-2 font-mono">CanonKeeper v1.0</p>
+          <p className="text-xs text-brass-400/70 mt-2 font-mono">{tApp('version')}</p>
           <div className="mt-4">
             <ProjectSwitcher onNavigate={() => setIsOpen(false)} />
           </div>
@@ -95,7 +99,7 @@ export function ParchmentSidebar() {
           {navItems.map((item, index) => {
             const isActive = pathname === item.href;
             return (
-              <motion.div key={item.name} {...stagger.navItems(index)}>
+              <motion.div key={item.key} {...stagger.navItems(index)}>
                 <Link
                   href={item.href}
                   onClick={() => setIsOpen(false)}
@@ -107,7 +111,7 @@ export function ParchmentSidebar() {
                   }`}
                 >
                   <item.icon size={18} aria-hidden="true" className={isActive ? 'text-cream-50' : 'text-cream-400/50'} />
-                  {item.name}
+                  {t(item.key)}
                 </Link>
               </motion.div>
             );
@@ -115,25 +119,25 @@ export function ParchmentSidebar() {
         </nav>
 
         <div className="px-4 py-3 mx-3 mb-2 bg-mahogany-800/50 rounded-xl border border-mahogany-700/30">
-          <div className="text-[10px] font-mono text-brass-400/60 uppercase tracking-widest mb-2">Project</div>
+          <div className="text-[10px] font-mono text-brass-400/60 uppercase tracking-widest mb-2">{tSide('project')}</div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-cream-300/40 block">Words</span>
+              <span className="text-cream-300/40 block">{tSide('words')}</span>
               <span className="text-cream-100 font-mono font-medium">{totalWords.toLocaleString()}</span>
             </div>
             <div>
-              <span className="text-cream-300/40 block">Chapters</span>
+              <span className="text-cream-300/40 block">{tSide('chapters')}</span>
               <span className="text-cream-100 font-mono font-medium">{state.chapters.length}</span>
             </div>
           </div>
           {/* Streak + XP */}
           <div className="grid grid-cols-2 gap-2 text-xs mt-2 pt-2 border-t border-mahogany-700/30">
             <div>
-              <span className="text-cream-300/40 block">Streak</span>
-              <span className="text-cream-100 font-mono font-medium">{streak.currentStreak}d</span>
+              <span className="text-cream-300/40 block">{tSide('streak')}</span>
+              <span className="text-cream-100 font-mono font-medium">{tSide('streakDays', { count: streak.currentStreak })}</span>
             </div>
             <div>
-              <span className="text-cream-300/40 block">Level</span>
+              <span className="text-cream-300/40 block">{tSide('level')}</span>
               <span className="text-cream-100 font-mono font-medium">{gamification.xp.level}</span>
             </div>
           </div>
@@ -152,7 +156,7 @@ export function ParchmentSidebar() {
             }`}
           >
             <Settings size={18} aria-hidden="true" className={pathname === '/settings' ? 'text-cream-50' : 'text-cream-400/50'} />
-            Settings
+            {t('settings')}
           </Link>
         </div>
       </aside>

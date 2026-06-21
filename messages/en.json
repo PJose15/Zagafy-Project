@@ -1,0 +1,198 @@
+{
+  "app": {
+    "name": "Zagafy",
+    "version": "CanonKeeper v1.0"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "manuscript": "Manuscript",
+    "outline": "Outline",
+    "flow": "Flow Mode",
+    "bible": "Story Bible",
+    "characters": "Characters",
+    "characterChat": "Character Chat",
+    "timeline": "Timeline",
+    "conflicts": "Conflicts",
+    "canon": "Canon Lock",
+    "assistant": "Assistant",
+    "import": "Import",
+    "writingMap": "Writing Map",
+    "reader": "Reader Mode",
+    "storyBrain": "Story Brain",
+    "sprints": "Sprints",
+    "versions": "Versions",
+    "publishing": "Publishing",
+    "settings": "Settings"
+  },
+  "sidebar": {
+    "openNav": "Open navigation",
+    "closeNav": "Close navigation",
+    "project": "Project",
+    "words": "Words",
+    "chapters": "Chapters",
+    "streak": "Streak",
+    "streakDays": "{count}d",
+    "level": "Level"
+  },
+  "common": {
+    "on": "on",
+    "off": "off",
+    "cancel": "Cancel",
+    "save": "Save",
+    "generating": "Generating...",
+    "loading": "Loading...",
+    "networkError": "Error: Network request failed"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your project data and preferences.",
+    "appLanguage": {
+      "heading": "App Language",
+      "description": "Choose the language for Zagafy's interface — menus, buttons, and labels. This is separate from your project's writing language below and never affects your manuscript or AI output.",
+      "ariaLabel": "App language"
+    },
+    "projectLanguage": {
+      "heading": "Project Language",
+      "description": "Set the language for your project. All AI analysis, ingestion, and assistant responses will use this language. Content will never be translated.",
+      "ariaLabel": "Project language"
+    },
+    "writerMemory": {
+      "heading": "Writer Memory",
+      "description": "The AI coach builds up observations about your craft (pacing, dialogue, description, plot, voice) as you run it. The top three are folded back into future micro-prompts and coaching sessions. Browse them under <link>Writing Map</link>.",
+      "remembered": "Currently remembered: {count, plural, one {# observation} other {# observations}}.",
+      "forgetAll": "Forget all observations",
+      "confirmTitle": "Forget writer memory?",
+      "confirmMessage": "Clear all {count, plural, one {# observation} other {# observations}} the AI coach has built up about your craft? Future suggestions will start fresh. This cannot be undone.",
+      "confirmLabel": "Forget all",
+      "cleared": "Writer memory cleared."
+    },
+    "spellcheck": {
+      "heading": "Spellcheck",
+      "description": "Use the browser's built-in spellchecker on writing surfaces. Turn this off when you're polishing dialect, made-up names, or invented vocabulary and the red squiggles get in the way.",
+      "ariaLabel": "Enable browser spellcheck",
+      "status": "Browser spellcheck is {state}",
+      "roadmap": "A richer grammar layer (LanguageTool) is on the roadmap — see <code>docs/ROADMAP.md</code>."
+    },
+    "exportProject": {
+      "heading": "Export Project",
+      "description": "Download your entire Story Bible, manuscript, characters, and timeline as a JSON file. You can use this for backup or to process with other tools.",
+      "button": "Export JSON",
+      "success": "Project exported successfully."
+    },
+    "restoreProject": {
+      "heading": "Restore Project",
+      "description": "Import a previously exported JSON file to restore your Story Bible. This will replace all current data.",
+      "button": "Import JSON",
+      "confirmTitle": "Replace project data?",
+      "confirmMessage": "This will replace ALL current project data with the imported file. A backup of your current data will be saved automatically.",
+      "confirmLabel": "Replace Data",
+      "success": "Project data imported successfully.",
+      "parseError": "Failed to parse JSON file. Make sure it is a valid Story Bible export.",
+      "tooLarge": "Import file is too large (max {mb} MB).",
+      "invalidFile": "Invalid file: {reason}."
+    },
+    "analytics": {
+      "heading": "Analytics",
+      "description": "Privacy-friendly analytics help us understand how Zagafy is used. No manuscript content is ever collected. Session recordings mask all text.",
+      "dntNote": "Your browser has Do-Not-Track enabled. Analytics are automatically disabled.",
+      "ariaLabel": "Enable analytics",
+      "status": "Analytics are {state}",
+      "enabled": "Analytics enabled. Reload for changes to take full effect.",
+      "disabled": "Analytics disabled. Reload for changes to take full effect."
+    },
+    "onboarding": {
+      "heading": "Onboarding Tour",
+      "description": "Replay the guided tour that introduces the main areas of Zagafy. Useful if you skipped it during setup or want a quick refresher.",
+      "button": "Restart Tour"
+    },
+    "danger": {
+      "heading": "Danger Zone",
+      "description": "Permanently delete all project data from your browser's local storage. Make sure you have exported your data first if you want to keep it.",
+      "button": "Clear All Data",
+      "confirmTitle": "Delete all project data?",
+      "confirmMessage": "This will permanently delete all your project data from local storage. This cannot be undone. Make sure you have exported your data first.",
+      "confirmLabel": "Delete Everything"
+    }
+  },
+  "publishing": {
+    "title": "Publishing Pipeline",
+    "subtitle": "Prepare your manuscript for submission",
+    "tabs": {
+      "kdp": "KDP Export",
+      "query": "Query Letter",
+      "synopsis": "Synopsis",
+      "comp": "Comp Titles",
+      "blurb": "Back-Cover Blurb",
+      "marketing": "Marketing Copy",
+      "logline": "Logline",
+      "tracker": "Submissions"
+    },
+    "errorPrefix": "Error",
+    "failedToGenerate": "Failed to generate",
+    "kdp": {
+      "heading": "KDP Formatting Preview",
+      "exportButton": "Export manuscript (.docx / .pdf)",
+      "noChapters": "Add chapters on the Manuscript page to enable export."
+    },
+    "query": {
+      "heading": "AI Query Letter Generator",
+      "targetAgent": "Target Agent",
+      "agentPlaceholder": "Agent name",
+      "agency": "Agency",
+      "agencyPlaceholder": "Agency name",
+      "genrePrefs": "Genre Preferences",
+      "genrePlaceholder": "e.g. Literary Fiction",
+      "generate": "Generate Query Letter",
+      "resultLabel": "Generated Query Letter (editable)"
+    },
+    "synopsis": {
+      "heading": "Synopsis Generator",
+      "generate1": "Generate 1-Page Synopsis",
+      "generate5": "Generate 5-Page Synopsis",
+      "resultLabel": "Generated Synopsis (editable)"
+    },
+    "comp": {
+      "heading": "Comparable Titles",
+      "find": "Find Comparable Titles",
+      "searching": "Searching...",
+      "by": "by"
+    },
+    "blurb": {
+      "heading": "Back-Cover Blurb",
+      "description": "Generate market-ready jacket copy / book description — a hooky, spoiler-free pitch for the back cover and your retail product page.",
+      "generate": "Generate Blurb",
+      "needTitle": "Set a title in Story Setup to enable generation.",
+      "resultLabel": "Generated Blurb (editable)"
+    },
+    "marketing": {
+      "heading": "Marketing / Amazon Copy",
+      "description": "A full KDP listing package: product description, editorial hook, search keywords, browse categories, and A+ bullet points.",
+      "generate": "Generate Marketing Copy",
+      "needTitle": "Set a title in Story Setup to enable generation.",
+      "resultLabel": "Generated Marketing Copy (editable)"
+    },
+    "logline": {
+      "heading": "Logline & Elevator Pitch",
+      "description": "One-sentence loglines, a 30-second elevator pitch, a punchy tagline, and an \"X meets Y\" comp line — for queries, conferences, and quick pitches.",
+      "generate": "Generate Logline & Pitch",
+      "needTitle": "Set a title in Story Setup to enable generation.",
+      "resultLabel": "Generated Loglines & Pitches (editable)"
+    },
+    "tracker": {
+      "heading": "Submission Tracker",
+      "add": "Add Submission",
+      "agent": "Agent",
+      "agency": "Agency",
+      "dateSent": "Date Sent",
+      "status": "Status",
+      "notes": "Notes",
+      "actions": "Actions",
+      "empty": "No submissions tracked yet. Click \"Add Submission\" to get started.",
+      "statusQueried": "Queried",
+      "statusRequested": "Requested",
+      "statusRejected": "Rejected",
+      "statusAccepted": "Accepted"
+    }
+  }
+}

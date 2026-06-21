@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { ParchmentCard, BrassButton, CarvedHeader, ParchmentInput, ParchmentTextarea, ParchmentSelect } from '@/components/antiquarian';
 import { useStory } from '@/lib/store';
 import { wordCount } from '@/lib/editor/serialization';
@@ -36,6 +37,20 @@ export default function PublishingPage() {
   const [tab, setTab] = useState<Tab>('kdp');
   const [exportOpen, setExportOpen] = useState(false);
   const { state } = useStory();
+  const t = useTranslations('publishing');
+  const tCommon = useTranslations('common');
+  const genErr = useCallback(
+    (data: { message?: string; error?: string }) =>
+      `${t('errorPrefix')}: ${data.message || data.error || t('failedToGenerate')}`,
+    [t],
+  );
+  const statusKey: Record<Submission['status'], string> = {
+    queried: 'tracker.statusQueried',
+    requested: 'tracker.statusRequested',
+    rejected: 'tracker.statusRejected',
+    accepted: 'tracker.statusAccepted',
+  };
+  const statusLabel = (s: Submission['status']) => t(statusKey[s]);
 
   // --- KDP ---
   const totalWords = state.chapters.reduce((s, c) => s + (c.content ? wordCount(c.content) : 0), 0);
@@ -91,13 +106,13 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       });
       const data = await res.json();
       if (data.ok) setQueryLetter(data.letter || data.data?.letter || '');
-      else setQueryLetter(`Error: ${data.message || data.error || 'Failed to generate'}`);
-    } catch (e) {
-      setQueryLetter('Error: Network request failed');
+      else setQueryLetter(genErr(data));
+    } catch {
+      setQueryLetter(tCommon('networkError'));
     } finally {
       setQueryLoading(false);
     }
-  }, [state, queryForm]);
+  }, [state, queryForm, genErr, tCommon]);
 
   // --- Synopsis ---
   const [synopsisResult, setSynopsisResult] = useState('');
@@ -123,13 +138,13 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       });
       const data = await res.json();
       if (data.ok) setSynopsisResult(data.synopsis || data.data?.synopsis || '');
-      else setSynopsisResult(`Error: ${data.message || data.error || 'Failed to generate'}`);
+      else setSynopsisResult(genErr(data));
     } catch {
-      setSynopsisResult('Error: Network request failed');
+      setSynopsisResult(tCommon('networkError'));
     } finally {
       setSynopsisLoading(false);
     }
-  }, [state]);
+  }, [state, genErr, tCommon]);
 
   // --- Comp Titles ---
   const [compTitles, setCompTitles] = useState<Array<{ title: string; author: string; year: number; rationale: string }>>([]);
@@ -180,13 +195,13 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       });
       const data = await res.json();
       if (data.ok) setBlurb(data.blurb || data.data?.blurb || '');
-      else setBlurb(`Error: ${data.message || data.error || 'Failed to generate'}`);
+      else setBlurb(genErr(data));
     } catch {
-      setBlurb('Error: Network request failed');
+      setBlurb(tCommon('networkError'));
     } finally {
       setBlurbLoading(false);
     }
-  }, [state]);
+  }, [state, genErr, tCommon]);
 
   // --- Marketing / Amazon Copy ---
   const [marketing, setMarketing] = useState('');
@@ -209,13 +224,13 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       });
       const data = await res.json();
       if (data.ok) setMarketing(data.marketing || data.data?.marketing || '');
-      else setMarketing(`Error: ${data.message || data.error || 'Failed to generate'}`);
+      else setMarketing(genErr(data));
     } catch {
-      setMarketing('Error: Network request failed');
+      setMarketing(tCommon('networkError'));
     } finally {
       setMarketingLoading(false);
     }
-  }, [state]);
+  }, [state, genErr, tCommon]);
 
   // --- Logline / Elevator Pitch ---
   const [logline, setLogline] = useState('');
@@ -237,13 +252,13 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       });
       const data = await res.json();
       if (data.ok) setLogline(data.logline || data.data?.logline || '');
-      else setLogline(`Error: ${data.message || data.error || 'Failed to generate'}`);
+      else setLogline(genErr(data));
     } catch {
-      setLogline('Error: Network request failed');
+      setLogline(tCommon('networkError'));
     } finally {
       setLoglineLoading(false);
     }
-  }, [state]);
+  }, [state, genErr, tCommon]);
 
   // --- Submission Tracker ---
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -273,15 +288,15 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
     setEditDraft(null);
   };
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'kdp', label: 'KDP Export', icon: <BookOpen size={16} /> },
-    { key: 'query', label: 'Query Letter', icon: <FileText size={16} /> },
-    { key: 'synopsis', label: 'Synopsis', icon: <Send size={16} /> },
-    { key: 'comp', label: 'Comp Titles', icon: <Search size={16} /> },
-    { key: 'blurb', label: 'Back-Cover Blurb', icon: <Quote size={16} /> },
-    { key: 'marketing', label: 'Marketing Copy', icon: <Megaphone size={16} /> },
-    { key: 'logline', label: 'Logline', icon: <Sparkles size={16} /> },
-    { key: 'tracker', label: 'Submissions', icon: <Table2 size={16} /> },
+  const tabs: { key: Tab; icon: React.ReactNode }[] = [
+    { key: 'kdp', icon: <BookOpen size={16} /> },
+    { key: 'query', icon: <FileText size={16} /> },
+    { key: 'synopsis', icon: <Send size={16} /> },
+    { key: 'comp', icon: <Search size={16} /> },
+    { key: 'blurb', icon: <Quote size={16} /> },
+    { key: 'marketing', icon: <Megaphone size={16} /> },
+    { key: 'logline', icon: <Sparkles size={16} /> },
+    { key: 'tracker', icon: <Table2 size={16} /> },
   ];
 
   const statusColors: Record<string, string> = {
@@ -293,22 +308,22 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <CarvedHeader title="Publishing Pipeline" subtitle="Prepare your manuscript for submission" />
+      <CarvedHeader title={t('title')} subtitle={t('subtitle')} />
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2">
-        {tabs.map(t => (
+        {tabs.map(tb => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === t.key
+              tab === tb.key
                 ? 'bg-brass-500/20 text-brass-300 border border-brass-500/40'
                 : 'text-cream-300/60 hover:bg-mahogany-800/50 hover:text-cream-100 border border-transparent'
             }`}
           >
-            {t.icon}
-            {t.label}
+            {tb.icon}
+            {t(`tabs.${tb.key}`)}
           </button>
         ))}
       </div>
@@ -316,17 +331,17 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* KDP Export Tab */}
       {tab === 'kdp' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">KDP Formatting Preview</h3>
+          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('kdp.heading')}</h3>
           <pre className="whitespace-pre-wrap text-sm text-cream-300/80 font-mono bg-mahogany-900/50 p-4 rounded-lg border border-mahogany-700/30 leading-relaxed">
             {kdpPreview}
           </pre>
           <div className="mt-4">
             <BrassButton onClick={() => setExportOpen(true)} disabled={state.chapters.length === 0}>
               <Download size={16} className="mr-2" />
-              Export manuscript (.docx / .pdf)
+              {t('kdp.exportButton')}
             </BrassButton>
             {state.chapters.length === 0 && (
-              <p className="text-xs text-cream-300/60 mt-2">Add chapters on the Manuscript page to enable export.</p>
+              <p className="text-xs text-cream-300/60 mt-2">{t('kdp.noChapters')}</p>
             )}
           </div>
         </ParchmentCard>
@@ -335,35 +350,35 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Query Letter Tab */}
       {tab === 'query' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">AI Query Letter Generator</h3>
+          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('query.heading')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <ParchmentInput
-              label="Target Agent"
-              placeholder="Agent name"
+              label={t('query.targetAgent')}
+              placeholder={t('query.agentPlaceholder')}
               value={queryForm.agentName}
               onChange={e => setQueryForm(f => ({ ...f, agentName: e.target.value }))}
             />
             <ParchmentInput
-              label="Agency"
-              placeholder="Agency name"
+              label={t('query.agency')}
+              placeholder={t('query.agencyPlaceholder')}
               value={queryForm.agencyName}
               onChange={e => setQueryForm(f => ({ ...f, agencyName: e.target.value }))}
             />
             <ParchmentInput
-              label="Genre Preferences"
-              placeholder="e.g. Literary Fiction"
+              label={t('query.genrePrefs')}
+              placeholder={t('query.genrePlaceholder')}
               value={queryForm.genrePrefs}
               onChange={e => setQueryForm(f => ({ ...f, genrePrefs: e.target.value }))}
             />
           </div>
           <BrassButton onClick={generateQueryLetter} disabled={queryLoading}>
             <FileText size={16} className="mr-2" />
-            {queryLoading ? 'Generating...' : 'Generate Query Letter'}
+            {queryLoading ? tCommon('generating') : t('query.generate')}
           </BrassButton>
           {queryLetter && (
             <div className="mt-4">
               <ParchmentTextarea
-                label="Generated Query Letter (editable)"
+                label={t('query.resultLabel')}
                 value={queryLetter}
                 onChange={e => setQueryLetter(e.target.value)}
                 rows={16}
@@ -376,21 +391,21 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Synopsis Tab */}
       {tab === 'synopsis' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">Synopsis Generator</h3>
+          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('synopsis.heading')}</h3>
           <div className="flex gap-3 mb-4">
             <BrassButton onClick={() => generateSynopsis('1-page')} disabled={synopsisLoading}>
               <FileText size={16} className="mr-2" />
-              {synopsisLoading ? 'Generating...' : 'Generate 1-Page Synopsis'}
+              {synopsisLoading ? tCommon('generating') : t('synopsis.generate1')}
             </BrassButton>
             <BrassButton onClick={() => generateSynopsis('5-page')} disabled={synopsisLoading}>
               <FileText size={16} className="mr-2" />
-              {synopsisLoading ? 'Generating...' : 'Generate 5-Page Synopsis'}
+              {synopsisLoading ? tCommon('generating') : t('synopsis.generate5')}
             </BrassButton>
           </div>
           {synopsisResult && (
             <div className="mt-2">
               <ParchmentTextarea
-                label="Generated Synopsis (editable)"
+                label={t('synopsis.resultLabel')}
                 value={synopsisResult}
                 onChange={e => setSynopsisResult(e.target.value)}
                 rows={20}
@@ -403,17 +418,17 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Comp Titles Tab */}
       {tab === 'comp' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">Comparable Titles</h3>
+          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('comp.heading')}</h3>
           <BrassButton onClick={findCompTitles} disabled={compLoading}>
             <Search size={16} className="mr-2" />
-            {compLoading ? 'Searching...' : 'Find Comparable Titles'}
+            {compLoading ? t('comp.searching') : t('comp.find')}
           </BrassButton>
           {compTitles.length > 0 && (
             <div className="mt-4 space-y-4">
               {compTitles.map((ct, i) => (
                 <div key={i} className="p-4 bg-mahogany-900/50 rounded-lg border border-mahogany-700/30">
                   <h4 className="font-serif text-cream-100 font-semibold">
-                    {ct.title} <span className="text-brass-400 font-normal">by {ct.author}</span>
+                    {ct.title} <span className="text-brass-400 font-normal">{t('comp.by')} {ct.author}</span>
                     {ct.year > 0 && <span className="text-cream-300/50 text-sm ml-2">({ct.year})</span>}
                   </h4>
                   <p className="text-cream-300/70 text-sm mt-2">{ct.rationale}</p>
@@ -427,21 +442,21 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Back-Cover Blurb Tab */}
       {tab === 'blurb' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-2">Back-Cover Blurb</h3>
+          <h3 className="font-serif text-lg text-cream-100 mb-2">{t('blurb.heading')}</h3>
           <p className="text-sm text-cream-300/60 mb-4">
-            Generate market-ready jacket copy / book description — a hooky, spoiler-free pitch for the back cover and your retail product page.
+            {t('blurb.description')}
           </p>
           <BrassButton onClick={generateBlurb} disabled={blurbLoading || !state.title}>
             <Quote size={16} className="mr-2" />
-            {blurbLoading ? 'Generating...' : 'Generate Blurb'}
+            {blurbLoading ? tCommon('generating') : t('blurb.generate')}
           </BrassButton>
           {!state.title && (
-            <p className="text-xs text-cream-300/60 mt-2">Set a title in Story Setup to enable generation.</p>
+            <p className="text-xs text-cream-300/60 mt-2">{t('blurb.needTitle')}</p>
           )}
           {blurb && (
             <div className="mt-4">
               <ParchmentTextarea
-                label="Generated Blurb (editable)"
+                label={t('blurb.resultLabel')}
                 value={blurb}
                 onChange={e => setBlurb(e.target.value)}
                 rows={10}
@@ -454,21 +469,21 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Marketing Copy Tab */}
       {tab === 'marketing' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-2">Marketing / Amazon Copy</h3>
+          <h3 className="font-serif text-lg text-cream-100 mb-2">{t('marketing.heading')}</h3>
           <p className="text-sm text-cream-300/60 mb-4">
-            A full KDP listing package: product description, editorial hook, search keywords, browse categories, and A+ bullet points.
+            {t('marketing.description')}
           </p>
           <BrassButton onClick={generateMarketing} disabled={marketingLoading || !state.title}>
             <Megaphone size={16} className="mr-2" />
-            {marketingLoading ? 'Generating...' : 'Generate Marketing Copy'}
+            {marketingLoading ? tCommon('generating') : t('marketing.generate')}
           </BrassButton>
           {!state.title && (
-            <p className="text-xs text-cream-300/60 mt-2">Set a title in Story Setup to enable generation.</p>
+            <p className="text-xs text-cream-300/60 mt-2">{t('marketing.needTitle')}</p>
           )}
           {marketing && (
             <div className="mt-4">
               <ParchmentTextarea
-                label="Generated Marketing Copy (editable)"
+                label={t('marketing.resultLabel')}
                 value={marketing}
                 onChange={e => setMarketing(e.target.value)}
                 rows={20}
@@ -481,21 +496,21 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Logline Tab */}
       {tab === 'logline' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-2">Logline &amp; Elevator Pitch</h3>
+          <h3 className="font-serif text-lg text-cream-100 mb-2">{t('logline.heading')}</h3>
           <p className="text-sm text-cream-300/60 mb-4">
-            One-sentence loglines, a 30-second elevator pitch, a punchy tagline, and an &quot;X meets Y&quot; comp line — for queries, conferences, and quick pitches.
+            {t('logline.description')}
           </p>
           <BrassButton onClick={generateLogline} disabled={loglineLoading || !state.title}>
             <Sparkles size={16} className="mr-2" />
-            {loglineLoading ? 'Generating...' : 'Generate Logline & Pitch'}
+            {loglineLoading ? tCommon('generating') : t('logline.generate')}
           </BrassButton>
           {!state.title && (
-            <p className="text-xs text-cream-300/60 mt-2">Set a title in Story Setup to enable generation.</p>
+            <p className="text-xs text-cream-300/60 mt-2">{t('logline.needTitle')}</p>
           )}
           {logline && (
             <div className="mt-4">
               <ParchmentTextarea
-                label="Generated Loglines & Pitches (editable)"
+                label={t('logline.resultLabel')}
                 value={logline}
                 onChange={e => setLogline(e.target.value)}
                 rows={12}
@@ -509,10 +524,10 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {tab === 'tracker' && (
         <ParchmentCard>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-lg text-cream-100">Submission Tracker</h3>
+            <h3 className="font-serif text-lg text-cream-100">{t('tracker.heading')}</h3>
             <BrassButton onClick={() => setShowAddRow(true)}>
               <Plus size={16} className="mr-2" />
-              Add Submission
+              {t('tracker.add')}
             </BrassButton>
           </div>
 
@@ -520,29 +535,29 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-mahogany-700/40 text-cream-300/60 text-left">
-                  <th className="py-2 pr-3">Agent</th>
-                  <th className="py-2 pr-3">Agency</th>
-                  <th className="py-2 pr-3">Date Sent</th>
-                  <th className="py-2 pr-3">Status</th>
-                  <th className="py-2 pr-3">Notes</th>
-                  <th className="py-2 w-20">Actions</th>
+                  <th className="py-2 pr-3">{t('tracker.agent')}</th>
+                  <th className="py-2 pr-3">{t('tracker.agency')}</th>
+                  <th className="py-2 pr-3">{t('tracker.dateSent')}</th>
+                  <th className="py-2 pr-3">{t('tracker.status')}</th>
+                  <th className="py-2 pr-3">{t('tracker.notes')}</th>
+                  <th className="py-2 w-20">{t('tracker.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {showAddRow && (
                   <tr className="border-b border-mahogany-700/20">
-                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.agentName} onChange={e => setNewRow(r => ({ ...r, agentName: e.target.value }))} placeholder="Agent name" /></td>
-                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.agency} onChange={e => setNewRow(r => ({ ...r, agency: e.target.value }))} placeholder="Agency" /></td>
+                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.agentName} onChange={e => setNewRow(r => ({ ...r, agentName: e.target.value }))} placeholder={t('query.agentPlaceholder')} /></td>
+                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.agency} onChange={e => setNewRow(r => ({ ...r, agency: e.target.value }))} placeholder={t('tracker.agency')} /></td>
                     <td className="py-2 pr-2"><input type="date" className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.dateSent} onChange={e => setNewRow(r => ({ ...r, dateSent: e.target.value }))} /></td>
                     <td className="py-2 pr-2">
                       <select className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.status} onChange={e => setNewRow(r => ({ ...r, status: e.target.value as Submission['status'] }))}>
-                        <option value="queried">Queried</option>
-                        <option value="requested">Requested</option>
-                        <option value="rejected">Rejected</option>
-                        <option value="accepted">Accepted</option>
+                        <option value="queried">{t('tracker.statusQueried')}</option>
+                        <option value="requested">{t('tracker.statusRequested')}</option>
+                        <option value="rejected">{t('tracker.statusRejected')}</option>
+                        <option value="accepted">{t('tracker.statusAccepted')}</option>
                       </select>
                     </td>
-                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.notes} onChange={e => setNewRow(r => ({ ...r, notes: e.target.value }))} placeholder="Notes" /></td>
+                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.notes} onChange={e => setNewRow(r => ({ ...r, notes: e.target.value }))} placeholder={t('tracker.notes')} /></td>
                     <td className="py-2 flex gap-1">
                       <button onClick={addSubmission} className="text-green-400 hover:text-green-300 p-1"><Check size={16} /></button>
                       <button onClick={() => setShowAddRow(false)} className="text-red-400 hover:text-red-300 p-1"><X size={16} /></button>
@@ -558,10 +573,10 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                         <td className="py-2 pr-2"><input type="date" className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.dateSent} onChange={e => setEditDraft(d => d ? { ...d, dateSent: e.target.value } : d)} /></td>
                         <td className="py-2 pr-2">
                           <select className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.status} onChange={e => setEditDraft(d => d ? { ...d, status: e.target.value as Submission['status'] } : d)}>
-                            <option value="queried">Queried</option>
-                            <option value="requested">Requested</option>
-                            <option value="rejected">Rejected</option>
-                            <option value="accepted">Accepted</option>
+                            <option value="queried">{t('tracker.statusQueried')}</option>
+                            <option value="requested">{t('tracker.statusRequested')}</option>
+                            <option value="rejected">{t('tracker.statusRejected')}</option>
+                            <option value="accepted">{t('tracker.statusAccepted')}</option>
                           </select>
                         </td>
                         <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.notes} onChange={e => setEditDraft(d => d ? { ...d, notes: e.target.value } : d)} /></td>
@@ -575,7 +590,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                         <td className="py-2 pr-3 text-cream-100">{sub.agentName}</td>
                         <td className="py-2 pr-3 text-cream-300/70">{sub.agency}</td>
                         <td className="py-2 pr-3 text-cream-300/70">{sub.dateSent}</td>
-                        <td className={`py-2 pr-3 capitalize font-medium ${statusColors[sub.status] || 'text-cream-300'}`}>{sub.status}</td>
+                        <td className={`py-2 pr-3 font-medium ${statusColors[sub.status] || 'text-cream-300'}`}>{statusLabel(sub.status)}</td>
                         <td className="py-2 pr-3 text-cream-300/60 max-w-[200px] truncate">{sub.notes}</td>
                         <td className="py-2 flex gap-1">
                           <button onClick={() => startEdit(sub)} className="text-brass-400 hover:text-brass-300 p-1"><Edit3 size={16} /></button>
@@ -588,7 +603,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                 {submissions.length === 0 && !showAddRow && (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-cream-300/40">
-                      No submissions tracked yet. Click &quot;Add Submission&quot; to get started.
+                      {t('tracker.empty')}
                     </td>
                   </tr>
                 )}

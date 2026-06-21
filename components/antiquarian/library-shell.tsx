@@ -19,6 +19,7 @@ import { SyncProvider } from '@/lib/sync/sync-context';
 import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
 import { AiStatusBanner } from '@/components/ai/ai-status-banner';
 import { useProfile } from '@/hooks/use-profile';
+import { I18nProvider } from '@/lib/i18n/provider';
 
 function StreakWarningToast() {
   const { toast } = useToast();
@@ -72,20 +73,22 @@ export function LibraryShell({ children }: { children: React.ReactNode }) {
     Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) &&
     process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'embed';
   return (
-    <SyncProvider enabled={syncEnabled}>
-      <StoryProvider>
-        <SessionProvider>
-          <GamificationProvider>
-            <MotionConfig reducedMotion={profile?.preferences.reducedMotion ? 'always' : 'user'}>
-              <ToastProvider>
-                <ConfirmProvider>
-                  <LibraryShellInner>{children}</LibraryShellInner>
-                </ConfirmProvider>
-              </ToastProvider>
-            </MotionConfig>
-          </GamificationProvider>
-        </SessionProvider>
-      </StoryProvider>
-    </SyncProvider>
+    <I18nProvider>
+      <SyncProvider enabled={syncEnabled}>
+        <StoryProvider>
+          <SessionProvider>
+            <GamificationProvider>
+              <MotionConfig reducedMotion={profile?.preferences.reducedMotion ? 'always' : 'user'}>
+                <ToastProvider>
+                  <ConfirmProvider>
+                    <LibraryShellInner>{children}</LibraryShellInner>
+                  </ConfirmProvider>
+                </ToastProvider>
+              </MotionConfig>
+            </GamificationProvider>
+          </SessionProvider>
+        </StoryProvider>
+      </SyncProvider>
+    </I18nProvider>
   );
 }
