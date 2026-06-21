@@ -194,5 +194,136 @@
       "statusRejected": "Rejected",
       "statusAccepted": "Accepted"
     }
+  },
+  "dashboard": {
+    "untitled": "Untitled Project",
+    "noSynopsis": "No synopsis added yet. Head to the Story Bible to define your core narrative.",
+    "block": {
+      "fearHeadline": "You showed up. That takes courage.",
+      "fearNudge": "Write one paragraph nobody will ever see.",
+      "perfectionismHeadline": "First drafts are supposed to be messy.",
+      "perfectionismNudge": "Write the worst version first.",
+      "directionHeadline": "You don't need to know the ending.",
+      "directionNudge": "Write the next scene you can see.",
+      "exhaustionHeadline": "You showed up. That's enough.",
+      "exhaustionNudge": "Write whatever comes. Even fragments."
+    },
+    "anatomy": {
+      "heading": "Story Anatomy",
+      "chapters": "Chapters",
+      "characters": "Characters",
+      "timeline": "Timeline",
+      "conflicts": "Conflicts"
+    },
+    "health": {
+      "issues": "{count, plural, one {# story health issue} other {# story health issues}} detected",
+      "inconsistencies": "{count, plural, one {# inconsistency} other {# inconsistencies}}",
+      "plotHoles": "{count, plural, one {# plot hole} other {# plot holes}}",
+      "boundaryTitle": "Story Health"
+    },
+    "stats": {
+      "chapters": "Chapters",
+      "characters": "Characters",
+      "timelineEvents": "Timeline Events",
+      "conflicts": "Conflicts",
+      "words": "{count} words",
+      "conflictRatio": "{active}a/{resolved}r"
+    },
+    "gamificationTitle": "Writing Progress",
+    "recentChapters": "Recent Chapters",
+    "emptyChaptersTitle": "Your story awaits",
+    "emptyChaptersSubtitle": "Every great manuscript begins with a single chapter.",
+    "startWriting": "Start writing",
+    "openLoops": "Open Loops",
+    "emptyLoopsTitle": "No loose threads",
+    "emptyLoopsSubtitle": "Your narrative threads are all accounted for."
+  },
+  "projects": {
+    "title": "Your Stories",
+    "subtitle": "Every project keeps its own manuscript, characters, history, and writing stats.",
+    "import": "Import",
+    "newProject": "New project",
+    "untitled": "Untitled Project",
+    "emptyTitle": "No projects yet",
+    "emptySubtitle": "Create your first story to begin.",
+    "active": "Active",
+    "updated": "Updated {time}",
+    "wordsSuffix": "{count}w",
+    "status": {
+      "draft": "draft",
+      "editing": "editing",
+      "complete": "complete"
+    },
+    "time": {
+      "never": "never",
+      "justNow": "just now",
+      "minutes": "{count}m ago",
+      "hours": "{count}h ago",
+      "days": "{count}d ago",
+      "months": "{count}mo ago",
+      "years": "{count}y ago"
+    },
+    "toastCreated": "New project created.",
+    "toastCreateError": "Could not create the project.",
+    "toastImportError": "Could not start the import.",
+    "toastDeleted": "Project deleted.",
+    "confirmDeleteTitle": "Delete project",
+    "confirmDeleteMessage": "Delete \"{title}\" and all its chapters, characters, history, and stats? This cannot be undone.",
+    "confirmDeleteLabel": "Delete",
+    "ariaTitle": "Project title",
+    "ariaSave": "Save title",
+    "ariaCancel": "Cancel rename",
+    "ariaOpen": "Open {title}",
+    "ariaRename": "Rename {title}",
+    "ariaDelete": "Delete {title}",
+    "rename": "Rename",
+    "delete": "Delete"
+  },
+  "genesis": {
+    "mode": "Genesis Mode",
+    "tagline": "Build your story from the ground up.",
+    "importInstead": "Already have a manuscript? Import it instead",
+    "exit": "Exit Genesis",
+    "backToEditing": "Back to editing",
+    "stepAria": "Step {num}: {label}",
+    "genreLabel": "Genre",
+    "toneLabel": "Tone",
+    "typeLabel": "Type",
+    "worldRules": "World Rules (optional)",
+    "addRule": "+ Add rule",
+    "removeRule": "Remove rule",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "review": "Review",
+    "steps": {
+      "name": { "label": "Project Name", "description": "What will you call this story?" },
+      "logline": { "label": "Logline", "description": "Describe your story in one or two sentences." },
+      "genre-tone": { "label": "Genre & Tone", "description": "Pick the genres and tones that define your narrative." },
+      "protagonist": { "label": "Protagonist", "description": "Who drives this story forward?" },
+      "antagonist": { "label": "Antagonist", "description": "What force stands in opposition?" },
+      "world": { "label": "World", "description": "Where and when does this story take place?" }
+    },
+    "antagonistType": {
+      "character": "character",
+      "force": "force",
+      "internal": "internal"
+    },
+    "placeholders": {
+      "name": "e.g., The Obsidian Crown",
+      "logline": "e.g., A disgraced knight must reclaim a cursed artifact before it destroys the realm.",
+      "protagName": "Character name",
+      "protagDesc": "Brief description",
+      "protagGoal": "What do they want?",
+      "protagFear": "What do they fear?",
+      "antagNameInternal": "e.g., Self-doubt",
+      "antagNameForce": "e.g., The Plague",
+      "antagNameCharacter": "Character name",
+      "antagDesc": "Description",
+      "antagMotivation": "Motivation or driving force",
+      "worldSetting": "Describe the world or setting",
+      "worldTime": "Time period (e.g., Medieval, 2150 AD, Victorian era)",
+      "worldRule": "e.g., Magic requires sacrifice"
+    }
   }
 }

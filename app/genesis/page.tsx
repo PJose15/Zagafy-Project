@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStory } from '@/lib/store';
 import { convertGenesisToStory } from '@/lib/genesis-converter';
@@ -18,26 +19,11 @@ import { ParchmentCard, BrassButton, ParchmentInput, ParchmentTextarea } from '@
 import { fadeUp, springs } from '@/lib/animations';
 import { ChevronLeft, ChevronRight, Sparkles, X, UploadCloud } from 'lucide-react';
 
-const stepLabels: Record<GenesisStep, string> = {
-  'name': 'Project Name',
-  'logline': 'Logline',
-  'genre-tone': 'Genre & Tone',
-  'protagonist': 'Protagonist',
-  'antagonist': 'Antagonist',
-  'world': 'World',
-};
-
-const stepDescriptions: Record<GenesisStep, string> = {
-  'name': 'What will you call this story?',
-  'logline': 'Describe your story in one or two sentences.',
-  'genre-tone': 'Pick the genres and tones that define your narrative.',
-  'protagonist': 'Who drives this story forward?',
-  'antagonist': 'What force stands in opposition?',
-  'world': 'Where and when does this story take place?',
-};
-
 export default function GenesisPage() {
   const router = useRouter();
+  const t = useTranslations('genesis');
+  const stepLabel = (step: GenesisStep) => t(`steps.${step}.label`);
+  const stepDescription = (step: GenesisStep) => t(`steps.${step}.description`);
   const { state, saveNow } = useStory();
   const [stepIndex, setStepIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
@@ -175,7 +161,7 @@ export default function GenesisPage() {
         <button
           onClick={exitGenesis}
           className="absolute top-4 right-4 p-2 rounded-full text-sepia-600 hover:text-sepia-900 hover:bg-sepia-300/30 transition-colors"
-          aria-label="Exit Genesis"
+          aria-label={t('exit')}
         >
           <X size={20} />
         </button>
@@ -184,7 +170,7 @@ export default function GenesisPage() {
             onClick={handleBack}
             className="flex items-center gap-1 text-sm text-sepia-600 hover:text-sepia-700 transition-colors mb-6"
           >
-            <ChevronLeft size={16} /> Back to editing
+            <ChevronLeft size={16} /> {t('backToEditing')}
           </button>
           <GenesisSummary
             data={data}
@@ -202,7 +188,7 @@ export default function GenesisPage() {
       <button
         onClick={exitGenesis}
         className="absolute top-4 right-4 p-2 rounded-full text-sepia-600 hover:text-sepia-900 hover:bg-sepia-300/30 transition-colors"
-        aria-label="Exit Genesis"
+        aria-label={t('exit')}
       >
         <X size={20} />
       </button>
@@ -211,14 +197,14 @@ export default function GenesisPage() {
         <motion.div {...fadeUp} className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Sparkles size={24} className="text-brass-500" />
-            <h1 className="text-2xl font-serif font-bold text-sepia-900">Genesis Mode</h1>
+            <h1 className="text-2xl font-serif font-bold text-sepia-900">{t('mode')}</h1>
           </div>
-          <p className="text-sm text-sepia-600">Build your story from the ground up.</p>
+          <p className="text-sm text-sepia-600">{t('tagline')}</p>
           <button
             onClick={goImport}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-brass-700 hover:text-brass-900 transition-colors mt-1"
           >
-            <UploadCloud size={15} aria-hidden="true" /> Already have a manuscript? Import it instead
+            <UploadCloud size={15} aria-hidden="true" /> {t('importInstead')}
           </button>
         </motion.div>
 
@@ -232,7 +218,7 @@ export default function GenesisPage() {
                 'flex items-center justify-center w-6 h-6 rounded-full transition-colors',
                 i < stepIndex ? 'cursor-pointer' : 'cursor-default',
               ].join(' ')}
-              aria-label={`Step ${i + 1}: ${stepLabels[step]}`}
+              aria-label={t('stepAria', { num: i + 1, label: stepLabel(step) })}
               aria-current={i === stepIndex ? 'step' : undefined}
             >
               <span
@@ -259,9 +245,9 @@ export default function GenesisPage() {
               <div className="space-y-4">
                 <div>
                   <h2 className="text-lg font-serif font-semibold text-sepia-900">
-                    {stepLabels[currentStep]}
+                    {stepLabel(currentStep)}
                   </h2>
-                  <p className="text-sm text-sepia-600 mt-1">{stepDescriptions[currentStep]}</p>
+                  <p className="text-sm text-sepia-600 mt-1">{stepDescription(currentStep)}</p>
                 </div>
 
                 {/* Step-specific form fields */}
@@ -269,7 +255,7 @@ export default function GenesisPage() {
                   <ParchmentInput
                     value={data.projectName ?? ''}
                     onChange={(e) => updateField('projectName', e.target.value)}
-                    placeholder="e.g., The Obsidian Crown"
+                    placeholder={t('placeholders.name')}
                     autoFocus
                     data-testid="genesis-name-input"
                   />
@@ -279,7 +265,7 @@ export default function GenesisPage() {
                   <ParchmentTextarea
                     value={data.logline ?? ''}
                     onChange={(e) => updateField('logline', e.target.value)}
-                    placeholder="e.g., A disgraced knight must reclaim a cursed artifact before it destroys the realm."
+                    placeholder={t('placeholders.logline')}
                     rows={3}
                     autoFocus
                     data-testid="genesis-logline-input"
@@ -289,7 +275,7 @@ export default function GenesisPage() {
                 {currentStep === 'genre-tone' && (
                   <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">Genre</label>
+                      <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">{t('genreLabel')}</label>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {GENRE_OPTIONS.map(g => (
                           <button
@@ -309,7 +295,7 @@ export default function GenesisPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">Tone</label>
+                      <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">{t('toneLabel')}</label>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {TONE_OPTIONS.map(t => (
                           <button
@@ -336,25 +322,25 @@ export default function GenesisPage() {
                     <ParchmentInput
                       value={data.protagonist?.name ?? ''}
                       onChange={(e) => updateField('protagonist', { ...data.protagonist!, name: e.target.value })}
-                      placeholder="Character name"
+                      placeholder={t('placeholders.protagName')}
                       autoFocus
                       data-testid="genesis-protag-name"
                     />
                     <ParchmentTextarea
                       value={data.protagonist?.description ?? ''}
                       onChange={(e) => updateField('protagonist', { ...data.protagonist!, description: e.target.value })}
-                      placeholder="Brief description"
+                      placeholder={t('placeholders.protagDesc')}
                       rows={2}
                     />
                     <ParchmentInput
                       value={data.protagonist?.goal ?? ''}
                       onChange={(e) => updateField('protagonist', { ...data.protagonist!, goal: e.target.value })}
-                      placeholder="What do they want?"
+                      placeholder={t('placeholders.protagGoal')}
                     />
                     <ParchmentInput
                       value={data.protagonist?.fear ?? ''}
                       onChange={(e) => updateField('protagonist', { ...data.protagonist!, fear: e.target.value })}
-                      placeholder="What do they fear?"
+                      placeholder={t('placeholders.protagFear')}
                     />
                   </div>
                 )}
@@ -362,21 +348,21 @@ export default function GenesisPage() {
                 {currentStep === 'antagonist' && (
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">Type</label>
+                      <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">{t('typeLabel')}</label>
                       <div className="flex gap-2 mt-2">
-                        {(['character', 'force', 'internal'] as AntagonistType[]).map(t => (
+                        {(['character', 'force', 'internal'] as AntagonistType[]).map(ty => (
                           <button
-                            key={t}
+                            key={ty}
                             type="button"
-                            onClick={() => updateField('antagonist', { ...data.antagonist!, type: t })}
+                            onClick={() => updateField('antagonist', { ...data.antagonist!, type: ty })}
                             className={[
                               'text-xs px-3 py-1.5 rounded-full border transition-all capitalize',
-                              data.antagonist?.type === t
+                              data.antagonist?.type === ty
                                 ? 'bg-wax-600 text-cream-50 border-wax-500'
                                 : 'bg-parchment-200 text-sepia-700 border-sepia-300/50 hover:border-sepia-400',
                             ].join(' ')}
                           >
-                            {t}
+                            {t(`antagonistType.${ty}`)}
                           </button>
                         ))}
                       </div>
@@ -384,20 +370,20 @@ export default function GenesisPage() {
                     <ParchmentInput
                       value={data.antagonist?.name ?? ''}
                       onChange={(e) => updateField('antagonist', { ...data.antagonist!, name: e.target.value })}
-                      placeholder={data.antagonist?.type === 'internal' ? 'e.g., Self-doubt' : data.antagonist?.type === 'force' ? 'e.g., The Plague' : 'Character name'}
+                      placeholder={data.antagonist?.type === 'internal' ? t('placeholders.antagNameInternal') : data.antagonist?.type === 'force' ? t('placeholders.antagNameForce') : t('placeholders.antagNameCharacter')}
                       autoFocus
                       data-testid="genesis-antag-name"
                     />
                     <ParchmentTextarea
                       value={data.antagonist?.description ?? ''}
                       onChange={(e) => updateField('antagonist', { ...data.antagonist!, description: e.target.value })}
-                      placeholder="Description"
+                      placeholder={t('placeholders.antagDesc')}
                       rows={2}
                     />
                     <ParchmentInput
                       value={data.antagonist?.motivation ?? ''}
                       onChange={(e) => updateField('antagonist', { ...data.antagonist!, motivation: e.target.value })}
-                      placeholder="Motivation or driving force"
+                      placeholder={t('placeholders.antagMotivation')}
                     />
                   </div>
                 )}
@@ -407,7 +393,7 @@ export default function GenesisPage() {
                     <ParchmentTextarea
                       value={data.world?.setting ?? ''}
                       onChange={(e) => updateField('world', { ...data.world!, setting: e.target.value })}
-                      placeholder="Describe the world or setting"
+                      placeholder={t('placeholders.worldSetting')}
                       rows={2}
                       autoFocus
                       data-testid="genesis-world-setting"
@@ -415,11 +401,11 @@ export default function GenesisPage() {
                     <ParchmentInput
                       value={data.world?.timePeriod ?? ''}
                       onChange={(e) => updateField('world', { ...data.world!, timePeriod: e.target.value })}
-                      placeholder="Time period (e.g., Medieval, 2150 AD, Victorian era)"
+                      placeholder={t('placeholders.worldTime')}
                     />
                     <div>
                       <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">
-                        World Rules (optional)
+                        {t('worldRules')}
                       </label>
                       <div className="space-y-2 mt-2">
                         {(data.world?.rules ?? []).map((rule, i) => (
@@ -427,14 +413,14 @@ export default function GenesisPage() {
                             <ParchmentInput
                               value={rule}
                               onChange={(e) => updateWorldRule(i, e.target.value)}
-                              placeholder="e.g., Magic requires sacrifice"
+                              placeholder={t('placeholders.worldRule')}
                               className="flex-1"
                             />
                             <button
                               type="button"
                               onClick={() => removeWorldRule(i)}
                               className="text-sepia-600 hover:text-wax-500 transition-colors text-sm px-2"
-                              aria-label="Remove rule"
+                              aria-label={t('removeRule')}
                             >
                               x
                             </button>
@@ -445,7 +431,7 @@ export default function GenesisPage() {
                           onClick={addWorldRule}
                           className="text-xs text-brass-600 hover:text-brass-500 transition-colors"
                         >
-                          + Add rule
+                          {t('addRule')}
                         </button>
                       </div>
                     </div>
@@ -463,7 +449,7 @@ export default function GenesisPage() {
             className="flex items-center gap-1 text-sm text-sepia-600 hover:text-sepia-700 transition-colors"
           >
             <ChevronLeft size={16} />
-            {stepIndex === 0 ? 'Skip' : 'Back'}
+            {stepIndex === 0 ? t('skip') : t('back')}
           </button>
 
           <BrassButton
@@ -471,7 +457,7 @@ export default function GenesisPage() {
             disabled={!canAdvance()}
             icon={stepIndex === GENESIS_STEPS.length - 1 ? undefined : <ChevronRight size={16} />}
           >
-            {stepIndex === GENESIS_STEPS.length - 1 ? 'Review' : 'Next'}
+            {stepIndex === GENESIS_STEPS.length - 1 ? t('review') : t('next')}
           </BrassButton>
         </div>
       </div>

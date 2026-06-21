@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Suspense } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { useSession } from '@/lib/session';
 import { wordCount as countWords } from '@/lib/editor/serialization';
@@ -23,24 +24,7 @@ import NovelCompletionRitual from '@/components/completion/NovelCompletionRitual
 
 const DashboardGamification = React.lazy(() => import('@/components/gamification/dashboard-gamification').then(m => ({ default: m.DashboardGamification })));
 
-const blockMessages: Record<string, { headline: string; nudge: string }> = {
-  fear: {
-    headline: 'You showed up. That takes courage.',
-    nudge: 'Write one paragraph nobody will ever see.',
-  },
-  perfectionism: {
-    headline: 'First drafts are supposed to be messy.',
-    nudge: 'Write the worst version first.',
-  },
-  direction: {
-    headline: "You don't need to know the ending.",
-    nudge: 'Write the next scene you can see.',
-  },
-  exhaustion: {
-    headline: "You showed up. That's enough.",
-    nudge: 'Write whatever comes. Even fragments.',
-  },
-};
+const BLOCK_TYPES = ['fear', 'perfectionism', 'direction', 'exhaustion'] as const;
 
 // ─── Inline SVG: Animated Candle ───
 function CandleIcon() {
@@ -73,21 +57,22 @@ function ThreadWisp() {
 function StoryAnatomyBar({ chapters, characters, events, conflicts }: {
   chapters: number; characters: number; events: number; conflicts: number;
 }) {
+  const t = useTranslations('dashboard');
   const total = chapters + characters + events + conflicts;
   if (total === 0) return null;
 
   const segments = [
-    { count: chapters, color: 'bg-forest-700', label: 'Chapters', href: '/manuscript' },
-    { count: characters, color: 'bg-brass-600', label: 'Characters', href: '/characters' },
-    { count: events, color: 'bg-sepia-500', label: 'Timeline', href: '/timeline' },
-    { count: conflicts, color: 'bg-wax-600', label: 'Conflicts', href: '/conflicts' },
+    { count: chapters, color: 'bg-forest-700', label: t('anatomy.chapters'), href: '/manuscript' },
+    { count: characters, color: 'bg-brass-600', label: t('anatomy.characters'), href: '/characters' },
+    { count: events, color: 'bg-sepia-500', label: t('anatomy.timeline'), href: '/timeline' },
+    { count: conflicts, color: 'bg-wax-600', label: t('anatomy.conflicts'), href: '/conflicts' },
   ].filter(s => s.count > 0);
 
   return (
     <motion.div {...fadeUp}>
       <div className="flex items-center gap-3 mb-3">
         <Flame aria-hidden="true" size={16} className="text-brass-600" />
-        <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">Story Anatomy</h2>
+        <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('anatomy.heading')}</h2>
         <DecorativeDivider variant="section" className="flex-1" />
       </div>
       <div className="flex h-3 rounded-full overflow-hidden bg-parchment-200/50 border border-sepia-300/20">
@@ -117,6 +102,7 @@ function StoryAnatomyBar({ chapters, characters, events, conflicts }: {
 
 // ─── Story Health Card ───
 function StoryHealthCard() {
+  const t = useTranslations('dashboard');
   // Lazy import analysis modules to avoid bloating the dashboard bundle.
   // Modules are loaded in parallel (not waterfall) and cancelled on unmount.
   const [counts, setCounts] = React.useState<{ unresolved: number; plotHoles: number } | null>(null);
@@ -171,12 +157,12 @@ function StoryHealthCard() {
             <BrainCircuit aria-hidden="true" size={20} className="text-wax-500 shrink-0" />
             <div>
               <p className="text-sm font-medium text-sepia-800">
-                {total} story health issue{total !== 1 ? 's' : ''} detected
+                {t('health.issues', { count: total })}
               </p>
               <p className="text-[10px] text-sepia-600 mt-0.5">
-                {counts.unresolved > 0 && `${counts.unresolved} inconsistenc${counts.unresolved !== 1 ? 'ies' : 'y'}`}
+                {counts.unresolved > 0 && t('health.inconsistencies', { count: counts.unresolved })}
                 {counts.unresolved > 0 && counts.plotHoles > 0 && ' · '}
-                {counts.plotHoles > 0 && `${counts.plotHoles} plot hole${counts.plotHoles !== 1 ? 's' : ''}`}
+                {counts.plotHoles > 0 && t('health.plotHoles', { count: counts.plotHoles })}
               </p>
             </div>
           </div>
@@ -213,6 +199,7 @@ const canonColors: Record<string, string> = {
 };
 
 export default function Dashboard() {
+  const t = useTranslations('dashboard');
   const { state } = useStory();
   const { session } = useSession();
   const { finishing, isLoaded } = useGamification();
@@ -225,14 +212,19 @@ export default function Dashboard() {
   const activeConflicts = state.active_conflicts.filter(c => c.status === 'active').length;
   const resolvedConflicts = state.active_conflicts.filter(c => c.status === 'resolved').length;
 
-  const blockMsg = session.blockType ? blockMessages[session.blockType] : null;
+  const blockType = session.blockType && (BLOCK_TYPES as readonly string[]).includes(session.blockType)
+    ? session.blockType
+    : null;
+  const blockMsg = blockType
+    ? { headline: t(`block.${blockType}Headline`), nudge: t(`block.${blockType}Nudge`) }
+    : null;
 
   return (
     <GenesisGuard>
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <CarvedHeader
-        title={state.title || 'Untitled Project'}
-        subtitle={state.synopsis || 'No synopsis added yet. Head to the Story Bible to define your core narrative.'}
+        title={state.title || t('untitled')}
+        subtitle={state.synopsis || t('noSynopsis')}
       />
 
       {/* Writer's Block Message */}
@@ -264,9 +256,9 @@ export default function Dashboard() {
                 <BookOpen aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <span className="text-3xl font-light text-sepia-900">{state.chapters.length}</span>
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">Chapters</h3>
+              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.chapters')}</h3>
               {totalWords > 0 && (
-                <p className="text-[10px] font-mono text-sepia-600 mt-1">{totalWords.toLocaleString()} words</p>
+                <p className="text-[10px] font-mono text-sepia-600 mt-1">{t('stats.words', { count: totalWords.toLocaleString() })}</p>
               )}
             </ParchmentCard>
           </motion.div>
@@ -280,7 +272,7 @@ export default function Dashboard() {
                 <Users aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <span className="text-3xl font-light text-sepia-900">{state.characters.length}</span>
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">Characters</h3>
+              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.characters')}</h3>
               {state.characters.length > 0 && (
                 <div className="flex items-center mt-2 -space-x-2">
                   {state.characters.slice(0, 4).map((c) => (
@@ -303,7 +295,7 @@ export default function Dashboard() {
                 <Clock aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <span className="text-3xl font-light text-sepia-900">{state.timeline_events.length}</span>
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">Timeline Events</h3>
+              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.timelineEvents')}</h3>
               {state.timeline_events.length > 0 && (
                 <div className="flex items-center gap-1 mt-2">
                   {[0, 1, 2].map((i) => (
@@ -331,7 +323,7 @@ export default function Dashboard() {
                 <Swords aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <span className="text-3xl font-light text-sepia-900">{state.active_conflicts.length}</span>
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">Conflicts</h3>
+              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.conflicts')}</h3>
               {state.active_conflicts.length > 0 && (
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex h-1.5 flex-1 rounded-full overflow-hidden bg-sepia-300/20">
@@ -348,7 +340,7 @@ export default function Dashboard() {
                       />
                     )}
                   </div>
-                  <span className="text-[10px] font-mono text-sepia-600">{activeConflicts}a/{resolvedConflicts}r</span>
+                  <span className="text-[10px] font-mono text-sepia-600">{t('stats.conflictRatio', { active: activeConflicts, resolved: resolvedConflicts })}</span>
                 </div>
               )}
             </ParchmentCard>
@@ -357,14 +349,14 @@ export default function Dashboard() {
       </div>
 
       {/* ── Gamification ── */}
-      <FeatureErrorBoundary title="Writing Progress">
+      <FeatureErrorBoundary title={t('gamificationTitle')}>
         <Suspense fallback={<GamificationSkeleton />}>
           <DashboardGamification />
         </Suspense>
       </FeatureErrorBoundary>
 
       {/* ── Story Health ── */}
-      <FeatureErrorBoundary title="Story Health">
+      <FeatureErrorBoundary title={t('health.boundaryTitle')}>
         <StoryHealthCard />
       </FeatureErrorBoundary>
 
@@ -381,15 +373,15 @@ export default function Dashboard() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center gap-3">
             <BookOpen size={18} className="text-brass-600" />
-            <h2 className="text-lg font-serif font-semibold text-sepia-900">Recent Chapters</h2>
+            <h2 className="text-lg font-serif font-semibold text-sepia-900">{t('recentChapters')}</h2>
             <DecorativeDivider variant="section" className="flex-1" />
           </div>
           {state.chapters.length === 0 ? (
             <EmptyState
               variant="manuscript"
-              title="Your story awaits"
-              subtitle="Every great manuscript begins with a single chapter."
-              action={{ label: 'Start writing', href: '/manuscript' }}
+              title={t('emptyChaptersTitle')}
+              subtitle={t('emptyChaptersSubtitle')}
+              action={{ label: t('startWriting'), href: '/manuscript' }}
             />
           ) : (
             <div className="space-y-3">
@@ -426,14 +418,14 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <AlertCircle size={18} className="text-brass-600" />
-            <h2 className="text-lg font-serif font-semibold text-sepia-900">Open Loops</h2>
+            <h2 className="text-lg font-serif font-semibold text-sepia-900">{t('openLoops')}</h2>
             <DecorativeDivider variant="section" className="flex-1" />
           </div>
           {state.open_loops.filter(l => l.status === 'open').length === 0 ? (
             <EmptyState
               variant="loops"
-              title="No loose threads"
-              subtitle="Your narrative threads are all accounted for."
+              title={t('emptyLoopsTitle')}
+              subtitle={t('emptyLoopsSubtitle')}
             />
           ) : (
             <div className="space-y-3">

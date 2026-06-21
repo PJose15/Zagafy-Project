@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { motion } from 'motion/react';
 import { Plus, Pencil, Trash2, BookOpen, Check, X, FileText, UploadCloud } from 'lucide-react';
 import { stagger, hoverLift } from '@/lib/animations';
@@ -29,29 +30,37 @@ const statusDot: Record<string, string> = {
   complete: 'bg-forest-600',
 };
 
-function relativeTime(ms: number): string {
-  if (!ms) return 'never';
+/** Pure relative-time bucketer — returns an i18n key + optional count so the
+ *  page can translate it. */
+function relativeTimeKey(ms: number): { key: string; count?: number } {
+  if (!ms) return { key: 'time.never' };
   const diff = Date.now() - ms;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return { key: 'time.justNow' };
+  if (mins < 60) return { key: 'time.minutes', count: mins };
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return { key: 'time.hours', count: hours };
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return { key: 'time.days', count: days };
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}y ago`;
+  if (months < 12) return { key: 'time.months', count: months };
+  return { key: 'time.years', count: Math.floor(months / 12) };
 }
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const t = useTranslations('projects');
   const { projects, activeId, loading, refresh } = useProjects();
   const { confirm } = useConfirm();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
+
+  const formatRelative = (ms: number): string => {
+    const { key, count } = relativeTimeKey(ms);
+    return count != null ? t(key, { count }) : t(key);
+  };
 
   const openProject = (id: string) => {
     if (id !== activeId) switchProject(id);
@@ -63,10 +72,10 @@ export default function ProjectsPage() {
     setBusy(true);
     try {
       await createProject('Untitled Project');
-      toast('New project created.', 'success');
+      toast(t('toastCreated'), 'success');
       router.push('/');
     } catch {
-      toast('Could not create the project.', 'error');
+      toast(t('toastCreateError'), 'error');
     } finally {
       setBusy(false);
     }
@@ -81,7 +90,7 @@ export default function ProjectsPage() {
       await createProject('Imported Manuscript');
       router.push('/import');
     } catch {
-      toast('Could not start the import.', 'error');
+      toast(t('toastImportError'), 'error');
     } finally {
       setBusy(false);
     }
@@ -102,23 +111,23 @@ export default function ProjectsPage() {
 
   const handleDelete = async (p: ProjectSummary) => {
     const ok = await confirm({
-      title: 'Delete project',
-      message: `Delete "${p.title}" and all its chapters, characters, history, and stats? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('confirmDeleteTitle'),
+      message: t('confirmDeleteMessage', { title: p.title }),
+      confirmLabel: t('confirmDeleteLabel'),
       variant: 'danger',
     });
     if (!ok) return;
     await deleteProject(p.id);
     await refresh();
-    toast('Project deleted.', 'info');
+    toast(t('toastDeleted'), 'info');
   };
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <CarvedHeader
-          title="Your Stories"
-          subtitle="Every project keeps its own manuscript, characters, history, and writing stats."
+          title={t('title')}
+          subtitle={t('subtitle')}
         />
         <div className="flex items-center gap-2">
           <InkStampButton
@@ -128,7 +137,7 @@ export default function ProjectsPage() {
             onClick={handleImport}
             disabled={busy}
           >
-            Import
+            {t('import')}
           </InkStampButton>
           <InkStampButton
             variant="primary"
@@ -137,7 +146,7 @@ export default function ProjectsPage() {
             onClick={handleCreate}
             loading={busy}
           >
-            New project
+            {t('newProject')}
           </InkStampButton>
         </div>
       </div>
@@ -156,9 +165,9 @@ export default function ProjectsPage() {
       ) : projects.length === 0 ? (
         <EmptyState
           variant="manuscript"
-          title="No projects yet"
-          subtitle="Create your first story to begin."
-          action={{ label: 'New project', onClick: handleCreate }}
+          title={t('emptyTitle')}
+          subtitle={t('emptySubtitle')}
+          action={{ label: t('newProject'), onClick: handleCreate }}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -173,7 +182,7 @@ export default function ProjectsPage() {
                 >
                   {isActive && (
                     <span className="absolute top-3 right-3 text-[10px] font-mono uppercase tracking-wider text-brass-700">
-                      Active
+                      {t('active')}
                     </span>
                   )}
 
@@ -186,20 +195,20 @@ export default function ProjectsPage() {
                           if (e.key === 'Enter') saveRename(p.id);
                           if (e.key === 'Escape') setEditingId(null);
                         }}
-                        aria-label="Project title"
+                        aria-label={t('ariaTitle')}
                         autoFocus
                       />
                       <button
                         onClick={() => saveRename(p.id)}
                         className="p-1.5 rounded text-forest-700 hover:bg-forest-500/10"
-                        aria-label="Save title"
+                        aria-label={t('ariaSave')}
                       >
                         <Check size={16} />
                       </button>
                       <button
                         onClick={() => setEditingId(null)}
                         className="p-1.5 rounded text-sepia-600 hover:bg-sepia-300/30"
-                        aria-label="Cancel rename"
+                        aria-label={t('ariaCancel')}
                       >
                         <X size={16} />
                       </button>
@@ -209,10 +218,10 @@ export default function ProjectsPage() {
                       type="button"
                       onClick={() => openProject(p.id)}
                       className="text-left group"
-                      aria-label={`Open ${p.title}`}
+                      aria-label={t('ariaOpen', { title: p.title })}
                     >
                       <h2 className="font-serif text-lg font-semibold text-sepia-900 leading-tight break-words group-hover:text-brass-700 transition-colors">
-                        {p.title || 'Untitled Project'}
+                        {p.title || t('untitled')}
                       </h2>
                     </button>
                   )}
@@ -224,30 +233,30 @@ export default function ProjectsPage() {
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <FileText size={13} aria-hidden="true" />
-                      {p.wordCount.toLocaleString()}w
+                      {t('wordsSuffix', { count: p.wordCount.toLocaleString() })}
                     </span>
                     <span className="inline-flex items-center gap-1.5 ml-auto">
                       <span className={`w-2 h-2 rounded-full ${statusDot[p.status] ?? 'bg-sepia-500'}`} aria-hidden="true" />
-                      {p.status}
+                      {t(`status.${p.status}`)}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-sepia-300/30">
-                    <span className="text-[10px] text-sepia-600 font-mono">Updated {relativeTime(p.updatedAt)}</span>
+                    <span className="text-[10px] text-sepia-600 font-mono">{t('updated', { time: formatRelative(p.updatedAt) })}</span>
                     <div className="flex items-center gap-0.5">
                       <button
                         onClick={() => startRename(p)}
                         className="p-1.5 rounded text-sepia-600 hover:text-brass-700 hover:bg-brass-500/10"
-                        aria-label={`Rename ${p.title}`}
-                        title="Rename"
+                        aria-label={t('ariaRename', { title: p.title })}
+                        title={t('rename')}
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => handleDelete(p)}
                         className="p-1.5 rounded text-sepia-600 hover:text-wax-700 hover:bg-wax-500/10"
-                        aria-label={`Delete ${p.title}`}
-                        title="Delete"
+                        aria-label={t('ariaDelete', { title: p.title })}
+                        title={t('delete')}
                       >
                         <Trash2 size={14} />
                       </button>
