@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { fadeUp } from '@/lib/animations';
 import { ParchmentCard, BrassButton } from '@/components/antiquarian';
 import { Edit2, BookOpen, Users, Globe, Swords } from 'lucide-react';
@@ -13,7 +14,7 @@ interface GenesisSummaryProps {
   isCreating: boolean;
 }
 
-function SectionHeader({ icon, title, onEdit }: { icon: React.ReactNode; title: string; onEdit: () => void }) {
+function SectionHeader({ icon, title, editLabel, onEdit }: { icon: React.ReactNode; title: string; editLabel: string; onEdit: () => void }) {
   return (
     <div className="flex items-center justify-between mb-2">
       <div className="flex items-center gap-2">
@@ -23,7 +24,7 @@ function SectionHeader({ icon, title, onEdit }: { icon: React.ReactNode; title: 
       <button
         onClick={onEdit}
         className="text-sepia-600 hover:text-brass-600 transition-colors p-1 rounded"
-        aria-label={`Edit ${title}`}
+        aria-label={editLabel}
       >
         <Edit2 size={14} />
       </button>
@@ -32,6 +33,7 @@ function SectionHeader({ icon, title, onEdit }: { icon: React.ReactNode; title: 
 }
 
 export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSummaryProps) {
+  const t = useTranslations('genesisSummary');
   return (
     <motion.div {...fadeUp} className="space-y-6 max-w-2xl mx-auto">
       <div className="text-center space-y-2">
@@ -44,7 +46,8 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
         <ParchmentCard padding="md">
           <SectionHeader
             icon={<BookOpen size={16} className="text-brass-600" />}
-            title="Genre & Tone"
+            title={t('genreTone')}
+            editLabel={t('editAria', { title: t('genreTone') })}
             onEdit={() => onEdit('genre-tone')}
           />
           <div className="flex flex-wrap gap-1.5">
@@ -61,7 +64,8 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
         <ParchmentCard padding="md">
           <SectionHeader
             icon={<Globe size={16} className="text-brass-600" />}
-            title="World"
+            title={t('world')}
+            editLabel={t('editAria', { title: t('world') })}
             onEdit={() => onEdit('world')}
           />
           <p className="text-sm text-sepia-700">{data.world.setting}</p>
@@ -81,7 +85,8 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
         <ParchmentCard padding="md">
           <SectionHeader
             icon={<Users size={16} className="text-brass-600" />}
-            title="Protagonist"
+            title={t('protagonist')}
+            editLabel={t('editAria', { title: t('protagonist') })}
             onEdit={() => onEdit('protagonist')}
           />
           <p className="text-sm font-medium text-sepia-800">{data.protagonist.name}</p>
@@ -89,10 +94,10 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
             <p className="text-xs text-sepia-600 mt-1">{data.protagonist.description}</p>
           )}
           {data.protagonist.goal && (
-            <p className="text-xs text-sepia-600 mt-1">Goal: {data.protagonist.goal}</p>
+            <p className="text-xs text-sepia-600 mt-1">{t('goal', { value: data.protagonist.goal })}</p>
           )}
           {data.protagonist.fear && (
-            <p className="text-xs text-sepia-600">Fear: {data.protagonist.fear}</p>
+            <p className="text-xs text-sepia-600">{t('fear', { value: data.protagonist.fear })}</p>
           )}
         </ParchmentCard>
 
@@ -100,7 +105,8 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
         <ParchmentCard padding="md">
           <SectionHeader
             icon={<Swords size={16} className="text-brass-600" />}
-            title="Antagonist"
+            title={t('antagonist')}
+            editLabel={t('editAria', { title: t('antagonist') })}
             onEdit={() => onEdit('antagonist')}
           />
           <p className="text-sm font-medium text-sepia-800">
@@ -111,14 +117,14 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
             <p className="text-xs text-sepia-600 mt-1">{data.antagonist.description}</p>
           )}
           {data.antagonist.motivation && (
-            <p className="text-xs text-sepia-600 mt-1">Motivation: {data.antagonist.motivation}</p>
+            <p className="text-xs text-sepia-600 mt-1">{t('motivation', { value: data.antagonist.motivation })}</p>
           )}
         </ParchmentCard>
       </div>
 
       <div className="text-center pt-4">
         <BrassButton size="lg" onClick={onCreate} disabled={isCreating}>
-          {isCreating ? 'Creating...' : 'Create Project'}
+          {isCreating ? t('creating') : t('create')}
         </BrassButton>
       </div>
     </motion.div>

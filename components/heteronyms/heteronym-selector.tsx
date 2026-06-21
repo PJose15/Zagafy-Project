@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown } from 'lucide-react';
 import { AvatarCircle } from './avatar-circle';
 import type { Heteronym } from '@/lib/types/heteronym';
@@ -12,6 +13,7 @@ interface HeteronymSelectorProps {
 }
 
 export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymSelectorProps) {
+  const t = useTranslations('heteronyms');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -46,7 +48,7 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
         className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-parchment-200 transition-colors"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label="Select writing voice"
+        aria-label={t('selector.selectVoice')}
       >
         <AvatarCircle color={active.avatarColor} emoji={active.avatarEmoji} size={24} />
         <span className="text-xs text-sepia-600 max-w-[100px] truncate">{active.name}</span>
@@ -56,7 +58,7 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
       {open && (
         <div
           role="listbox"
-          aria-label="Writing voices"
+          aria-label={t('selector.voicesLabel')}
           className="absolute top-full left-0 mt-1 bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-xl min-w-[200px] py-1 z-20"
         >
           {heteronyms.map((h) => (
@@ -80,7 +82,7 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
                 )}
               </div>
               {h.id === activeId && (
-                <span className="text-[10px] text-brass-500 shrink-0">Active</span>
+                <span className="text-[10px] text-brass-500 shrink-0">{t('active')}</span>
               )}
             </button>
           ))}

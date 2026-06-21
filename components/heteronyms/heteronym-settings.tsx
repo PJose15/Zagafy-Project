@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { AvatarCircle } from './avatar-circle';
 import { HeteronymModal } from './heteronym-modal';
@@ -20,6 +21,7 @@ import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
 
 export function HeteronymSettings() {
+  const t = useTranslations('heteronyms');
   const [heteronyms, setHeteronyms] = useState<Heteronym[]>(() => readHeteronyms());
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHeteronym, setEditingHeteronym] = useState<Heteronym | null>(null);
@@ -32,7 +34,7 @@ export function HeteronymSettings() {
 
   const handleCreate = () => {
     if (isAtLimit()) {
-      toast('Maximum of 10 alter egos reached.', 'error');
+      toast(t('maxReached'), 'error');
       return;
     }
     setEditingHeteronym(null);
@@ -48,9 +50,9 @@ export function HeteronymSettings() {
     if (h.isDefault) return;
 
     const confirmed = await confirm({
-      title: `Delete "${h.name}"?`,
-      message: 'This alter ego will be permanently removed. If it is currently active, writing will switch back to your default voice.',
-      confirmLabel: 'Delete',
+      title: t('deleteTitle', { name: h.name }),
+      message: t('deleteMessage'),
+      confirmLabel: t('deleteLabel'),
       variant: 'danger',
     });
 
@@ -58,13 +60,13 @@ export function HeteronymSettings() {
 
     deleteHeteronym(h.id);
     refresh();
-    toast(`"${h.name}" deleted.`, 'success');
+    toast(t('deleted', { name: h.name }), 'success');
   };
 
   const handleSave = (data: { name: string; bio: string; styleNote: string; avatarColor: string; avatarEmoji: string; voice?: HeteronymVoice }) => {
     if (editingHeteronym) {
       updateHeteronym(editingHeteronym.id, data);
-      toast(`"${data.name}" updated.`, 'success');
+      toast(t('updated', { name: data.name }), 'success');
     } else {
       const { voice, ...restData } = data;
       const newH: Heteronym = {
@@ -76,7 +78,7 @@ export function HeteronymSettings() {
       };
       const added = addHeteronym(newH);
       if (!added) {
-        toast('Maximum of 10 alter egos reached.', 'error');
+        toast(t('maxReached'), 'error');
         setModalOpen(false);
         return;
       }
@@ -85,7 +87,7 @@ export function HeteronymSettings() {
         const def = getDefaultHeteronym();
         if (def) setActiveHeteronymId(def.id);
       }
-      toast(`"${data.name}" created.`, 'success');
+      toast(t('created', { name: data.name }), 'success');
     }
     setModalOpen(false);
     refresh();
@@ -94,11 +96,11 @@ export function HeteronymSettings() {
   const activeId = getActiveHeteronymId();
 
   return (
-    <section className="bg-parchment-100 border border-sepia-300/50 rounded-xl p-6 space-y-4 texture-parchment shadow-parchment" aria-label="Alter egos settings">
+    <section className="bg-parchment-100 border border-sepia-300/50 rounded-xl p-6 space-y-4 texture-parchment shadow-parchment" aria-label={t('settingsAria')}>
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
           <Users size={20} className="text-brass-500" />
-          Alter Egos
+          {t('heading')}
         </h2>
         <button
           onClick={handleCreate}
@@ -106,21 +108,18 @@ export function HeteronymSettings() {
           className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg bg-forest-700 text-cream-50 hover:bg-forest-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={16} />
-          New
+          {t('new')}
         </button>
       </div>
 
       <p className="text-sepia-600 text-sm leading-relaxed">
-        An <strong>alter ego</strong> is a writing voice — a persona with its own tone, vocabulary, and
-        pacing. Pick one in Flow mode and the AI (micro-prompts, coach, chat) shapes its
-        suggestions to match that voice. Use them to write distinct POVs or characters
-        in their own style. Alter egos are saved <strong>per project</strong>.
+        {t.rich('explainer', { b: (chunks) => <strong>{chunks}</strong> })}
       </p>
 
       {heteronyms.length === 0 ? (
-        <p className="text-sepia-600 text-sm italic py-4 text-center">No alter egos yet. Create one to get started.</p>
+        <p className="text-sepia-600 text-sm italic py-4 text-center">{t('empty')}</p>
       ) : (
-        <div className="space-y-2" role="list" aria-label="Alter ego list">
+        <div className="space-y-2" role="list" aria-label={t('listAria')}>
           {heteronyms.map((h) => (
             <div
               key={h.id}
@@ -138,12 +137,12 @@ export function HeteronymSettings() {
                   <p className="text-sepia-900 font-medium text-sm truncate">{h.name}</p>
                   {h.isDefault && (
                     <span className="text-[10px] uppercase tracking-wider text-sepia-600 bg-parchment-200 px-1.5 py-0.5 rounded">
-                      Default
+                      {t('default')}
                     </span>
                   )}
                   {activeId === h.id && (
                     <span className="text-[10px] uppercase tracking-wider text-brass-500 bg-forest-500/10 px-1.5 py-0.5 rounded">
-                      Active
+                      {t('active')}
                     </span>
                   )}
                 </div>
@@ -156,7 +155,7 @@ export function HeteronymSettings() {
                 <button
                   onClick={() => handleEdit(h)}
                   className="p-1.5 rounded-lg text-sepia-600 hover:text-sepia-800 hover:bg-parchment-200 transition-colors"
-                  aria-label={`Edit ${h.name}`}
+                  aria-label={t('editAria', { name: h.name })}
                 >
                   <Pencil size={14} />
                 </button>
@@ -164,7 +163,7 @@ export function HeteronymSettings() {
                   <button
                     onClick={() => handleDelete(h)}
                     className="p-1.5 rounded-lg text-sepia-600 hover:text-wax-500 hover:bg-parchment-200 transition-colors"
-                    aria-label={`Delete ${h.name}`}
+                    aria-label={t('deleteAria', { name: h.name })}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -175,7 +174,7 @@ export function HeteronymSettings() {
         </div>
       )}
 
-      <p className="text-xs text-sepia-600 pt-2">{heteronyms.length}/10 alter egos</p>
+      <p className="text-xs text-sepia-600 pt-2">{t('count', { count: heteronyms.length })}</p>
 
       {modalOpen && (
         <HeteronymModal

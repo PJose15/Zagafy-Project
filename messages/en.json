@@ -325,5 +325,150 @@
       "worldTime": "Time period (e.g., Medieval, 2150 AD, Victorian era)",
       "worldRule": "e.g., Magic requires sacrifice"
     }
+  },
+  "profile": {
+    "heading": "Profile",
+    "description": "Your local identity in Zagafy. Stored in this browser only — no account or sign-in required.",
+    "displayName": "Display name",
+    "namePlaceholder": "Your name",
+    "avatar": "Avatar",
+    "colour": "Colour",
+    "reduceMotion": "Reduce motion & animations",
+    "useAvatar": "Use {emoji} avatar",
+    "useColour": "Use colour {color}",
+    "badgeAria": "Profile: {name}. Edit in settings"
+  },
+  "genesisSummary": {
+    "genreTone": "Genre & Tone",
+    "world": "World",
+    "protagonist": "Protagonist",
+    "antagonist": "Antagonist",
+    "editAria": "Edit {title}",
+    "goal": "Goal: {value}",
+    "fear": "Fear: {value}",
+    "motivation": "Motivation: {value}",
+    "creating": "Creating...",
+    "create": "Create Project"
+  },
+  "diagnostic": {
+    "title": "Before you begin...",
+    "subtitle": "How are you feeling about writing today? This helps Zagafy adapt to where you are right now.",
+    "streak": "Check-in streak: {count, plural, one {# day} other {# days}}",
+    "skip": "Skip check-in",
+    "selectAria": "Select {label}: {description}",
+    "blocks": {
+      "fearLabel": "Fear",
+      "fearDesc": "Heavy... like someone's watching",
+      "perfectionismLabel": "Perfectionism",
+      "perfectionismDesc": "Nothing I write feels good enough",
+      "directionLabel": "Direction",
+      "directionDesc": "I don't know where to go next",
+      "exhaustionLabel": "Exhaustion",
+      "exhaustionDesc": "I'm running on empty"
+    }
+  },
+  "ritual": {
+    "ariaLabel": "Entry ritual",
+    "title": "Take a moment before you begin",
+    "subtitle": "Choose how you'd like to transition into your writing.",
+    "inspiration": "Inspiration",
+    "inspirationDesc": "A quote to spark your session",
+    "mindfulness": "Mindfulness",
+    "mindfulnessDesc": "Breathe first, then write",
+    "enter": "Enter your story",
+    "breatheIn": "Breathe in...",
+    "hold": "Hold...",
+    "breatheOut": "Breathe out...",
+    "cycle": "Cycle {current} of {total}"
+  },
+  "heteronyms": {
+    "maxReached": "Maximum of 10 alter egos reached.",
+    "heading": "Alter Egos",
+    "settingsAria": "Alter egos settings",
+    "listAria": "Alter ego list",
+    "new": "New",
+    "explainer": "An <b>alter ego</b> is a writing voice — a persona with its own tone, vocabulary, and pacing. Pick one in Flow mode and the AI (micro-prompts, coach, chat) shapes its suggestions to match that voice. Use them to write distinct POVs or characters in their own style. Alter egos are saved <b>per project</b>.",
+    "empty": "No alter egos yet. Create one to get started.",
+    "default": "Default",
+    "active": "Active",
+    "editAria": "Edit {name}",
+    "deleteAria": "Delete {name}",
+    "count": "{count}/10 alter egos",
+    "deleteTitle": "Delete \"{name}\"?",
+    "deleteMessage": "This alter ego will be permanently removed. If it is currently active, writing will switch back to your default voice.",
+    "deleteLabel": "Delete",
+    "created": "\"{name}\" created.",
+    "updated": "\"{name}\" updated.",
+    "deleted": "\"{name}\" deleted.",
+    "modal": {
+      "editTitle": "Edit Alter Ego",
+      "newTitle": "New Alter Ego",
+      "editAria": "Edit heteronym",
+      "createAria": "Create heteronym",
+      "unnamed": "Unnamed",
+      "noStyleNote": "No style note",
+      "nameLabel": "Name *",
+      "nameRequired": "Name is required",
+      "namePlaceholder": "e.g. Álvaro de Campos",
+      "bioLabel": "Bio",
+      "bioPlaceholder": "Who is this writer? Where do they come from?",
+      "voiceStyleLabel": "Voice & Style",
+      "avatarColor": "Avatar Color",
+      "colorAria": "Color {color}",
+      "customColor": "Custom color",
+      "avatarEmoji": "Avatar Emoji",
+      "orType": "Or type:",
+      "cancel": "Cancel",
+      "saveChanges": "Save Changes",
+      "createAlterEgo": "Create Alter Ego"
+    },
+    "editor": {
+      "toneLabel": "Tone",
+      "vocabularyLabel": "Vocabulary",
+      "pacingLabel": "Pacing",
+      "additionalNotes": "Additional Voice Notes",
+      "additionalPlaceholder": "e.g. 'Uses metaphors from the sea, avoids contractions'",
+      "styleNoteLegacy": "Style Note (legacy)",
+      "styleNotePlaceholder": "How do they write? e.g. 'Fragmented sentences, raw emotion'",
+      "tone": {
+        "formal": "Formal",
+        "casual": "Casual",
+        "poetic": "Poetic",
+        "raw": "Raw",
+        "clinical": "Clinical",
+        "playful": "Playful"
+      },
+      "vocabulary": {
+        "simple": "Simple",
+        "literary": "Literary",
+        "technical": "Technical",
+        "archaic": "Archaic",
+        "slang": "Slang",
+        "mixed": "Mixed"
+      },
+      "pacing": {
+        "staccato": "Staccato",
+        "flowing": "Flowing",
+        "measured": "Measured",
+        "breathless": "Breathless",
+        "languid": "Languid"
+      }
+    },
+    "selector": {
+      "selectVoice": "Select writing voice",
+      "voicesLabel": "Writing voices"
+    },
+    "banner": {
+      "writingAsAria": "Writing as {name}",
+      "writingAs": "Writing as <b>{name}</b>",
+      "stopGuest": "Stop writing as guest"
+    },
+    "switch": {
+      "title": "Switch Voice",
+      "aria": "Switch writing voice",
+      "returnVoice": "Return to own voice",
+      "returnDesc": "Stop writing as someone else",
+      "noOthers": "No other voices available. Create alter egos in Settings."
+    }
   }
 }

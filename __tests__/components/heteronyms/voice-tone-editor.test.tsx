@@ -40,13 +40,13 @@ describe('VoiceToneEditor', () => {
 
   it('renders all 6 vocabulary buttons', () => {
     render(<VoiceToneEditor {...defaultProps} />);
-    // Labels come from VOCABULARY_LABELS split on ' & ', taking first part
+    // Labels come from the i18n `heteronyms.editor.vocabulary.*` catalog keys.
     expect(screen.getByText('Simple')).toBeDefined();
     expect(screen.getByText('Literary')).toBeDefined();
     expect(screen.getByText('Technical')).toBeDefined();
     expect(screen.getByText('Archaic')).toBeDefined();
     expect(screen.getByText('Slang')).toBeDefined();
-    expect(screen.getByText('Mixed register')).toBeDefined();
+    expect(screen.getByText('Mixed')).toBeDefined();
   });
 
   it('renders all 5 pacing buttons', () => {

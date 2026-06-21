@@ -325,5 +325,150 @@
       "worldTime": "Época (p. ej., Medieval, 2150 d. C., era victoriana)",
       "worldRule": "p. ej., La magia exige sacrificio"
     }
+  },
+  "profile": {
+    "heading": "Perfil",
+    "description": "Tu identidad local en Zagafy. Se guarda solo en este navegador, sin cuenta ni inicio de sesión.",
+    "displayName": "Nombre visible",
+    "namePlaceholder": "Tu nombre",
+    "avatar": "Avatar",
+    "colour": "Color",
+    "reduceMotion": "Reducir movimiento y animaciones",
+    "useAvatar": "Usar avatar {emoji}",
+    "useColour": "Usar color {color}",
+    "badgeAria": "Perfil: {name}. Editar en ajustes"
+  },
+  "genesisSummary": {
+    "genreTone": "Género y Tono",
+    "world": "Mundo",
+    "protagonist": "Protagonista",
+    "antagonist": "Antagonista",
+    "editAria": "Editar {title}",
+    "goal": "Objetivo: {value}",
+    "fear": "Miedo: {value}",
+    "motivation": "Motivación: {value}",
+    "creating": "Creando...",
+    "create": "Crear Proyecto"
+  },
+  "diagnostic": {
+    "title": "Antes de empezar...",
+    "subtitle": "¿Cómo te sientes hoy con la escritura? Esto ayuda a Zagafy a adaptarse a tu momento actual.",
+    "streak": "Racha de registros: {count, plural, one {# día} other {# días}}",
+    "skip": "Omitir registro",
+    "selectAria": "Seleccionar {label}: {description}",
+    "blocks": {
+      "fearLabel": "Miedo",
+      "fearDesc": "Pesado... como si alguien estuviera mirando",
+      "perfectionismLabel": "Perfeccionismo",
+      "perfectionismDesc": "Nada de lo que escribo me parece suficientemente bueno",
+      "directionLabel": "Dirección",
+      "directionDesc": "No sé hacia dónde ir a continuación",
+      "exhaustionLabel": "Agotamiento",
+      "exhaustionDesc": "Estoy funcionando con las reservas vacías"
+    }
+  },
+  "ritual": {
+    "ariaLabel": "Ritual de entrada",
+    "title": "Tómate un momento antes de empezar",
+    "subtitle": "Elige cómo quieres hacer la transición hacia tu escritura.",
+    "inspiration": "Inspiración",
+    "inspirationDesc": "Una cita para encender tu sesión",
+    "mindfulness": "Atención plena",
+    "mindfulnessDesc": "Respira primero, luego escribe",
+    "enter": "Entra en tu historia",
+    "breatheIn": "Inhala...",
+    "hold": "Mantén...",
+    "breatheOut": "Exhala...",
+    "cycle": "Ciclo {current} de {total}"
+  },
+  "heteronyms": {
+    "maxReached": "Has alcanzado el máximo de 10 álter egos.",
+    "heading": "Álter Egos",
+    "settingsAria": "Ajustes de álter egos",
+    "listAria": "Lista de álter egos",
+    "new": "Nuevo",
+    "explainer": "Un <b>álter ego</b> es una voz de escritura: una persona con su propio tono, vocabulario y ritmo. Elige uno en el modo Flujo y la IA (micro-consejos, entrenador, chat) adapta sus sugerencias a esa voz. Úsalos para escribir distintos POV o personajes con su propio estilo. Los álter egos se guardan <b>por proyecto</b>.",
+    "empty": "Aún no hay álter egos. Crea uno para empezar.",
+    "default": "Predeterminado",
+    "active": "Activo",
+    "editAria": "Editar {name}",
+    "deleteAria": "Eliminar {name}",
+    "count": "{count}/10 álter egos",
+    "deleteTitle": "¿Eliminar «{name}»?",
+    "deleteMessage": "Este álter ego se eliminará permanentemente. Si está activo ahora, la escritura volverá a tu voz predeterminada.",
+    "deleteLabel": "Eliminar",
+    "created": "«{name}» creado.",
+    "updated": "«{name}» actualizado.",
+    "deleted": "«{name}» eliminado.",
+    "modal": {
+      "editTitle": "Editar Álter Ego",
+      "newTitle": "Nuevo Álter Ego",
+      "editAria": "Editar heterónimo",
+      "createAria": "Crear heterónimo",
+      "unnamed": "Sin nombre",
+      "noStyleNote": "Sin nota de estilo",
+      "nameLabel": "Nombre *",
+      "nameRequired": "El nombre es obligatorio",
+      "namePlaceholder": "p. ej. Álvaro de Campos",
+      "bioLabel": "Biografía",
+      "bioPlaceholder": "¿Quién es este escritor? ¿De dónde viene?",
+      "voiceStyleLabel": "Voz y Estilo",
+      "avatarColor": "Color del Avatar",
+      "colorAria": "Color {color}",
+      "customColor": "Color personalizado",
+      "avatarEmoji": "Emoji del Avatar",
+      "orType": "O escribe:",
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar Cambios",
+      "createAlterEgo": "Crear Álter Ego"
+    },
+    "editor": {
+      "toneLabel": "Tono",
+      "vocabularyLabel": "Vocabulario",
+      "pacingLabel": "Ritmo",
+      "additionalNotes": "Notas Adicionales de Voz",
+      "additionalPlaceholder": "p. ej. «Usa metáforas del mar, evita contracciones»",
+      "styleNoteLegacy": "Nota de Estilo (heredada)",
+      "styleNotePlaceholder": "¿Cómo escriben? p. ej. «Frases fragmentadas, emoción cruda»",
+      "tone": {
+        "formal": "Formal",
+        "casual": "Casual",
+        "poetic": "Poético",
+        "raw": "Crudo",
+        "clinical": "Clínico",
+        "playful": "Juguetón"
+      },
+      "vocabulary": {
+        "simple": "Simple",
+        "literary": "Literario",
+        "technical": "Técnico",
+        "archaic": "Arcaico",
+        "slang": "Jerga",
+        "mixed": "Mixto"
+      },
+      "pacing": {
+        "staccato": "Entrecortado",
+        "flowing": "Fluido",
+        "measured": "Medido",
+        "breathless": "Sin aliento",
+        "languid": "Lánguido"
+      }
+    },
+    "selector": {
+      "selectVoice": "Seleccionar voz de escritura",
+      "voicesLabel": "Voces de escritura"
+    },
+    "banner": {
+      "writingAsAria": "Escribiendo como {name}",
+      "writingAs": "Escribiendo como <b>{name}</b>",
+      "stopGuest": "Dejar de escribir como invitado"
+    },
+    "switch": {
+      "title": "Cambiar Voz",
+      "aria": "Cambiar voz de escritura",
+      "returnVoice": "Volver a tu propia voz",
+      "returnDesc": "Dejar de escribir como otra persona",
+      "noOthers": "No hay otras voces disponibles. Crea álter egos en Ajustes."
+    }
   }
 }
