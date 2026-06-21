@@ -11,9 +11,12 @@ import en from '@/messages/en.json';
  */
 vi.mock('next-intl', async (importOriginal) => {
   const actual = await importOriginal<typeof import('next-intl')>();
+  type TranslatorOpts = Parameters<typeof createTranslator>[0];
   return {
     ...actual,
     useTranslations: (namespace?: string) =>
-      createTranslator({ locale: 'en', messages: en, namespace }),
+      createTranslator(
+        { locale: 'en', messages: en, namespace } as unknown as TranslatorOpts,
+      ),
   };
 });
