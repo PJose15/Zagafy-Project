@@ -13,11 +13,13 @@ export const defaultCurrentState: CharacterState = {
   indicator: 'stable',
 };
 
+// Status labels live in the shared `canonStatus` i18n namespace, keyed by these
+// same keys (confirmed/flexible/draft/discarded).
 export const statusConfig = {
-  confirmed: { icon: ShieldCheck, color: 'text-forest-400', bg: 'bg-forest-400/10', label: 'Confirmed Canon' },
-  flexible: { icon: Shield, color: 'text-brass-400', bg: 'bg-brass-400/10', label: 'Flexible Canon' },
-  draft: { icon: ShieldAlert, color: 'text-brass-500', bg: 'bg-brass-500/10', label: 'Draft Idea' },
-  discarded: { icon: ShieldOff, color: 'text-wax-500', bg: 'bg-wax-500/10', label: 'Discarded' },
+  confirmed: { icon: ShieldCheck, color: 'text-forest-400', bg: 'bg-forest-400/10' },
+  flexible: { icon: Shield, color: 'text-brass-400', bg: 'bg-brass-400/10' },
+  draft: { icon: ShieldAlert, color: 'text-brass-500', bg: 'bg-brass-500/10' },
+  discarded: { icon: ShieldOff, color: 'text-wax-500', bg: 'bg-wax-500/10' },
 };
 
 export const indicatorConfig = {
