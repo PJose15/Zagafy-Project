@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { ReaderLayout } from '@/components/reader/reader-layout';
 import { PrintBookView } from '@/components/reader/print-book-view';
@@ -15,6 +16,7 @@ import { EmptyState, FeatureErrorBoundary } from '@/components/antiquarian';
 type ReaderMode = 'print' | 'kindle' | 'audiobook';
 
 export default function ReaderPage() {
+  const t = useTranslations('reader');
   const { state } = useStory();
   const router = useRouter();
   const [chapterIndex, setChapterIndex] = useState(0);
@@ -76,16 +78,16 @@ export default function ReaderPage() {
       <div className="min-h-screen bg-parchment-100 flex items-center justify-center">
         <EmptyState
           variant="manuscript"
-          title="No chapters to read"
-          subtitle="Write some chapters in the Manuscript page first."
-          action={{ label: 'Go to Manuscript', href: '/manuscript' }}
+          title={t('emptyTitle')}
+          subtitle={t('emptySubtitle')}
+          action={{ label: t('goToManuscript'), href: '/manuscript' }}
         />
       </div>
     );
   }
 
   return (
-    <FeatureErrorBoundary title="Reader Analysis">
+    <FeatureErrorBoundary title={t('errorTitle')}>
     <ReaderLayout
       chapters={chapters.map(ch => ({ id: ch.id, title: ch.title }))}
       currentChapterIndex={chapterIndex}
@@ -106,7 +108,7 @@ export default function ReaderPage() {
               mode === m ? 'bg-sepia-300/40 text-sepia-900 font-medium' : 'text-sepia-600 hover:text-sepia-700'
             }`}
           >
-            {m === 'print' ? 'Print Book' : m === 'kindle' ? 'Kindle' : 'Audiobook'}
+            {m === 'print' ? t('modePrint') : m === 'kindle' ? t('modeKindle') : t('modeAudiobook')}
           </button>
         ))}
       </div>

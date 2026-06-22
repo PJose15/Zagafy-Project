@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { useSession } from '@/lib/session';
 import { ChapterSelectModal } from '@/components/flow/chapter-select-modal';
 import { FeatureErrorBoundary } from '@/components/antiquarian';
@@ -13,13 +14,19 @@ const FlowEditor = dynamic(
     ssr: false,
     loading: () => (
       <div className="fixed inset-0 z-[150] bg-parchment-200 flex items-center justify-center">
-        <div className="text-sepia-600 text-sm animate-pulse">Loading editor...</div>
+        <FlowLoading />
       </div>
     ),
   }
 );
 
+function FlowLoading() {
+  const t = useTranslations('flow');
+  return <div className="text-sepia-600 text-sm animate-pulse">{t('loadingEditor')}</div>;
+}
+
 export default function FlowPage() {
+  const t = useTranslations('flow');
   const { session, setFlowChapterId } = useSession();
   const router = useRouter();
   const [showSelect, setShowSelect] = useState(!session.flowChapterId);
@@ -54,7 +61,7 @@ export default function FlowPage() {
   }
 
   return (
-    <FeatureErrorBoundary title="Flow Editor">
+    <FeatureErrorBoundary title={t('errorTitle')}>
       <FlowEditor chapterId={session.flowChapterId} onExit={handleExit} />
     </FeatureErrorBoundary>
   );

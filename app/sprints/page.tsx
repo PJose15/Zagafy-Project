@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { wordCount } from '@/lib/editor/serialization';
 import { useGamification } from '@/hooks/use-gamification';
@@ -14,6 +15,7 @@ import type { SprintTheme } from '@/lib/types/gamification';
 import { Timer, Trophy, Pen, BarChart3 } from 'lucide-react';
 
 export default function SprintsPage() {
+  const t = useTranslations('sprints');
   const { state } = useStory();
   const { activeSprint, startSprint, endSprint, abandonSprint, gamification } = useGamification();
   const [lastResult, setLastResult] = useState<SprintResult | null>(null);
@@ -53,8 +55,8 @@ export default function SprintsPage() {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <CarvedHeader
-        title="Writing Sprints"
-        subtitle="Timed sessions to push your word count. Pick a theme and write."
+        title={t('title')}
+        subtitle={t('subtitle')}
         icon={<Timer size={28} />}
       />
 
@@ -83,24 +85,24 @@ export default function SprintsPage() {
         <section className="space-y-3">
           <div className="flex items-center gap-3">
             <BarChart3 size={16} className="text-brass-600" aria-hidden="true" />
-            <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">Sprint Stats</h2>
+            <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('statsHeading')}</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.completedSprints}</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Sprints</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statSprints')}</span>
             </ParchmentCard>
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.totalWordsWritten.toLocaleString()}</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Words</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statWords')}</span>
             </ParchmentCard>
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.avgWordsPerSprint}</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Avg/Sprint</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statAvg')}</span>
             </ParchmentCard>
             <ParchmentCard padding="sm">
               <span className="text-2xl font-mono font-bold text-sepia-800">{stats.targetMetRate}%</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">Target Rate</span>
+              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statTargetRate')}</span>
             </ParchmentCard>
           </div>
         </section>
@@ -109,7 +111,7 @@ export default function SprintsPage() {
       {/* Sprint history */}
       {gamification.sprints.sprintHistory.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">History</h2>
+          <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('historyHeading')}</h2>
           <div className="space-y-2">
             {recentSprints.map((sprint) => {
               const config = getThemeConfig(sprint.theme);
@@ -131,13 +133,13 @@ export default function SprintsPage() {
                     </div>
                     <div className="text-right">
                       <span className="text-sm font-mono text-sepia-700">
-                        {sprint.wordsWritten ?? 0}w
+                        {t('wordsSuffix', { count: sprint.wordsWritten ?? 0 })}
                       </span>
                       <span className={[
                         'text-[10px] ml-2',
                         sprint.status === 'completed' ? 'text-forest-600' : 'text-sepia-600',
                       ].join(' ')}>
-                        {sprint.status}
+                        {t(`status.${sprint.status}`)}
                       </span>
                     </div>
                   </div>

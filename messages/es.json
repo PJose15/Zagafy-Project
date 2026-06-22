@@ -40,6 +40,7 @@
     "off": "desactivado",
     "cancel": "Cancelar",
     "save": "Guardar",
+    "delete": "Eliminar",
     "generating": "Generando...",
     "loading": "Cargando...",
     "networkError": "Error: Falló la solicitud de red"
@@ -475,6 +476,208 @@
       "returnVoice": "Volver a tu propia voz",
       "returnDesc": "Dejar de escribir como otra persona",
       "noOthers": "No hay otras voces disponibles. Crea álter egos en Ajustes."
+    }
+  },
+  "characterChat": {
+    "title": "Chat de Personajes",
+    "selectLabel": "Selecciona un Personaje",
+    "choosePlaceholder": "-- Elige un personaje --",
+    "empty": "Aún no hay personajes. Primero añade personajes en la página de Personajes."
+  },
+  "flow": {
+    "errorTitle": "Editor de Flujo",
+    "loadingEditor": "Cargando editor..."
+  },
+  "reader": {
+    "errorTitle": "Análisis de Lectura",
+    "emptyTitle": "No hay capítulos para leer",
+    "emptySubtitle": "Primero escribe algunos capítulos en la página de Manuscrito.",
+    "goToManuscript": "Ir al Manuscrito",
+    "modePrint": "Libro Impreso",
+    "modeKindle": "Kindle",
+    "modeAudiobook": "Audiolibro"
+  },
+  "writingMap": {
+    "errorTitle": "Mapa de Escritura",
+    "title": "Mapa de Escritura",
+    "subtitleStats": "{count, plural, one {# sesión} other {# sesiones}} — {words, number} palabras registradas",
+    "subtitleEmpty": "Tus patrones de escritura aparecerán aquí a medida que escribas.",
+    "longestStreak": "Racha más larga: {days}d",
+    "activityHeading": "Actividad",
+    "activityAria": "Mapa de calor de actividad de escritura",
+    "wordsByHourHeading": "Palabras por Hora",
+    "wordsByHourAria": "Palabras escritas por hora del día",
+    "wordsByHourLoading": "Cargando patrones por hora…",
+    "latestFlowHeading": "Último Flujo",
+    "latestFlowAria": "Cronología del último flujo",
+    "insightAria": "Perspectiva de escritura",
+    "voiceAnalyticsHeading": "Analíticas de Voz",
+    "voiceAnalyticsAria": "Analíticas de voz de los heterónimos",
+    "pacingHeading": "Ritmo",
+    "pacingAria": "Salud del ritmo de los capítulos",
+    "craftHeading": "Lo que he notado sobre tu oficio",
+    "craftAria": "Lo que he notado sobre tu oficio",
+    "recentSessionsHeading": "Sesiones Recientes",
+    "recentSessionsAria": "Sesiones de escritura recientes"
+  },
+  "sprints": {
+    "title": "Sprints de Escritura",
+    "subtitle": "Sesiones cronometradas para aumentar tu recuento de palabras. Elige un tema y escribe.",
+    "statsHeading": "Estadísticas de Sprints",
+    "statSprints": "Sprints",
+    "statWords": "Palabras",
+    "statAvg": "Prom./Sprint",
+    "statTargetRate": "Tasa de Meta",
+    "historyHeading": "Historial",
+    "wordsSuffix": "{count}p",
+    "status": {
+      "completed": "completado",
+      "active": "activo",
+      "abandoned": "abandonado"
+    }
+  },
+  "canonStatus": {
+    "confirmed": "Canon Confirmado",
+    "flexible": "Canon Flexible",
+    "draft": "Idea Borrador",
+    "discarded": "Descartado"
+  },
+  "storyBrain": {
+    "title": "Cerebro de la Historia",
+    "subtitle": "{entities, plural, one {# entidad rastreada} other {# entidades rastreadas}} — {issues, plural, one {# problema requiere} other {# problemas requieren}} atención",
+    "tabs": {
+      "entities": "Entidades",
+      "relationships": "Relaciones",
+      "alerts": "Alertas",
+      "plotHoles": "Vacíos de Trama"
+    },
+    "stats": {
+      "characters": "Personajes",
+      "locations": "Lugares",
+      "relationships": "Relaciones",
+      "totalMentions": "Menciones Totales"
+    },
+    "entityCatalogTitle": "Catálogo de Entidades",
+    "plotHolesTitle": "Vacíos de Trama",
+    "noInconsistencies": "No se detectaron inconsistencias. ¡Tu historia está limpia!"
+  },
+  "canon": {
+    "title": "Bloqueo de Canon",
+    "subtitle": "Clasifica la información de la historia por nivel de certeza. El Asistente de IA respetará estrictamente el Canon Confirmado e ignorará los elementos Descartados.",
+    "allTypes": "Todos los Tipos",
+    "allStatuses": "Todos los Estados",
+    "filterType": {
+      "character": "Personajes",
+      "chapter": "Capítulos",
+      "scene": "Escenas",
+      "timeline": "Cronología",
+      "conflict": "Conflictos",
+      "world_rule": "Reglas del Mundo",
+      "location": "Lugares",
+      "theme": "Temas",
+      "open_loop": "Tramas Abiertas",
+      "foreshadowing": "Presagios"
+    },
+    "itemType": {
+      "character": "Personaje",
+      "chapter": "Capítulo",
+      "scene": "Escena",
+      "timeline": "Cronología",
+      "conflict": "Conflicto",
+      "world_rule": "Regla del Mundo",
+      "location": "Lugar",
+      "theme": "Tema",
+      "open_loop": "Trama Abierta",
+      "foreshadowing": "Presagio"
+    },
+    "changeStatus": "Cambiar estado:",
+    "noDescription": "Sin descripción...",
+    "emptyTitle": "Ningún elemento coincide con tus filtros",
+    "emptySubtitle": "Prueba a ajustar tus criterios de búsqueda."
+  },
+  "conflicts": {
+    "title": "Conflictos",
+    "subtitle": "Rastrea tensiones activas, subtramas y resoluciones.",
+    "addConflict": "Añadir Conflicto",
+    "newConflictTitle": "Nuevo Conflicto",
+    "deleteTitle": "¿Eliminar conflicto?",
+    "deleteMessage": "¿Seguro que quieres eliminar \"{title}\"? Esto no se puede deshacer.",
+    "deleteFallback": "este conflicto",
+    "titlePlaceholder": "Título del Conflicto",
+    "descPlaceholder": "Describe la tensión, lo que está en juego y las partes implicadas...",
+    "markResolved": "Marcar como Resuelto",
+    "markActiveAria": "Marcar \"{title}\" como activo",
+    "markResolvedAria": "Marcar \"{title}\" como resuelto",
+    "editAria": "Editar {title}",
+    "deleteAria": "Eliminar {title}",
+    "noDescription": "No se proporcionó descripción.",
+    "emptyTitle": "Aún no hay conflictos",
+    "emptySubtitle": "Toda gran historia necesita tensión. ¿Qué se interpone en el camino de tus personajes?",
+    "emptyAction": "Añadir un conflicto"
+  },
+  "timeline": {
+    "title": "Cronología",
+    "subtitle": "Rastrea los eventos clave y su impacto en la historia.",
+    "addEvent": "Añadir Evento",
+    "newEventDate": "Año 1, Día 1",
+    "newEventDescription": "Comienza un nuevo evento...",
+    "deleteTitle": "¿Eliminar evento de la cronología?",
+    "deleteMessage": "¿Seguro que quieres eliminar \"{date}\"? Esto no se puede deshacer.",
+    "deleteFallback": "este evento",
+    "datePlaceholder": "Fecha / Hora (p. ej., Año 1, Día 1)",
+    "descPlaceholder": "Descripción del evento...",
+    "impactPlaceholder": "Impacto en la historia/los personajes...",
+    "editAria": "Editar evento: {date}",
+    "deleteAria": "Eliminar evento: {date}",
+    "impactLabel": "Impacto",
+    "emptyTitle": "Tu cronología está vacía",
+    "emptySubtitle": "Marca los momentos que dieron forma a tu historia.",
+    "emptyAction": "Añade tu primer evento"
+  },
+  "versions": {
+    "title": "Versiones",
+    "subtitle": "Copias congeladas de toda tu historia. Restaura una para volver a un estado conocido y estable.",
+    "saveHeading": "Guardar una instantánea",
+    "capNote": "Las instantáneas se almacenan en este dispositivo. Se conservan hasta <cap>{count}</cap>; las más antiguas se eliminan automáticamente.",
+    "nameLabel": "Nombre de la instantánea",
+    "namePlaceholder": "p. ej. \"Antes de reescribir el capítulo 12\"",
+    "descLabel": "Descripción de la instantánea",
+    "descPlaceholder": "Opcional: ¿qué cambió desde el último guardado?",
+    "saving": "Guardando…",
+    "saveBtn": "Guardar instantánea",
+    "listHeading": "Instantáneas guardadas",
+    "listCount": "{count} de {cap}",
+    "loading": "Cargando…",
+    "emptyTitle": "Aún no hay instantáneas",
+    "emptySubtitle": "Guarda tu primera instantánea arriba antes de hacer ediciones arriesgadas.",
+    "snapChapters": "{count, plural, one {# capítulo} other {# capítulos}}",
+    "snapWords": "{count, number} palabras",
+    "restore": "Restaurar",
+    "deleteAria": "Eliminar instantánea {name}",
+    "snapDefaultName": "Instantánea {date}",
+    "restoreTitle": "¿Restaurar instantánea?",
+    "restoreConfirm": "Restaurar",
+    "restoreMessage": "Restaurar \"{name}\" reemplazará tu estado actual con la instantánea del {date}. {detail}",
+    "restoreSameSize": "La instantánea es idéntica en tamaño a tu trabajo actual.",
+    "restoreNetChange": "Cambio neto respecto al actual: {summary}.",
+    "deleteTitle": "¿Eliminar instantánea?",
+    "deleteMessage": "¿Eliminar \"{name}\"? Esto no se puede deshacer.",
+    "deleteLabel": "Eliminar",
+    "toastSaved": "Instantánea guardada \"{name}\".",
+    "toastSaveError": "No se pudo guardar la instantánea",
+    "toastCorrupted": "La instantánea está dañada; no se puede restaurar.",
+    "toastRestored": "Restaurada \"{name}\".",
+    "deltaNoun": {
+      "chapters": "{count, plural, one {capítulo} other {capítulos}}",
+      "words": "palabras",
+      "characters": "{count, plural, one {personaje} other {personajes}}",
+      "worldBible": "entradas de la biblia del mundo"
+    },
+    "time": {
+      "justNow": "justo ahora",
+      "minutes": "hace {count}m",
+      "hours": "hace {count}h",
+      "days": "hace {count}d"
     }
   }
 }

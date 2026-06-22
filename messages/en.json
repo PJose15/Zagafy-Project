@@ -40,6 +40,7 @@
     "off": "off",
     "cancel": "Cancel",
     "save": "Save",
+    "delete": "Delete",
     "generating": "Generating...",
     "loading": "Loading...",
     "networkError": "Error: Network request failed"
@@ -475,6 +476,208 @@
       "returnVoice": "Return to own voice",
       "returnDesc": "Stop writing as someone else",
       "noOthers": "No other voices available. Create alter egos in Settings."
+    }
+  },
+  "characterChat": {
+    "title": "Character Chat",
+    "selectLabel": "Select a Character",
+    "choosePlaceholder": "-- Choose a character --",
+    "empty": "No characters yet. Add characters in the Characters page first."
+  },
+  "flow": {
+    "errorTitle": "Flow Editor",
+    "loadingEditor": "Loading editor..."
+  },
+  "reader": {
+    "errorTitle": "Reader Analysis",
+    "emptyTitle": "No chapters to read",
+    "emptySubtitle": "Write some chapters in the Manuscript page first.",
+    "goToManuscript": "Go to Manuscript",
+    "modePrint": "Print Book",
+    "modeKindle": "Kindle",
+    "modeAudiobook": "Audiobook"
+  },
+  "writingMap": {
+    "errorTitle": "Writing Map",
+    "title": "Writing Map",
+    "subtitleStats": "{count, plural, one {# session} other {# sessions}} — {words, number} words tracked",
+    "subtitleEmpty": "Your writing patterns will appear here as you write.",
+    "longestStreak": "Longest streak: {days}d",
+    "activityHeading": "Activity",
+    "activityAria": "Writing activity heatmap",
+    "wordsByHourHeading": "Words by Hour",
+    "wordsByHourAria": "Words written by hour of day",
+    "wordsByHourLoading": "Loading hourly patterns…",
+    "latestFlowHeading": "Latest Flow",
+    "latestFlowAria": "Latest flow timeline",
+    "insightAria": "Writing insight",
+    "voiceAnalyticsHeading": "Voice Analytics",
+    "voiceAnalyticsAria": "Heteronym voice analytics",
+    "pacingHeading": "Pacing",
+    "pacingAria": "Chapter pacing health",
+    "craftHeading": "What I've noticed about your craft",
+    "craftAria": "What I've noticed about your craft",
+    "recentSessionsHeading": "Recent Sessions",
+    "recentSessionsAria": "Recent writing sessions"
+  },
+  "sprints": {
+    "title": "Writing Sprints",
+    "subtitle": "Timed sessions to push your word count. Pick a theme and write.",
+    "statsHeading": "Sprint Stats",
+    "statSprints": "Sprints",
+    "statWords": "Words",
+    "statAvg": "Avg/Sprint",
+    "statTargetRate": "Target Rate",
+    "historyHeading": "History",
+    "wordsSuffix": "{count}w",
+    "status": {
+      "completed": "completed",
+      "active": "active",
+      "abandoned": "abandoned"
+    }
+  },
+  "canonStatus": {
+    "confirmed": "Confirmed Canon",
+    "flexible": "Flexible Canon",
+    "draft": "Draft Idea",
+    "discarded": "Discarded"
+  },
+  "storyBrain": {
+    "title": "Story Brain",
+    "subtitle": "{entities, plural, one {# entity} other {# entities}} tracked — {issues, plural, one {# issue} other {# issues}} need attention",
+    "tabs": {
+      "entities": "Entities",
+      "relationships": "Relationships",
+      "alerts": "Alerts",
+      "plotHoles": "Plot Holes"
+    },
+    "stats": {
+      "characters": "Characters",
+      "locations": "Locations",
+      "relationships": "Relationships",
+      "totalMentions": "Total Mentions"
+    },
+    "entityCatalogTitle": "Entity Catalog",
+    "plotHolesTitle": "Plot Holes",
+    "noInconsistencies": "No inconsistencies detected. Your story is clean!"
+  },
+  "canon": {
+    "title": "Canon Lock",
+    "subtitle": "Classify story information by certainty level. The AI Assistant will strictly respect Confirmed Canon and ignore Discarded items.",
+    "allTypes": "All Types",
+    "allStatuses": "All Statuses",
+    "filterType": {
+      "character": "Characters",
+      "chapter": "Chapters",
+      "scene": "Scenes",
+      "timeline": "Timeline",
+      "conflict": "Conflicts",
+      "world_rule": "World Rules",
+      "location": "Locations",
+      "theme": "Themes",
+      "open_loop": "Open Loops",
+      "foreshadowing": "Foreshadowing"
+    },
+    "itemType": {
+      "character": "Character",
+      "chapter": "Chapter",
+      "scene": "Scene",
+      "timeline": "Timeline",
+      "conflict": "Conflict",
+      "world_rule": "World Rule",
+      "location": "Location",
+      "theme": "Theme",
+      "open_loop": "Open Loop",
+      "foreshadowing": "Foreshadowing"
+    },
+    "changeStatus": "Change status:",
+    "noDescription": "No description...",
+    "emptyTitle": "No items match your filters",
+    "emptySubtitle": "Try adjusting your search criteria."
+  },
+  "conflicts": {
+    "title": "Conflicts",
+    "subtitle": "Track active tensions, subplots, and resolutions.",
+    "addConflict": "Add Conflict",
+    "newConflictTitle": "New Conflict",
+    "deleteTitle": "Delete conflict?",
+    "deleteMessage": "Are you sure you want to delete \"{title}\"? This cannot be undone.",
+    "deleteFallback": "this conflict",
+    "titlePlaceholder": "Conflict Title",
+    "descPlaceholder": "Describe the tension, stakes, and involved parties...",
+    "markResolved": "Mark as Resolved",
+    "markActiveAria": "Mark \"{title}\" active",
+    "markResolvedAria": "Mark \"{title}\" resolved",
+    "editAria": "Edit {title}",
+    "deleteAria": "Delete {title}",
+    "noDescription": "No description provided.",
+    "emptyTitle": "No conflicts yet",
+    "emptySubtitle": "Every great story needs tension. What stands in your characters' way?",
+    "emptyAction": "Add a conflict"
+  },
+  "timeline": {
+    "title": "Timeline",
+    "subtitle": "Track key events and their impact on the story.",
+    "addEvent": "Add Event",
+    "newEventDate": "Year 1, Day 1",
+    "newEventDescription": "A new event begins...",
+    "deleteTitle": "Delete timeline event?",
+    "deleteMessage": "Are you sure you want to delete \"{date}\"? This cannot be undone.",
+    "deleteFallback": "this event",
+    "datePlaceholder": "Date / Time (e.g., Year 1, Day 1)",
+    "descPlaceholder": "Event description...",
+    "impactPlaceholder": "Impact on the story/characters...",
+    "editAria": "Edit event: {date}",
+    "deleteAria": "Delete event: {date}",
+    "impactLabel": "Impact",
+    "emptyTitle": "Your timeline is empty",
+    "emptySubtitle": "Mark the moments that shaped your story.",
+    "emptyAction": "Add your first event"
+  },
+  "versions": {
+    "title": "Versions",
+    "subtitle": "Frozen copies of your entire story. Restore one to roll back to a known-good state.",
+    "saveHeading": "Save a snapshot",
+    "capNote": "Snapshots are stored on this device. Up to <cap>{count}</cap> are kept; the oldest are pruned automatically.",
+    "nameLabel": "Snapshot name",
+    "namePlaceholder": "e.g. \"Before chapter 12 rewrite\"",
+    "descLabel": "Snapshot description",
+    "descPlaceholder": "Optional: what changed since the last save?",
+    "saving": "Saving…",
+    "saveBtn": "Save snapshot",
+    "listHeading": "Saved snapshots",
+    "listCount": "{count} of {cap}",
+    "loading": "Loading…",
+    "emptyTitle": "No snapshots yet",
+    "emptySubtitle": "Save your first snapshot above before risky edits.",
+    "snapChapters": "{count, plural, one {# chapter} other {# chapters}}",
+    "snapWords": "{count, number} words",
+    "restore": "Restore",
+    "deleteAria": "Delete snapshot {name}",
+    "snapDefaultName": "Snapshot {date}",
+    "restoreTitle": "Restore snapshot?",
+    "restoreConfirm": "Restore",
+    "restoreMessage": "Restoring \"{name}\" will replace your current state with the snapshot from {date}. {detail}",
+    "restoreSameSize": "The snapshot is identical in size to your current work.",
+    "restoreNetChange": "Net change vs current: {summary}.",
+    "deleteTitle": "Delete snapshot?",
+    "deleteMessage": "Remove \"{name}\"? This cannot be undone.",
+    "deleteLabel": "Delete",
+    "toastSaved": "Saved snapshot \"{name}\".",
+    "toastSaveError": "Failed to save snapshot",
+    "toastCorrupted": "Snapshot is corrupted; cannot restore.",
+    "toastRestored": "Restored \"{name}\".",
+    "deltaNoun": {
+      "chapters": "{count, plural, one {chapter} other {chapters}}",
+      "words": "words",
+      "characters": "{count, plural, one {character} other {characters}}",
+      "worldBible": "world bible entries"
+    },
+    "time": {
+      "justNow": "just now",
+      "minutes": "{count}m ago",
+      "hours": "{count}h ago",
+      "days": "{count}d ago"
     }
   }
 }

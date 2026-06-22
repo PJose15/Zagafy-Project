@@ -2,6 +2,7 @@
 
 import { useStory, Conflict, CanonStatus } from '@/lib/store';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { Plus, Trash2, Edit3, Save, X, Swords, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,6 +11,9 @@ import { useConfirm } from '@/components/confirm-dialog';
 import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
 
 export default function ConflictsPage() {
+  const t = useTranslations('conflicts');
+  const tStatus = useTranslations('canonStatus');
+  const tCommon = useTranslations('common');
   const { state, updateField } = useStory();
   const { confirm } = useConfirm();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -20,7 +24,7 @@ export default function ConflictsPage() {
   const handleAddConflict = () => {
     const newConflict: Conflict = {
       id: crypto.randomUUID(),
-      title: 'New Conflict',
+      title: t('newConflictTitle'),
       description: '',
       status: 'active',
       canonStatus: 'draft',
@@ -53,9 +57,9 @@ export default function ConflictsPage() {
   const handleDelete = async (id: string) => {
     const conflict = state.active_conflicts.find(c => c.id === id);
     const confirmed = await confirm({
-      title: 'Delete conflict?',
-      message: `Are you sure you want to delete "${conflict?.title || 'this conflict'}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('deleteTitle'),
+      message: t('deleteMessage', { title: conflict?.title || t('deleteFallback') }),
+      confirmLabel: tCommon('delete'),
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -73,13 +77,13 @@ export default function ConflictsPage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <motion.div {...fadeUp}>
         <CarvedHeader
-          title="Conflicts"
-          subtitle="Track active tensions, subplots, and resolutions."
+          title={t('title')}
+          subtitle={t('subtitle')}
           icon={<Swords size={24} />}
           actions={
             <BrassButton onClick={handleAddConflict}>
               <Plus size={18} />
-              Add Conflict
+              {t('addConflict')}
             </BrassButton>
           }
         />
@@ -102,23 +106,23 @@ export default function ConflictsPage() {
                     value={editForm.title || ''}
                     onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                     className="text-xl font-serif font-semibold"
-                    placeholder="Conflict Title"
+                    placeholder={t('titlePlaceholder')}
                   />
                   <ParchmentTextarea
                     value={editForm.description || ''}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                     className="h-32"
-                    placeholder="Describe the tension, stakes, and involved parties..."
+                    placeholder={t('descPlaceholder')}
                   />
                   <div className="flex items-center gap-3 pt-2">
                     <ParchmentSelect
                       value={editForm.canonStatus || 'draft'}
                       onChange={(e) => setEditForm({ ...editForm, canonStatus: e.target.value as CanonStatus })}
                     >
-                      <option value="confirmed">Confirmed Canon</option>
-                      <option value="flexible">Flexible Canon</option>
-                      <option value="draft">Draft Idea</option>
-                      <option value="discarded">Discarded</option>
+                      <option value="confirmed">{tStatus('confirmed')}</option>
+                      <option value="flexible">{tStatus('flexible')}</option>
+                      <option value="draft">{tStatus('draft')}</option>
+                      <option value="discarded">{tStatus('discarded')}</option>
                     </ParchmentSelect>
                     <label className="flex items-center gap-2 text-sm text-sepia-600 cursor-pointer">
                       <input
@@ -127,14 +131,14 @@ export default function ConflictsPage() {
                         onChange={(e) => setEditForm({ ...editForm, status: e.target.checked ? 'resolved' : 'active' })}
                         className="rounded border-sepia-300/60 bg-parchment-200 text-forest-700 focus:ring-brass-400/40"
                       />
-                      Mark as Resolved
+                      {t('markResolved')}
                     </label>
                     <div className="flex-1" />
                     <InkStampButton variant="ghost" onClick={handleCancel} icon={<X size={18} />}>
-                      Cancel
+                      {tCommon('cancel')}
                     </InkStampButton>
                     <InkStampButton variant="primary" onClick={handleSave} icon={<Save size={18} />}>
-                      Save
+                      {tCommon('save')}
                     </InkStampButton>
                   </div>
                 </div>
@@ -147,7 +151,7 @@ export default function ConflictsPage() {
                         className={`p-1 rounded-full transition-colors ${
                           conflict.status === 'resolved' ? 'text-forest-700 bg-forest-700/10' : 'text-sepia-600 hover:text-brass-600 hover:bg-brass-500/10'
                         }`}
-                        aria-label={conflict.status === 'resolved' ? `Mark "${conflict.title}" active` : `Mark "${conflict.title}" resolved`}
+                        aria-label={conflict.status === 'resolved' ? t('markActiveAria', { title: conflict.title }) : t('markResolvedAria', { title: conflict.title })}
                       >
                         <CheckCircle2 size={20} />
                       </button>
@@ -165,14 +169,14 @@ export default function ConflictsPage() {
                           setEditForm(conflict);
                         }}
                         className="p-2 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
-                        aria-label={`Edit ${conflict.title}`}
+                        aria-label={t('editAria', { title: conflict.title })}
                       >
                         <Edit3 size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(conflict.id)}
                         className="p-2 text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
-                        aria-label={`Delete ${conflict.title}`}
+                        aria-label={t('deleteAria', { title: conflict.title })}
                       >
                         <Trash2 size={18} />
                       </button>
@@ -180,7 +184,7 @@ export default function ConflictsPage() {
                   </div>
                   <div className="pl-10">
                     <p className={`text-sm leading-relaxed whitespace-pre-wrap ${conflict.status === 'resolved' ? 'text-sepia-600' : 'text-sepia-700'}`}>
-                      {conflict.description || <span className="italic text-sepia-600">No description provided.</span>}
+                      {conflict.description || <span className="italic text-sepia-600">{t('noDescription')}</span>}
                     </p>
                   </div>
                 </div>
@@ -191,7 +195,7 @@ export default function ConflictsPage() {
         </AnimatePresence>
 
         {state.active_conflicts.length === 0 && (
-          <EmptyState variant="conflicts" title="No conflicts yet" subtitle="Every great story needs tension. What stands in your characters' way?" action={{ label: 'Add a conflict', onClick: handleAddConflict }} />
+          <EmptyState variant="conflicts" title={t('emptyTitle')} subtitle={t('emptySubtitle')} action={{ label: t('emptyAction'), onClick: handleAddConflict }} />
         )}
       </div>
     </div>

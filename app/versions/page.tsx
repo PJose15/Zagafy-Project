@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Save, RotateCcw, Trash2, Clock } from 'lucide-react';
 import { useStory } from '@/lib/store';
 import {
@@ -24,28 +25,32 @@ import {
 import { useConfirm } from '@/components/antiquarian/parchment-modal';
 import { useToast } from '@/components/toast';
 
-function formatRelative(ts: number): string {
-  const diff = Date.now() - ts;
-  const min = Math.floor(diff / 60_000);
-  if (min < 1) return 'just now';
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  const d = Math.floor(hr / 24);
-  if (d < 30) return `${d}d ago`;
-  return new Date(ts).toLocaleDateString();
-}
-
-function formatDelta(n: number, label: string): string | null {
-  if (n === 0) return null;
-  const sign = n > 0 ? '+' : '−';
-  return `${sign}${Math.abs(n).toLocaleString()} ${label}`;
-}
-
 export default function VersionsPage() {
+  const t = useTranslations('versions');
+  const tCommon = useTranslations('common');
   const { state, setState } = useStory();
   const { confirm } = useConfirm();
   const { toast } = useToast();
+
+  const formatRelative = useCallback((ts: number): string => {
+    const diff = Date.now() - ts;
+    const min = Math.floor(diff / 60_000);
+    if (min < 1) return t('time.justNow');
+    if (min < 60) return t('time.minutes', { count: min });
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return t('time.hours', { count: hr });
+    const d = Math.floor(hr / 24);
+    if (d < 30) return t('time.days', { count: d });
+    return new Date(ts).toLocaleDateString();
+  }, [t]);
+
+  // Build a signed delta string like "+5 chapters" / "−1,200 words"; null when zero.
+  const formatDelta = useCallback((n: number, nounKey: 'chapters' | 'words' | 'characters' | 'worldBible'): string | null => {
+    if (n === 0) return null;
+    const sign = n > 0 ? '+' : '−';
+    const abs = Math.abs(n);
+    return `${sign}${abs.toLocaleString()} ${t(`deltaNoun.${nounKey}`, { count: abs })}`;
+  }, [t]);
 
   const [snapshots, setSnapshots] = useState<SnapshotMetadata[] | null>(null);
   const [name, setName] = useState('');
@@ -64,15 +69,15 @@ export default function VersionsPage() {
     setCreating(true);
     try {
       const meta = await createSnapshot(state, {
-        name: name.trim() || `Snapshot ${new Date().toLocaleString()}`,
+        name: name.trim() || t('snapDefaultName', { date: new Date().toLocaleString() }),
         description: description.trim(),
       });
       setName('');
       setDescription('');
       await refresh();
-      toast(`Saved snapshot "${meta.name}".`, 'success');
+      toast(t('toastSaved', { name: meta.name }), 'success');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save snapshot';
+      const msg = err instanceof Error ? err.message : t('toastSaveError');
       toast(msg, 'error');
     } finally {
       setCreating(false);
@@ -82,40 +87,42 @@ export default function VersionsPage() {
   const handleRestore = async (snap: SnapshotMetadata) => {
     const full = await getSnapshot(snap.id);
     if (!full) {
-      toast('Snapshot is corrupted; cannot restore.', 'error');
+      toast(t('toastCorrupted'), 'error');
       return;
     }
     const delta = computeDelta(snap, state);
     const summary = [
-      formatDelta(-delta.chapterDelta, `chapter${Math.abs(delta.chapterDelta) === 1 ? '' : 's'}`),
+      formatDelta(-delta.chapterDelta, 'chapters'),
       formatDelta(-delta.wordDelta, 'words'),
-      formatDelta(-delta.characterDelta, `character${Math.abs(delta.characterDelta) === 1 ? '' : 's'}`),
-      formatDelta(-delta.worldBibleDelta, 'world bible entries'),
+      formatDelta(-delta.characterDelta, 'characters'),
+      formatDelta(-delta.worldBibleDelta, 'worldBible'),
     ].filter(Boolean);
-    const message =
-      `Restoring "${snap.name}" will replace your current state with the snapshot from ` +
-      `${new Date(snap.createdAt).toLocaleString()}. ` +
-      (summary.length === 0
-        ? 'The snapshot is identical in size to your current work.'
-        : `Net change vs current: ${summary.join(', ')}.`);
+    const detail = summary.length === 0
+      ? t('restoreSameSize')
+      : t('restoreNetChange', { summary: summary.join(', ') });
+    const message = t('restoreMessage', {
+      name: snap.name,
+      date: new Date(snap.createdAt).toLocaleString(),
+      detail,
+    });
 
     const ok = await confirm({
-      title: 'Restore snapshot?',
+      title: t('restoreTitle'),
       message,
-      confirmLabel: 'Restore',
+      confirmLabel: t('restoreConfirm'),
       variant: 'danger',
     });
     if (!ok) return;
 
     setState(full.payload);
-    toast(`Restored "${snap.name}".`, 'success');
+    toast(t('toastRestored', { name: snap.name }), 'success');
   };
 
   const handleDelete = async (snap: SnapshotMetadata) => {
     const ok = await confirm({
-      title: 'Delete snapshot?',
-      message: `Remove "${snap.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('deleteTitle'),
+      message: t('deleteMessage', { name: snap.name }),
+      confirmLabel: tCommon('delete'),
       variant: 'danger',
     });
     if (!ok) return;
@@ -124,11 +131,11 @@ export default function VersionsPage() {
   };
 
   return (
-    <FeatureErrorBoundary title="Versions">
+    <FeatureErrorBoundary title={t('title')}>
       <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-8">
         <CarvedHeader
-          title="Versions"
-          subtitle="Frozen copies of your entire story. Restore one to roll back to a known-good state."
+          title={t('title')}
+          subtitle={t('subtitle')}
           icon={<Clock size={24} />}
         />
 
@@ -136,55 +143,56 @@ export default function VersionsPage() {
         <ParchmentCard className="space-y-4">
           <h2 className="text-lg font-serif font-semibold text-sepia-900 flex items-center gap-2">
             <Save size={18} className="text-brass-500" />
-            Save a snapshot
+            {t('saveHeading')}
           </h2>
           <p className="text-sepia-600 text-sm leading-relaxed">
-            Snapshots are stored on this device. Up to{' '}
-            <span className="font-mono">{DEFAULT_SNAPSHOT_CAP}</span> are kept; the oldest are
-            pruned automatically.
+            {t.rich('capNote', {
+              count: DEFAULT_SNAPSHOT_CAP,
+              cap: (chunks) => <span className="font-mono">{chunks}</span>,
+            })}
           </p>
           <div className="space-y-3">
             <ParchmentInput
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder='e.g. "Before chapter 12 rewrite"'
-              aria-label="Snapshot name"
+              placeholder={t('namePlaceholder')}
+              aria-label={t('nameLabel')}
             />
             <ParchmentTextarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               className="h-20"
-              placeholder="Optional: what changed since the last save?"
-              aria-label="Snapshot description"
+              placeholder={t('descPlaceholder')}
+              aria-label={t('descLabel')}
             />
             <InkStampButton onClick={handleCreate} disabled={creating} icon={<Save size={16} />}>
-              {creating ? 'Saving…' : 'Save snapshot'}
+              {creating ? t('saving') : t('saveBtn')}
             </InkStampButton>
           </div>
         </ParchmentCard>
 
         {/* List */}
-        <section aria-label="Saved snapshots" className="space-y-3">
+        <section aria-label={t('listHeading')} className="space-y-3">
           <h2 className="text-lg font-serif font-semibold text-sepia-900">
-            Saved snapshots
+            {t('listHeading')}
             {snapshots && (
               <span className="ml-2 text-xs font-mono text-sepia-600">
-                {snapshots.length} of {DEFAULT_SNAPSHOT_CAP}
+                {t('listCount', { count: snapshots.length, cap: DEFAULT_SNAPSHOT_CAP })}
               </span>
             )}
           </h2>
 
           {snapshots === null && (
-            <p className="text-sm text-sepia-600 italic">Loading…</p>
+            <p className="text-sm text-sepia-600 italic">{t('loading')}</p>
           )}
 
           {snapshots && snapshots.length === 0 && (
             <ParchmentCard padding="lg">
               <EmptyState
                 variant="manuscript"
-                title="No snapshots yet"
-                subtitle="Save your first snapshot above before risky edits."
+                title={t('emptyTitle')}
+                subtitle={t('emptySubtitle')}
               />
             </ParchmentCard>
           )}
@@ -202,9 +210,9 @@ export default function VersionsPage() {
                       {formatRelative(snap.createdAt)}
                     </span>
                     <span>·</span>
-                    <span>{snap.chapterCount.toLocaleString()} chapter{snap.chapterCount === 1 ? '' : 's'}</span>
+                    <span>{t('snapChapters', { count: snap.chapterCount })}</span>
                     <span>·</span>
-                    <span>{snap.wordCount.toLocaleString()} words</span>
+                    <span>{t('snapWords', { count: snap.wordCount })}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -214,13 +222,13 @@ export default function VersionsPage() {
                     icon={<RotateCcw size={14} />}
                     onClick={() => handleRestore(snap)}
                   >
-                    Restore
+                    {t('restore')}
                   </InkStampButton>
                   <button
                     type="button"
                     onClick={() => handleDelete(snap)}
                     className="p-2 rounded-md text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10 transition-colors"
-                    aria-label={`Delete snapshot ${snap.name}`}
+                    aria-label={t('deleteAria', { name: snap.name })}
                   >
                     <Trash2 size={14} />
                   </button>

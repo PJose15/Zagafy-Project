@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useDeferredValue } from 'react';
+import { useTranslations } from 'next-intl';
 import { CarvedHeader, ParchmentCard, FeatureErrorBoundary } from '@/components/antiquarian';
 import { useStoryBrain } from '@/hooks/use-story-brain';
 import { EntityCatalog } from '@/components/story-brain/entity-catalog';
@@ -13,6 +14,7 @@ import type { EntityCatalogEntry } from '@/lib/story-brain/types';
 type Tab = 'entities' | 'relationships' | 'alerts' | 'plot-holes';
 
 export default function StoryBrainPage() {
+  const t = useTranslations('storyBrain');
   const {
     analysis,
     inconsistencies,
@@ -32,35 +34,35 @@ export default function StoryBrainPage() {
   const [selectedEntity, setSelectedEntity] = useState<EntityCatalogEntry | null>(null);
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
-    { id: 'entities', label: 'Entities', badge: deferredAnalysis.entities.length },
-    { id: 'relationships', label: 'Relationships', badge: deferredAnalysis.relationships.length },
-    { id: 'alerts', label: 'Alerts', badge: unresolvedCount },
-    { id: 'plot-holes', label: 'Plot Holes', badge: unresolvedPlotHoleCount },
+    { id: 'entities', label: t('tabs.entities'), badge: deferredAnalysis.entities.length },
+    { id: 'relationships', label: t('tabs.relationships'), badge: deferredAnalysis.relationships.length },
+    { id: 'alerts', label: t('tabs.alerts'), badge: unresolvedCount },
+    { id: 'plot-holes', label: t('tabs.plotHoles'), badge: unresolvedPlotHoleCount },
   ];
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
       <CarvedHeader
-        title="Story Brain"
-        subtitle={`${deferredAnalysis.entities.length} entities tracked — ${unresolvedCount + unresolvedPlotHoleCount} issues need attention`}
+        title={t('title')}
+        subtitle={t('subtitle', { entities: deferredAnalysis.entities.length, issues: unresolvedCount + unresolvedPlotHoleCount })}
       />
 
       {/* Summary Stats — M2: dim while deferred value is stale */}
       <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 transition-opacity ${isStale ? 'opacity-60' : ''}`}>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Characters</span>
+          <span className="text-[10px] text-sepia-600 block">{t('stats.characters')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.entityCountByType.character}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Locations</span>
+          <span className="text-[10px] text-sepia-600 block">{t('stats.locations')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.entityCountByType.location}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Relationships</span>
+          <span className="text-[10px] text-sepia-600 block">{t('stats.relationships')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.relationships.length}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Total Mentions</span>
+          <span className="text-[10px] text-sepia-600 block">{t('stats.totalMentions')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.totalMentions}</span>
         </ParchmentCard>
       </div>
@@ -98,7 +100,7 @@ export default function StoryBrainPage() {
         {activeTab === 'entities' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className={selectedEntity ? 'lg:col-span-2' : 'lg:col-span-3'}>
-              <FeatureErrorBoundary title="Entity Catalog">
+              <FeatureErrorBoundary title={t('entityCatalogTitle')}>
                 <EntityCatalog
                   entities={deferredAnalysis.entities}
                   onSelect={setSelectedEntity}
@@ -126,7 +128,7 @@ export default function StoryBrainPage() {
         {activeTab === 'alerts' && (
           <div className="space-y-2">
             {inconsistencies.length === 0 ? (
-              <p className="text-sm text-sepia-600 text-center py-8">No inconsistencies detected. Your story is clean!</p>
+              <p className="text-sm text-sepia-600 text-center py-8">{t('noInconsistencies')}</p>
             ) : (
               inconsistencies.map(inc => (
                 <InconsistencyAlert
@@ -142,7 +144,7 @@ export default function StoryBrainPage() {
         )}
 
         {activeTab === 'plot-holes' && (
-          <FeatureErrorBoundary title="Plot Holes">
+          <FeatureErrorBoundary title={t('plotHolesTitle')}>
           <PlotHolePanel
             plotHoles={plotHoles}
             resolutions={resolutions}
