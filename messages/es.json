@@ -43,7 +43,10 @@
     "delete": "Eliminar",
     "generating": "Generando...",
     "loading": "Cargando...",
-    "networkError": "Error: Falló la solicitud de red"
+    "networkError": "Error: Falló la solicitud de red",
+    "readingTimeMin": "~{minutes} min de lectura",
+    "readingTimeHour": "~{hours} h de lectura",
+    "readingTimeHourMin": "~{hours} h {minutes} min de lectura"
   },
   "settings": {
     "title": "Ajustes",
@@ -534,6 +537,28 @@
       "completed": "completado",
       "active": "activo",
       "abandoned": "abandonado"
+    },
+    "theme": {
+      "quick-focus": {
+        "name": "Enfoque Rápido",
+        "prompt": "Escribe sin parar. No edites, no mires atrás — solo haz avanzar la historia."
+      },
+      "deep-dive": {
+        "name": "Inmersión Profunda",
+        "prompt": "Sumérgete en una sola escena. Describe el escenario, las emociones, los detalles sensoriales."
+      },
+      "marathon-push": {
+        "name": "Empuje Maratón",
+        "prompt": "Avanza en una sesión extendida. Gana terreno — pasa de una escena a la siguiente."
+      },
+      "dialogue-sprint": {
+        "name": "Sprint de Diálogo",
+        "prompt": "Concéntrate en la conversación. Deja que tus personajes hablen — revela la tensión a través de lo que dicen y lo que callan."
+      },
+      "conflict-burst": {
+        "name": "Estallido de Conflicto",
+        "prompt": "Escribe una escena de puro conflicto — discusión, persecución, enfrentamiento. Mantén la tensión alta."
+      }
     }
   },
   "canonStatus": {

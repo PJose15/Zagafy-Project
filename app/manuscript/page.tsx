@@ -9,7 +9,7 @@ import { readVersions } from '@/lib/types/chapter-version';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '@/components/confirm-dialog';
 import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
-import { readingTimeLabel } from '@/lib/analytics/pacing';
+import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
 import { FindReplaceDialog } from '@/components/manuscript/FindReplaceDialog';
 import { ManuscriptEditor } from '@/components/editor/ManuscriptEditor';
 import { getPlainText, wordCount, isLexicalJson } from '@/lib/editor/serialization';
@@ -33,6 +33,7 @@ export default function ManuscriptPage() {
   const t = useTranslations('manuscript');
   const tStatus = useTranslations('canonStatus');
   const tCommon = useTranslations('common');
+  const readingTime = useReadingTimeLabel();
   const { state, updateField } = useStory();
   const { confirm } = useConfirm();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -162,7 +163,7 @@ export default function ManuscriptPage() {
             {t('subtitleBase')}
             {state.chapters.length > 0 && (
               <span className="ml-2 text-sepia-600 font-mono">
-                {t('subtitleStats', { count: totalWordCount, readingTime: readingTimeLabel(totalWordCount) })}
+                {t('subtitleStats', { count: totalWordCount, readingTime: readingTime(totalWordCount) })}
               </span>
             )}
           </>
@@ -283,7 +284,7 @@ export default function ManuscriptPage() {
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-sepia-600 font-mono">
                     <span>{t('words', { count: wordCount(chapter.content) })}</span>
-                    <span>{readingTimeLabel(wordCount(chapter.content))}</span>
+                    <span>{readingTime(wordCount(chapter.content))}</span>
                     <VersionCount chapterId={chapter.id} />
                   </div>
                   {chapter.summary && (

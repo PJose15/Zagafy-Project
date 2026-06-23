@@ -12,7 +12,7 @@ import {
   WaxSealBadge, InkStampButton, ParchmentTextarea,
 } from '@/components/antiquarian';
 import { useConfirm } from '@/components/antiquarian/parchment-modal';
-import { readingTimeLabel } from '@/lib/analytics/pacing';
+import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
 import { wordCount } from '@/lib/editor/serialization';
 
 type Layout = 'grid' | 'list';
@@ -28,6 +28,7 @@ function lengthBucket(words: number): 'short' | 'medium' | 'long' {
 export default function OutlinePage() {
   const t = useTranslations('outline');
   const tCommon = useTranslations('common');
+  const readingTime = useReadingTimeLabel();
   const { state, updateField } = useStory();
   const router = useRouter();
   const { confirm } = useConfirm();
@@ -217,7 +218,7 @@ export default function OutlinePage() {
                 <span>·</span>
                 <span>{t('words', { count: wordCount })}</span>
                 <span>·</span>
-                <span>{readingTimeLabel(wordCount)}</span>
+                <span>{readingTime(wordCount)}</span>
               </div>
 
               {editingSummaryId === chapter.id ? (

@@ -43,7 +43,10 @@
     "delete": "Delete",
     "generating": "Generating...",
     "loading": "Loading...",
-    "networkError": "Error: Network request failed"
+    "networkError": "Error: Network request failed",
+    "readingTimeMin": "~{minutes} min read",
+    "readingTimeHour": "~{hours}h read",
+    "readingTimeHourMin": "~{hours}h {minutes}m read"
   },
   "settings": {
     "title": "Settings",
@@ -534,6 +537,28 @@
       "completed": "completed",
       "active": "active",
       "abandoned": "abandoned"
+    },
+    "theme": {
+      "quick-focus": {
+        "name": "Quick Focus",
+        "prompt": "Write without stopping. Don't edit, don't look back — just move the story forward."
+      },
+      "deep-dive": {
+        "name": "Deep Dive",
+        "prompt": "Sink into a single scene. Describe the setting, the emotions, the sensory details."
+      },
+      "marathon-push": {
+        "name": "Marathon Push",
+        "prompt": "Push through an extended session. Cover ground — move from one scene to the next."
+      },
+      "dialogue-sprint": {
+        "name": "Dialogue Sprint",
+        "prompt": "Focus on conversation. Let your characters talk — reveal tension through what they say and don't say."
+      },
+      "conflict-burst": {
+        "name": "Conflict Burst",
+        "prompt": "Write a scene of pure conflict — argument, chase, confrontation. Keep the tension high."
+      }
     }
   },
   "canonStatus": {

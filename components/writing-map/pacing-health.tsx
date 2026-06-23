@@ -5,9 +5,9 @@ import { useStory } from '@/lib/store';
 import {
   pacingVariance,
   pacingHealthStatus,
-  readingTimeLabel,
   type PacingHealthStatus,
 } from '@/lib/analytics/pacing';
+import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
 import { wordCount } from '@/lib/editor/serialization';
 
 const STATUS_COPY: Record<PacingHealthStatus, { label: string; description: string; tone: string }> = {
@@ -30,6 +30,7 @@ const STATUS_COPY: Record<PacingHealthStatus, { label: string; description: stri
 
 export function PacingHealth() {
   const { state } = useStory();
+  const readingTime = useReadingTimeLabel();
 
   const data = useMemo(() => {
     const chapters = state.chapters
@@ -67,7 +68,7 @@ export function PacingHealth() {
         </div>
         <div className="text-xs font-mono text-sepia-600">
           mean {Math.round(variance.mean).toLocaleString()} words ·{' '}
-          {readingTimeLabel(Math.round(variance.mean))} ·{' '}
+          {readingTime(Math.round(variance.mean))} ·{' '}
           σ {Math.round(variance.stdDev).toLocaleString()} ·{' '}
           cv {variance.coefficientOfVariation.toFixed(2)}
         </div>

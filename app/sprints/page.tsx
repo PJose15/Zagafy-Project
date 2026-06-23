@@ -9,7 +9,7 @@ import { CarvedHeader, ParchmentCard } from '@/components/antiquarian';
 import { SprintLauncher } from '@/components/gamification/sprint-launcher';
 import { SprintTimer } from '@/components/gamification/sprint-timer';
 import { SprintResults } from '@/components/gamification/sprint-results';
-import { getSprintStats, getThemeConfig } from '@/lib/gamification/sprints';
+import { getSprintStats } from '@/lib/gamification/sprints';
 import type { SprintResult } from '@/lib/gamification/sprints';
 import type { SprintTheme } from '@/lib/types/gamification';
 import { Timer, Trophy, Pen, BarChart3 } from 'lucide-react';
@@ -114,7 +114,6 @@ export default function SprintsPage() {
           <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('historyHeading')}</h2>
           <div className="space-y-2">
             {recentSprints.map((sprint) => {
-              const config = getThemeConfig(sprint.theme);
               return (
                 <ParchmentCard key={sprint.id} padding="sm">
                   <div className="flex items-center justify-between">
@@ -125,7 +124,7 @@ export default function SprintsPage() {
                         <Pen size={14} className="text-sepia-600" aria-hidden="true" />
                       )}
                       <div>
-                        <span className="text-sm font-medium text-sepia-800">{config.name}</span>
+                        <span className="text-sm font-medium text-sepia-800">{t(`theme.${sprint.theme}.name`)}</span>
                         <span className="text-[10px] text-sepia-600 ml-2">
                           {new Date(sprint.startTime).toLocaleDateString()}
                         </span>
