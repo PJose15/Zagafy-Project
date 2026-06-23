@@ -1320,5 +1320,32 @@
     "stopAria": "Detener",
     "speed": "Velocidad:",
     "voiceAria": "Voz"
+  },
+  "storyCoach": {
+    "title": "Entrenador de Historia",
+    "refreshAria": "Actualizar perspectivas",
+    "closeAria": "Cerrar el panel del entrenador",
+    "loadingAria": "Cargando perspectivas",
+    "analyzing": "Analizando tu capítulo...",
+    "empty": "Aún no hay perspectivas. Pulsa actualizar para analizar tu capítulo.",
+    "all": "Todas",
+    "dismissAria": "Descartar perspectiva",
+    "openFlow": "Abre el Modo Flujo para revisar",
+    "highPriority": "{count, plural, one {# perspectiva de alta prioridad} other {# perspectivas de alta prioridad}}",
+    "totalInsights": "{count, plural, one {# perspectiva de coaching} other {# perspectivas de coaching}}",
+    "forChapter": " para \"{title}\"",
+    "lens": {
+      "tension": "Tensión",
+      "sensory": "Detalle Sensorial",
+      "motivation": "Motivación del Personaje",
+      "pacing": "Ritmo",
+      "foreshadowing": "Presagio",
+      "dialogue": "Diálogo"
+    },
+    "priority": {
+      "high": "alta",
+      "medium": "media",
+      "low": "baja"
+    }
   }
 }

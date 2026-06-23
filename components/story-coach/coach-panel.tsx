@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { X, RefreshCw, Lightbulb } from 'lucide-react';
 import { CoachingInsightCard } from './coaching-insight-card';
 import { CoachLensFilter } from './coach-lens-filter';
@@ -17,6 +18,7 @@ interface CoachPanelProps {
 }
 
 export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, onClose }: CoachPanelProps) {
+  const t = useTranslations('storyCoach');
   const [activeLens, setActiveLens] = useState<CoachingLens | 'all'>('all');
 
   const filtered = activeLens === 'all'
@@ -51,21 +53,21 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
         <div className="flex items-center justify-between px-4 py-3 border-b border-sepia-300/30">
           <div className="flex items-center gap-2">
             <Lightbulb size={16} className="text-brass-500" />
-            <h2 className="text-sm font-serif font-semibold text-sepia-900">Story Coach</h2>
+            <h2 className="text-sm font-serif font-semibold text-sepia-900">{t('title')}</h2>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={onRefresh}
               disabled={isLoading}
               className="p-1.5 text-sepia-600 hover:text-sepia-700 rounded-lg hover:bg-parchment-200 transition-colors disabled:opacity-50"
-              aria-label="Refresh insights"
+              aria-label={t('refreshAria')}
             >
               <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={onClose}
               className="p-1.5 text-sepia-600 hover:text-sepia-700 rounded-lg hover:bg-parchment-200 transition-colors"
-              aria-label="Close coach panel"
+              aria-label={t('closeAria')}
             >
               <X size={14} />
             </button>
@@ -80,7 +82,7 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {isLoading && sorted.length === 0 && (
-            <div className="space-y-3" aria-label="Loading insights">
+            <div className="space-y-3" aria-label={t('loadingAria')}>
               {[0, 1, 2].map(i => (
                 <div key={i} className="rounded-lg border border-sepia-300/20 p-3 space-y-2">
                   <div className="h-3 w-24 rounded bg-sepia-200/60 animate-pulse" />
@@ -88,7 +90,7 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
                   <div className="h-2.5 w-3/4 rounded bg-sepia-200/40 animate-pulse" />
                 </div>
               ))}
-              <p className="text-center text-sm text-sepia-600 pt-1">Analyzing your chapter...</p>
+              <p className="text-center text-sm text-sepia-600 pt-1">{t('analyzing')}</p>
             </div>
           )}
 
@@ -99,7 +101,7 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
           {!isLoading && sorted.length === 0 && !error && (
             <div className="text-center py-12">
               <Lightbulb size={24} className="mx-auto text-sepia-300 mb-2" />
-              <p className="text-sm text-sepia-600">No insights yet. Click refresh to analyze your chapter.</p>
+              <p className="text-sm text-sepia-600">{t('empty')}</p>
             </div>
           )}
 

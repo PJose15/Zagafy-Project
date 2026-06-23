@@ -1320,5 +1320,32 @@
     "stopAria": "Stop",
     "speed": "Speed:",
     "voiceAria": "Voice"
+  },
+  "storyCoach": {
+    "title": "Story Coach",
+    "refreshAria": "Refresh insights",
+    "closeAria": "Close coach panel",
+    "loadingAria": "Loading insights",
+    "analyzing": "Analyzing your chapter...",
+    "empty": "No insights yet. Click refresh to analyze your chapter.",
+    "all": "All",
+    "dismissAria": "Dismiss insight",
+    "openFlow": "Open Flow Mode to review",
+    "highPriority": "{count, plural, one {# high-priority insight} other {# high-priority insights}}",
+    "totalInsights": "{count, plural, one {# coaching insight} other {# coaching insights}}",
+    "forChapter": " for \"{title}\"",
+    "lens": {
+      "tension": "Tension",
+      "sensory": "Sensory Detail",
+      "motivation": "Character Motivation",
+      "pacing": "Pacing",
+      "foreshadowing": "Foreshadowing",
+      "dialogue": "Dialogue"
+    },
+    "priority": {
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    }
   }
 }
