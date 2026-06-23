@@ -1280,5 +1280,45 @@
       "less": "Less",
       "more": "More"
     }
+  },
+  "readerView": {
+    "empty": "This chapter is empty.",
+    "readTimeMin": "{minutes} min read",
+    "readTimeHourMin": "{hours}h {minutes}m read",
+    "backAria": "Back to manuscript",
+    "selectChapterAria": "Select chapter",
+    "analyzedAgo": "Analyzed {ago}",
+    "analyzedTitle": "Analyzed {datetime}",
+    "analyzeAria": "Analyze prose",
+    "analyzing": "Analyzing...",
+    "issues": "{count} issues",
+    "analyze": "Analyze",
+    "prevAria": "Previous chapter",
+    "prev": "Previous",
+    "nextAria": "Next chapter",
+    "next": "Next",
+    "chapterOf": "Chapter {current} of {total}",
+    "pageOf": "Page {current} of {total} · {readTime}",
+    "prevPageAria": "Previous page",
+    "nextPageAria": "Next page",
+    "theme": {
+      "light": "Light",
+      "sepia": "Sepia",
+      "dark": "Dark"
+    },
+    "themeAria": "{theme} theme",
+    "fontSizeAria": "Font size",
+    "lineSpacingAria": "Line spacing",
+    "spacingTight": "Tight",
+    "spacingNormal": "Normal",
+    "spacingLoose": "Loose",
+    "kindleStats": "{words, number} words · {readTime}",
+    "unsupported": "Speech synthesis is not supported in your browser.",
+    "playAria": "Play",
+    "resumeAria": "Resume",
+    "pauseAria": "Pause",
+    "stopAria": "Stop",
+    "speed": "Speed:",
+    "voiceAria": "Voice"
   }
 }

@@ -1280,5 +1280,45 @@
       "less": "Menos",
       "more": "Más"
     }
+  },
+  "readerView": {
+    "empty": "Este capítulo está vacío.",
+    "readTimeMin": "{minutes} min de lectura",
+    "readTimeHourMin": "{hours} h {minutes} min de lectura",
+    "backAria": "Volver al manuscrito",
+    "selectChapterAria": "Seleccionar capítulo",
+    "analyzedAgo": "Analizado {ago}",
+    "analyzedTitle": "Analizado {datetime}",
+    "analyzeAria": "Analizar la prosa",
+    "analyzing": "Analizando...",
+    "issues": "{count} problemas",
+    "analyze": "Analizar",
+    "prevAria": "Capítulo anterior",
+    "prev": "Anterior",
+    "nextAria": "Capítulo siguiente",
+    "next": "Siguiente",
+    "chapterOf": "Capítulo {current} de {total}",
+    "pageOf": "Página {current} de {total} · {readTime}",
+    "prevPageAria": "Página anterior",
+    "nextPageAria": "Página siguiente",
+    "theme": {
+      "light": "Claro",
+      "sepia": "Sepia",
+      "dark": "Oscuro"
+    },
+    "themeAria": "Tema {theme}",
+    "fontSizeAria": "Tamaño de fuente",
+    "lineSpacingAria": "Interlineado",
+    "spacingTight": "Estrecho",
+    "spacingNormal": "Normal",
+    "spacingLoose": "Amplio",
+    "kindleStats": "{words, number} palabras · {readTime}",
+    "unsupported": "La síntesis de voz no es compatible con tu navegador.",
+    "playAria": "Reproducir",
+    "resumeAria": "Reanudar",
+    "pauseAria": "Pausar",
+    "stopAria": "Detener",
+    "speed": "Velocidad:",
+    "voiceAria": "Voz"
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { paginateText, estimateReadingTime } from '@/lib/reader-utils';
 import { ParchmentCard } from '@/components/antiquarian';
@@ -14,12 +15,16 @@ interface PrintBookViewProps {
 }
 
 export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
+  const t = useTranslations('readerView');
   const pages = useMemo(() => paginateText(content), [content]);
   const [currentPage, setCurrentPage] = useState(0);
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);
+  const readTimeLabel = readingTime.minutes < 60
+    ? t('readTimeMin', { minutes: readingTime.minutes })
+    : t('readTimeHourMin', { hours: Math.floor(readingTime.minutes / 60), minutes: readingTime.minutes % 60 });
 
   if (!content.trim()) {
-    return <div className="text-center py-16 text-sepia-600">This chapter is empty.</div>;
+    return <div className="text-center py-16 text-sepia-600">{t('empty')}</div>;
   }
 
   return (
@@ -51,18 +56,18 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
           onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
           disabled={currentPage === 0}
           className={`p-2 rounded ${currentPage === 0 ? 'text-sepia-300' : 'text-sepia-600 hover:text-sepia-800'}`}
-          aria-label="Previous page"
+          aria-label={t('prevPageAria')}
         >
           <ChevronLeft size={20} />
         </button>
         <span className="text-sm text-sepia-600">
-          Page {currentPage + 1} of {pages.length} &middot; {readingTime.display}
+          {t('pageOf', { current: currentPage + 1, total: pages.length, readTime: readTimeLabel })}
         </span>
         <button
           onClick={() => setCurrentPage(p => Math.min(pages.length - 1, p + 1))}
           disabled={currentPage >= pages.length - 1}
           className={`p-2 rounded ${currentPage >= pages.length - 1 ? 'text-sepia-300' : 'text-sepia-600 hover:text-sepia-800'}`}
-          aria-label="Next page"
+          aria-label={t('nextPageAria')}
         >
           <ChevronRight size={20} />
         </button>

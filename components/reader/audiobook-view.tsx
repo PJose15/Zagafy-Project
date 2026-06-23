@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Play, Pause, Square } from 'lucide-react';
 import { useSpeechSynthesis } from '@/hooks/use-speech-synthesis';
 import { estimateReadingTime } from '@/lib/reader-utils';
@@ -11,19 +12,23 @@ interface AudiobookViewProps {
 }
 
 export function AudiobookView({ title, content }: AudiobookViewProps) {
+  const t = useTranslations('readerView');
   const tts = useSpeechSynthesis();
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);
+  const readTimeLabel = readingTime.minutes < 60
+    ? t('readTimeMin', { minutes: readingTime.minutes })
+    : t('readTimeHourMin', { hours: Math.floor(readingTime.minutes / 60), minutes: readingTime.minutes % 60 });
 
   if (!tts.isSupported) {
     return (
       <div className="text-center py-16 text-sepia-600" data-testid="audiobook-unsupported">
-        Speech synthesis is not supported in your browser.
+        {t('unsupported')}
       </div>
     );
   }
 
   if (!content.trim()) {
-    return <div className="text-center py-16 text-sepia-600">This chapter is empty.</div>;
+    return <div className="text-center py-16 text-sepia-600">{t('empty')}</div>;
   }
 
   // Highlight current sentence region
@@ -39,25 +44,25 @@ export function AudiobookView({ title, content }: AudiobookViewProps) {
       {/* Controls */}
       <div className="flex items-center justify-center gap-4 mb-8 p-4 bg-parchment-200/50 rounded-xl">
         {!tts.isSpeaking ? (
-          <button onClick={() => tts.speak(content)} className="p-3 rounded-full bg-forest-700 text-white hover:bg-forest-800" aria-label="Play">
+          <button onClick={() => tts.speak(content)} className="p-3 rounded-full bg-forest-700 text-white hover:bg-forest-800" aria-label={t('playAria')}>
             <Play size={20} />
           </button>
         ) : tts.isPaused ? (
-          <button onClick={tts.resume} className="p-3 rounded-full bg-forest-700 text-white hover:bg-forest-800" aria-label="Resume">
+          <button onClick={tts.resume} className="p-3 rounded-full bg-forest-700 text-white hover:bg-forest-800" aria-label={t('resumeAria')}>
             <Play size={20} />
           </button>
         ) : (
-          <button onClick={tts.pause} className="p-3 rounded-full bg-brass-600 text-white hover:bg-brass-700" aria-label="Pause">
+          <button onClick={tts.pause} className="p-3 rounded-full bg-brass-600 text-white hover:bg-brass-700" aria-label={t('pauseAria')}>
             <Pause size={20} />
           </button>
         )}
-        <button onClick={tts.cancel} className="p-2 rounded-full bg-sepia-200 text-sepia-600 hover:bg-sepia-300" aria-label="Stop">
+        <button onClick={tts.cancel} className="p-2 rounded-full bg-sepia-200 text-sepia-600 hover:bg-sepia-300" aria-label={t('stopAria')}>
           <Square size={16} />
         </button>
 
         {/* Speed */}
         <div className="flex items-center gap-1 text-xs text-sepia-600">
-          <span>Speed:</span>
+          <span>{t('speed')}</span>
           {[0.5, 0.75, 1, 1.25, 1.5, 2].map(r => (
             <button
               key={r}
@@ -78,7 +83,7 @@ export function AudiobookView({ title, content }: AudiobookViewProps) {
               if (v) tts.setVoice(v);
             }}
             className="text-xs bg-parchment-50 border border-sepia-300 rounded px-1 py-0.5 max-w-[140px]"
-            aria-label="Voice"
+            aria-label={t('voiceAria')}
           >
             {tts.voices.map(v => (
               <option key={v.name} value={v.name}>{v.name}</option>
@@ -100,7 +105,7 @@ export function AudiobookView({ title, content }: AudiobookViewProps) {
         )}
       </div>
 
-      <div className="text-center mt-8 text-xs text-sepia-600">{readingTime.display}</div>
+      <div className="text-center mt-8 text-xs text-sepia-600">{readTimeLabel}</div>
     </div>
   );
 }
