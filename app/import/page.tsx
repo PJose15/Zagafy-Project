@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStory, type CharacterState } from '@/lib/store';
 import type {
   ExtractedData,
@@ -25,6 +26,7 @@ import { CarvedHeader, ParchmentCard, BrassButton, InkStampButton } from '@/comp
 import { ImportReviewQueue, type ReviewItem } from '@/components/import/ImportReviewQueue';
 
 export default function ImportPage() {
+  const t = useTranslations('importPage');
   const { state, updateField } = useStory();
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
@@ -91,14 +93,14 @@ export default function ImportPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to parse files');
+        throw new Error(err.error || t('parseError'));
       }
 
       const data = await res.json();
       setExtractedData(data.extractedData || {});
       setUploadStatus('review');
     } catch (error: unknown) {
-      toast(error instanceof Error ? error.message : 'An error occurred during ingestion.', 'error');
+      toast(error instanceof Error ? error.message : t('ingestError'), 'error');
       setUploadStatus('idle');
     } finally {
       setIsUploading(false);
@@ -266,7 +268,7 @@ export default function ImportPage() {
 
     const newChapters = accepted.chapters.map((c: ExtractedChapter, idx: number) => ({
       id: c.chapter_id || crypto.randomUUID(),
-      title: c.title || `Chapter ${idx + 1}`,
+      title: c.title || t('chapterFallback', { n: idx + 1 }),
       summary: c.summary || '',
       content: c.raw_text_reference || '',
       canonStatus: 'draft' as const,
@@ -280,7 +282,7 @@ export default function ImportPage() {
       .map((s: ExtractedScene) => ({
         id: s.scene_id || crypto.randomUUID(),
         chapterId: s.chapter_id || '',
-        title: `Scene ${s.order_index || ''}`,
+        title: t('sceneTitle', { n: s.order_index || '' }),
         summary: s.summary || '',
         content: '',
         canonStatus: 'draft' as const,
@@ -289,7 +291,7 @@ export default function ImportPage() {
 
     const newConflicts = accepted.active_conflicts.map((c: ExtractedConflict) => ({
       id: c.conflict_id || crypto.randomUUID(),
-      title: c.title || c.conflict_type || 'Conflict',
+      title: c.title || c.conflict_type || t('conflictFallback'),
       description: c.description || '',
       status: c.status === 'resolved' ? 'resolved' as const : 'active' as const,
       canonStatus: 'draft' as const,
@@ -390,16 +392,16 @@ export default function ImportPage() {
     }
     if (!state.style_profile) {
       const parts = [
-        extractedData.project?.tone_profile && `Tone: ${extractedData.project.tone_profile}`,
-        extractedData.project?.narrative_pov && `POV: ${extractedData.project.narrative_pov}`,
+        extractedData.project?.tone_profile && t('tonePrefix', { value: extractedData.project.tone_profile }),
+        extractedData.project?.narrative_pov && t('povPrefix', { value: extractedData.project.narrative_pov }),
       ].filter(Boolean);
       if (parts.length) updateField('style_profile', parts.join('. '));
     }
 
     setImportedCount(acceptedItems.length);
     setUploadStatus('success');
-    toast(`Successfully imported ${acceptedItems.length} entities into project memory.`, 'success');
-  }, [extractedData, state, updateField, toast]);
+    toast(t('toastImported', { count: acceptedItems.length }), 'success');
+  }, [extractedData, state, updateField, toast, t]);
 
   const reset = () => {
     setFiles([]);
@@ -411,8 +413,8 @@ export default function ImportPage() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8">
       <CarvedHeader
-        title="Document Ingestion"
-        subtitle="Upload your manuscript, notes, or outlines to auto-extract story intelligence."
+        title={t('title')}
+        subtitle={t('subtitle')}
         icon={<UploadCloud size={24} />}
       />
 
@@ -437,16 +439,16 @@ export default function ImportPage() {
                 <UploadCloud size={32} />
               </div>
             </div>
-            <h3 className="text-lg font-medium text-sepia-800 mb-2">Drag & Drop Files Here</h3>
-            <p className="text-sm text-sepia-600 mb-6">Supports PDF, DOCX, TXT, and Markdown files.</p>
+            <h3 className="text-lg font-medium text-sepia-800 mb-2">{t('dragDrop')}</h3>
+            <p className="text-sm text-sepia-600 mb-6">{t('supports')}</p>
             <BrassButton>
-              Browse Files
+              {t('browseFiles')}
             </BrassButton>
           </div>
 
           {files.length > 0 && (
             <ParchmentCard>
-              <h4 className="text-sm font-medium text-sepia-600 uppercase tracking-wider mb-4">Selected Files (Order matters for parsing)</h4>
+              <h4 className="text-sm font-medium text-sepia-600 uppercase tracking-wider mb-4">{t('selectedFiles')}</h4>
               <ul className="space-y-3 mb-6">
                 {files.map((file, idx) => (
                   <li key={idx} className="flex items-center justify-between bg-parchment-200 p-3 rounded-lg border border-sepia-300/30">
@@ -455,11 +457,11 @@ export default function ImportPage() {
                       <span className="text-sm text-sepia-800 font-medium">{file.name}</span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-xs text-sepia-600">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                      <span className="text-xs text-sepia-600">{t('fileSize', { size: (file.size / 1024 / 1024).toFixed(2) })}</span>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => moveFile(idx, 'up')} disabled={idx === 0} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={`Move ${file.name} up`}><ChevronUp size={16} /></button>
-                        <button onClick={() => moveFile(idx, 'down')} disabled={idx === files.length - 1} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={`Move ${file.name} down`}><ChevronDown size={16} /></button>
-                        <button onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="p-1 text-wax-600 hover:text-wax-500 ml-2" aria-label={`Remove ${file.name}`}><X size={16} /></button>
+                        <button onClick={() => moveFile(idx, 'up')} disabled={idx === 0} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={t('moveUpAria', { name: file.name })}><ChevronUp size={16} /></button>
+                        <button onClick={() => moveFile(idx, 'down')} disabled={idx === files.length - 1} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={t('moveDownAria', { name: file.name })}><ChevronDown size={16} /></button>
+                        <button onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="p-1 text-wax-600 hover:text-wax-500 ml-2" aria-label={t('removeAria', { name: file.name })}><X size={16} /></button>
                       </div>
                     </div>
                   </li>
@@ -467,7 +469,7 @@ export default function ImportPage() {
               </ul>
               <div className="flex justify-end">
                 <InkStampButton variant="primary" onClick={handleUpload} icon={<ArrowRight size={18} />}>
-                  Start Ingestion
+                  {t('startIngestion')}
                 </InkStampButton>
               </div>
             </ParchmentCard>
@@ -480,12 +482,10 @@ export default function ImportPage() {
           <Loader2 size={48} className="text-brass-500 animate-spin" />
           <div className="text-center">
             <h3 className="text-xl font-medium text-sepia-800 mb-2">
-              {uploadStatus === 'uploading' ? 'Uploading Files...' : 'Analyzing Manuscript...'}
+              {uploadStatus === 'uploading' ? t('uploading') : t('analyzing')}
             </h3>
             <p className="text-sepia-600 text-sm max-w-md mx-auto">
-              {uploadStatus === 'uploading'
-                ? 'Transferring your documents securely.'
-                : 'Our AI is reading your text, extracting chapters, characters, conflicts, and worldbuilding details. This may take a minute for large files.'}
+              {uploadStatus === 'uploading' ? t('uploadingDesc') : t('analyzingDesc')}
             </p>
           </div>
         </div>
@@ -496,11 +496,9 @@ export default function ImportPage() {
           <div className="bg-forest-700/10 border border-forest-700/20 rounded-xl p-6 flex items-start gap-4">
             <CheckCircle2 className="text-forest-600 shrink-0 mt-1" />
             <div>
-              <h3 className="text-lg font-medium text-sepia-900 mb-1">Analysis Complete — Review Extracted Entities</h3>
+              <h3 className="text-lg font-medium text-sepia-900 mb-1">{t('analysisComplete')}</h3>
               <p className="text-sm text-sepia-600">
-                Review each extracted entity below. Accept, edit, or reject items individually.
-                Entities marked as duplicates already exist in your project.
-                All accepted items will be imported as &quot;Draft&quot; status.
+                {t('reviewDesc')}
               </p>
             </div>
           </div>
@@ -509,11 +507,11 @@ export default function ImportPage() {
           {extractedData.project && (
             <ParchmentCard>
               <h4 className="text-sm font-medium text-sepia-600 uppercase tracking-wider mb-4">
-                Project Metadata
+                {t('projectMetadata')}
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-sepia-600 block mb-1">Title</label>
+                  <label className="text-xs text-sepia-600 block mb-1">{t('metaTitle')}</label>
                   <input
                     type="text"
                     value={extractedData.project?.title || ''}
@@ -522,7 +520,7 @@ export default function ImportPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-sepia-600 block mb-1">Genre</label>
+                  <label className="text-xs text-sepia-600 block mb-1">{t('metaGenre')}</label>
                   <input
                     type="text"
                     value={(extractedData.project?.genre || []).join(', ')}
@@ -531,7 +529,7 @@ export default function ImportPage() {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-xs text-sepia-600 block mb-1">Global Summary</label>
+                  <label className="text-xs text-sepia-600 block mb-1">{t('metaSummary')}</label>
                   <textarea
                     value={extractedData.project?.summary_global || ''}
                     onChange={(e) => setExtractedData({ ...extractedData, project: { ...extractedData.project, summary_global: e.target.value } })}
@@ -558,14 +556,14 @@ export default function ImportPage() {
             <CheckCircle2 size={40} className="text-forest-600" />
           </div>
           <div className="text-center">
-            <h3 className="text-2xl font-serif font-bold text-sepia-900 mb-2">Ingestion Complete</h3>
+            <h3 className="text-2xl font-serif font-bold text-sepia-900 mb-2">{t('ingestionComplete')}</h3>
             <p className="text-sepia-600 text-sm max-w-md mx-auto mb-8">
               {importedCount > 0
-                ? `${importedCount} entities have been reviewed, approved, and merged into your project memory. You can now continue writing with full context.`
-                : 'Your manuscript has been successfully parsed, structured, and merged into your project memory. You can now continue writing with full context.'}
+                ? t('successWithCount', { count: importedCount })
+                : t('successNoCount')}
             </p>
             <BrassButton onClick={reset}>
-              Import More Files
+              {t('importMore')}
             </BrassButton>
           </div>
         </div>
