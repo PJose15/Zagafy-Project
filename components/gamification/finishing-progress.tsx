@@ -1,16 +1,12 @@
 'use client';
 
 import type { FinishingEngineState, NarrativePhase } from '@/lib/types/gamification';
+import { useTranslations } from 'next-intl';
 import { Compass } from 'lucide-react';
 import { DecorativeDivider } from '@/components/antiquarian';
 
-const PHASES: { key: NarrativePhase; label: string }[] = [
-  { key: 'setup', label: 'Setup' },
-  { key: 'rising-action', label: 'Rising' },
-  { key: 'midpoint', label: 'Midpoint' },
-  { key: 'climax', label: 'Climax' },
-  { key: 'falling-action', label: 'Falling' },
-  { key: 'resolution', label: 'Resolution' },
+const PHASE_KEYS: NarrativePhase[] = [
+  'setup', 'rising-action', 'midpoint', 'climax', 'falling-action', 'resolution',
 ];
 
 interface FinishingProgressProps {
@@ -18,15 +14,16 @@ interface FinishingProgressProps {
 }
 
 export function FinishingProgress({ finishing }: FinishingProgressProps) {
+  const t = useTranslations('gamification');
   // M12: Guard findIndex returning -1 (unknown phase) — default to 0 (setup)
-  const rawIndex = PHASES.findIndex((p) => p.key === finishing.currentPhase);
+  const rawIndex = PHASE_KEYS.findIndex((k) => k === finishing.currentPhase);
   const phaseIndex = rawIndex >= 0 ? rawIndex : 0;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <Compass size={16} className="text-brass-600" aria-hidden="true" />
-        <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">Story Progress</h2>
+        <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('storyProgress')}</h2>
         <DecorativeDivider variant="section" className="flex-1" />
         <span className="text-xs font-mono text-sepia-600">{finishing.overallProgress}%</span>
       </div>
@@ -38,15 +35,15 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
         aria-valuenow={finishing.overallProgress}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`Story progress: ${finishing.overallProgress}%, currently in ${PHASES[phaseIndex].label} phase`}
+        aria-label={t('progressAria', { percent: finishing.overallProgress, phase: t(`phase.${PHASE_KEYS[phaseIndex]}`) })}
       >
-        {PHASES.map((phase, i) => (
+        {PHASE_KEYS.map((key, i) => (
           <div
-            key={phase.key}
+            key={key}
             className={[
               'flex-1 transition-colors duration-300',
               i <= phaseIndex ? 'bg-forest-600' : 'bg-transparent',
-              i < PHASES.length - 1 ? 'border-r border-parchment-100/50' : '',
+              i < PHASE_KEYS.length - 1 ? 'border-r border-parchment-100/50' : '',
             ].join(' ')}
           />
         ))}
@@ -54,15 +51,15 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
 
       {/* Phase labels */}
       <div className="flex">
-        {PHASES.map((phase, i) => (
+        {PHASE_KEYS.map((key, i) => (
           <div
-            key={phase.key}
+            key={key}
             className={[
               'flex-1 text-center text-[9px] font-mono uppercase tracking-wider',
               i === phaseIndex ? 'text-forest-700 font-semibold' : 'text-sepia-600',
             ].join(' ')}
           >
-            <abbr title={phase.key} className="no-underline">{phase.label}</abbr>
+            <abbr title={key} className="no-underline">{t(`phase.${key}`)}</abbr>
           </div>
         ))}
       </div>
@@ -70,7 +67,7 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
       {/* Next suggestion */}
       {finishing.nextSuggestion && (
         <p className="text-xs text-sepia-600 italic mt-1">
-          Next: {finishing.nextSuggestion}
+          {t('next', { suggestion: finishing.nextSuggestion })}
         </p>
       )}
     </div>

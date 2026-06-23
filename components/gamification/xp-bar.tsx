@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface XPBarProps {
   level: number;
   current: number;
@@ -9,6 +11,7 @@ interface XPBarProps {
 }
 
 export function XPBar({ level, current, needed, progress, compact = false }: XPBarProps) {
+  const t = useTranslations('gamification');
   // M8: Guard NaN — Math.max(0, Math.min(100, NaN)) === NaN
   const safeProgress = Number.isFinite(progress) ? progress : 0;
   const clamped = Math.max(0, Math.min(100, safeProgress));
@@ -19,7 +22,7 @@ export function XPBar({ level, current, needed, progress, compact = false }: XPB
         'font-mono font-semibold shrink-0',
         compact ? 'text-[10px] text-cream-100' : 'text-xs text-sepia-700',
       ].join(' ')}>
-        <span aria-label={`Level ${level}`}>Lv {level}</span>
+        <span aria-label={t('levelAria', { level })}>{t('levelShort', { level })}</span>
       </span>
       {/* M1: Accessible progress bar */}
       <div
@@ -31,7 +34,7 @@ export function XPBar({ level, current, needed, progress, compact = false }: XPB
         aria-valuenow={Math.round(clamped)}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`Level ${level} progress: ${Math.round(clamped)}%`}
+        aria-label={t('levelProgressAria', { level, percent: Math.round(clamped) })}
       >
         <div
           className="h-full bg-gradient-to-r from-brass-600 to-brass-400 rounded-full transition-all duration-500"
@@ -40,8 +43,8 @@ export function XPBar({ level, current, needed, progress, compact = false }: XPB
       </div>
       {!compact && (
         <div className="flex justify-between text-[10px] font-mono text-sepia-600">
-          <span>{Math.max(0, current)} XP</span>
-          <span>{needed} to next</span>
+          <span>{t('xp', { count: Math.max(0, current) })}</span>
+          <span>{t('xpToNext', { count: needed })}</span>
         </div>
       )}
     </div>

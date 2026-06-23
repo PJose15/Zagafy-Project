@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useGamification } from '@/hooks/use-gamification';
 import { StreakBadge } from './streak-badge';
 import { XPBar } from './xp-bar';
@@ -7,6 +8,7 @@ import { QuestPanel } from './quest-panel';
 import { FinishingProgress } from './finishing-progress';
 
 export function DashboardGamification() {
+  const t = useTranslations('gamification');
   const {
     gamification,
     isLoaded,
@@ -21,7 +23,7 @@ export function DashboardGamification() {
   // M15: Show loading skeleton while localStorage hydrates
   if (!isLoaded) {
     return (
-      <div className="space-y-6 animate-pulse" aria-label="Loading gamification data">
+      <div className="space-y-6 animate-pulse" aria-label={t('loadingAria')}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="h-7 w-20 bg-parchment-200/50 rounded-lg" />
           <div className="flex-1 w-full sm:max-w-xs h-2 bg-parchment-200/50 rounded-full" />

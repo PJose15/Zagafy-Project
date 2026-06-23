@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Flame, Bell } from 'lucide-react';
 import { isStreakMilestone } from '@/lib/gamification/writing-streak';
 
@@ -10,13 +11,14 @@ interface StreakBadgeProps {
 }
 
 export function StreakBadge({ streak, warning, compact = false }: StreakBadgeProps) {
+  const t = useTranslations('gamification');
   const isMilestone = isStreakMilestone(streak);
 
   if (streak === 0 && !warning) {
     return compact ? null : (
       <div className="flex items-center gap-1.5 text-xs text-sepia-600">
         <Flame size={14} className="text-sepia-600/50" aria-hidden="true" />
-        <span>No streak</span>
+        <span>{t('noStreak')}</span>
       </div>
     );
   }
@@ -31,14 +33,14 @@ export function StreakBadge({ streak, warning, compact = false }: StreakBadgePro
             ? 'bg-brass-500/20 text-brass-700 ring-1 ring-brass-500/30 animate-pulse motion-reduce:animate-none'
             : 'bg-parchment-200/60 text-sepia-700',
         ].join(' ')}
-        aria-label={`Writing streak: ${streak} day${streak !== 1 ? 's' : ''}${isMilestone ? ' — milestone!' : ''}`}
+        aria-label={`${t('streakAria', { count: streak })}${isMilestone ? t('milestoneSuffix') : ''}`}
       >
         <Flame
           size={compact ? 12 : 14}
           className={isMilestone ? 'text-brass-500' : 'text-sepia-600'}
           aria-hidden="true"
         />
-        <span>Day {streak}</span>
+        <span>{t('dayLabel', { count: streak })}</span>
       </div>
 
       {warning && (

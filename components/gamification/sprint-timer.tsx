@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { ProgressRing } from '@/components/antiquarian';
 import { InkStampButton } from '@/components/antiquarian';
-import { getThemeConfig } from '@/lib/gamification/sprints';
 import type { WritingSprint } from '@/lib/types/gamification';
 
 interface SprintTimerProps {
@@ -14,6 +14,8 @@ interface SprintTimerProps {
 }
 
 export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTimerProps) {
+  const t = useTranslations('gamification');
+  const tSprints = useTranslations('sprints');
   // H10: Sync ref when sprint prop changes; M2: guard invalid dates
   const rawStart = new Date(sprint.startTime).getTime();
   const safeStart = Number.isFinite(rawStart) ? rawStart : 0;
@@ -26,7 +28,6 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
     Math.max(0, Math.floor((computedEnd - Date.now()) / 1000)),
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const config = getThemeConfig(sprint.theme);
   const wordsWritten = Math.max(0, currentWords - sprint.wordsStart);
   const timeProgress = sprint.durationMinutes * 60 > 0
     ? ((sprint.durationMinutes * 60 - secondsLeft) / (sprint.durationMinutes * 60)) * 100
@@ -73,30 +74,30 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
       </ProgressRing>
 
       <div className="text-center space-y-1">
-        <h3 className="text-lg font-serif font-semibold text-sepia-800">{config.name}</h3>
-        <p className="text-xs text-sepia-600 italic max-w-md">{sprint.prompt}</p>
+        <h3 className="text-lg font-serif font-semibold text-sepia-800">{tSprints(`theme.${sprint.theme}.name`)}</h3>
+        <p className="text-xs text-sepia-600 italic max-w-md">{tSprints(`theme.${sprint.theme}.prompt`)}</p>
       </div>
 
       {/* L10: Accessible stat labels */}
-      <div className="flex items-center gap-6 text-center" role="group" aria-label="Sprint statistics">
-        <div aria-label={`${wordsWritten} words written`}>
+      <div className="flex items-center gap-6 text-center" role="group" aria-label={t('sprintStatsAria')}>
+        <div aria-label={t('wordsWrittenAria', { count: wordsWritten })}>
           <span className="text-2xl font-mono font-bold text-sepia-800">{wordsWritten}</span>
-          <span className="block text-[10px] text-sepia-600 uppercase" aria-hidden="true">Words</span>
+          <span className="block text-[10px] text-sepia-600 uppercase" aria-hidden="true">{t('words')}</span>
         </div>
         <div className="w-px h-8 bg-sepia-300/30" aria-hidden="true" />
-        <div aria-label={`${sprint.targetWords} word target`}>
+        <div aria-label={t('wordTargetAria', { count: sprint.targetWords })}>
           <span className="text-2xl font-mono font-bold text-sepia-800">{sprint.targetWords}</span>
-          <span className="block text-[10px] text-sepia-600 uppercase" aria-hidden="true">Target</span>
+          <span className="block text-[10px] text-sepia-600 uppercase" aria-hidden="true">{t('target')}</span>
         </div>
       </div>
 
       <div className="flex gap-3">
         <InkStampButton variant="primary" onClick={onEnd}>
-          {isExpired ? 'See Results' : 'Finish Early'}
+          {isExpired ? t('seeResults') : t('finishEarly')}
         </InkStampButton>
         {!isExpired && (
           <InkStampButton variant="ghost" onClick={onAbandon}>
-            Abandon
+            {t('abandon')}
           </InkStampButton>
         )}
       </div>
