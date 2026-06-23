@@ -1042,5 +1042,56 @@
       "category": "Categoría",
       "clue": "Pista"
     }
+  },
+  "assistant": {
+    "title": "Asistente Narrativo",
+    "subtitle": "Conversa con la memoria de tu historia.",
+    "welcome": "¡Hola! Soy tu copiloto narrativo. Tengo acceso a tu Biblia de la Historia, tus personajes y tu manuscrito. ¿En qué puedo ayudarte hoy?",
+    "clear": "Limpiar",
+    "clearAria": "Limpiar el historial del chat",
+    "clearConfirmTitle": "¿Limpiar el historial del chat?",
+    "clearConfirmMessage": "Esto eliminará todos los mensajes. Esto no se puede deshacer.",
+    "clearConfirmLabel": "Limpiar",
+    "auditError": "No se pudo realizar la auditoría de continuidad.",
+    "auditFailed": "La auditoría falló",
+    "chatFailed": "El chat falló",
+    "somethingWrong": "Algo salió mal",
+    "loadEarlier": "Cargar mensajes anteriores ({count} ocultos)",
+    "loadEarlierAria": "Cargar {count} mensajes anteriores",
+    "blockedMode": "Modo Bloqueo",
+    "consulting": "Consultando el manuscrito...",
+    "continuityAudit": "Auditoría de Continuidad",
+    "dismissAudit": "Descartar los resultados de la auditoría",
+    "statusLabel": "Estado",
+    "risksFound": "Riesgos Encontrados",
+    "suggestedCorrections": "Correcciones Sugeridas",
+    "safeVersion": "Versión Segura",
+    "useSafeVersion": "Usar Versión Segura",
+    "proceedAnyway": "Continuar de Todos Modos",
+    "quickBlocked": "Estoy bloqueado",
+    "quickContinue": "Ayúdame a continuar",
+    "placeholder": "Pregunta sobre tu historia, pide ideas o di 'Estoy atascado'...",
+    "auditAria": "Auditoría de Continuidad",
+    "sendAria": "Enviar mensaje",
+    "auditStatus": {
+      "Clear": "Sin problemas",
+      "Warnings": "Advertencias",
+      "Contradictions": "Contradicciones"
+    },
+    "riskLevel": {
+      "Low": "Bajo",
+      "Medium": "Medio",
+      "High": "Alto"
+    },
+    "generatedText": "Texto Generado",
+    "alternatives": "Alternativas ({count})",
+    "informationGaps": "Lagunas de Información",
+    "sourcesReferenced": "Fuentes Consultadas ({count})",
+    "canonConflicts": "Conflictos de Canon Detectados",
+    "whereStory": "Dónde Está Tu Historia",
+    "whyBlocked": "Por Qué Podrías Estar Bloqueado",
+    "nextMoves": "Posibles Próximos Pasos",
+    "bestMove": "Mejor Movimiento Recomendado",
+    "sceneStarter": "Inicio de Escena"
   }
 }

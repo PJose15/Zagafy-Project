@@ -1042,5 +1042,56 @@
       "category": "Category",
       "clue": "Clue"
     }
+  },
+  "assistant": {
+    "title": "Narrative Assistant",
+    "subtitle": "Chat with your story's memory.",
+    "welcome": "Hello! I'm your narrative copilot. I have access to your Story Bible, characters, and manuscript. How can I help you today?",
+    "clear": "Clear",
+    "clearAria": "Clear chat history",
+    "clearConfirmTitle": "Clear chat history?",
+    "clearConfirmMessage": "This will remove all messages. This cannot be undone.",
+    "clearConfirmLabel": "Clear",
+    "auditError": "Failed to perform continuity audit.",
+    "auditFailed": "Audit failed",
+    "chatFailed": "Chat failed",
+    "somethingWrong": "Something went wrong",
+    "loadEarlier": "Load earlier messages ({count} hidden)",
+    "loadEarlierAria": "Load {count} earlier messages",
+    "blockedMode": "Blocked Mode",
+    "consulting": "Consulting the manuscript...",
+    "continuityAudit": "Continuity Audit",
+    "dismissAudit": "Dismiss audit results",
+    "statusLabel": "Status",
+    "risksFound": "Risks Found",
+    "suggestedCorrections": "Suggested Corrections",
+    "safeVersion": "Safe Version",
+    "useSafeVersion": "Use Safe Version",
+    "proceedAnyway": "Proceed Anyway",
+    "quickBlocked": "I'm blocked",
+    "quickContinue": "Help me continue",
+    "placeholder": "Ask about your story, request ideas, or say 'I'm stuck'...",
+    "auditAria": "Continuity Audit",
+    "sendAria": "Send message",
+    "auditStatus": {
+      "Clear": "Clear",
+      "Warnings": "Warnings",
+      "Contradictions": "Contradictions"
+    },
+    "riskLevel": {
+      "Low": "Low",
+      "Medium": "Medium",
+      "High": "High"
+    },
+    "generatedText": "Generated Text",
+    "alternatives": "Alternatives ({count})",
+    "informationGaps": "Information Gaps",
+    "sourcesReferenced": "Sources Referenced ({count})",
+    "canonConflicts": "Canon Conflicts Detected",
+    "whereStory": "Where Your Story Stands",
+    "whyBlocked": "Why You Might Be Blocked",
+    "nextMoves": "Possible Next Moves",
+    "bestMove": "Best Recommended Move",
+    "sceneStarter": "Scene Starter"
   }
 }
