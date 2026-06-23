@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Sparkles } from 'lucide-react';
 import { InkStampButton } from '@/components/antiquarian';
-import { CATEGORY_META, WORLD_BIBLE_CATEGORIES } from '@/lib/types/world-bible';
+import { WORLD_BIBLE_CATEGORIES } from '@/lib/types/world-bible';
 
 interface WorldBibleExtractButtonProps {
   onExtract: () => Promise<number>;
@@ -15,6 +16,7 @@ interface WorldBibleExtractButtonProps {
 type ExtractState = 'idle' | 'extracting' | 'success' | 'error';
 
 export function WorldBibleExtractButton({ onExtract, disabled, chapterCount, onError }: WorldBibleExtractButtonProps) {
+  const t = useTranslations('bible');
   const [extractState, setExtractState] = useState<ExtractState>('idle');
   const [cycleIndex, setCycleIndex] = useState(0);
   const [resultCount, setResultCount] = useState(0);
@@ -49,7 +51,7 @@ export function WorldBibleExtractButton({ onExtract, disabled, chapterCount, onE
       setExtractState('success');
     } catch (err) {
       console.error('[WorldBibleExtract] extraction failed:', err);
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : t('unknownError');
       onError?.(message);
       setExtractState('error');
     }
@@ -57,12 +59,12 @@ export function WorldBibleExtractButton({ onExtract, disabled, chapterCount, onE
 
   const currentCategory = WORLD_BIBLE_CATEGORIES[cycleIndex];
   const label = extractState === 'extracting'
-    ? `Analyzing ${CATEGORY_META[currentCategory].label.toLowerCase()}...`
+    ? t('analyzing', { category: t(`category.${currentCategory}`).toLowerCase() })
     : extractState === 'success'
-      ? `Found ${resultCount} section${resultCount !== 1 ? 's' : ''}`
+      ? t('found', { count: resultCount })
       : extractState === 'error'
-        ? 'Extraction failed'
-        : `Extract from manuscript (${chapterCount} ch.)`;
+        ? t('extractionFailed')
+        : t('extractCta', { count: chapterCount });
 
   return (
     <InkStampButton
