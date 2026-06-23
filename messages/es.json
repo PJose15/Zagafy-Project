@@ -46,7 +46,11 @@
     "networkError": "Error: Falló la solicitud de red",
     "readingTimeMin": "~{minutes} min de lectura",
     "readingTimeHour": "~{hours} h de lectura",
-    "readingTimeHourMin": "~{hours} h {minutes} min de lectura"
+    "readingTimeHourMin": "~{hours} h {minutes} min de lectura",
+    "timeJustNow": "justo ahora",
+    "timeMinutes": "hace {count}m",
+    "timeHours": "hace {count}h",
+    "timeDays": "hace {count}d"
   },
   "settings": {
     "title": "Ajustes",
@@ -1170,6 +1174,111 @@
       "climax": "Clímax",
       "falling-action": "Descenso",
       "resolution": "Resolución"
+    }
+  },
+  "writingStats": {
+    "insight": {
+      "keepWriting": "¡Sigue escribiendo!",
+      "keepWritingDetail": "Sigue escribiendo — necesitamos al menos 5 sesiones para revelar tus patrones.",
+      "consistentAllHours": "Eres constantemente productivo a todas horas. Impresionante.",
+      "secretHour": "Tu hora secreta: Escribes un {percent}% más entre {range} que en cualquier otro momento.",
+      "nightWriter": " Eres un escritor nocturno.",
+      "earlyBird": " Eres un escritor madrugador.",
+      "typingSpeed": "Tu velocidad media de escritura es de {wpm} PPM en {count} sesiones registradas.",
+      "flowPeak": "Tus momentos de flujo alcanzan su punto máximo a las {range} con {count} detectados."
+    },
+    "sessions": {
+      "empty": "Aún no se han registrado sesiones de escritura.",
+      "project": "Proyecto",
+      "date": "Fecha",
+      "time": "Hora",
+      "words": "Palabras",
+      "duration": "Duración",
+      "autoFlow": "Flujo Auto",
+      "flow": "Flujo",
+      "autoFlowTitle": "Flujo automático: {score}/100",
+      "flowTitle": "Flujo: {score}/5"
+    },
+    "timeline": {
+      "title": "Cronología de Flujo",
+      "flowScore": "Flujo: <v>{score}/100</v>",
+      "wpm": "{wpm} PPM",
+      "durationMin": "{minutes}m",
+      "ariaLabel": "Cronología de flujo: {count, plural, one {# momento de flujo} other {# momentos de flujo}}, puntuación {score}",
+      "legendNormal": "Normal",
+      "legendFlow": "Flujo",
+      "moments": "{count, plural, one {# momento} other {# momentos}}",
+      "scoreNA": "N/D"
+    },
+    "voice": {
+      "title": "Analíticas por Voz",
+      "allVoices": "Todas las Voces",
+      "totalWords": "Palabras Totales",
+      "sessions": "Sesiones",
+      "avgFlow": "Puntuación Media de Flujo",
+      "bestHour": "Mejor Hora"
+    },
+    "memory": {
+      "loading": "Cargando…",
+      "empty": "Ejecuta el entrenador de historia en un capítulo para empezar a construir una memoria de tu oficio.",
+      "clearMemory": "Borrar memoria",
+      "confirmTitle": "¿Borrar la memoria del escritor?",
+      "confirmMessage": "¿Olvidar las {count, plural, one {# observación} other {# observaciones}} que el entrenador de IA ha acumulado sobre tu oficio? Esto no se puede deshacer.",
+      "confirmLabel": "Olvidar todas",
+      "meta": "conf {percent}% · {count}× · {time}",
+      "pinAria": "Fijar perspectiva",
+      "unpinAria": "Desfijar perspectiva",
+      "pinnedTitle": "Fijada — siempre se incluye en los prompts",
+      "pinTitle": "Fija para priorizar esta perspectiva en los prompts",
+      "forgetAria": "Olvidar perspectiva",
+      "recompute": "Recalcular",
+      "refreshAria": "Actualizar confianzas",
+      "category": {
+        "pacing": "ritmo",
+        "dialogue": "diálogo",
+        "description": "descripción",
+        "plot": "trama",
+        "voice": "voz"
+      }
+    },
+    "flowModal": {
+      "dialogAria": "Califica tu flujo de escritura",
+      "closeAria": "Cerrar",
+      "question": "¿Cómo fluyó esta sesión?",
+      "radiogroupAria": "Puntuación de flujo",
+      "optionAria": "{label} — {score} de 5",
+      "struggled": "Costó",
+      "slow": "Lento",
+      "okay": "Regular",
+      "good": "Bien",
+      "onFire": "En racha"
+    },
+    "pacing": {
+      "empty": "Añade capítulos para ver cómo se comparan sus longitudes.",
+      "label": "Ritmo: {status}",
+      "statsLine": "media {mean} palabras · {reading} · σ {stdDev} · cv {cv}",
+      "barsAria": "Barras de recuento de palabras por capítulo",
+      "meanTitle": "media {mean} palabras",
+      "consistent": "Consistente",
+      "consistentDesc": "Los capítulos tienen un ritmo uniforme.",
+      "varied": "Variado",
+      "variedDesc": "Algunos capítulos son más largos que otros — normalmente está bien.",
+      "erratic": "Errático",
+      "erraticDesc": "Las longitudes de los capítulos varían mucho. Vale la pena una revisión estructural."
+    },
+    "heatmap": {
+      "ariaLabel": "Mapa de calor de actividad de escritura del último año",
+      "cellAria": "{date}: {words} palabras",
+      "words": "{count, number} palabras",
+      "sessions": "{count, plural, one {# sesión} other {# sesiones}}",
+      "avgFlow": "Flujo medio: {emoji}",
+      "noRating": "Sin calificación",
+      "autoFlow": "Flujo automático: {score}/100",
+      "flowMoments": "{count, plural, one {# momento de flujo} other {# momentos de flujo}}",
+      "writingTime": "Tiempo de escritura: {duration}",
+      "noWriting": "Sin escritura",
+      "less": "Menos",
+      "more": "Más"
     }
   }
 }

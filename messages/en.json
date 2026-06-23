@@ -46,7 +46,11 @@
     "networkError": "Error: Network request failed",
     "readingTimeMin": "~{minutes} min read",
     "readingTimeHour": "~{hours}h read",
-    "readingTimeHourMin": "~{hours}h {minutes}m read"
+    "readingTimeHourMin": "~{hours}h {minutes}m read",
+    "timeJustNow": "just now",
+    "timeMinutes": "{count}m ago",
+    "timeHours": "{count}h ago",
+    "timeDays": "{count}d ago"
   },
   "settings": {
     "title": "Settings",
@@ -1170,6 +1174,111 @@
       "climax": "Climax",
       "falling-action": "Falling",
       "resolution": "Resolution"
+    }
+  },
+  "writingStats": {
+    "insight": {
+      "keepWriting": "Keep writing!",
+      "keepWritingDetail": "Keep writing — we need at least 5 sessions to reveal your patterns.",
+      "consistentAllHours": "You're consistently productive at all hours. Impressive.",
+      "secretHour": "Your secret hour: You write {percent}% more between {range} than at any other time.",
+      "nightWriter": " You're a night writer.",
+      "earlyBird": " You're an early bird writer.",
+      "typingSpeed": "Your average typing speed is {wpm} WPM across {count} tracked sessions.",
+      "flowPeak": "Your flow moments peak at {range} with {count} detected."
+    },
+    "sessions": {
+      "empty": "No writing sessions recorded yet.",
+      "project": "Project",
+      "date": "Date",
+      "time": "Time",
+      "words": "Words",
+      "duration": "Duration",
+      "autoFlow": "Auto Flow",
+      "flow": "Flow",
+      "autoFlowTitle": "Auto flow: {score}/100",
+      "flowTitle": "Flow: {score}/5"
+    },
+    "timeline": {
+      "title": "Flow Timeline",
+      "flowScore": "Flow: <v>{score}/100</v>",
+      "wpm": "{wpm} WPM",
+      "durationMin": "{minutes}m",
+      "ariaLabel": "Flow timeline: {count, plural, one {# flow moment} other {# flow moments}}, score {score}",
+      "legendNormal": "Normal",
+      "legendFlow": "Flow",
+      "moments": "{count, plural, one {# moment} other {# moments}}",
+      "scoreNA": "N/A"
+    },
+    "voice": {
+      "title": "Per-Voice Analytics",
+      "allVoices": "All Voices",
+      "totalWords": "Total Words",
+      "sessions": "Sessions",
+      "avgFlow": "Avg Flow Score",
+      "bestHour": "Best Hour"
+    },
+    "memory": {
+      "loading": "Loading…",
+      "empty": "Run the story coach on a chapter to start building a memory of your craft.",
+      "clearMemory": "Clear memory",
+      "confirmTitle": "Clear writer memory?",
+      "confirmMessage": "Forget all {count, plural, one {# observation} other {# observations}} the AI coach has built up about your craft? This cannot be undone.",
+      "confirmLabel": "Forget all",
+      "meta": "conf {percent}% · {count}× · {time}",
+      "pinAria": "Pin insight",
+      "unpinAria": "Unpin insight",
+      "pinnedTitle": "Pinned — always injected into prompts",
+      "pinTitle": "Pin to prioritize this insight in prompts",
+      "forgetAria": "Forget insight",
+      "recompute": "Recompute",
+      "refreshAria": "Refresh confidences",
+      "category": {
+        "pacing": "pacing",
+        "dialogue": "dialogue",
+        "description": "description",
+        "plot": "plot",
+        "voice": "voice"
+      }
+    },
+    "flowModal": {
+      "dialogAria": "Rate your writing flow",
+      "closeAria": "Close",
+      "question": "How did this session flow?",
+      "radiogroupAria": "Flow score",
+      "optionAria": "{label} — {score} out of 5",
+      "struggled": "Struggled",
+      "slow": "Slow",
+      "okay": "Okay",
+      "good": "Good",
+      "onFire": "On fire"
+    },
+    "pacing": {
+      "empty": "Add chapters to see how their lengths compare.",
+      "label": "Pacing: {status}",
+      "statsLine": "mean {mean} words · {reading} · σ {stdDev} · cv {cv}",
+      "barsAria": "Chapter word-count bars",
+      "meanTitle": "mean {mean} words",
+      "consistent": "Consistent",
+      "consistentDesc": "Chapters feel evenly paced.",
+      "varied": "Varied",
+      "variedDesc": "Some chapters run longer than others — usually fine.",
+      "erratic": "Erratic",
+      "erraticDesc": "Chapter lengths swing widely. Worth a structural pass."
+    },
+    "heatmap": {
+      "ariaLabel": "Writing activity heatmap for the past year",
+      "cellAria": "{date}: {words} words",
+      "words": "{count, number} words",
+      "sessions": "{count, plural, one {# session} other {# sessions}}",
+      "avgFlow": "Avg flow: {emoji}",
+      "noRating": "No rating",
+      "autoFlow": "Auto flow: {score}/100",
+      "flowMoments": "{count, plural, one {# flow moment} other {# flow moments}}",
+      "writingTime": "Writing time: {duration}",
+      "noWriting": "No writing",
+      "less": "Less",
+      "more": "More"
     }
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Lightbulb } from 'lucide-react';
 import type { WritingSession } from '@/lib/types/writing-session';
 
@@ -22,13 +23,14 @@ interface Insight {
 }
 
 export function InsightCard({ sessions }: InsightCardProps) {
+  const t = useTranslations('writingStats.insight');
   const insights = useMemo((): Insight[] => {
     const result: Insight[] = [];
 
     if (sessions.length < 5) {
       return [{
-        headline: 'Keep writing!',
-        detail: 'Keep writing — we need at least 5 sessions to reveal your patterns.',
+        headline: t('keepWriting'),
+        detail: t('keepWritingDetail'),
       }];
     }
 
@@ -58,19 +60,19 @@ export function InsightCard({ sessions }: InsightCardProps) {
 
     if (nonZeroHours.length >= 4 && avg > 0 && peakWords < avg * 1.5) {
       result.push({
-        headline: "You're consistently productive at all hours. Impressive.",
+        headline: t('consistentAllHours'),
         detail: '',
       });
     } else {
       const hourRange = formatHourRange(peakHour);
       const percentMore = avg > 0 ? Math.round(((peakWords - avg) / avg) * 100) : 0;
 
-      let headline = `Your secret hour: You write ${percentMore}% more between ${hourRange} than at any other time.`;
+      let headline = t('secretHour', { percent: percentMore, range: hourRange });
 
       if (peakHour >= 22 || peakHour < 6) {
-        headline += ' You\'re a night writer.';
+        headline += t('nightWriter');
       } else if (peakHour >= 5 && peakHour < 8) {
-        headline += ' You\'re an early bird writer.';
+        headline += t('earlyBird');
       }
 
       result.push({ headline, detail: '' });
@@ -85,7 +87,7 @@ export function InsightCard({ sessions }: InsightCardProps) {
 
       if (avgWPM > 0) {
         result.push({
-          headline: `Your average typing speed is ${Math.round(avgWPM)} WPM across ${sessionsWithFlow.length} tracked sessions.`,
+          headline: t('typingSpeed', { wpm: Math.round(avgWPM), count: sessionsWithFlow.length }),
           detail: '',
         });
       }
@@ -110,14 +112,14 @@ export function InsightCard({ sessions }: InsightCardProps) {
 
       if (flowPeakCount > 0) {
         result.push({
-          headline: `Your flow moments peak at ${formatHourRange(flowPeakHour)} with ${flowPeakCount} detected.`,
+          headline: t('flowPeak', { range: formatHourRange(flowPeakHour), count: flowPeakCount }),
           detail: '',
         });
       }
     }
 
-    return result.length > 0 ? result : [{ headline: 'Keep writing!', detail: 'Keep writing — we need at least 5 sessions to reveal your patterns.' }];
-  }, [sessions]);
+    return result.length > 0 ? result : [{ headline: t('keepWriting'), detail: t('keepWritingDetail') }];
+  }, [sessions, t]);
 
   return (
     <div className="space-y-3" data-testid="insight-card">
