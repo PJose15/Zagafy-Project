@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, CheckCircle2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toastSlam } from '@/lib/animations';
@@ -41,6 +42,7 @@ const iconColors: Record<ToastType, string> = {
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const tr = useTranslations('common');
   const [toasts, setToasts] = useState<Toast[]>([]);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -73,7 +75,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <button
           onClick={() => removeToast(t.id)}
           className="shrink-0 p-0.5 rounded hover:bg-sepia-300/30 transition-colors text-sepia-600"
-          aria-label="Dismiss notification"
+          aria-label={tr('dismissNotification')}
         >
           <X size={14} aria-hidden="true" />
         </button>
