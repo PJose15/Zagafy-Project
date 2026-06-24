@@ -62,7 +62,7 @@
     "recharts": "3.8.1",
     "resend": "6.12.4",
     "stripe": "22.2.1",
-    "svix": "1.93.0",
+    "svix": "1.96.0",
     "tailwind-merge": "3.5.0"
   },
   "lint-staged": {
