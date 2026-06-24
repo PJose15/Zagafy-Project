@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { BookOpen, X } from 'lucide-react';
 
@@ -10,6 +11,7 @@ interface ChapterSelectModalProps {
 }
 
 export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProps) {
+  const t = useTranslations('flow.chapterSelect');
   const { state } = useStory();
 
   return (
@@ -29,16 +31,16 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
         <div className="flex items-center justify-between mb-6">
           <h2 id="chapter-select-title" className="text-xl font-serif font-bold text-sepia-900 flex items-center gap-2">
             <BookOpen className="text-brass-500" size={20} />
-            Choose a chapter
+            {t('title')}
           </h2>
-          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700 transition-colors" aria-label="Close">
+          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700 transition-colors" aria-label={t('close')}>
             <X size={20} />
           </button>
         </div>
 
         {state.chapters.length === 0 ? (
           <p className="text-sepia-600 text-sm text-center py-8">
-            No chapters yet. Create one in the Manuscript section first.
+            {t('empty')}
           </p>
         ) : (
           <div className="space-y-2 overflow-y-auto flex-1">

@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface SceneChangeBannerProps {
   originalChapterTitle: string;
   remainingSeconds: number;
@@ -23,6 +25,7 @@ export function SceneChangeBanner({
   onReturn,
   onExtend,
 }: SceneChangeBannerProps) {
+  const t = useTranslations('flow.sceneChangeBanner');
   const bgClass = isExpired
     ? 'bg-red-500/10 border-red-500/20'
     : 'bg-amber-500/10 border-amber-500/20';
@@ -33,21 +36,29 @@ export function SceneChangeBanner({
     <div
       className={`flex items-center gap-3 px-4 py-2 border-b ${bgClass}`}
       role="status"
-      aria-label="Scene change active"
+      aria-label={t('ariaLabel')}
     >
       <span className="text-sm" aria-hidden="true">&#x1F500;</span>
       <span className={`text-xs ${textClass} flex-1`}>
         {isExpired ? (
-          <>Time&apos;s up! Return to <strong className="font-medium">{originalChapterTitle}</strong>?</>
+          t.rich('expired', {
+            title: originalChapterTitle,
+            b: (chunks) => <strong className="font-medium">{chunks}</strong>,
+          })
         ) : (
-          <>Scene change &mdash; returning to <strong className="font-medium">{originalChapterTitle}</strong> in{' '}
-            <span
-              className="font-mono font-medium"
-              style={{ animation: 'scene-change-pulse 2s ease-in-out infinite' }}
-            >
-              {formatTime(remainingSeconds)}
-            </span>
-          </>
+          t.rich('active', {
+            title: originalChapterTitle,
+            seconds: formatTime(remainingSeconds),
+            b: (chunks) => <strong className="font-medium">{chunks}</strong>,
+            clock: (chunks) => (
+              <span
+                className="font-mono font-medium"
+                style={{ animation: 'scene-change-pulse 2s ease-in-out infinite' }}
+              >
+                {chunks}
+              </span>
+            ),
+          })
         )}
       </span>
       <div className="flex items-center gap-2">
@@ -56,11 +67,11 @@ export function SceneChangeBanner({
             onClick={onExtend}
             className="text-xs text-amber-400/70 hover:text-amber-300 transition-colors px-2 py-0.5 rounded hover:bg-amber-500/10"
           >
-            +10 min
+            {t('extend')}
           </button>
         )}
         {!isExpired && extensionsLeft === 0 && (
-          <span className="text-xs text-sepia-600">(no more extensions)</span>
+          <span className="text-xs text-sepia-600">{t('noExtensions')}</span>
         )}
         <button
           onClick={onReturn}
@@ -70,7 +81,7 @@ export function SceneChangeBanner({
               : 'text-amber-300 hover:bg-amber-500/20'
           }`}
         >
-          Return now
+          {t('returnNow')}
         </button>
       </div>
     </div>

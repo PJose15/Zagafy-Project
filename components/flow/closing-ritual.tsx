@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { X } from 'lucide-react';
 
 interface ClosingRitualStats {
@@ -42,22 +43,21 @@ function findBestSentence(content: string): string | null {
   return best;
 }
 
-function formatDuration(ms: number): string {
+type Translator = ReturnType<typeof useTranslations>;
+
+function formatDuration(ms: number, t: Translator): string {
   const minutes = Math.floor(ms / 60000);
-  if (minutes < 1) return 'less than a minute';
-  if (minutes === 1) return '1 minute';
-  return `${minutes} minutes`;
+  if (minutes < 1) return t('durationLessThanMinute');
+  if (minutes === 1) return t('durationMinute');
+  return t('durationMinutes', { count: minutes });
 }
 
-const FALLBACK_QUESTIONS = [
-  'What surprised you about what you wrote today?',
-  'Which character felt most alive in this session?',
-  'What would your protagonist say about today\'s work?',
-  'Did you discover something unexpected about your story?',
-  'What scene are you most curious to write next?',
-];
-
 export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
+  const t = useTranslations('flow.closingRitual');
+  const fallbackQuestions = useMemo(
+    () => [t('q1'), t('q2'), t('q3'), t('q4'), t('q5')],
+    [t]
+  );
   const [section, setSection] = useState(0);
   const [question, setQuestion] = useState<string | null>(null);
   const [degraded, setDegraded] = useState(false);
@@ -93,9 +93,9 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
     } catch {
       // fallback
     }
-    const fallback = FALLBACK_QUESTIONS[Math.floor(Math.random() * FALLBACK_QUESTIONS.length)];
+    const fallback = fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
     return { q: fallback, degraded: true };
-  }, [stats.content, stats.wordsWritten]);
+  }, [stats.content, stats.wordsWritten, fallbackQuestions]);
 
   useEffect(() => {
     if (!open) return;
@@ -134,7 +134,7 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
         <button
           onClick={onClose}
           className="absolute top-6 right-6 text-cream-200 hover:text-cream-50 transition-colors"
-          aria-label="Close ritual"
+          aria-label={t('close')}
         >
           <X size={24} />
         </button>
@@ -150,14 +150,14 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
                 className="space-y-4"
               >
                 <h2 className="text-2xl font-serif text-cream-100 tracking-tight">
-                  Session Complete
+                  {t('sessionComplete')}
                 </h2>
                 <div className="space-y-2">
                   <p className="text-4xl font-bold text-brass-400">
-                    {stats.wordsWritten} <span className="text-lg font-normal text-cream-300">words</span>
+                    {stats.wordsWritten} <span className="text-lg font-normal text-cream-300">{t('wordsLabel')}</span>
                   </p>
                   <p className="text-sm text-cream-300">
-                    {formatDuration(stats.sessionDurationMs)}
+                    {formatDuration(stats.sessionDurationMs, t)}
                   </p>
                 </div>
               </motion.div>
@@ -172,7 +172,7 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
                 className="space-y-4"
               >
                 <h2 className="text-lg font-serif text-cream-300 tracking-tight">
-                  Your best sentence
+                  {t('bestSentence')}
                 </h2>
                 <blockquote className="text-xl font-serif text-cream-100 italic leading-relaxed px-4">
                   &ldquo;{bestSentence}&rdquo;
@@ -189,10 +189,10 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
                 className="space-y-4"
               >
                 <h2 className="text-lg font-serif text-cream-300 tracking-tight">
-                  Every word counts
+                  {t('everyWordCounts')}
                 </h2>
                 <p className="text-cream-200">
-                  Keep writing. The best sentences come when you least expect them.
+                  {t('everyWordCountsBody')}
                 </p>
               </motion.div>
             )}
@@ -206,24 +206,24 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
                 className="space-y-6"
               >
                 <h2 className="text-lg font-serif text-cream-300 tracking-tight">
-                  Reflect
+                  {t('reflect')}
                 </h2>
                 <p className="text-xl font-serif text-cream-100 leading-relaxed">
-                  {question || 'What surprised you about what you wrote today?'}
+                  {question || t('q1')}
                 </p>
                 {degraded && (
                   <p
                     className="text-xs italic text-cream-400/70"
-                    title="The oracle rests; an older voice answers"
+                    title={t('degradedNote')}
                   >
-                    The oracle rests; an older voice answers.
+                    {t('degradedNote')}
                   </p>
                 )}
                 <button
                   onClick={onClose}
                   className="mt-8 px-6 py-2 bg-brass-600 hover:bg-brass-500 text-cream-50 rounded-lg transition-colors text-sm font-medium"
                 >
-                  Close
+                  {t('closeBtn')}
                 </button>
               </motion.div>
             )}
@@ -238,7 +238,7 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
                 className={`w-2 h-2 rounded-full transition-colors ${
                   i === section ? 'bg-brass-400' : 'bg-cream-300/30'
                 }`}
-                aria-label={`Section ${i + 1}`}
+                aria-label={t('sectionAria', { number: i + 1 })}
               />
             ))}
           </div>

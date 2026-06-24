@@ -496,7 +496,152 @@
   },
   "flow": {
     "errorTitle": "Editor de Flujo",
-    "loadingEditor": "Cargando editor..."
+    "loadingEditor": "Cargando editor...",
+    "editor": {
+      "fallbackTitle": "Modo Flujo",
+      "words": "{count} palabras",
+      "versionHistory": "Historial de versiones",
+      "storyCoach": "Mentor de la historia",
+      "switchVoice": "Cambiar voz de escritura",
+      "sceneChange": "Cambio de escena",
+      "voiceBraindump": "Lluvia de ideas por voz",
+      "braindumpHistory": "Historial de lluvia de ideas",
+      "exit": "Salir del Flujo",
+      "placeholder": "Empieza a escribir... sin retroceso, sin borrar, solo hacia adelante.",
+      "untitled": "Sin título",
+      "versionLabel": "Versión {letter}",
+      "autoSuffix": " (auto)",
+      "sceneChangeCompleteToast": "¡Cambio de escena completo! Escribiste {count, plural, one {# palabra} other {# palabras}} en el otro capítulo.",
+      "originalDeletedToast": "El capítulo original fue eliminado. Te quedas en el capítulo actual.",
+      "switchingScenes": "Cambiando de escena...",
+      "switchingScenesSub": "Un cambio de aires para encender nuevas ideas",
+      "returningToChapter": "Volviendo a tu capítulo...",
+      "returningToChapterSub": "Escribiste {count, plural, one {# palabra} other {# palabras}} durante el desvío",
+      "activeSceneChangeTitle": "Cambio de escena activo",
+      "activeSceneChangeMessage": "Tienes un cambio de escena activo. Salir lo cancelará. ¿Estás seguro?",
+      "activeSceneChangeConfirm": "Salir de todos modos"
+    },
+    "braindumpPanel": {
+      "ariaLabel": "Panel de lluvia de ideas por voz",
+      "recording": "Grabando",
+      "paused": "En pausa",
+      "stopped": "Detenido",
+      "recognitionLanguage": "Idioma de reconocimiento",
+      "pauseRecording": "Pausar grabación",
+      "stopRecording": "Detener grabación",
+      "resumeRecording": "Reanudar grabación",
+      "closePanel": "Cerrar panel de lluvia de ideas",
+      "listening": "Escuchando... empieza a hablar.",
+      "noWords": "No se capturaron palabras. Intenta grabar de nuevo.",
+      "insertAsIs": "Insertar tal cual",
+      "polishInsert": "Pulir e insertar",
+      "reRecord": "Volver a grabar"
+    },
+    "braindumpHistory": {
+      "ariaLabel": "Historial de lluvia de ideas",
+      "heading": "Historial de voz",
+      "close": "Cerrar historial",
+      "emptyTitle": "Aún no hay grabaciones de voz.",
+      "emptySubtitle": "Tus sesiones de lluvia de ideas aparecerán aquí.",
+      "words": "{count} palabras",
+      "polished": "Pulido",
+      "reInsert": "Reinsertar",
+      "reInsertAria": "Reinsertar texto",
+      "polish": "Pulir",
+      "polishAria": "Pulir esta entrada",
+      "deleteAria": "Eliminar entrada"
+    },
+    "braindumpMessage": {
+      "dismiss": "Descartar mensaje",
+      "unsupported": "El dictado por voz requiere el navegador <b>Chrome</b> o <b>Edge</b>.",
+      "denied": "Acceso al micrófono denegado. <link>Permite el acceso al micrófono</link> e inténtalo de nuevo."
+    },
+    "chapterSelect": {
+      "title": "Elige un capítulo",
+      "close": "Cerrar",
+      "empty": "Aún no hay capítulos. Crea uno primero en la sección Manuscrito."
+    },
+    "closingRitual": {
+      "close": "Cerrar ritual",
+      "sessionComplete": "Sesión completa",
+      "wordsLabel": "palabras",
+      "durationLessThanMinute": "menos de un minuto",
+      "durationMinute": "1 minuto",
+      "durationMinutes": "{count} minutos",
+      "bestSentence": "Tu mejor frase",
+      "everyWordCounts": "Cada palabra cuenta",
+      "everyWordCountsBody": "Sigue escribiendo. Las mejores frases llegan cuando menos las esperas.",
+      "reflect": "Reflexiona",
+      "degradedNote": "El oráculo descansa; una voz más antigua responde.",
+      "closeBtn": "Cerrar",
+      "sectionAria": "Sección {number}",
+      "q1": "¿Qué te sorprendió de lo que escribiste hoy?",
+      "q2": "¿Qué personaje se sintió más vivo en esta sesión?",
+      "q3": "¿Qué diría tu protagonista sobre el trabajo de hoy?",
+      "q4": "¿Descubriste algo inesperado sobre tu historia?",
+      "q5": "¿Qué escena tienes más curiosidad por escribir a continuación?"
+    },
+    "detour": {
+      "done": "Listo",
+      "placeholder": "Empieza a escribir...",
+      "words": "{count} palabras"
+    },
+    "noRetreatEnd": {
+      "title": "Terminar sesión Sin Retroceso",
+      "wordsWritten": "Palabras escritas",
+      "duration": "Duración",
+      "save": "Guardar",
+      "burn": "Quemar"
+    },
+    "noRetreatToggle": {
+      "enable": "Activar modo Sin Retroceso",
+      "disable": "Desactivar modo Sin Retroceso",
+      "titleOn": "Modo Sin Retroceso: ACTIVADO — no se permiten borrados",
+      "titleOff": "Modo Sin Retroceso: DESACTIVADO — haz clic para activar"
+    },
+    "sceneChangeBanner": {
+      "ariaLabel": "Cambio de escena activo",
+      "expired": "¡Se acabó el tiempo! ¿Volver a <b>{title}</b>?",
+      "active": "Cambio de escena — volviendo a <b>{title}</b> en <clock>{seconds}</clock>",
+      "extend": "+10 min",
+      "noExtensions": "(no quedan extensiones)",
+      "returnNow": "Volver ahora"
+    },
+    "sceneChangeRecovery": {
+      "title": "Cambio de escena expirado",
+      "message": "Tu temporizador de cambio de escena se agotó mientras no estabas. ¿Volver a <b>{title}</b>?",
+      "stayHere": "Quedarme aquí",
+      "returnOriginal": "Volver al original"
+    },
+    "sceneryPrompt": {
+      "severe": "¿Te sientes atascado?",
+      "moderate": "¿Necesitas una chispa creativa?",
+      "mild": "¿Un desvío rápido?",
+      "dismiss": "Descartar",
+      "instruction": "Un breve ejercicio creativo puede reavivar tu flujo. Elige uno:",
+      "minutes": "{count} min"
+    },
+    "versionSwitcher": {
+      "heading": "Versiones",
+      "close": "Cerrar panel de versiones",
+      "versionLabelAria": "Etiqueta de versión",
+      "confirmRename": "Confirmar cambio de nombre",
+      "renameVersion": "Cambiar nombre de versión",
+      "markCanonical": "Marcar como canónica",
+      "deleteVersion": "Eliminar versión",
+      "wordsShort": "{count, number}p",
+      "newVersion": "Nueva versión",
+      "compare": "Comparar"
+    },
+    "versionCompare": {
+      "title": "Comparar versiones",
+      "close": "Cerrar comparación",
+      "left": "Izquierda",
+      "right": "Derecha",
+      "leftAria": "Versión izquierda",
+      "rightAria": "Versión derecha",
+      "option": "{label} ({count, number}p)"
+    }
   },
   "reader": {
     "errorTitle": "Análisis de Lectura",

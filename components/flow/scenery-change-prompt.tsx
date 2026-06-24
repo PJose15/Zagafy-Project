@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { Lightbulb, X } from 'lucide-react';
 import { fadeUp } from '@/lib/animations';
 import type { BlockSignal, DetourSuggestion } from '@/lib/scenery-change/types';
@@ -13,6 +14,7 @@ interface SceneryChangePromptProps {
 }
 
 export function SceneryChangePrompt({ signal, suggestions, onSelect, onDismiss }: SceneryChangePromptProps) {
+  const t = useTranslations('flow.sceneryPrompt');
   return (
     <AnimatePresence>
       <motion.div {...fadeUp} className="w-full max-w-3xl mx-auto mt-4">
@@ -21,21 +23,21 @@ export function SceneryChangePrompt({ signal, suggestions, onSelect, onDismiss }
             <div className="flex items-center gap-2">
               <Lightbulb size={16} className="text-brass-500" />
               <span className="text-sm font-medium text-sepia-700">
-                {signal.severity === 'severe' ? 'Feeling stuck?' :
-                 signal.severity === 'moderate' ? 'Need a creative spark?' :
-                 'Time for a quick detour?'}
+                {signal.severity === 'severe' ? t('severe') :
+                 signal.severity === 'moderate' ? t('moderate') :
+                 t('mild')}
               </span>
             </div>
             <button
               onClick={onDismiss}
               className="p-1 text-sepia-600 hover:text-sepia-600 rounded"
-              aria-label="Dismiss"
+              aria-label={t('dismiss')}
             >
               <X size={14} />
             </button>
           </div>
           <p className="text-xs text-sepia-600 mb-3">
-            A short creative exercise can reignite your flow. Pick one:
+            {t('instruction')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {suggestions.map(s => (
@@ -47,7 +49,7 @@ export function SceneryChangePrompt({ signal, suggestions, onSelect, onDismiss }
                 <h4 className="text-sm font-medium text-sepia-800 group-hover:text-brass-600 transition-colors">
                   {s.title}
                 </h4>
-                <p className="text-[10px] text-sepia-600 mt-1">{s.durationMinutes} min</p>
+                <p className="text-[10px] text-sepia-600 mt-1">{t('minutes', { count: s.durationMinutes })}</p>
               </button>
             ))}
           </div>

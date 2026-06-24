@@ -496,7 +496,152 @@
   },
   "flow": {
     "errorTitle": "Flow Editor",
-    "loadingEditor": "Loading editor..."
+    "loadingEditor": "Loading editor...",
+    "editor": {
+      "fallbackTitle": "Flow Mode",
+      "words": "{count} words",
+      "versionHistory": "Version history",
+      "storyCoach": "Story coach",
+      "switchVoice": "Switch writing voice",
+      "sceneChange": "Scene change",
+      "voiceBraindump": "Voice braindump",
+      "braindumpHistory": "Braindump history",
+      "exit": "Exit Flow",
+      "placeholder": "Start writing... no backspace, no delete, just forward.",
+      "untitled": "Untitled",
+      "versionLabel": "Version {letter}",
+      "autoSuffix": " (auto)",
+      "sceneChangeCompleteToast": "Scene change complete! You wrote {count, plural, one {# word} other {# words}} in the other chapter.",
+      "originalDeletedToast": "Original chapter was deleted. Staying in current chapter.",
+      "switchingScenes": "Switching scenes...",
+      "switchingScenesSub": "A change of scenery to spark new ideas",
+      "returningToChapter": "Returning to your chapter...",
+      "returningToChapterSub": "You wrote {count, plural, one {# word} other {# words}} during the detour",
+      "activeSceneChangeTitle": "Active Scene Change",
+      "activeSceneChangeMessage": "You have an active scene change. Exiting will cancel it. Are you sure?",
+      "activeSceneChangeConfirm": "Exit anyway"
+    },
+    "braindumpPanel": {
+      "ariaLabel": "Voice braindump panel",
+      "recording": "Recording",
+      "paused": "Paused",
+      "stopped": "Stopped",
+      "recognitionLanguage": "Recognition language",
+      "pauseRecording": "Pause recording",
+      "stopRecording": "Stop recording",
+      "resumeRecording": "Resume recording",
+      "closePanel": "Close braindump panel",
+      "listening": "Listening... start speaking.",
+      "noWords": "No words captured. Try recording again.",
+      "insertAsIs": "Insert as-is",
+      "polishInsert": "Polish & insert",
+      "reRecord": "Re-record"
+    },
+    "braindumpHistory": {
+      "ariaLabel": "Braindump history",
+      "heading": "Voice History",
+      "close": "Close history",
+      "emptyTitle": "No voice recordings yet.",
+      "emptySubtitle": "Your braindump sessions will appear here.",
+      "words": "{count} words",
+      "polished": "Polished",
+      "reInsert": "Re-insert",
+      "reInsertAria": "Re-insert text",
+      "polish": "Polish",
+      "polishAria": "Polish this entry",
+      "deleteAria": "Delete entry"
+    },
+    "braindumpMessage": {
+      "dismiss": "Dismiss message",
+      "unsupported": "Voice dictation requires <b>Chrome</b> or <b>Edge</b> browser.",
+      "denied": "Microphone access denied. <link>Allow mic access</link> and try again."
+    },
+    "chapterSelect": {
+      "title": "Choose a chapter",
+      "close": "Close",
+      "empty": "No chapters yet. Create one in the Manuscript section first."
+    },
+    "closingRitual": {
+      "close": "Close ritual",
+      "sessionComplete": "Session Complete",
+      "wordsLabel": "words",
+      "durationLessThanMinute": "less than a minute",
+      "durationMinute": "1 minute",
+      "durationMinutes": "{count} minutes",
+      "bestSentence": "Your best sentence",
+      "everyWordCounts": "Every word counts",
+      "everyWordCountsBody": "Keep writing. The best sentences come when you least expect them.",
+      "reflect": "Reflect",
+      "degradedNote": "The oracle rests; an older voice answers.",
+      "closeBtn": "Close",
+      "sectionAria": "Section {number}",
+      "q1": "What surprised you about what you wrote today?",
+      "q2": "Which character felt most alive in this session?",
+      "q3": "What would your protagonist say about today's work?",
+      "q4": "Did you discover something unexpected about your story?",
+      "q5": "What scene are you most curious to write next?"
+    },
+    "detour": {
+      "done": "Done",
+      "placeholder": "Start writing...",
+      "words": "{count} words"
+    },
+    "noRetreatEnd": {
+      "title": "End No-Retreat Session",
+      "wordsWritten": "Words Written",
+      "duration": "Duration",
+      "save": "Save",
+      "burn": "Burn"
+    },
+    "noRetreatToggle": {
+      "enable": "Enable No-Retreat Mode",
+      "disable": "Disable No-Retreat Mode",
+      "titleOn": "No-Retreat Mode: ON — no deletions allowed",
+      "titleOff": "No-Retreat Mode: OFF — click to enable"
+    },
+    "sceneChangeBanner": {
+      "ariaLabel": "Scene change active",
+      "expired": "Time's up! Return to <b>{title}</b>?",
+      "active": "Scene change — returning to <b>{title}</b> in <clock>{seconds}</clock>",
+      "extend": "+10 min",
+      "noExtensions": "(no more extensions)",
+      "returnNow": "Return now"
+    },
+    "sceneChangeRecovery": {
+      "title": "Scene Change Expired",
+      "message": "Your scene change timer ran out while you were away. Return to <b>{title}</b>?",
+      "stayHere": "Stay here",
+      "returnOriginal": "Return to original"
+    },
+    "sceneryPrompt": {
+      "severe": "Feeling stuck?",
+      "moderate": "Need a creative spark?",
+      "mild": "Time for a quick detour?",
+      "dismiss": "Dismiss",
+      "instruction": "A short creative exercise can reignite your flow. Pick one:",
+      "minutes": "{count} min"
+    },
+    "versionSwitcher": {
+      "heading": "Versions",
+      "close": "Close version panel",
+      "versionLabelAria": "Version label",
+      "confirmRename": "Confirm rename",
+      "renameVersion": "Rename version",
+      "markCanonical": "Mark as canonical",
+      "deleteVersion": "Delete version",
+      "wordsShort": "{count, number}w",
+      "newVersion": "New Version",
+      "compare": "Compare"
+    },
+    "versionCompare": {
+      "title": "Compare Versions",
+      "close": "Close comparison",
+      "left": "Left",
+      "right": "Right",
+      "leftAria": "Left version",
+      "rightAria": "Right version",
+      "option": "{label} ({count, number}w)"
+    }
   },
   "reader": {
     "errorTitle": "Reader Analysis",

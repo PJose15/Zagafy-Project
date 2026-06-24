@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Check, Pencil, Trash2, Crown, X } from 'lucide-react';
 import { ParchmentCard } from '@/components/antiquarian';
 import type { ChapterVersion } from '@/lib/types/chapter-version';
@@ -28,6 +29,7 @@ export function VersionSwitcher({
   onCompare,
   onClose,
 }: VersionSwitcherProps) {
+  const t = useTranslations('flow.versionSwitcher');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
 
@@ -47,8 +49,8 @@ export function VersionSwitcher({
     <div className="absolute top-full right-0 mt-1 z-50 w-80" data-testid="version-switcher">
       <ParchmentCard className="p-3 shadow-lg">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-sepia-800">Versions</h3>
-          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700" aria-label="Close version panel">
+          <h3 className="text-sm font-medium text-sepia-800">{t('heading')}</h3>
+          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700" aria-label={t('close')}>
             <X size={14} />
           </button>
         </div>
@@ -69,9 +71,9 @@ export function VersionSwitcher({
                     onKeyDown={e => e.key === 'Enter' && confirmRename()}
                     className="flex-1 bg-parchment-50 border border-sepia-300 rounded px-1 py-0.5 text-xs"
                     autoFocus
-                    aria-label="Version label"
+                    aria-label={t('versionLabelAria')}
                   />
-                  <button onClick={confirmRename} className="text-forest-700" aria-label="Confirm rename">
+                  <button onClick={confirmRename} className="text-forest-700" aria-label={t('confirmRename')}>
                     <Check size={12} />
                   </button>
                 </div>
@@ -81,17 +83,17 @@ export function VersionSwitcher({
                     {v.label}
                     {v.isCanonical && <Crown size={10} className="inline ml-1 text-brass-500" />}
                   </button>
-                  <span className="text-[10px] text-sepia-600 shrink-0">{v.wordCount}w</span>
-                  <button onClick={() => startRename(v)} className="text-sepia-600 hover:text-sepia-700 shrink-0" aria-label="Rename version">
+                  <span className="text-[10px] text-sepia-600 shrink-0">{t('wordsShort', { count: v.wordCount })}</span>
+                  <button onClick={() => startRename(v)} className="text-sepia-600 hover:text-sepia-700 shrink-0" aria-label={t('renameVersion')}>
                     <Pencil size={10} />
                   </button>
                   {!v.isCanonical && (
-                    <button onClick={() => onMarkCanonical(v.id)} className="text-sepia-600 hover:text-brass-600 shrink-0" aria-label="Mark as canonical" title="Mark as canonical">
+                    <button onClick={() => onMarkCanonical(v.id)} className="text-sepia-600 hover:text-brass-600 shrink-0" aria-label={t('markCanonical')} title={t('markCanonical')}>
                       <Crown size={10} />
                     </button>
                   )}
                   {versions.length > 1 && (
-                    <button onClick={() => onDelete(v.id)} className="text-sepia-600 hover:text-wax-500 shrink-0" aria-label="Delete version">
+                    <button onClick={() => onDelete(v.id)} className="text-sepia-600 hover:text-wax-500 shrink-0" aria-label={t('deleteVersion')}>
                       <Trash2 size={10} />
                     </button>
                   )}
@@ -106,14 +108,14 @@ export function VersionSwitcher({
             onClick={onCreate}
             className="flex-1 text-xs text-center py-1 rounded bg-parchment-200 hover:bg-parchment-300 text-sepia-700 transition-colors"
           >
-            New Version
+            {t('newVersion')}
           </button>
           {versions.length >= 2 && (
             <button
               onClick={onCompare}
               className="flex-1 text-xs text-center py-1 rounded bg-parchment-200 hover:bg-parchment-300 text-sepia-700 transition-colors"
             >
-              Compare
+              {t('compare')}
             </button>
           )}
         </div>

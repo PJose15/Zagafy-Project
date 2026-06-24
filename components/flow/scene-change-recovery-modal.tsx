@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 interface SceneChangeRecoveryModalProps {
   originalChapterTitle: string;
   onReturn: () => void;
@@ -11,6 +13,7 @@ export function SceneChangeRecoveryModal({
   onReturn,
   onStayHere,
 }: SceneChangeRecoveryModalProps) {
+  const t = useTranslations('flow.sceneChangeRecovery');
   return (
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center p-4"
@@ -26,23 +29,26 @@ export function SceneChangeRecoveryModal({
             <span className="text-3xl" aria-hidden="true">&#x1F500;</span>
           </div>
           <h3 id="recovery-title" className="text-lg font-serif font-semibold text-sepia-900 text-center">
-            Scene Change Expired
+            {t('title')}
           </h3>
           <p id="recovery-message" className="text-sm text-sepia-600 text-center leading-relaxed">
-            Your scene change timer ran out while you were away. Return to <strong className="text-sepia-700">{originalChapterTitle}</strong>?
+            {t.rich('message', {
+              title: originalChapterTitle,
+              b: (chunks) => <strong className="text-sepia-700">{chunks}</strong>,
+            })}
           </p>
           <div className="flex justify-center gap-3 pt-2">
             <button
               onClick={onStayHere}
               className="px-4 py-2 rounded-lg text-sm font-medium text-sepia-700 hover:bg-parchment-200 transition-colors"
             >
-              Stay here
+              {t('stayHere')}
             </button>
             <button
               onClick={onReturn}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-forest-700 text-cream-50 hover:bg-forest-600 transition-colors"
             >
-              Return to original
+              {t('returnOriginal')}
             </button>
           </div>
         </div>
