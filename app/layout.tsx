@@ -5,7 +5,6 @@ import { AppShell } from '@/components/app-shell';
 import { isAuthEnabled } from '@/lib/auth';
 import { ClerkProvider } from '@clerk/nextjs';
 import { PostHogProvider } from '@/components/analytics/posthog-provider';
-import { ConsentBanner } from '@/components/analytics/consent-banner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -52,7 +51,6 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
         </a>
         <PostHogProvider>
           <AppShell>{children}</AppShell>
-          <ConsentBanner />
         </PostHogProvider>
       </body>
     </html>
