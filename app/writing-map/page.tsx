@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { CarvedHeader, ParchmentCard, FeatureErrorBoundary } from '@/components/antiquarian';
 import { readSessions } from '@/lib/types/writing-session';
 import { CalendarHeatmap } from '@/components/writing-map/calendar-heatmap';
@@ -11,16 +12,21 @@ const WordsByHour = dynamic(
   () => import('@/components/writing-map/words-by-hour').then(m => m.WordsByHour),
   {
     ssr: false,
-    loading: () => (
-      <div
-        className="h-48 flex items-center justify-center text-sepia-600 text-sm"
-        data-testid="words-by-hour-loading"
-      >
-        Loading hourly patterns…
-      </div>
-    ),
+    loading: () => <WordsByHourLoading />,
   }
 );
+
+function WordsByHourLoading() {
+  const t = useTranslations('writingMap');
+  return (
+    <div
+      className="h-48 flex items-center justify-center text-sepia-600 text-sm"
+      data-testid="words-by-hour-loading"
+    >
+      {t('wordsByHourLoading')}
+    </div>
+  );
+}
 import { InsightCard } from '@/components/writing-map/insight-card';
 import { SessionsTable } from '@/components/writing-map/sessions-table';
 import { FlowTimeline } from '@/components/writing-map/flow-timeline';
@@ -34,6 +40,7 @@ import { XPBar } from '@/components/gamification/xp-bar';
 import { Flame, Zap } from 'lucide-react';
 
 export default function WritingMapPage() {
+  const t = useTranslations('writingMap');
   const [sessions, setSessions] = useState<WritingSession[]>([]);
   useEffect(() => { readSessions().then(setSessions); }, []);
   const { gamification, xpProgress, streak, streakWarning } = useGamification();
@@ -48,13 +55,13 @@ export default function WritingMapPage() {
   }, [sessions]);
 
   return (
-    <FeatureErrorBoundary title="Writing Map">
+    <FeatureErrorBoundary title={t('errorTitle')}>
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <CarvedHeader
-        title="Writing Map"
+        title={t('title')}
         subtitle={totalSessions > 0
-          ? `${totalSessions.toLocaleString()} session${totalSessions === 1 ? '' : 's'} — ${totalWords.toLocaleString()} words tracked`
-          : 'Your writing patterns will appear here as you write.'}
+          ? t('subtitleStats', { count: totalSessions, words: totalWords })
+          : t('subtitleEmpty')}
       />
 
       {/* Streak + XP Summary */}
@@ -70,22 +77,22 @@ export default function WritingMapPage() {
             />
           </div>
           <div className="text-xs font-mono text-sepia-600">
-            Longest streak: {streak.longestStreak}d
+            {t('longestStreak', { days: streak.longestStreak })}
           </div>
         </div>
       </ParchmentCard>
 
       {/* Section 1: Calendar Heatmap */}
-      <section aria-label="Writing activity heatmap">
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">Activity</h2>
+      <section aria-label={t('activityAria')}>
+        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('activityHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <CalendarHeatmap sessions={sessions} />
         </ParchmentCard>
       </section>
 
       {/* Section 2: Words by Hour */}
-      <section aria-label="Words written by hour of day">
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">Words by Hour</h2>
+      <section aria-label={t('wordsByHourAria')}>
+        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('wordsByHourHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <WordsByHour sessions={sessions} />
         </ParchmentCard>
@@ -93,8 +100,8 @@ export default function WritingMapPage() {
 
       {/* Section 3: Latest Flow Timeline */}
       {latestFlowSession && (
-        <section aria-label="Latest flow timeline">
-          <h2 className="text-lg font-medium text-sepia-800 mb-4">Latest Flow</h2>
+        <section aria-label={t('latestFlowAria')}>
+          <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('latestFlowHeading')}</h2>
           <FlowTimeline
             sessionStart={latestFlowSession.startedAt}
             sessionEnd={latestFlowSession.endedAt}
@@ -106,30 +113,30 @@ export default function WritingMapPage() {
       )}
 
       {/* Section 4: Insight Card */}
-      <section aria-label="Writing insight">
+      <section aria-label={t('insightAria')}>
         <InsightCard sessions={sessions} />
       </section>
 
       {/* Section 5: Voice Analytics */}
-      <section aria-label="Heteronym voice analytics">
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">Voice Analytics</h2>
+      <section aria-label={t('voiceAnalyticsAria')}>
+        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('voiceAnalyticsHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <HeteronymAnalytics />
         </ParchmentCard>
       </section>
 
       {/* Section 5b: Pacing Health (MP-08 / Phase 4.6) */}
-      <section aria-label="Chapter pacing health">
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">Pacing</h2>
+      <section aria-label={t('pacingAria')}>
+        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('pacingHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <PacingHealth />
         </ParchmentCard>
       </section>
 
       {/* Section 5c: Writer memory (MP-11 / Phase 4.12) */}
-      <section aria-label="What I've noticed about your craft">
+      <section aria-label={t('craftAria')}>
         <h2 className="text-lg font-medium text-sepia-800 mb-4">
-          What I&apos;ve noticed about your craft
+          {t('craftHeading')}
         </h2>
         <ParchmentCard className="p-4 md:p-6">
           <WriterMemoryCard />
@@ -137,8 +144,8 @@ export default function WritingMapPage() {
       </section>
 
       {/* Section 6: Sessions Table */}
-      <section aria-label="Recent writing sessions">
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">Recent Sessions</h2>
+      <section aria-label={t('recentSessionsAria')}>
+        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('recentSessionsHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <SessionsTable sessions={sessions} />
         </ParchmentCard>

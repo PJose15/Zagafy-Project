@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { springs } from '@/lib/animations';
 import { InkStampButton } from '@/components/antiquarian';
-import { CATEGORY_META, type WorldBibleSection, type WorldBibleCategory } from '@/lib/types/world-bible';
+import { type WorldBibleSection, type WorldBibleCategory } from '@/lib/types/world-bible';
 
 interface WorldBibleMergeModalProps {
   open: boolean;
@@ -16,6 +17,8 @@ interface WorldBibleMergeModalProps {
 }
 
 export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConfirm }: WorldBibleMergeModalProps) {
+  const t = useTranslations('bible');
+  const tCommon = useTranslations('common');
   const [selected, setSelected] = useState<Set<string>>(() => new Set(incoming.map((s) => s.id)));
 
   const toggle = (id: string) => {
@@ -66,16 +69,16 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
             <div className="flex items-center justify-between p-5 border-b border-sepia-300/30">
               <div>
                 <h2 id="merge-title" className="text-lg font-serif font-semibold text-sepia-900">
-                  Review Extracted Worldbuilding
+                  {t('reviewTitle')}
                 </h2>
                 <p className="text-sm text-sepia-600 mt-0.5">
-                  {incoming.length} section{incoming.length !== 1 ? 's' : ''} found — select which to add
+                  {t('foundSelect', { count: incoming.length })}
                 </p>
               </div>
               <button
                 onClick={onClose}
                 className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
-                aria-label="Close"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>
@@ -84,19 +87,18 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {Object.entries(grouped).map(([category, sections]) => {
-                const meta = CATEGORY_META[category as WorldBibleCategory];
                 const hasConflict = existingCategories.has(category as WorldBibleCategory);
 
                 return (
                   <div key={category}>
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="text-sm font-semibold text-sepia-700 uppercase tracking-wider">
-                        {meta?.label ?? category}
+                        {t(`category.${category}`)}
                       </h3>
                       {hasConflict && (
                         <span className="flex items-center gap-1 text-[10px] text-brass-700 bg-brass-500/10 px-1.5 py-0.5 rounded-full">
                           <AlertTriangle size={10} />
-                          has existing
+                          {t('hasExisting')}
                         </span>
                       )}
                     </div>
@@ -125,14 +127,14 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
             {/* Footer */}
             <div className="flex items-center justify-between p-5 border-t border-sepia-300/30">
               <span className="text-sm text-sepia-600">
-                {selected.size} of {incoming.length} selected
+                {t('selectedCount', { selected: selected.size, total: incoming.length })}
               </span>
               <div className="flex gap-3">
                 <InkStampButton variant="ghost" onClick={onClose}>
-                  Cancel
+                  {tCommon('cancel')}
                 </InkStampButton>
                 <InkStampButton onClick={handleConfirm} disabled={selected.size === 0}>
-                  Accept Selected
+                  {t('acceptSelected')}
                 </InkStampButton>
               </div>
             </div>

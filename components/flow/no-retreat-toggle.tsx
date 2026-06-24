@@ -1,6 +1,7 @@
 'use client';
 
 import { Shield } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface NoRetreatToggleProps {
   active: boolean;
@@ -8,6 +9,7 @@ interface NoRetreatToggleProps {
 }
 
 export function NoRetreatToggle({ active, onToggle }: NoRetreatToggleProps) {
+  const t = useTranslations('flow.noRetreatToggle');
   return (
     <button
       onClick={onToggle}
@@ -15,9 +17,9 @@ export function NoRetreatToggle({ active, onToggle }: NoRetreatToggleProps) {
         'relative text-sm transition-all p-1.5 rounded-lg hover:bg-parchment-200 group',
         active ? 'text-wax-500' : 'text-sepia-600',
       ].join(' ')}
-      aria-label={active ? 'Disable No-Retreat Mode' : 'Enable No-Retreat Mode'}
+      aria-label={active ? t('disable') : t('enable')}
       aria-pressed={active}
-      title={active ? 'No-Retreat Mode: ON — no deletions allowed' : 'No-Retreat Mode: OFF — click to enable'}
+      title={active ? t('titleOn') : t('titleOff')}
     >
       <Shield size={16} className={active ? 'no-retreat-pulse' : ''} />
     </button>

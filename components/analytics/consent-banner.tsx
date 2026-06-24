@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAnalyticsConsent } from '@/hooks/use-analytics-consent';
 
 /**
@@ -11,6 +12,7 @@ import { useAnalyticsConsent } from '@/hooks/use-analytics-consent';
  * is active (treated as "denied"). Choice persists in localStorage.
  */
 export function ConsentBanner() {
+  const t = useTranslations('consent');
   const { consent, dnt, setConsent } = useAnalyticsConsent();
 
   const handleAccept = useCallback(() => {
@@ -31,26 +33,24 @@ export function ConsentBanner() {
   return (
     <div
       role="dialog"
-      aria-label="Analytics consent"
+      aria-label={t('aria')}
       className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:max-w-md z-50 bg-parchment-100 border border-sepia-300/60 rounded-xl shadow-xl p-4 space-y-3"
     >
       <p className="text-sm text-sepia-800 leading-relaxed">
-        We use privacy-friendly analytics to understand how Zagafy is used and improve
-        the experience. No manuscript content is ever collected. You can change this
-        anytime in Settings.
+        {t('body')}
       </p>
       <div className="flex items-center gap-3">
         <button
           onClick={handleAccept}
           className="px-4 py-1.5 rounded-lg bg-brass-600 text-cream-50 text-sm font-medium hover:bg-brass-700 transition-colors"
         >
-          Accept
+          {t('accept')}
         </button>
         <button
           onClick={handleDecline}
           className="px-4 py-1.5 rounded-lg border border-sepia-300/60 text-sepia-700 text-sm font-medium hover:bg-parchment-200 transition-colors"
         >
-          Decline
+          {t('decline')}
         </button>
       </div>
     </div>

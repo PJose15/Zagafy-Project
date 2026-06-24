@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Activity, X } from 'lucide-react';
 import type { Character, CharacterStateHistory } from '@/lib/store';
 
@@ -9,6 +10,7 @@ interface HistoryTabProps {
 }
 
 export function HistoryTab({ editForm, setEditForm }: HistoryTabProps) {
+  const t = useTranslations('characters');
   const history = editForm.stateHistory || [];
 
   const updateHistory = (newHist: CharacterStateHistory[]) => {
@@ -18,7 +20,7 @@ export function HistoryTab({ editForm, setEditForm }: HistoryTabProps) {
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
       <div className="flex items-center justify-between mb-4">
-        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider">State Evolution Timeline</label>
+        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('timelineLabel')}</label>
         <button
           onClick={() => {
             const newEvent: CharacterStateHistory = {
@@ -31,7 +33,7 @@ export function HistoryTab({ editForm, setEditForm }: HistoryTabProps) {
           }}
           className="text-xs bg-parchment-200 hover:bg-parchment-300 text-sepia-700 px-3 py-1.5 rounded-lg transition-colors"
         >
-          + Log State Change
+          {t('logChange')}
         </button>
       </div>
 
@@ -50,7 +52,7 @@ export function HistoryTab({ editForm, setEditForm }: HistoryTabProps) {
                     updateHistory(history.map((item, i) => (i === idx ? { ...item, context: e.target.value } : item)));
                   }}
                   className="bg-transparent border-b border-sepia-300/50 px-1 py-0.5 text-sm font-medium text-sepia-800 focus:outline-none focus:border-brass-500/60"
-                  placeholder="Context (e.g., Chapter 3)"
+                  placeholder={t('contextPlaceholder')}
                 />
                 <button
                   onClick={() => {
@@ -59,7 +61,7 @@ export function HistoryTab({ editForm, setEditForm }: HistoryTabProps) {
                     updateHistory(newHist);
                   }}
                   className="text-sepia-600 hover:text-wax-500"
-                  aria-label="Remove history entry"
+                  aria-label={t('removeEntry')}
                 >
                   <X size={14} />
                 </button>
@@ -70,14 +72,14 @@ export function HistoryTab({ editForm, setEditForm }: HistoryTabProps) {
                   updateHistory(history.map((item, i) => (i === idx ? { ...item, changes: e.target.value } : item)));
                 }}
                 className="w-full bg-parchment-100 border border-sepia-300/50 rounded-lg px-3 py-2 text-sm text-sepia-600 font-sans resize-y focus:outline-none focus:ring-2 focus:ring-brass-400/40"
-                placeholder="What changed internally?"
+                placeholder={t('changesPlaceholder')}
               />
             </div>
           </div>
         ))}
         {history.length === 0 && (
           <div className="text-center py-6 text-sm text-sepia-600">
-            No state changes logged yet.
+            {t('noHistory')}
           </div>
         )}
       </div>

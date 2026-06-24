@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useAiStatus } from '@/hooks/use-ai-status';
 
 /**
@@ -11,6 +12,7 @@ import { useAiStatus } from '@/hooks/use-ai-status';
  * surfaced inline in the chat panel.
  */
 export function AiStatusBanner() {
+  const t = useTranslations('aiStatus');
   const status = useAiStatus();
   const [dismissed, setDismissed] = useState(false);
 
@@ -23,17 +25,15 @@ export function AiStatusBanner() {
     >
       <AlertTriangle size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-wax-600" />
       <div className="flex-1">
-        <p className="font-medium">AI features are unavailable on this deployment.</p>
+        <p className="font-medium">{t('title')}</p>
         <p className="text-xs text-wax-700 mt-0.5">
-          <code className="font-mono">GEMINI_API_KEY</code> isn&apos;t configured. Set it in your
-          hosting provider&apos;s environment variables (and redeploy) to enable the assistant,
-          coaching, publishing, and ingestion.
+          {t.rich('body', { code: (chunks) => <code className="font-mono">{chunks}</code> })}
         </p>
       </div>
       <button
         onClick={() => setDismissed(true)}
         className="p-1 rounded text-wax-700 hover:bg-wax-500/15 shrink-0"
-        aria-label="Dismiss"
+        aria-label={t('dismiss')}
       >
         <X size={15} aria-hidden="true" />
       </button>

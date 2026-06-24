@@ -31,6 +31,7 @@ import {
   Quote,
   Minus,
 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { isLexicalJson, buildLexicalStateFromText } from '@/lib/editor/serialization';
 
 // ─── Types ───
@@ -88,6 +89,7 @@ function buildInitialConfig(content: string, readOnly: boolean) {
 
 function ToolbarPlugin() {
   const [editor] = useLexicalComposerContext();
+  const t = useTranslations('manuscriptEditor');
 
   const formatText = (format: TextFormatType) => {
     editor.dispatchCommand(FORMAT_TEXT_COMMAND, format);
@@ -137,25 +139,25 @@ function ToolbarPlugin() {
 
   return (
     <div className="flex items-center gap-0.5 px-3 py-2 border-b border-sepia-300/30 bg-parchment-100/80 rounded-t-lg flex-wrap">
-      <button type="button" onClick={() => formatText('bold')} className={btnClass} aria-label="Bold" title="Bold (Ctrl+B)">
+      <button type="button" onClick={() => formatText('bold')} className={btnClass} aria-label={t('bold')} title={t('boldTitle')}>
         <Bold size={15} />
       </button>
-      <button type="button" onClick={() => formatText('italic')} className={btnClass} aria-label="Italic" title="Italic (Ctrl+I)">
+      <button type="button" onClick={() => formatText('italic')} className={btnClass} aria-label={t('italic')} title={t('italicTitle')}>
         <Italic size={15} />
       </button>
-      <button type="button" onClick={() => formatText('underline')} className={btnClass} aria-label="Underline" title="Underline (Ctrl+U)">
+      <button type="button" onClick={() => formatText('underline')} className={btnClass} aria-label={t('underline')} title={t('underlineTitle')}>
         <Underline size={15} />
       </button>
-      <button type="button" onClick={() => formatText('strikethrough')} className={btnClass} aria-label="Strikethrough" title="Strikethrough">
+      <button type="button" onClick={() => formatText('strikethrough')} className={btnClass} aria-label={t('strikethrough')} title={t('strikethroughTitle')}>
         <Strikethrough size={15} />
       </button>
 
       <div className={dividerClass} />
 
-      <button type="button" onClick={insertBlockQuote} className={btnClass} aria-label="Block Quote" title="Block Quote">
+      <button type="button" onClick={insertBlockQuote} className={btnClass} aria-label={t('blockQuote')} title={t('blockQuoteTitle')}>
         <Quote size={15} />
       </button>
-      <button type="button" onClick={insertSceneBreak} className={btnClass} aria-label="Scene Break" title="Scene Break (* * *)">
+      <button type="button" onClick={insertSceneBreak} className={btnClass} aria-label={t('sceneBreak')} title={t('sceneBreakTitle')}>
         <Minus size={15} />
       </button>
     </div>
@@ -325,11 +327,13 @@ export function ManuscriptEditor({
   onChange,
   onPlainTextChange,
   spellCheck = true,
-  placeholder = 'Begin writing...',
+  placeholder,
   className = '',
   readOnly = false,
   id,
 }: ManuscriptEditorProps) {
+  const t = useTranslations('manuscriptEditor');
+  const placeholderText = placeholder ?? t('placeholder');
   const editorRef = useRef<LexicalEditor | null>(null);
 
   const initialConfig = useMemo(
@@ -365,12 +369,12 @@ export function ManuscriptEditor({
                 id={id}
                 className="min-h-[16rem] max-h-[70vh] overflow-y-auto px-4 py-3 text-sepia-800 font-serif text-base leading-relaxed outline-none custom-scrollbar manuscript-editor-content"
                 spellCheck={spellCheck}
-                aria-label="Manuscript content editor"
+                aria-label={t('contentAria')}
               />
             }
             placeholder={
               <div className="absolute top-3 left-4 text-sepia-600 pointer-events-none font-serif text-base">
-                {placeholder}
+                {placeholderText}
               </div>
             }
             ErrorBoundary={LexicalErrorBoundary}

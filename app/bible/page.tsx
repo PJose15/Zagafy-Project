@@ -3,6 +3,7 @@
 import { useStory } from '@/lib/store';
 import { getPlainText } from '@/lib/editor/serialization';
 import { useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import {
   Save, Book, Settings2, Plus, Globe, Scroll, Wand2,
@@ -18,7 +19,7 @@ import { WorldBibleSectionCard } from '@/components/bible/WorldBibleSectionCard'
 import { WorldBibleMergeModal } from '@/components/bible/WorldBibleMergeModal';
 import { WorldBibleReviewQueue } from '@/components/bible/WorldBibleReviewQueue';
 import {
-  WORLD_BIBLE_CATEGORIES, CATEGORY_META,
+  WORLD_BIBLE_CATEGORIES,
   type WorldBibleSection, type WorldBibleCategory,
 } from '@/lib/types/world-bible';
 import type { LucideIcon } from 'lucide-react';
@@ -35,6 +36,7 @@ const CATEGORY_ICONS: Record<WorldBibleCategory, LucideIcon> = {
 };
 
 export default function BiblePage() {
+  const t = useTranslations('bible');
   const { state, updateField } = useStory();
   const [title, setTitle] = useState(state.title);
   const [synopsis, setSynopsis] = useState(state.synopsis);
@@ -73,7 +75,7 @@ export default function BiblePage() {
       .filter((ch) => ch.title?.trim() && ch.content.trim());
 
     if (validChapters.length === 0) {
-      throw new Error('No chapters with written content. Add chapter text on the Manuscript page before extracting.');
+      throw new Error(t('noChaptersError'));
     }
 
     const res = await fetch('/api/extract-world-bible', {
@@ -93,7 +95,7 @@ export default function BiblePage() {
       setMergeModalOpen(true);
     }
     return sections.length;
-  }, [state.chapters]);
+  }, [state.chapters, t]);
 
   const handleMergeConfirm = useCallback((selected: WorldBibleSection[]) => {
     updateField('world_bible', [...state.world_bible, ...selected]);
@@ -147,14 +149,14 @@ export default function BiblePage() {
     const newSection: WorldBibleSection = {
       id: crypto.randomUUID(),
       category: selectedCategory,
-      title: 'New Section',
+      title: t('newSection'),
       content: '',
       source: 'user-written',
       lastUpdated: new Date().toISOString(),
       canonStatus: 'draft',
     };
     updateField('world_bible', [...state.world_bible, newSection]);
-  }, [selectedCategory, state.world_bible, updateField]);
+  }, [selectedCategory, state.world_bible, updateField, t]);
 
   const categorySections = state.world_bible.filter((s) => s.category === selectedCategory);
 
@@ -164,8 +166,8 @@ export default function BiblePage() {
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-10">
       <CarvedHeader
-        title="Story Bible"
-        subtitle="The core foundation of your narrative universe."
+        title={t('title')}
+        subtitle={t('subtitle')}
         icon={<Book size={24} />}
         actions={
           <div className="flex items-center gap-3">
@@ -180,11 +182,11 @@ export default function BiblePage() {
                 onClick={() => setReviewQueueOpen(true)}
                 icon={<AlertTriangle size={16} />}
               >
-                Review {draftCount} draft{draftCount === 1 ? '' : 's'}
+                {t('reviewDrafts', { count: draftCount })}
               </InkStampButton>
             )}
             <InkStampButton onClick={handleSave} disabled={isSaving} icon={<Save size={18} />}>
-              {isSaving ? 'Saved!' : 'Save Changes'}
+              {isSaving ? t('saved') : t('saveChanges')}
             </InkStampButton>
           </div>
         }
@@ -198,26 +200,26 @@ export default function BiblePage() {
         {/* Existing core fields */}
         <section className="space-y-4 border-l-4 border-l-brass-500 pl-5">
           <label className="block text-sm font-medium text-sepia-600 uppercase tracking-wider">
-            Project Title
+            {t('projectTitleLabel')}
           </label>
           <ParchmentInput
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="text-2xl font-serif font-semibold py-4"
-            placeholder="Enter your story's title..."
+            placeholder={t('projectTitlePlaceholder')}
           />
         </section>
 
         <section className="space-y-4 border-l-4 border-l-forest-700 pl-5">
           <label className="block text-sm font-medium text-sepia-600 uppercase tracking-wider">
-            Global Synopsis
+            {t('synopsisLabel')}
           </label>
           <ParchmentTextarea
             value={synopsis}
             onChange={(e) => setSynopsis(e.target.value)}
             className="py-4 h-48"
-            placeholder="Write a high-level summary of your plot..."
+            placeholder={t('synopsisPlaceholder')}
           />
         </section>
 
@@ -226,40 +228,40 @@ export default function BiblePage() {
         <section className="space-y-4 border-l-4 border-l-sepia-500 pl-5">
           <label className="flex items-center gap-2 text-sm font-medium text-sepia-600 uppercase tracking-wider">
             <Settings2 size={16} />
-            Style & Tone Profile
+            {t('styleLabel')}
           </label>
           <ParchmentTextarea
             value={styleProfile}
             onChange={(e) => setStyleProfile(e.target.value)}
             className="py-4 h-32"
-            placeholder="Describe your writing style, tone, and pacing (e.g., 'Dark fantasy, fast-paced action, lyrical descriptions')..."
+            placeholder={t('stylePlaceholder')}
           />
         </section>
 
         <section className="space-y-4 border-l-4 border-l-brass-700 pl-5">
           <label className="block text-sm font-medium text-sepia-600 uppercase tracking-wider">
-            Current Author Intent
+            {t('intentLabel')}
           </label>
           <ParchmentTextarea
             value={authorIntent}
             onChange={(e) => setAuthorIntent(e.target.value)}
             className="py-4 h-32"
-            placeholder="What are you currently working toward? (e.g., 'Building tension for the betrayal reveal in Chapter 12', 'Developing the romantic subplot before the climax')..."
+            placeholder={t('intentPlaceholder')}
           />
-          <p className="text-xs text-sepia-600">This guides the AI assistant with your current creative direction. Update it as your focus changes.</p>
+          <p className="text-xs text-sepia-600">{t('intentHint')}</p>
         </section>
       </motion.div>
 
       <DecorativeDivider variant="flourish" className="my-6" />
 
       {/* World Bible Section */}
-      <FeatureErrorBoundary title="World Bible">
+      <FeatureErrorBoundary title={t('worldBibleHeading')}>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <h2 className="text-xl font-serif font-semibold text-sepia-900 mb-4">World Bible</h2>
+          <h2 className="text-xl font-serif font-semibold text-sepia-900 mb-4">{t('worldBibleHeading')}</h2>
 
           {extractError && (
             <div
@@ -268,13 +270,13 @@ export default function BiblePage() {
             >
               <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-800" />
               <div className="flex-1">
-                <p className="font-semibold">Extraction failed</p>
+                <p className="font-semibold">{t('extractionFailed')}</p>
                 <p className="mt-1 whitespace-pre-wrap text-red-900/90">{extractError}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setExtractError(null)}
-                aria-label="Dismiss error"
+                aria-label={t('dismissError')}
                 className="shrink-0 rounded-full p-1 text-red-800 hover:bg-red-900/10"
               >
                 <X size={16} />
@@ -287,7 +289,6 @@ export default function BiblePage() {
             <div className="space-y-1">
               {WORLD_BIBLE_CATEGORIES.map((cat) => {
                 const Icon = CATEGORY_ICONS[cat];
-                const meta = CATEGORY_META[cat];
                 const count = categoryCount(cat);
                 const isActive = cat === selectedCategory;
 
@@ -303,7 +304,7 @@ export default function BiblePage() {
                     ].join(' ')}
                   >
                     <Icon size={16} className={isActive ? 'text-brass-700' : 'text-sepia-600'} />
-                    <span className="flex-1">{meta.label}</span>
+                    <span className="flex-1">{t(`category.${cat}`)}</span>
                     {count > 0 && (
                       <span className={[
                         'text-xs px-1.5 py-0.5 rounded-full',
@@ -323,8 +324,8 @@ export default function BiblePage() {
                 <ParchmentCard padding="lg">
                   <EmptyState
                     variant="bible"
-                    title={`No ${CATEGORY_META[selectedCategory].label.toLowerCase()} entries yet`}
-                    subtitle="Extract from your manuscript or add a section manually."
+                    title={t('noEntries', { category: t(`category.${selectedCategory}`).toLowerCase() })}
+                    subtitle={t('emptySubtitle')}
                   />
                 </ParchmentCard>
               ) : (
@@ -344,7 +345,7 @@ export default function BiblePage() {
                 icon={<Plus size={16} />}
                 onClick={handleAddSection}
               >
-                Add Section
+                {t('addSection')}
               </InkStampButton>
             </div>
           </div>

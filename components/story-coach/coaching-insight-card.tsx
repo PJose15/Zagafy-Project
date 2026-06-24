@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { ParchmentCard } from '@/components/antiquarian';
 import { X, Zap, Eye, Heart, Clock, Sparkles, MessageSquare } from 'lucide-react';
 import type { CoachingInsight, CoachingLens } from '@/lib/story-coach/types';
@@ -34,6 +35,7 @@ interface CoachingInsightCardProps {
 }
 
 export function CoachingInsightCard({ insight, onDismiss }: CoachingInsightCardProps) {
+  const t = useTranslations('storyCoach');
   const Icon = LENS_ICONS[insight.lens];
   const iconColor = LENS_COLORS[insight.lens];
 
@@ -42,7 +44,7 @@ export function CoachingInsightCard({ insight, onDismiss }: CoachingInsightCardP
       <button
         onClick={onDismiss}
         className="absolute top-2 right-2 p-0.5 text-sepia-600 hover:text-sepia-600 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label="Dismiss insight"
+        aria-label={t('dismissAria')}
       >
         <X size={12} />
       </button>
@@ -52,10 +54,10 @@ export function CoachingInsightCard({ insight, onDismiss }: CoachingInsightCardP
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-medium uppercase tracking-wider text-sepia-600">
-              {insight.lens}
+              {t(`lens.${insight.lens}`)}
             </span>
             <span className={`text-[9px] px-1.5 py-0.5 rounded border ${PRIORITY_STYLES[insight.priority]}`}>
-              {insight.priority}
+              {t(`priority.${insight.priority}`)}
             </span>
           </div>
           <p className="text-xs text-sepia-700 leading-relaxed mb-2">{insight.observation}</p>

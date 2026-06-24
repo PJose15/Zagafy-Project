@@ -1,12 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckSquare, Square, ArrowUp, Archive } from 'lucide-react';
 import { springs } from '@/lib/animations';
 import { InkStampButton } from '@/components/antiquarian';
 import { useConfirm } from '@/components/antiquarian/parchment-modal';
-import { CATEGORY_META, type WorldBibleSection } from '@/lib/types/world-bible';
+import { type WorldBibleSection } from '@/lib/types/world-bible';
 
 interface WorldBibleReviewQueueProps {
   open: boolean;
@@ -30,6 +31,7 @@ export function WorldBibleReviewQueue({
   onPromote,
   onDiscard,
 }: WorldBibleReviewQueueProps) {
+  const t = useTranslations('bible');
   const drafts = useMemo(
     () => sections.filter(s => s.canonStatus === 'draft'),
     [sections],
@@ -79,12 +81,9 @@ export function WorldBibleReviewQueue({
     const ids = selectedIds();
     if (ids.length === 0) return;
     const ok = await confirm({
-      title: 'Promote to confirmed canon?',
-      message:
-        `${ids.length} section${ids.length === 1 ? '' : 's'} will be enforced as canon by ` +
-        'the AI assistant. Future suggestions, audits, and chat responses will treat ' +
-        'them as authoritative truth.',
-      confirmLabel: 'Promote all',
+      title: t('promoteTitle'),
+      message: t('promoteAllMessage', { count: ids.length }),
+      confirmLabel: t('promoteAllConfirm'),
     });
     if (!ok) return;
     onPromote(ids, 'confirmed');
@@ -95,9 +94,9 @@ export function WorldBibleReviewQueue({
     const ids = selectedIds();
     if (ids.length === 0) return;
     const ok = await confirm({
-      title: 'Discard selected drafts?',
-      message: `${ids.length} draft section${ids.length === 1 ? ' will be' : 's will be'} marked as discarded. You can restore them later.`,
-      confirmLabel: 'Discard',
+      title: t('discardSelectedTitle'),
+      message: t('discardSelectedMessage', { count: ids.length }),
+      confirmLabel: t('discardConfirm'),
       variant: 'danger',
     });
     if (!ok) return;
@@ -129,18 +128,18 @@ export function WorldBibleReviewQueue({
             <div className="flex items-center justify-between p-5 border-b border-sepia-300/30">
               <div>
                 <h2 id="review-queue-title" className="text-lg font-serif font-semibold text-sepia-900">
-                  Draft Review Queue
+                  {t('queueTitle')}
                 </h2>
                 <p className="text-sm text-sepia-600 mt-0.5">
                   {drafts.length === 0
-                    ? 'Nothing waiting — every section has a settled status.'
-                    : `${drafts.length} draft section${drafts.length === 1 ? '' : 's'} across the world bible.`}
+                    ? t('nothingWaiting')
+                    : t('queueDraftCount', { count: drafts.length })}
                 </p>
               </div>
               <button
                 onClick={onClose}
                 className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
-                aria-label="Close"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>
@@ -149,7 +148,7 @@ export function WorldBibleReviewQueue({
             <div className="flex-1 overflow-y-auto p-5 space-y-3">
               {drafts.length === 0 ? (
                 <p className="text-sm text-sepia-600 italic">
-                  Run extraction or add new sections to populate the queue.
+                  {t('emptyHint')}
                 </p>
               ) : (
                 <>
@@ -158,10 +157,9 @@ export function WorldBibleReviewQueue({
                     onClick={toggleAll}
                     className="text-xs text-sepia-600 hover:text-sepia-900 underline"
                   >
-                    {selected.size === drafts.length ? 'Deselect all' : 'Select all'}
+                    {selected.size === drafts.length ? t('deselectAll') : t('selectAll')}
                   </button>
                   {drafts.map(s => {
-                    const meta = CATEGORY_META[s.category];
                     return (
                       <button
                         key={s.id}
@@ -175,7 +173,7 @@ export function WorldBibleReviewQueue({
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-wider text-sepia-600">
-                              {meta?.label ?? s.category}
+                              {t(`category.${s.category}`)}
                             </span>
                             {s.source === 'ai-extracted' && (
                               <span className="text-[10px] bg-brass-500/10 text-brass-700 px-1.5 py-0.5 rounded-full">AI</span>
@@ -196,7 +194,7 @@ export function WorldBibleReviewQueue({
             {drafts.length > 0 && (
               <div className="flex items-center justify-between p-5 border-t border-sepia-300/30 gap-3 flex-wrap">
                 <span className="text-sm text-sepia-600">
-                  {selected.size} of {drafts.length} selected
+                  {t('selectedCount', { selected: selected.size, total: drafts.length })}
                 </span>
                 <div className="flex items-center gap-2">
                   <InkStampButton
@@ -206,7 +204,7 @@ export function WorldBibleReviewQueue({
                     onClick={handleDiscard}
                     disabled={selected.size === 0}
                   >
-                    Discard
+                    {t('discard')}
                   </InkStampButton>
                   <InkStampButton
                     variant="ghost"
@@ -215,7 +213,7 @@ export function WorldBibleReviewQueue({
                     onClick={handlePromoteFlexible}
                     disabled={selected.size === 0}
                   >
-                    To Flexible
+                    {t('toFlexible')}
                   </InkStampButton>
                   <InkStampButton
                     variant="primary"
@@ -224,7 +222,7 @@ export function WorldBibleReviewQueue({
                     onClick={handlePromoteConfirmed}
                     disabled={selected.size === 0}
                   >
-                    To Confirmed
+                    {t('toConfirmed')}
                   </InkStampButton>
                 </div>
               </div>

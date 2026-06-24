@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { WritingSession, FlowScore } from '@/lib/types/writing-session';
 import { FlowMomentsBadge } from './flow-moments-badge';
@@ -21,14 +22,14 @@ interface SessionsTableProps {
   sessions: WritingSession[];
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, locale: string): string {
   const d = new Date(iso);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 }
 
 function formatDuration(startIso: string, endIso: string): string {
@@ -50,6 +51,8 @@ function truncate(str: string, max: number): string {
 
 export function SessionsTable({ sessions }: SessionsTableProps) {
   const router = useRouter();
+  const t = useTranslations('writingStats.sessions');
+  const locale = useLocale();
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
@@ -102,7 +105,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
   if (sessions.length === 0) {
     return (
       <div className="text-center py-8 text-sepia-600 text-sm" data-testid="sessions-table-empty">
-        No writing sessions recorded yet.
+        {t('empty')}
       </div>
     );
   }
@@ -112,22 +115,22 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-sepia-300/50 text-sepia-600">
-            <th className="text-left py-2 px-3 font-medium">Project</th>
+            <th className="text-left py-2 px-3 font-medium">{t('project')}</th>
             <th className="text-left py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('date')}>
-              Date {renderSortIcon("date")}
+              {t('date')} {renderSortIcon("date")}
             </th>
-            <th className="text-left py-2 px-3 font-medium">Time</th>
+            <th className="text-left py-2 px-3 font-medium">{t('time')}</th>
             <th className="text-right py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('words')}>
-              Words {renderSortIcon("words")}
+              {t('words')} {renderSortIcon("words")}
             </th>
             <th className="text-right py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('duration')}>
-              Duration {renderSortIcon("duration")}
+              {t('duration')} {renderSortIcon("duration")}
             </th>
             <th className="text-center py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('autoFlow')}>
-              Auto Flow {renderSortIcon("autoFlow")}
+              {t('autoFlow')} {renderSortIcon("autoFlow")}
             </th>
             <th className="text-center py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('flow')}>
-              Flow {renderSortIcon("flow")}
+              {t('flow')} {renderSortIcon("flow")}
             </th>
           </tr>
         </thead>
@@ -142,8 +145,8 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
               <td className="py-2 px-3 text-sepia-700" title={session.projectName}>
                 {truncate(session.projectName, 20)}
               </td>
-              <td className="py-2 px-3 text-sepia-800">{formatDate(session.startedAt)}</td>
-              <td className="py-2 px-3 text-sepia-600">{formatTime(session.startedAt)}</td>
+              <td className="py-2 px-3 text-sepia-800">{formatDate(session.startedAt, locale)}</td>
+              <td className="py-2 px-3 text-sepia-600">{formatTime(session.startedAt, locale)}</td>
               <td className="py-2 px-3 text-right text-sepia-800">+{session.wordsAdded.toLocaleString()}</td>
               <td className="py-2 px-3 text-right text-sepia-600">{formatDuration(session.startedAt, session.endedAt)}</td>
               <td className="py-2 px-3 text-center">
@@ -155,7 +158,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
                         session.autoFlowScore >= 40 ? 'text-amber-600' :
                         'text-sepia-600'
                       }`}
-                      title={`Auto flow: ${session.autoFlowScore}/100`}
+                      title={t('autoFlowTitle', { score: session.autoFlowScore })}
                     >
                       {session.autoFlowScore}
                     </span>
@@ -167,7 +170,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
               </td>
               <td className="py-2 px-3 text-center">
                 {session.flowScore ? (
-                  <span title={`Flow: ${session.flowScore}/5`}>{FLOW_EMOJIS[session.flowScore]}</span>
+                  <span title={t('flowTitle', { score: session.flowScore })}>{FLOW_EMOJIS[session.flowScore]}</span>
                 ) : (
                   <span className="text-sepia-600">—</span>
                 )}

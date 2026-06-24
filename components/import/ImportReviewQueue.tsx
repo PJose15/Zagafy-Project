@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Check,
@@ -94,18 +95,22 @@ interface ImportReviewQueueProps {
 
 // ─── Category metadata ───
 
-const CATEGORY_META: Record<EntityCategory, { label: string; icon: React.ReactNode; color: string }> = {
-  chapters: { label: 'Chapters', icon: <BookOpen size={14} />, color: 'text-sepia-700' },
-  characters: { label: 'Characters', icon: <Users size={14} />, color: 'text-forest-700' },
-  active_conflicts: { label: 'Conflicts', icon: <Swords size={14} />, color: 'text-wax-600' },
-  timeline_events: { label: 'Timeline', icon: <Clock size={14} />, color: 'text-brass-700' },
-  world_rules: { label: 'World Rules', icon: <Globe size={14} />, color: 'text-sepia-600' },
-  locations: { label: 'Locations', icon: <MapPin size={14} />, color: 'text-forest-600' },
-  themes: { label: 'Themes', icon: <Palette size={14} />, color: 'text-brass-600' },
-  canon_items: { label: 'Canon Items', icon: <Shield size={14} />, color: 'text-sepia-700' },
-  open_loops: { label: 'Open Loops', icon: <CircleDot size={14} />, color: 'text-brass-700' },
-  foreshadowing_elements: { label: 'Foreshadowing', icon: <Eye size={14} />, color: 'text-forest-700' },
+// Category labels live in the `importPage.category` i18n namespace, keyed by the
+// same EntityCategory keys. Icons + colors stay here.
+const CATEGORY_META: Record<EntityCategory, { icon: React.ReactNode; color: string }> = {
+  chapters: { icon: <BookOpen size={14} />, color: 'text-sepia-700' },
+  characters: { icon: <Users size={14} />, color: 'text-forest-700' },
+  active_conflicts: { icon: <Swords size={14} />, color: 'text-wax-600' },
+  timeline_events: { icon: <Clock size={14} />, color: 'text-brass-700' },
+  world_rules: { icon: <Globe size={14} />, color: 'text-sepia-600' },
+  locations: { icon: <MapPin size={14} />, color: 'text-forest-600' },
+  themes: { icon: <Palette size={14} />, color: 'text-brass-600' },
+  canon_items: { icon: <Shield size={14} />, color: 'text-sepia-700' },
+  open_loops: { icon: <CircleDot size={14} />, color: 'text-brass-700' },
+  foreshadowing_elements: { icon: <Eye size={14} />, color: 'text-forest-700' },
 };
+
+type Translator = (key: string, values?: Record<string, string | number>) => string;
 
 // ─── Helpers ───
 
@@ -125,25 +130,25 @@ function confidenceColor(c: number): string {
   return 'text-wax-600 bg-wax-500/10';
 }
 
-function confidenceLabel(c: number): string {
-  if (c >= 0.9) return 'High';
-  if (c >= 0.7) return 'Good';
-  if (c >= 0.5) return 'Medium';
-  return 'Low';
+function confidenceLevelKey(c: number): 'high' | 'good' | 'medium' | 'low' {
+  if (c >= 0.9) return 'high';
+  if (c >= 0.7) return 'good';
+  if (c >= 0.5) return 'medium';
+  return 'low';
 }
 
-function getEntityLabel(cat: EntityCategory, entity: AnyEntity): string {
+function getEntityLabel(cat: EntityCategory, entity: AnyEntity, t: Translator): string {
   switch (cat) {
-    case 'chapters': return (entity as ExtractedChapter).title || 'Untitled Chapter';
-    case 'characters': return (entity as ExtractedCharacter).name || 'Unknown';
-    case 'active_conflicts': return (entity as ExtractedConflict).title || (entity as ExtractedConflict).conflict_type || 'Conflict';
-    case 'timeline_events': return (entity as ExtractedTimelineEvent).event || 'Event';
-    case 'world_rules': return (entity as ExtractedWorldRule).scope || (entity as ExtractedWorldRule).title || 'Rule';
-    case 'locations': return (entity as ExtractedLocation).name || 'Location';
-    case 'themes': return (entity as ExtractedTheme).theme || 'Theme';
-    case 'canon_items': return (entity as ExtractedCanonItem).description?.slice(0, 60) || 'Canon Item';
-    case 'open_loops': return (entity as ExtractedOpenLoop).description?.slice(0, 60) || 'Open Loop';
-    case 'foreshadowing_elements': return (entity as ExtractedForeshadowing).clue || (entity as ExtractedForeshadowing).description?.slice(0, 60) || 'Foreshadowing';
+    case 'chapters': return (entity as ExtractedChapter).title || t('entityFallback.chapter');
+    case 'characters': return (entity as ExtractedCharacter).name || t('entityFallback.character');
+    case 'active_conflicts': return (entity as ExtractedConflict).title || (entity as ExtractedConflict).conflict_type || t('entityFallback.conflict');
+    case 'timeline_events': return (entity as ExtractedTimelineEvent).event || t('entityFallback.event');
+    case 'world_rules': return (entity as ExtractedWorldRule).scope || (entity as ExtractedWorldRule).title || t('entityFallback.rule');
+    case 'locations': return (entity as ExtractedLocation).name || t('entityFallback.location');
+    case 'themes': return (entity as ExtractedTheme).theme || t('entityFallback.theme');
+    case 'canon_items': return (entity as ExtractedCanonItem).description?.slice(0, 60) || t('entityFallback.canonItem');
+    case 'open_loops': return (entity as ExtractedOpenLoop).description?.slice(0, 60) || t('entityFallback.openLoop');
+    case 'foreshadowing_elements': return (entity as ExtractedForeshadowing).clue || (entity as ExtractedForeshadowing).description?.slice(0, 60) || t('entityFallback.foreshadowing');
   }
 }
 
@@ -173,6 +178,7 @@ function getEntitySubtitle(cat: EntityCategory, entity: AnyEntity): string {
 function buildReviewItems(
   data: ExtractedData,
   existingNames: ImportReviewQueueProps['existingNames'],
+  t: Translator,
 ): ReviewItem[] {
   const items: ReviewItem[] = [];
   let idx = 0;
@@ -184,7 +190,7 @@ function buildReviewItems(
     matchKey: (e: T) => string,
   ) => {
     for (const entity of entities || []) {
-      const label = getEntityLabel(category, entity);
+      const label = getEntityLabel(category, entity, t);
       const dup = findDuplicate(matchKey(entity), matchList);
       items.push({
         id: `${category}-${idx++}`,
@@ -221,9 +227,11 @@ export function ImportReviewQueue({
   onConfirm,
   onCancel,
 }: ImportReviewQueueProps) {
+  const t = useTranslations('importPage');
+  const tCommon = useTranslations('common');
   const initialItems = useMemo(
-    () => buildReviewItems(extractedData, existingNames),
-    [extractedData, existingNames],
+    () => buildReviewItems(extractedData, existingNames, t),
+    [extractedData, existingNames, t],
   );
 
   const [items, setItems] = useState<ReviewItem[]>(initialItems);
@@ -264,7 +272,7 @@ export function ImportReviewQueue({
 
   const updateItemEntity = (id: string, entity: AnyEntity) => {
     setItems(prev => prev.map(item =>
-      item.id === id ? { ...item, entity, label: getEntityLabel(item.category, entity) } : item,
+      item.id === id ? { ...item, entity, label: getEntityLabel(item.category, entity, t) } : item,
     ));
     setEditingId(null);
   };
@@ -307,23 +315,23 @@ export function ImportReviewQueue({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-6 text-sm">
             <span className="text-sepia-600">
-              <strong className="text-sepia-800">{stats.total}</strong> entities extracted
+              {t.rich('entitiesExtracted', { count: stats.total, b: (c) => <strong className="text-sepia-800">{c}</strong> })}
             </span>
             <span className="text-forest-700">
               <Check size={14} className="inline -mt-0.5 mr-1" />
-              {stats.accepted} accepted
+              {t('acceptedCount', { count: stats.accepted })}
             </span>
             <span className="text-wax-600">
               <X size={14} className="inline -mt-0.5 mr-1" />
-              {stats.rejected} rejected
+              {t('rejectedCount', { count: stats.rejected })}
             </span>
             <span className="text-sepia-600">
-              {stats.pending} pending
+              {t('pendingCount', { count: stats.pending })}
             </span>
             {stats.duplicates > 0 && (
               <span className="text-brass-700">
                 <AlertTriangle size={14} className="inline -mt-0.5 mr-1" />
-                {stats.duplicates} potential duplicates
+                {t('duplicatesCount', { count: stats.duplicates })}
               </span>
             )}
           </div>
@@ -332,12 +340,12 @@ export function ImportReviewQueue({
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
               className="text-xs bg-parchment-200 border border-sepia-300/50 rounded-lg px-2 py-1.5 text-sepia-700 outline-none"
-              aria-label="Filter by status"
+              aria-label={t('filterAria')}
             >
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
-              <option value="rejected">Rejected</option>
+              <option value="all">{t('filterAll')}</option>
+              <option value="pending">{t('filterPending')}</option>
+              <option value="accepted">{t('filterAccepted')}</option>
+              <option value="rejected">{t('filterRejected')}</option>
             </select>
             <Filter size={14} className="text-sepia-600" />
           </div>
@@ -349,20 +357,20 @@ export function ImportReviewQueue({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-brass-600" />
-            <span className="text-sm text-sepia-700">Auto-accept high-confidence items</span>
+            <span className="text-sm text-sepia-700">{t('autoAccept')}</span>
           </div>
           <div className="flex items-center gap-2">
-            {[0.85, 0.9, 0.95].map(t => (
+            {[0.85, 0.9, 0.95].map(threshold => (
               <button
-                key={t}
-                onClick={() => applyAutoAccept(t)}
+                key={threshold}
+                onClick={() => applyAutoAccept(threshold)}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                  autoAcceptThreshold === t
+                  autoAcceptThreshold === threshold
                     ? 'bg-forest-600/10 border-forest-600/30 text-forest-700'
                     : 'bg-parchment-200 border-sepia-300/50 text-sepia-600 hover:border-brass-500/50'
                 }`}
               >
-                {`≥ ${Math.round(t * 100)}%`}
+                {t('threshold', { percent: Math.round(threshold * 100) })}
               </button>
             ))}
           </div>
@@ -372,13 +380,13 @@ export function ImportReviewQueue({
       {/* Bulk actions */}
       <div className="flex items-center gap-2">
         <InkStampButton variant="ghost" size="sm" onClick={() => bulkAction('all', 'accepted')}>
-          Accept All
+          {t('acceptAll')}
         </InkStampButton>
         <InkStampButton variant="ghost" size="sm" onClick={() => bulkAction('all', 'rejected')}>
-          Reject All
+          {t('rejectAll')}
         </InkStampButton>
         <InkStampButton variant="ghost" size="sm" onClick={() => bulkAction('all', 'pending')}>
-          Reset All
+          {t('resetAll')}
         </InkStampButton>
       </div>
 
@@ -402,18 +410,18 @@ export function ImportReviewQueue({
               <div className="flex items-center gap-2">
                 {isExpanded ? <ChevronDown size={16} className="text-sepia-600" /> : <ChevronRight size={16} className="text-sepia-600" />}
                 <span className={`${meta.color}`}>{meta.icon}</span>
-                <h4 className="text-sm font-medium text-sepia-700 uppercase tracking-wider">{meta.label}</h4>
+                <h4 className="text-sm font-medium text-sepia-700 uppercase tracking-wider">{t(`category.${category}`)}</h4>
                 <span className="bg-parchment-200 text-sepia-600 px-2 py-0.5 rounded text-xs">
                   {catItems.length}
                 </span>
                 {catAccepted > 0 && (
                   <span className="text-[10px] text-forest-700 bg-forest-600/10 px-1.5 py-0.5 rounded-full">
-                    {catAccepted} accepted
+                    {t('acceptedCount', { count: catAccepted })}
                   </span>
                 )}
                 {catRejected > 0 && (
                   <span className="text-[10px] text-wax-600 bg-wax-500/10 px-1.5 py-0.5 rounded-full">
-                    {catRejected} rejected
+                    {t('rejectedCount', { count: catRejected })}
                   </span>
                 )}
               </div>
@@ -423,14 +431,14 @@ export function ImportReviewQueue({
                   onClick={(e) => { e.stopPropagation(); bulkAction(category, 'accepted'); }}
                   className="text-[10px] text-forest-700 hover:bg-forest-600/10 px-2 py-1 rounded"
                 >
-                  Accept all
+                  {t('catAcceptAll')}
                 </button>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); bulkAction(category, 'rejected'); }}
                   className="text-[10px] text-wax-600 hover:bg-wax-500/10 px-2 py-1 rounded"
                 >
-                  Reject all
+                  {t('catRejectAll')}
                 </button>
               </div>
             </button>
@@ -457,6 +465,8 @@ export function ImportReviewQueue({
                         onEdit={() => setEditingId(editingId === item.id ? null : item.id)}
                         onSaveEdit={(entity) => updateItemEntity(item.id, entity)}
                         onCancelEdit={() => setEditingId(null)}
+                        t={t}
+                        tCommon={tCommon}
                       />
                     ))}
                   </ul>
@@ -470,16 +480,16 @@ export function ImportReviewQueue({
       {/* Footer actions */}
       <div className="flex items-center justify-between pt-6 border-t border-sepia-300/50">
         <div className="text-sm text-sepia-600">
-          {stats.accepted} of {stats.total} entities will be imported
+          {t('willImport', { accepted: stats.accepted, total: stats.total })}
           {stats.pending > 0 && (
             <span className="text-brass-700 ml-2">
-              ({stats.pending} still pending — pending items will not be imported)
+              {t('stillPending', { count: stats.pending })}
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
           <InkStampButton variant="ghost" onClick={onCancel}>
-            Cancel
+            {tCommon('cancel')}
           </InkStampButton>
           <InkStampButton
             variant="primary"
@@ -487,7 +497,7 @@ export function ImportReviewQueue({
             disabled={stats.accepted === 0}
             icon={<Check size={18} />}
           >
-            Import {stats.accepted} Accepted
+            {t('importAccepted', { count: stats.accepted })}
           </InkStampButton>
         </div>
       </div>
@@ -506,6 +516,8 @@ interface ReviewItemRowProps {
   onEdit: () => void;
   onSaveEdit: (entity: AnyEntity) => void;
   onCancelEdit: () => void;
+  t: Translator;
+  tCommon: Translator;
 }
 
 function ReviewItemRow({
@@ -517,6 +529,8 @@ function ReviewItemRow({
   onEdit,
   onSaveEdit,
   onCancelEdit,
+  t,
+  tCommon,
 }: ReviewItemRowProps) {
   const statusStyles = {
     pending: 'border-sepia-300/30 bg-parchment-200/50',
@@ -532,7 +546,7 @@ function ReviewItemRow({
           type="button"
           onClick={item.status === 'accepted' ? onReset : onAccept}
           className="mt-0.5 shrink-0"
-          aria-label={item.status === 'accepted' ? 'Reset to pending' : 'Accept'}
+          aria-label={item.status === 'accepted' ? t('resetToPending') : t('accept')}
         >
           {item.status === 'accepted' ? (
             <CheckSquare size={18} className="text-forest-700" />
@@ -549,20 +563,20 @@ function ReviewItemRow({
             </span>
             {/* Confidence badge */}
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${confidenceColor(item.confidence)}`}>
-              {confidenceLabel(item.confidence)} ({Math.round(item.confidence * 100)}%)
+              {t('confidenceBadge', { label: t(`confidence.${confidenceLevelKey(item.confidence)}`), percent: Math.round(item.confidence * 100) })}
             </span>
             {/* Duplicate warning */}
             {item.duplicateOf && (
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brass-400/15 text-brass-700 flex items-center gap-1">
-                <AlertTriangle size={10} /> Exists: &ldquo;{item.duplicateOf}&rdquo;
+                <AlertTriangle size={10} /> {t('exists', { name: item.duplicateOf })}
               </span>
             )}
             {/* Status badge */}
             {item.status === 'accepted' && (
-              <span className="text-[10px] text-forest-700 bg-forest-600/10 px-1.5 py-0.5 rounded-full">Accepted</span>
+              <span className="text-[10px] text-forest-700 bg-forest-600/10 px-1.5 py-0.5 rounded-full">{t('acceptedBadge')}</span>
             )}
             {item.status === 'rejected' && (
-              <span className="text-[10px] text-wax-600 bg-wax-500/10 px-1.5 py-0.5 rounded-full">Rejected</span>
+              <span className="text-[10px] text-wax-600 bg-wax-500/10 px-1.5 py-0.5 rounded-full">{t('rejectedBadge')}</span>
             )}
           </div>
           {item.subtitle && (
@@ -575,6 +589,8 @@ function ReviewItemRow({
               item={item}
               onSave={onSaveEdit}
               onCancel={onCancelEdit}
+              t={t}
+              tCommon={tCommon}
             />
           )}
         </div>
@@ -585,7 +601,7 @@ function ReviewItemRow({
             type="button"
             onClick={onEdit}
             className="p-1.5 text-sepia-600 hover:text-brass-600 hover:bg-brass-400/10 rounded transition-colors"
-            aria-label="Edit"
+            aria-label={t('edit')}
           >
             <Edit3 size={14} />
           </button>
@@ -594,7 +610,7 @@ function ReviewItemRow({
               type="button"
               onClick={onAccept}
               className="p-1.5 text-sepia-600 hover:text-forest-600 hover:bg-forest-600/10 rounded transition-colors"
-              aria-label="Accept"
+              aria-label={t('accept')}
             >
               <Check size={14} />
             </button>
@@ -604,7 +620,7 @@ function ReviewItemRow({
               type="button"
               onClick={onReject}
               className="p-1.5 text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10 rounded transition-colors"
-              aria-label="Reject"
+              aria-label={t('reject')}
             >
               <X size={14} />
             </button>
@@ -621,9 +637,11 @@ interface InlineEditFormProps {
   item: ReviewItem;
   onSave: (entity: AnyEntity) => void;
   onCancel: () => void;
+  t: Translator;
+  tCommon: Translator;
 }
 
-function InlineEditForm({ item, onSave, onCancel }: InlineEditFormProps) {
+function InlineEditForm({ item, onSave, onCancel, t, tCommon }: InlineEditFormProps) {
   const [draft, setDraft] = useState<Record<string, unknown>>(
     () => ({ ...item.entity }) as Record<string, unknown>,
   );
@@ -641,10 +659,10 @@ function InlineEditForm({ item, onSave, onCancel }: InlineEditFormProps) {
       exit={{ height: 0, opacity: 0 }}
       className="mt-3 pt-3 border-t border-sepia-300/30 space-y-2"
     >
-      {fields.map(({ key, label }) => (
+      {fields.map((key) => (
         <div key={key}>
           <label className="text-[10px] text-sepia-600 uppercase tracking-wider block mb-0.5">
-            {label}
+            {t(`field.${key}`)}
           </label>
           {typeof draft[key] === 'string' && (draft[key] as string).length > 80 ? (
             <textarea
@@ -668,14 +686,14 @@ function InlineEditForm({ item, onSave, onCancel }: InlineEditFormProps) {
           onClick={handleSave}
           className="text-xs text-forest-700 hover:bg-forest-600/10 px-3 py-1.5 rounded border border-forest-600/30"
         >
-          Save
+          {tCommon('save')}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="text-xs text-sepia-600 hover:bg-sepia-300/20 px-3 py-1.5 rounded"
         >
-          Cancel
+          {tCommon('cancel')}
         </button>
       </div>
     </motion.div>
@@ -684,60 +702,19 @@ function InlineEditForm({ item, onSave, onCancel }: InlineEditFormProps) {
 
 // ─── Editable fields per category ───
 
-function getEditableFields(category: EntityCategory): { key: string; label: string }[] {
+// Returns the editable field keys per category; labels are resolved via the
+// `importPage.field.*` i18n namespace at render time.
+function getEditableFields(category: EntityCategory): string[] {
   switch (category) {
-    case 'chapters':
-      return [
-        { key: 'title', label: 'Title' },
-        { key: 'summary', label: 'Summary' },
-      ];
-    case 'characters':
-      return [
-        { key: 'name', label: 'Name' },
-        { key: 'role', label: 'Role' },
-        { key: 'description', label: 'Description' },
-      ];
-    case 'active_conflicts':
-      return [
-        { key: 'title', label: 'Title' },
-        { key: 'description', label: 'Description' },
-        { key: 'status', label: 'Status' },
-      ];
-    case 'timeline_events':
-      return [
-        { key: 'event', label: 'Event' },
-        { key: 'immediate_effect', label: 'Immediate Effect' },
-        { key: 'latent_effect', label: 'Latent Effect' },
-      ];
-    case 'world_rules':
-      return [
-        { key: 'scope', label: 'Scope' },
-        { key: 'rule', label: 'Rule' },
-      ];
-    case 'locations':
-      return [
-        { key: 'name', label: 'Name' },
-        { key: 'description', label: 'Description' },
-        { key: 'importance', label: 'Importance' },
-      ];
-    case 'themes':
-      return [
-        { key: 'theme', label: 'Theme' },
-      ];
-    case 'canon_items':
-      return [
-        { key: 'category', label: 'Category' },
-        { key: 'description', label: 'Description' },
-      ];
-    case 'open_loops':
-      return [
-        { key: 'description', label: 'Description' },
-        { key: 'status', label: 'Status' },
-      ];
-    case 'foreshadowing_elements':
-      return [
-        { key: 'clue', label: 'Clue' },
-        { key: 'description', label: 'Description' },
-      ];
+    case 'chapters': return ['title', 'summary'];
+    case 'characters': return ['name', 'role', 'description'];
+    case 'active_conflicts': return ['title', 'description', 'status'];
+    case 'timeline_events': return ['event', 'immediate_effect', 'latent_effect'];
+    case 'world_rules': return ['scope', 'rule'];
+    case 'locations': return ['name', 'description', 'importance'];
+    case 'themes': return ['theme'];
+    case 'canon_items': return ['category', 'description'];
+    case 'open_loops': return ['description', 'status'];
+    case 'foreshadowing_elements': return ['clue', 'description'];
   }
 }

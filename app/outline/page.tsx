@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   ChevronUp, ChevronDown, LayoutGrid, List, Edit3, BookOpen, Zap, Trash2,
 } from 'lucide-react';
@@ -11,7 +12,7 @@ import {
   WaxSealBadge, InkStampButton, ParchmentTextarea,
 } from '@/components/antiquarian';
 import { useConfirm } from '@/components/antiquarian/parchment-modal';
-import { readingTimeLabel } from '@/lib/analytics/pacing';
+import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
 import { wordCount } from '@/lib/editor/serialization';
 
 type Layout = 'grid' | 'list';
@@ -24,14 +25,10 @@ function lengthBucket(words: number): 'short' | 'medium' | 'long' {
   return 'long';
 }
 
-const LENGTH_LABELS: Record<LengthFilter, string> = {
-  all: 'All lengths',
-  short: 'Short (<1.5k)',
-  medium: 'Medium (1.5k–4k)',
-  long: 'Long (4k+)',
-};
-
 export default function OutlinePage() {
+  const t = useTranslations('outline');
+  const tCommon = useTranslations('common');
+  const readingTime = useReadingTimeLabel();
   const { state, updateField } = useStory();
   const router = useRouter();
   const { confirm } = useConfirm();
@@ -74,9 +71,9 @@ export default function OutlinePage() {
 
   const handleDelete = async (chapter: Chapter) => {
     const ok = await confirm({
-      title: 'Delete chapter?',
-      message: `Are you sure you want to delete "${chapter.title}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('deleteTitle'),
+      message: t('deleteMessage', { title: chapter.title }),
+      confirmLabel: tCommon('delete'),
       variant: 'danger',
     });
     if (!ok) return;
@@ -111,11 +108,11 @@ export default function OutlinePage() {
       : 'flex flex-col gap-3';
 
   return (
-    <FeatureErrorBoundary title="Outline">
+    <FeatureErrorBoundary title={t('errorTitle')}>
       <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
         <CarvedHeader
-          title="Outline"
-          subtitle="A bird's-eye corkboard of every chapter."
+          title={t('title')}
+          subtitle={t('subtitle')}
           icon={<LayoutGrid size={24} />}
           actions={
             <div className="flex items-center gap-1 rounded-lg bg-parchment-200 p-0.5 border border-sepia-300/40">
@@ -125,10 +122,10 @@ export default function OutlinePage() {
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
                   layout === 'grid' ? 'bg-parchment-100 text-sepia-900 shadow-sm' : 'text-sepia-600 hover:text-sepia-800'
                 }`}
-                aria-label="Grid layout"
+                aria-label={t('gridAria')}
                 aria-pressed={layout === 'grid'}
               >
-                <LayoutGrid size={12} /> Grid
+                <LayoutGrid size={12} /> {t('grid')}
               </button>
               <button
                 type="button"
@@ -136,18 +133,18 @@ export default function OutlinePage() {
                 className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
                   layout === 'list' ? 'bg-parchment-100 text-sepia-900 shadow-sm' : 'text-sepia-600 hover:text-sepia-800'
                 }`}
-                aria-label="List layout"
+                aria-label={t('listAria')}
                 aria-pressed={layout === 'list'}
               >
-                <List size={12} /> List
+                <List size={12} /> {t('list')}
               </button>
             </div>
           }
         />
 
         {/* Filter chips */}
-        <div className="flex items-center gap-3 flex-wrap" role="toolbar" aria-label="Outline filters">
-          <span className="text-xs uppercase tracking-wider text-sepia-600">Canon:</span>
+        <div className="flex items-center gap-3 flex-wrap" role="toolbar" aria-label={t('filtersAria')}>
+          <span className="text-xs uppercase tracking-wider text-sepia-600">{t('canonLabel')}</span>
           <div className="flex items-center gap-1 flex-wrap">
             {(['all', 'confirmed', 'flexible', 'draft', 'discarded'] as CanonFilter[]).map(s => (
               <button
@@ -161,11 +158,11 @@ export default function OutlinePage() {
                 }`}
                 aria-pressed={canonFilter === s}
               >
-                {s === 'all' ? 'all' : s}
+                {t(`canonChip.${s}`)}
               </button>
             ))}
           </div>
-          <span className="text-xs uppercase tracking-wider text-sepia-600 ml-3">Length:</span>
+          <span className="text-xs uppercase tracking-wider text-sepia-600 ml-3">{t('lengthLabel')}</span>
           <div className="flex items-center gap-1 flex-wrap">
             {(['all', 'short', 'medium', 'long'] as LengthFilter[]).map(s => (
               <button
@@ -178,30 +175,30 @@ export default function OutlinePage() {
                     : 'border-sepia-300/40 text-sepia-600 hover:text-sepia-800 hover:border-sepia-400/60'
                 }`}
                 aria-pressed={lengthFilter === s}
-                title={LENGTH_LABELS[s]}
+                title={t(`lengthDesc.${s}`)}
               >
-                {s}
+                {t(`lengthChip.${s}`)}
               </button>
             ))}
           </div>
           <span className="text-xs text-sepia-600 ml-auto">
-            {filtered.length} of {state.chapters.length} chapter{state.chapters.length === 1 ? '' : 's'}
+            {t('count', { filtered: filtered.length, total: state.chapters.length })}
           </span>
         </div>
 
         {state.chapters.length === 0 && (
           <EmptyState
             variant="manuscript"
-            title="No chapters yet"
-            subtitle="Add chapters on the manuscript page; they'll show up here as cards."
-            action={{ label: 'Open Manuscript', href: '/manuscript' }}
+            title={t('emptyTitle')}
+            subtitle={t('emptySubtitle')}
+            action={{ label: t('openManuscript'), href: '/manuscript' }}
           />
         )}
 
         {state.chapters.length > 0 && filtered.length === 0 && (
           <ParchmentCard padding="lg">
             <p className="text-sm text-sepia-600 italic">
-              No chapters match the current filters.
+              {t('noMatch')}
             </p>
           </ParchmentCard>
         )}
@@ -219,9 +216,9 @@ export default function OutlinePage() {
               <div className="flex items-center gap-2 text-xs text-sepia-700 font-mono">
                 <span>#{originalIndex + 1}</span>
                 <span>·</span>
-                <span>{wordCount.toLocaleString()} words</span>
+                <span>{t('words', { count: wordCount })}</span>
                 <span>·</span>
-                <span>{readingTimeLabel(wordCount)}</span>
+                <span>{readingTime(wordCount)}</span>
               </div>
 
               {editingSummaryId === chapter.id ? (
@@ -230,15 +227,15 @@ export default function OutlinePage() {
                     value={summaryDraft}
                     onChange={e => setSummaryDraft(e.target.value)}
                     className="h-24 text-sm"
-                    placeholder="One-line summary…"
+                    placeholder={t('summaryPlaceholder')}
                     autoFocus
                   />
                   <div className="flex items-center gap-2">
                     <InkStampButton size="sm" variant="primary" onClick={handleSaveSummary}>
-                      Save
+                      {tCommon('save')}
                     </InkStampButton>
                     <InkStampButton size="sm" variant="ghost" onClick={handleCancelEditSummary}>
-                      Cancel
+                      {tCommon('cancel')}
                     </InkStampButton>
                   </div>
                 </div>
@@ -247,9 +244,9 @@ export default function OutlinePage() {
                   type="button"
                   onClick={() => handleStartEditSummary(chapter)}
                   className="text-left text-sm text-sepia-700 hover:text-sepia-900 leading-relaxed line-clamp-4 min-h-[2.5em]"
-                  aria-label={`Edit summary for ${chapter.title}`}
+                  aria-label={t('editSummaryAria', { title: chapter.title })}
                 >
-                  {chapter.summary || <span className="italic text-sepia-700">No summary yet — tap to add.</span>}
+                  {chapter.summary || <span className="italic text-sepia-700">{t('noSummary')}</span>}
                 </button>
               )}
 
@@ -260,7 +257,7 @@ export default function OutlinePage() {
                     onClick={() => handleReorder(originalIndex, -1)}
                     disabled={originalIndex === 0}
                     className="p-1 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
-                    aria-label={`Move ${chapter.title} up`}
+                    aria-label={t('moveUpAria', { title: chapter.title })}
                   >
                     <ChevronUp size={14} />
                   </button>
@@ -269,7 +266,7 @@ export default function OutlinePage() {
                     onClick={() => handleReorder(originalIndex, 1)}
                     disabled={originalIndex === state.chapters.length - 1}
                     className="p-1 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
-                    aria-label={`Move ${chapter.title} down`}
+                    aria-label={t('moveDownAria', { title: chapter.title })}
                   >
                     <ChevronDown size={14} />
                   </button>
@@ -279,8 +276,8 @@ export default function OutlinePage() {
                     type="button"
                     onClick={() => router.push('/manuscript')}
                     className="p-1.5 rounded text-sepia-600 hover:text-brass-600 hover:bg-brass-500/10"
-                    aria-label="Open in manuscript editor"
-                    title="Open in Manuscript"
+                    aria-label={t('openManuscriptAria')}
+                    title={t('openManuscriptTitle')}
                   >
                     <BookOpen size={14} />
                   </button>
@@ -288,8 +285,8 @@ export default function OutlinePage() {
                     type="button"
                     onClick={() => router.push('/flow')}
                     className="p-1.5 rounded text-sepia-600 hover:text-forest-700 hover:bg-forest-700/10"
-                    aria-label="Open in flow mode"
-                    title="Open in Flow Mode"
+                    aria-label={t('openFlowAria')}
+                    title={t('openFlowTitle')}
                   >
                     <Zap size={14} />
                   </button>
@@ -297,8 +294,8 @@ export default function OutlinePage() {
                     type="button"
                     onClick={() => handleStartEditSummary(chapter)}
                     className="p-1.5 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30"
-                    aria-label="Edit summary"
-                    title="Edit summary"
+                    aria-label={t('editSummaryShort')}
+                    title={t('editSummaryShort')}
                   >
                     <Edit3 size={14} />
                   </button>
@@ -306,8 +303,8 @@ export default function OutlinePage() {
                     type="button"
                     onClick={() => handleDelete(chapter)}
                     className="p-1.5 rounded text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10"
-                    aria-label="Delete chapter"
-                    title="Delete chapter"
+                    aria-label={t('deleteChapterAria')}
+                    title={t('deleteChapterTitle')}
                   >
                     <Trash2 size={14} />
                   </button>

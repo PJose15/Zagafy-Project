@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Users } from 'lucide-react';
 import { useStory, Character } from '@/lib/store';
@@ -12,6 +13,8 @@ import { CharacterEditForm, EditTab } from './_components/character-edit-form';
 import { CharacterViewCard } from './_components/character-view-card';
 
 export default function CharactersPage() {
+  const t = useTranslations('characters');
+  const tCommon = useTranslations('common');
   const { state, updateField } = useStory();
   const { confirm } = useConfirm();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -29,7 +32,7 @@ export default function CharactersPage() {
       const relationships = (char.dynamicRelationships || []).map((r) => {
         const target = state.characters.find((c) => c.id === r.targetId);
         return {
-          targetName: target?.name || 'Unknown',
+          targetName: target?.name || 'Unknown', // internal payload to AI; not shown in UI
           trustLevel: r.trustLevel,
           tensionLevel: r.tensionLevel,
           dynamics: r.dynamics,
@@ -64,7 +67,7 @@ export default function CharactersPage() {
       setAnalysisResult((prev) => ({ ...prev, [char.id]: data.analysis }));
     } catch (error) {
       console.error(error);
-      setAnalysisResult((prev) => ({ ...prev, [char.id]: 'Failed to generate analysis.' }));
+      setAnalysisResult((prev) => ({ ...prev, [char.id]: t('analysisFailedResult') }));
     } finally {
       setAnalyzingId(null);
     }
@@ -73,8 +76,8 @@ export default function CharactersPage() {
   const handleAddCharacter = () => {
     const newCharacter: Character = {
       id: crypto.randomUUID(),
-      name: 'New Character',
-      role: 'Protagonist',
+      name: t('newCharacterName'),
+      role: t('newCharacterRole'),
       description: '',
       coreIdentity: '',
       relationships: '',
@@ -127,9 +130,9 @@ export default function CharactersPage() {
   const handleDelete = async (id: string) => {
     const char = state.characters.find((c) => c.id === id);
     const confirmed = await confirm({
-      title: 'Delete character?',
-      message: `Are you sure you want to delete "${char?.name || 'this character'}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('deleteTitle'),
+      message: t('deleteMessage', { name: char?.name || t('deleteFallback') }),
+      confirmLabel: tCommon('delete'),
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -147,13 +150,13 @@ export default function CharactersPage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <motion.div {...fadeUp}>
         <CarvedHeader
-          title="Characters"
-          subtitle="Manage your cast, their roles, and relationships."
+          title={t('title')}
+          subtitle={t('subtitle')}
           icon={<Users size={24} />}
           actions={
             <BrassButton onClick={handleAddCharacter}>
               <Plus size={18} />
-              Add Character
+              {t('addCharacter')}
             </BrassButton>
           }
         />
@@ -205,8 +208,8 @@ export default function CharactersPage() {
         {state.characters.length === 0 && (
           <div className="col-span-full text-center py-20">
             <Users size={48} className="mx-auto text-sepia-300 mb-4" aria-hidden="true" />
-            <p className="text-sepia-600 text-lg">Your cast is empty.</p>
-            <p className="text-sepia-600 text-sm mt-2">Add your first character to begin building your world.</p>
+            <p className="text-sepia-600 text-lg">{t('emptyTitle')}</p>
+            <p className="text-sepia-600 text-sm mt-2">{t('emptySubtitle')}</p>
           </div>
         )}
       </div>

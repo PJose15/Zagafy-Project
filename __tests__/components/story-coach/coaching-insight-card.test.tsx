@@ -51,7 +51,8 @@ describe('CoachingInsightCard', () => {
 
   it('renders lens label', () => {
     render(<CoachingInsightCard {...defaultProps} />);
-    expect(screen.getByText('tension')).toBeDefined();
+    // Lens now renders the localized label ("Tension") instead of the raw enum.
+    expect(screen.getByText('Tension')).toBeDefined();
   });
 
   it('renders priority badge', () => {

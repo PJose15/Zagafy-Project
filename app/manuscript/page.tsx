@@ -2,19 +2,21 @@
 
 import { useStory, Chapter, CanonStatus } from '@/lib/store';
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy, Search } from 'lucide-react';
 import { readVersions } from '@/lib/types/chapter-version';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '@/components/confirm-dialog';
 import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
-import { readingTimeLabel } from '@/lib/analytics/pacing';
+import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
 import { FindReplaceDialog } from '@/components/manuscript/FindReplaceDialog';
 import { ManuscriptEditor } from '@/components/editor/ManuscriptEditor';
 import { getPlainText, wordCount, isLexicalJson } from '@/lib/editor/serialization';
 import { addVersion } from '@/lib/types/chapter-version';
 
 function VersionCount({ chapterId }: { chapterId: string }) {
+  const t = useTranslations('manuscript');
   const [count, setCount] = useState(0);
   useEffect(() => {
     readVersions(chapterId).then(v => setCount(v.length));
@@ -22,12 +24,16 @@ function VersionCount({ chapterId }: { chapterId: string }) {
   if (count === 0) return null;
   return (
     <span className="inline-flex items-center gap-0.5 text-sepia-600">
-      <BookCopy size={10} /> {count} version{count !== 1 ? 's' : ''}
+      <BookCopy size={10} /> {t('versionCount', { count })}
     </span>
   );
 }
 
 export default function ManuscriptPage() {
+  const t = useTranslations('manuscript');
+  const tStatus = useTranslations('canonStatus');
+  const tCommon = useTranslations('common');
+  const readingTime = useReadingTimeLabel();
   const { state, updateField } = useStory();
   const { confirm } = useConfirm();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -38,7 +44,7 @@ export default function ManuscriptPage() {
   const handleAddChapter = () => {
     const newChapter: Chapter = {
       id: crypto.randomUUID(),
-      title: `Chapter ${state.chapters.length + 1}`,
+      title: t('newChapterTitle', { n: state.chapters.length + 1 }),
       content: '',
       summary: '',
       canonStatus: 'draft',
@@ -86,9 +92,9 @@ export default function ManuscriptPage() {
   const handleDelete = async (id: string) => {
     const chapter = state.chapters.find(c => c.id === id);
     const confirmed = await confirm({
-      title: 'Delete chapter?',
-      message: `Are you sure you want to delete "${chapter?.title || 'this chapter'}"? This cannot be undone.`,
-      confirmLabel: 'Delete',
+      title: t('deleteTitle'),
+      message: t('deleteMessage', { title: chapter?.title || t('deleteFallback') }),
+      confirmLabel: tCommon('delete'),
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -151,13 +157,13 @@ export default function ManuscriptPage() {
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <CarvedHeader
-        title="Manuscript"
+        title={t('title')}
         subtitle={
           <>
-            Write and organize your chapters.
+            {t('subtitleBase')}
             {state.chapters.length > 0 && (
               <span className="ml-2 text-sepia-600 font-mono">
-                {totalWordCount.toLocaleString()} total words · {readingTimeLabel(totalWordCount)}
+                {t('subtitleStats', { count: totalWordCount, readingTime: readingTime(totalWordCount) })}
               </span>
             )}
           </>
@@ -167,13 +173,13 @@ export default function ManuscriptPage() {
             <BrassButton
               onClick={() => setFindOpen(true)}
               icon={<Search size={16} />}
-              aria-label="Find and replace"
-              title="Find and replace (Cmd/Ctrl + F)"
+              aria-label={t('findAria')}
+              title={t('findTitle')}
             >
-              Find
+              {t('find')}
             </BrassButton>
             <BrassButton onClick={handleAddChapter} icon={<Plus size={18} />}>
-              New Chapter
+              {t('newChapter')}
             </BrassButton>
           </div>
         }
@@ -196,35 +202,35 @@ export default function ManuscriptPage() {
                     value={editForm.title || ''}
                     onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                     className="text-xl font-serif font-semibold"
-                    placeholder="Chapter Title"
+                    placeholder={t('titlePlaceholder')}
                   />
                   <ManuscriptEditor
                     initialContent={editForm.content || ''}
                     onChange={(json) => setEditForm((f) => ({ ...f, content: json }))}
-                    placeholder="Start writing your chapter here..."
+                    placeholder={t('editorPlaceholder')}
                   />
                   <ParchmentTextarea
                     value={editForm.summary || ''}
                     onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
                     className="h-24"
-                    placeholder="Brief summary for the Story Bible..."
+                    placeholder={t('summaryPlaceholder')}
                   />
                   <div className="flex items-center gap-3 pt-2">
                     <ParchmentSelect
                       value={editForm.canonStatus || 'draft'}
                       onChange={(e) => setEditForm({ ...editForm, canonStatus: e.target.value as CanonStatus })}
                     >
-                      <option value="confirmed">Confirmed Canon</option>
-                      <option value="flexible">Flexible Canon</option>
-                      <option value="draft">Draft Idea</option>
-                      <option value="discarded">Discarded</option>
+                      <option value="confirmed">{tStatus('confirmed')}</option>
+                      <option value="flexible">{tStatus('flexible')}</option>
+                      <option value="draft">{tStatus('draft')}</option>
+                      <option value="discarded">{tStatus('discarded')}</option>
                     </ParchmentSelect>
                     <div className="flex-1" />
                     <InkStampButton variant="ghost" onClick={handleCancel} icon={<X size={18} />}>
-                      Cancel
+                      {tCommon('cancel')}
                     </InkStampButton>
                     <InkStampButton variant="primary" onClick={handleSave} icon={<Save size={18} />}>
-                      Save Chapter
+                      {t('saveChapter')}
                     </InkStampButton>
                   </div>
                 </div>
@@ -242,7 +248,7 @@ export default function ManuscriptPage() {
                         onClick={() => handleMoveUp(index)}
                         disabled={index === 0}
                         className="p-1.5 text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
-                        aria-label={`Move ${chapter.title} up`}
+                        aria-label={t('moveUpAria', { title: chapter.title })}
                       >
                         <ChevronUp size={16} />
                       </button>
@@ -250,7 +256,7 @@ export default function ManuscriptPage() {
                         onClick={() => handleMoveDown(index)}
                         disabled={index === state.chapters.length - 1}
                         className="p-1.5 text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
-                        aria-label={`Move ${chapter.title} down`}
+                        aria-label={t('moveDownAria', { title: chapter.title })}
                       >
                         <ChevronDown size={16} />
                       </button>
@@ -260,30 +266,30 @@ export default function ManuscriptPage() {
                           setEditForm(chapter);
                         }}
                         className="p-2 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
-                        aria-label={`Edit ${chapter.title}`}
+                        aria-label={t('editAria', { title: chapter.title })}
                       >
                         <Edit3 size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(chapter.id)}
                         className="p-2 text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
-                        aria-label={`Delete ${chapter.title}`}
+                        aria-label={t('deleteAria', { title: chapter.title })}
                       >
                         <Trash2 size={18} />
                       </button>
                     </div>
                   </div>
                   <div className="prose prose-sepia max-w-none font-serif text-sepia-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                    {getPlainText(chapter.content) || <span className="text-sepia-600 italic">Empty chapter...</span>}
+                    {getPlainText(chapter.content) || <span className="text-sepia-600 italic">{t('emptyChapter')}</span>}
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-sepia-600 font-mono">
-                    <span>{wordCount(chapter.content).toLocaleString()} words</span>
-                    <span>{readingTimeLabel(wordCount(chapter.content))}</span>
+                    <span>{t('words', { count: wordCount(chapter.content) })}</span>
+                    <span>{readingTime(wordCount(chapter.content))}</span>
                     <VersionCount chapterId={chapter.id} />
                   </div>
                   {chapter.summary && (
                     <div className="mt-6 pt-4 border-t border-sepia-300/50">
-                      <p className="text-sm font-medium text-sepia-600 uppercase tracking-wider mb-2">Summary</p>
+                      <p className="text-sm font-medium text-sepia-600 uppercase tracking-wider mb-2">{t('summaryLabel')}</p>
                       <p className="text-sm text-sepia-600">{chapter.summary}</p>
                     </div>
                   )}
@@ -295,7 +301,7 @@ export default function ManuscriptPage() {
         </AnimatePresence>
 
         {state.chapters.length === 0 && (
-          <EmptyState variant="manuscript" title="Your manuscript is empty" subtitle="Every great story begins with a single chapter." action={{ label: 'Add your first chapter', onClick: handleAddChapter }} />
+          <EmptyState variant="manuscript" title={t('emptyTitle')} subtitle={t('emptySubtitle')} action={{ label: t('emptyAction'), onClick: handleAddChapter }} />
         )}
       </div>
 

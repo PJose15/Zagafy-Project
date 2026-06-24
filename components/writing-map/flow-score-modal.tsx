@@ -1,18 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
 import type { FlowScore } from '@/lib/types/writing-session';
 
 const AUTO_DISMISS_MS = 30_000;
 
-const flowOptions: { score: FlowScore; emoji: string; label: string }[] = [
-  { score: 1, emoji: '😩', label: 'Struggled' },
-  { score: 2, emoji: '🙁', label: 'Slow' },
-  { score: 3, emoji: '😐', label: 'Okay' },
-  { score: 4, emoji: '🙂', label: 'Good' },
-  { score: 5, emoji: '🔥', label: 'On fire' },
+const flowOptions: { score: FlowScore; emoji: string; labelKey: string }[] = [
+  { score: 1, emoji: '😩', labelKey: 'struggled' },
+  { score: 2, emoji: '🙁', labelKey: 'slow' },
+  { score: 3, emoji: '😐', labelKey: 'okay' },
+  { score: 4, emoji: '🙂', labelKey: 'good' },
+  { score: 5, emoji: '🔥', labelKey: 'onFire' },
 ];
 
 interface FlowScoreModalProps {
@@ -22,6 +23,7 @@ interface FlowScoreModalProps {
 }
 
 export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModalProps) {
+  const t = useTranslations('writingStats.flowModal');
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +60,7 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
       <motion.div
         ref={containerRef}
         role="dialog"
-        aria-label="Rate your writing flow"
+        aria-label={t('dialogAria')}
         tabIndex={-1}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -69,20 +71,22 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
       >
         <button
           onClick={onDismiss}
-          aria-label="Close"
+          aria-label={t('closeAria')}
           className="absolute top-2 right-2 text-sepia-600 hover:text-sepia-700 transition-colors rounded p-0.5"
         >
           <X size={16} />
         </button>
         <p className="text-sm font-medium text-sepia-800 mb-3">
-          How did this session flow?
+          {t('question')}
         </p>
-        <div className="flex gap-2 justify-between" role="radiogroup" aria-label="Flow score">
-          {flowOptions.map(({ score, emoji, label }) => (
+        <div className="flex gap-2 justify-between" role="radiogroup" aria-label={t('radiogroupAria')}>
+          {flowOptions.map(({ score, emoji, labelKey }) => {
+            const label = t(labelKey);
+            return (
             <button
               key={score}
               onClick={() => onSubmit(sessionId, score)}
-              aria-label={`${label} — ${score} out of 5`}
+              aria-label={t('optionAria', { label, score })}
               className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-parchment-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brass-400 focus:outline-offset-1"
             >
               <span className="text-2xl" role="img" aria-hidden="true">
@@ -90,7 +94,8 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
               </span>
               <span className="text-[10px] text-sepia-600">{label}</span>
             </button>
-          ))}
+            );
+          })}
         </div>
       </motion.div>
     </AnimatePresence>

@@ -1,8 +1,8 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Zap, Eye, Heart, Clock, Sparkles, MessageSquare } from 'lucide-react';
 import type { CoachingLens } from '@/lib/story-coach/types';
-import { LENS_LABELS } from '@/lib/story-coach/types';
 
 const LENS_ICONS: Record<CoachingLens, React.FC<{ size?: number; className?: string }>> = {
   tension: Zap,
@@ -21,6 +21,7 @@ interface CoachLensFilterProps {
 }
 
 export function CoachLensFilter({ activeLens, onChange }: CoachLensFilterProps) {
+  const t = useTranslations('storyCoach');
   return (
     <div className="flex gap-1 flex-wrap">
       <button
@@ -29,7 +30,7 @@ export function CoachLensFilter({ activeLens, onChange }: CoachLensFilterProps) 
           activeLens === 'all' ? 'bg-brass-500 text-cream-50' : 'text-sepia-600 hover:bg-parchment-200'
         }`}
       >
-        All
+        {t('all')}
       </button>
       {LENSES.map(lens => {
         const Icon = LENS_ICONS[lens];
@@ -42,7 +43,7 @@ export function CoachLensFilter({ activeLens, onChange }: CoachLensFilterProps) 
             }`}
           >
             <Icon size={10} />
-            {LENS_LABELS[lens]}
+            {t(`lens.${lens}`)}
           </button>
         );
       })}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { ParchmentCard } from '@/components/antiquarian';
 import { Lightbulb } from 'lucide-react';
 import Link from 'next/link';
@@ -11,6 +12,7 @@ interface CoachSummaryProps {
 }
 
 export function CoachSummary({ insights, chapterTitle }: CoachSummaryProps) {
+  const t = useTranslations('storyCoach');
   const highCount = insights.filter(i => i.priority === 'high').length;
   const total = insights.length;
 
@@ -24,10 +26,10 @@ export function CoachSummary({ insights, chapterTitle }: CoachSummaryProps) {
           <Lightbulb size={16} className="text-brass-500 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm text-sepia-800 font-medium">
-              {highCount > 0 ? `${highCount} high-priority insight${highCount !== 1 ? 's' : ''}` : `${total} coaching insight${total !== 1 ? 's' : ''}`}
-              {chapterTitle ? ` for "${chapterTitle}"` : ''}
+              {highCount > 0 ? t('highPriority', { count: highCount }) : t('totalInsights', { count: total })}
+              {chapterTitle ? t('forChapter', { title: chapterTitle }) : ''}
             </p>
-            <p className="text-[10px] text-sepia-600 mt-0.5">Open Flow Mode to review</p>
+            <p className="text-[10px] text-sepia-600 mt-0.5">{t('openFlow')}</p>
           </div>
         </div>
       </ParchmentCard>

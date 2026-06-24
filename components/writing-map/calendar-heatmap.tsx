@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import type { WritingSession } from '@/lib/types/writing-session';
 
 const CELL_SIZE = 14;
@@ -44,15 +45,27 @@ interface DayData {
   avgAutoFlowScore: number | null;
 }
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
-
 interface CalendarHeatmapProps {
   sessions: WritingSession[];
 }
 
 export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
+  const t = useTranslations('writingStats.heatmap');
+  const locale = useLocale();
   const [tooltip, setTooltip] = useState<{ x: number; y: number; lines: string[] } | null>(null);
+
+  // Localized short month names (index 0–11) and day-row labels (only Mon/Wed/
+  // Fri shown). Jan 7 2001 was a Sunday, so getDay()===i for new Date(2001,0,7+i).
+  const monthNames = useMemo(
+    () => Array.from({ length: 12 }, (_, m) =>
+      new Intl.DateTimeFormat(locale, { month: 'short' }).format(new Date(2000, m, 1))),
+    [locale],
+  );
+  const dayLabels = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+    return [0, 1, 2, 3, 4, 5, 6].map(i =>
+      i === 1 || i === 3 || i === 5 ? fmt.format(new Date(2001, 0, 7 + i)) : '');
+  }, [locale]);
 
   const { cells, monthLabels } = useMemo(() => {
     // Build a map of date -> aggregated data
@@ -121,7 +134,7 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
     }
 
     const monthLabels = Array.from(monthPositions.entries()).map(([key, col]) => ({
-      month: MONTH_NAMES[key % 100],
+      monthIndex: key % 100,
       col,
     }));
 
@@ -138,11 +151,11 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
           width={svgWidth}
           height={svgHeight}
           role="img"
-          aria-label="Writing activity heatmap for the past year"
+          aria-label={t('ariaLabel')}
           className="block"
         >
           {/* Day labels */}
-          {DAY_LABELS.map((label, i) =>
+          {dayLabels.map((label, i) =>
             label ? (
               <text
                 key={i}
@@ -164,13 +177,13 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
               y={MONTH_LABEL_HEIGHT - 4}
               className="fill-sepia-500 text-[10px]"
             >
-              {m.month}
+              {monthNames[m.monthIndex]}
             </text>
           ))}
 
           {/* Cells */}
           {cells.map((cell) => {
-            const fullDate = new Date(cell.date + 'T12:00:00').toLocaleDateString('en-US', {
+            const fullDate = new Date(cell.date + 'T12:00:00').toLocaleDateString(locale, {
               weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
             });
             const { dayData } = cell;
@@ -189,23 +202,23 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
                 rx={3}
                 className={`${getColorClass(cell.words)} transition-colors cursor-pointer`}
                 role="gridcell"
-                aria-label={`${cell.date}: ${cell.words} words`}
+                aria-label={t('cellAria', { date: cell.date, words: cell.words })}
                 onMouseEnter={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const lines = [fullDate];
                   if (dayData.sessionCount > 0) {
-                    lines.push(`${cell.words.toLocaleString()} words`);
-                    lines.push(`${dayData.sessionCount} session${dayData.sessionCount === 1 ? '' : 's'}`);
-                    lines.push(flowEmoji ? `Avg flow: ${flowEmoji}` : 'No rating');
+                    lines.push(t('words', { count: cell.words }));
+                    lines.push(t('sessions', { count: dayData.sessionCount }));
+                    lines.push(flowEmoji ? t('avgFlow', { emoji: flowEmoji }) : t('noRating'));
                     if (dayData.avgAutoFlowScore !== null) {
-                      lines.push(`Auto flow: ${dayData.avgAutoFlowScore}/100`);
+                      lines.push(t('autoFlow', { score: dayData.avgAutoFlowScore }));
                     }
                     if (dayData.flowMomentCount > 0) {
-                      lines.push(`${dayData.flowMomentCount} flow moment${dayData.flowMomentCount !== 1 ? 's' : ''}`);
+                      lines.push(t('flowMoments', { count: dayData.flowMomentCount }));
                     }
-                    lines.push(`Writing time: ${durationStr}`);
+                    lines.push(t('writingTime', { duration: durationStr }));
                   } else {
-                    lines.push('No writing');
+                    lines.push(t('noWriting'));
                   }
                   setTooltip({
                     x: rect.left + rect.width / 2,
@@ -235,13 +248,13 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
 
       {/* Legend */}
       <div className="flex items-center gap-1 mt-2 text-[10px] text-sepia-600 justify-end">
-        <span>Less</span>
+        <span>{t('less')}</span>
         {COLORS.map((color, i) => (
           <svg key={i} width={CELL_SIZE} height={CELL_SIZE}>
             <rect width={CELL_SIZE} height={CELL_SIZE} rx={3} className={color} />
           </svg>
         ))}
-        <span>More</span>
+        <span>{t('more')}</span>
       </div>
     </div>
   );

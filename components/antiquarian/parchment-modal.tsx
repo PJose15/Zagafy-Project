@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { springs } from '@/lib/animations';
@@ -20,6 +21,7 @@ interface ConfirmContextType {
 const ConfirmContext = createContext<ConfirmContextType | undefined>(undefined);
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('common');
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const resolveRef = useRef<((value: boolean) => void) | null>(null);
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
@@ -105,7 +107,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => handleResponse(false)}
                 className="absolute top-3 right-3 p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 transition-colors"
-                aria-label="Close"
+                aria-label={t('close')}
               >
                 <X size={16} />
               </button>
@@ -130,7 +132,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   onClick={() => handleResponse(false)}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-sepia-700 hover:bg-sepia-300/30 transition-colors"
                 >
-                  {options.cancelLabel || 'Cancel'}
+                  {options.cancelLabel || t('cancel')}
                 </button>
                 <button
                   onClick={() => handleResponse(true)}
@@ -140,7 +142,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                       : 'bg-forest-700 text-cream-50 hover:bg-forest-600 border border-forest-800'
                   }`}
                 >
-                  {options.confirmLabel || 'Confirm'}
+                  {options.confirmLabel || t('confirm')}
                 </button>
               </div>
             </motion.div>

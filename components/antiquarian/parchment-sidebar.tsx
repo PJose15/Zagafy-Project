@@ -167,7 +167,7 @@ export function ParchmentSidebar() {
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           role="button"
           tabIndex={0}
-          aria-label="Close navigation"
+          aria-label={tSide('closeNav')}
           onClick={() => setIsOpen(false)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen(false); } }}
         />

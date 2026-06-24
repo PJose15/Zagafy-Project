@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { CreditCard, ArrowUpRight, Crown, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { ParchmentCard, BrassButton } from '@/components/antiquarian';
 import { useToast } from '@/components/toast';
 import { PLANS, type PlanId } from '@/lib/billing';
@@ -20,6 +21,7 @@ interface BillingSectionProps {
 }
 
 export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
+  const t = useTranslations('billing');
   const { toast } = useToast();
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -45,11 +47,11 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
         window.location.href = result.data.url;
       }
     } catch {
-      toast('Failed to start checkout. Please try again.', 'error');
+      toast(t('checkoutError'), 'error');
     } finally {
       setLoading(null);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   const handlePortal = useCallback(async () => {
     setLoading('portal');
@@ -67,11 +69,11 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
         window.location.href = result.data.url;
       }
     } catch {
-      toast('Failed to open billing portal. Please try again.', 'error');
+      toast(t('portalError'), 'error');
     } finally {
       setLoading(null);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   if (!authEnabled) return null;
 
@@ -84,19 +86,19 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
     <ParchmentCard className="space-y-4">
       <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
         <CreditCard size={20} className="text-brass-500" />
-        Billing
+        {t('title')}
       </h2>
 
       {/* Current plan display */}
       <div className="flex items-center gap-3">
-        <span className="text-sepia-600 text-sm">Current plan:</span>
+        <span className="text-sepia-600 text-sm">{t('currentPlan')}</span>
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brass-100 text-brass-800 text-sm font-semibold border border-brass-300/50">
           {currentPlan !== 'free' && <Crown size={14} />}
           {currentPlanInfo.name}
         </span>
         {currentPlanInfo.monthlyPrice > 0 && (
           <span className="text-sepia-600 text-xs">
-            ${currentPlanInfo.monthlyPrice}/mo
+            {t('perMonth', { price: currentPlanInfo.monthlyPrice })}
           </span>
         )}
       </div>
@@ -104,7 +106,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
       {/* Upgrade options */}
       {upgradePlans.length > 0 && (
         <div className="space-y-3 pt-2">
-          <p className="text-sepia-600 text-sm">Upgrade your plan:</p>
+          <p className="text-sepia-600 text-sm">{t('upgradePlan')}</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {upgradePlans.map((plan) => (
               <div
@@ -116,7 +118,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
                     {plan.name}
                   </span>
                   <span className="text-sepia-600 text-sm">
-                    ${plan.monthlyPrice}/mo
+                    {t('perMonth', { price: plan.monthlyPrice })}
                   </span>
                 </div>
                 <p className="text-xs text-sepia-600 leading-relaxed">
@@ -131,7 +133,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
                       : <ArrowUpRight size={16} />
                   }
                 >
-                  {loading === plan.id ? 'Loading...' : `Upgrade to ${plan.name}`}
+                  {loading === plan.id ? t('loading') : t('upgradeTo', { name: plan.name })}
                 </BrassButton>
               </div>
             ))}
@@ -151,10 +153,10 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
                 : <CreditCard size={16} />
             }
           >
-            {loading === 'portal' ? 'Loading...' : 'Manage billing'}
+            {loading === 'portal' ? t('loading') : t('manageBilling')}
           </BrassButton>
           <p className="text-xs text-sepia-600 mt-2">
-            Update payment method, download invoices, or cancel your subscription.
+            {t('manageNote')}
           </p>
         </div>
       )}

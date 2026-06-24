@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Flame } from 'lucide-react';
 import { ParchmentCard } from '@/components/antiquarian';
 import type { SessionFlowMoment } from '@/lib/types/writing-session';
@@ -25,6 +26,7 @@ function getSegmentColor(flowScore: number | null, inFlowMoment: boolean): strin
 }
 
 export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMoments, avgWPM }: FlowTimelineProps) {
+  const t = useTranslations('writingStats.timeline');
   const startMs = new Date(sessionStart).getTime();
   const endMs = new Date(sessionEnd).getTime();
   const durationMs = endMs - startMs;
@@ -85,15 +87,15 @@ export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMome
   return (
     <ParchmentCard className="p-4" data-testid="flow-timeline">
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-medium text-sepia-700">Flow Timeline</h4>
+        <h4 className="text-sm font-medium text-sepia-700">{t('title')}</h4>
         <div className="flex items-center gap-3 text-xs text-sepia-600">
           {autoFlowScore !== null && (
-            <span>Flow: <strong className="text-sepia-800">{autoFlowScore}/100</strong></span>
+            <span>{t.rich('flowScore', { score: autoFlowScore, v: (c) => <strong className="text-sepia-800">{c}</strong> })}</span>
           )}
           {avgWPM !== undefined && avgWPM > 0 && (
-            <span>{Math.round(avgWPM)} WPM</span>
+            <span>{t('wpm', { wpm: Math.round(avgWPM) })}</span>
           )}
-          <span>{durationMin}m</span>
+          <span>{t('durationMin', { minutes: durationMin })}</span>
         </div>
       </div>
 
@@ -102,7 +104,7 @@ export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMome
           width={TIMELINE_WIDTH}
           height={TIMELINE_HEIGHT}
           role="img"
-          aria-label={`Flow timeline: ${momentCount} flow moment${momentCount !== 1 ? 's' : ''}, score ${autoFlowScore ?? 'N/A'}`}
+          aria-label={t('ariaLabel', { count: momentCount, score: autoFlowScore ?? t('scoreNA') })}
           className="block"
         >
           {/* Background */}
@@ -134,14 +136,14 @@ export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMome
       {/* Legend */}
       <div className="flex items-center gap-4 mt-2 text-[10px] text-sepia-600">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-2 rounded-sm bg-sepia-300 inline-block" /> Normal
+          <span className="w-3 h-2 rounded-sm bg-sepia-300 inline-block" /> {t('legendNormal')}
         </span>
         <span className="flex items-center gap-1">
-          <span className="w-3 h-2 rounded-sm bg-forest-900 inline-block" /> Flow
+          <span className="w-3 h-2 rounded-sm bg-forest-900 inline-block" /> {t('legendFlow')}
         </span>
         {momentCount > 0 && (
           <span className="flex items-center gap-1">
-            <Flame size={10} className="text-amber-400" /> {momentCount} moment{momentCount !== 1 ? 's' : ''}
+            <Flame size={10} className="text-amber-400" /> {t('moments', { count: momentCount })}
           </span>
         )}
       </div>

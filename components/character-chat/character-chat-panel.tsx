@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from 'react';
 import { Trash2, AlertTriangle, RotateCcw, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { CarvedHeader, BrassButton } from '@/components/antiquarian';
 import { useCharacterChat } from '@/hooks/use-character-chat';
 import { ChatModeSelector } from './chat-mode-selector';
@@ -15,6 +16,7 @@ interface CharacterChatPanelProps {
 }
 
 export function CharacterChatPanel({ characterId, characterName }: CharacterChatPanelProps) {
+  const t = useTranslations('characterChat');
   const {
     messages,
     mode,
@@ -61,7 +63,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="text-center text-cream-400/40 text-sm py-12">
-            Start a conversation with {characterName} in {mode} mode.
+            {t('startConversation', { name: characterName, mode: t(`modes.${mode}`) })}
           </div>
         )}
         {messages.map(msg => (
@@ -74,7 +76,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
         {isLoading && (
           <div className="flex justify-start mb-3">
             <div className="px-4 py-2.5 rounded-xl bg-cream-100/10 border border-cream-200/10">
-              <span className="text-cream-400/60 text-sm animate-pulse">Thinking...</span>
+              <span className="text-cream-400/60 text-sm animate-pulse">{t('thinking')}</span>
             </div>
           </div>
         )}
@@ -83,7 +85,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       {/* Insights */}
       {insights.length > 0 && (
         <div className="px-4 py-2 border-t border-mahogany-700/30 max-h-40 overflow-y-auto">
-          <p className="text-[10px] text-brass-400/60 uppercase tracking-widest mb-1">Insights</p>
+          <p className="text-[10px] text-brass-400/60 uppercase tracking-widest mb-1">{t('insightsHeading')}</p>
           <div className="space-y-2">
             {insights.map(insight => (
               <InsightCard
@@ -100,7 +102,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       {lastInsightError && (
         <div className="px-4 py-2 border-t border-mahogany-700/30">
           <p className="text-[11px] italic text-cream-400/60">
-            The oracle could not see clearly this turn. Try again later.
+            {t('oracleUnavailable')}
           </p>
         </div>
       )}
@@ -113,8 +115,8 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
             <div className="flex-1 min-w-0">
               <p className="text-sm text-wax-200">
                 {error.notConfigured
-                  ? 'Character Chat isn’t configured on this deployment yet.'
-                  : 'The character couldn’t respond.'}
+                  ? t('notConfigured')
+                  : t('noResponse')}
               </p>
               <p className="text-xs text-cream-400/70 mt-0.5">{error.message}</p>
               <div className="flex items-center gap-3 mt-2">
@@ -123,14 +125,14 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
                     onClick={retry}
                     className="inline-flex items-center gap-1 text-xs font-medium text-brass-300 hover:text-brass-200"
                   >
-                    <RotateCcw size={12} aria-hidden="true" /> Try again
+                    <RotateCcw size={12} aria-hidden="true" /> {t('tryAgain')}
                   </button>
                 )}
                 <button
                   onClick={clearError}
                   className="inline-flex items-center gap-1 text-xs text-cream-400/60 hover:text-cream-300"
                 >
-                  <X size={12} aria-hidden="true" /> Dismiss
+                  <X size={12} aria-hidden="true" /> {t('dismiss')}
                 </button>
               </div>
             </div>

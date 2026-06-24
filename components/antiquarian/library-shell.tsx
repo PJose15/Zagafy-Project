@@ -20,6 +20,7 @@ import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
 import { AiStatusBanner } from '@/components/ai/ai-status-banner';
 import { useProfile } from '@/hooks/use-profile';
 import { I18nProvider } from '@/lib/i18n/provider';
+import { ConsentBanner } from '@/components/analytics/consent-banner';
 
 function StreakWarningToast() {
   const { toast } = useToast();
@@ -89,6 +90,7 @@ export function LibraryShell({ children }: { children: React.ReactNode }) {
           </SessionProvider>
         </StoryProvider>
       </SyncProvider>
+      <ConsentBanner />
     </I18nProvider>
   );
 }

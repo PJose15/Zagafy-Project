@@ -2,6 +2,7 @@
 
 import { useStory, CanonStatus, StoryState } from '@/lib/store';
 import { useState, useMemo, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Lock, Trash2, ShieldCheck, ShieldAlert, Shield, ShieldOff, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fadeUp } from '@/lib/animations';
@@ -18,13 +19,15 @@ interface CanonItem {
 }
 
 const statusConfig = {
-  confirmed: { icon: ShieldCheck, color: 'text-forest-700', bg: 'bg-forest-700/10', border: 'border-forest-600/30', label: 'Confirmed Canon' },
-  flexible: { icon: Shield, color: 'text-brass-600', bg: 'bg-brass-500/10', border: 'border-brass-500/30', label: 'Flexible Canon' },
-  draft: { icon: ShieldAlert, color: 'text-brass-800', bg: 'bg-brass-400/10', border: 'border-brass-400/30', label: 'Draft Idea' },
-  discarded: { icon: ShieldOff, color: 'text-wax-600', bg: 'bg-wax-500/10', border: 'border-wax-500/30', label: 'Discarded' },
+  confirmed: { icon: ShieldCheck, color: 'text-forest-700', bg: 'bg-forest-700/10', border: 'border-forest-600/30' },
+  flexible: { icon: Shield, color: 'text-brass-600', bg: 'bg-brass-500/10', border: 'border-brass-500/30' },
+  draft: { icon: ShieldAlert, color: 'text-brass-800', bg: 'bg-brass-400/10', border: 'border-brass-400/30' },
+  discarded: { icon: ShieldOff, color: 'text-wax-600', bg: 'bg-wax-500/10', border: 'border-wax-500/30' },
 };
 
 export default function CanonLockPage() {
+  const t = useTranslations('canon');
+  const tStatus = useTranslations('canonStatus');
   const { state, updateField } = useStory();
   const [filterStatus, setFilterStatus] = useState<CanonStatus | 'all'>('all');
   const [filterType, setFilterType] = useState<ItemType | 'all'>('all');
@@ -70,8 +73,8 @@ export default function CanonLockPage() {
     <div className="p-8 max-w-5xl mx-auto space-y-8">
       <motion.div {...fadeUp}>
         <CarvedHeader
-          title="Canon Lock"
-          subtitle="Classify story information by certainty level. The AI Assistant will strictly respect Confirmed Canon and ignore Discarded items."
+          title={t('title')}
+          subtitle={t('subtitle')}
           icon={<Lock size={24} />}
           actions={
             <div className="flex flex-wrap gap-2">
@@ -79,28 +82,28 @@ export default function CanonLockPage() {
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as ItemType | 'all')}
               >
-                <option value="all">All Types</option>
-                <option value="character">Characters</option>
-                <option value="chapter">Chapters</option>
-                <option value="scene">Scenes</option>
-                <option value="timeline">Timeline</option>
-                <option value="conflict">Conflicts</option>
-                <option value="world_rule">World Rules</option>
-                <option value="location">Locations</option>
-                <option value="theme">Themes</option>
-                <option value="open_loop">Open Loops</option>
-                <option value="foreshadowing">Foreshadowing</option>
+                <option value="all">{t('allTypes')}</option>
+                <option value="character">{t('filterType.character')}</option>
+                <option value="chapter">{t('filterType.chapter')}</option>
+                <option value="scene">{t('filterType.scene')}</option>
+                <option value="timeline">{t('filterType.timeline')}</option>
+                <option value="conflict">{t('filterType.conflict')}</option>
+                <option value="world_rule">{t('filterType.world_rule')}</option>
+                <option value="location">{t('filterType.location')}</option>
+                <option value="theme">{t('filterType.theme')}</option>
+                <option value="open_loop">{t('filterType.open_loop')}</option>
+                <option value="foreshadowing">{t('filterType.foreshadowing')}</option>
               </ParchmentSelect>
 
               <ParchmentSelect
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as CanonStatus | 'all')}
               >
-                <option value="all">All Statuses</option>
-                <option value="confirmed">Confirmed Canon</option>
-                <option value="flexible">Flexible Canon</option>
-                <option value="draft">Draft Idea</option>
-                <option value="discarded">Discarded</option>
+                <option value="all">{t('allStatuses')}</option>
+                <option value="confirmed">{tStatus('confirmed')}</option>
+                <option value="flexible">{tStatus('flexible')}</option>
+                <option value="draft">{tStatus('draft')}</option>
+                <option value="discarded">{tStatus('discarded')}</option>
               </ParchmentSelect>
             </div>
           }
@@ -125,7 +128,7 @@ export default function CanonLockPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-medium text-sepia-600 uppercase tracking-wider bg-parchment-200 px-2 py-0.5 rounded">
-                        {item.type}
+                        {t(`itemType.${item.type}`)}
                       </span>
                       <WaxSealBadge status={item.status} />
                     </div>
@@ -134,11 +137,11 @@ export default function CanonLockPage() {
                 </div>
 
                 <p className="text-sm text-sepia-600 line-clamp-3 mb-4 flex-1">
-                  {item.description || <span className="italic opacity-50">No description...</span>}
+                  {item.description || <span className="italic opacity-50">{t('noDescription')}</span>}
                 </p>
 
                 <div className="flex items-center gap-2 pt-4 border-t border-sepia-300/30 mt-auto">
-                  <span className="text-xs text-sepia-600 mr-auto">Change status:</span>
+                  <span className="text-xs text-sepia-600 mr-auto">{t('changeStatus')}</span>
                   {(Object.keys(statusConfig) as CanonStatus[]).map((status) => {
                     const btnConfig = statusConfig[status];
                     const BtnIcon = btnConfig.icon;
@@ -148,7 +151,7 @@ export default function CanonLockPage() {
                       <button
                         key={status}
                         onClick={() => updateItemStatus(item.id, item.type, status)}
-                        title={btnConfig.label}
+                        title={tStatus(status)}
                         className={`p-1.5 rounded-md transition-colors ${
                           isActive
                             ? `${btnConfig.bg} ${btnConfig.color}`
@@ -167,7 +170,7 @@ export default function CanonLockPage() {
         </AnimatePresence>
 
         {filteredItems.length === 0 && (
-          <EmptyState variant="canon" title="No items match your filters" subtitle="Try adjusting your search criteria." />
+          <EmptyState variant="canon" title={t('emptyTitle')} subtitle={t('emptySubtitle')} />
         )}
       </div>
     </div>

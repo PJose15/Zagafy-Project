@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { BrassButton } from '@/components/antiquarian';
 import { Flame, Save } from 'lucide-react';
 
@@ -24,6 +25,7 @@ function formatDuration(ms: number): string {
 }
 
 export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndModalProps) {
+  const t = useTranslations('flow.noRetreatEnd');
   return (
     <AnimatePresence>
       {open && (
@@ -46,32 +48,32 @@ export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndM
               id="no-retreat-end-title"
               className="text-xl font-serif font-bold text-sepia-900 text-center"
             >
-              End No-Retreat Session
+              {t('title')}
             </h2>
 
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="bg-parchment-200 rounded-lg p-4">
                 <p className="text-2xl font-mono font-bold text-sepia-900">{stats.wordsWritten}</p>
-                <p className="text-xs text-sepia-600 mt-1">Words Written</p>
+                <p className="text-xs text-sepia-600 mt-1">{t('wordsWritten')}</p>
               </div>
               <div className="bg-parchment-200 rounded-lg p-4">
                 <p className="text-2xl font-mono font-bold text-sepia-900">
                   {formatDuration(stats.sessionDurationMs)}
                 </p>
-                <p className="text-xs text-sepia-600 mt-1">Duration</p>
+                <p className="text-xs text-sepia-600 mt-1">{t('duration')}</p>
               </div>
             </div>
 
             <div className="flex gap-3 justify-center">
               <BrassButton onClick={onSave} icon={<Save size={16} />}>
-                Save
+                {t('save')}
               </BrassButton>
               <button
                 onClick={onBurn}
                 className="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-wax-600 text-cream-50 hover:bg-wax-500 transition-colors burn-consume-trigger"
               >
                 <Flame size={16} className="ember-rise-trigger" />
-                Burn
+                {t('burn')}
               </button>
             </div>
           </motion.div>

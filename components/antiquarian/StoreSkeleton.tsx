@@ -1,8 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 export function StoreSkeleton() {
+  const t = useTranslations('common');
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 animate-pulse" aria-label="Loading project...">
+    <div className="p-8 max-w-6xl mx-auto space-y-8 animate-pulse" aria-label={t('loadingProject')}>
       {/* Header skeleton */}
       <div className="space-y-3">
         <div className="h-8 w-64 bg-parchment-300/40 rounded-lg" />

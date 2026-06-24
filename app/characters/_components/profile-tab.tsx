@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { Character, CanonStatus } from '@/lib/store';
 
 interface ProfileTabProps {
@@ -8,6 +9,8 @@ interface ProfileTabProps {
 }
 
 export function ProfileTab({ editForm, setEditForm }: ProfileTabProps) {
+  const t = useTranslations('characters');
+  const tStatus = useTranslations('canonStatus');
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
       <div className="grid grid-cols-2 gap-4">
@@ -16,32 +19,32 @@ export function ProfileTab({ editForm, setEditForm }: ProfileTabProps) {
           value={editForm.name || ''}
           onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
           className="w-full bg-parchment-200 border border-sepia-300/50 rounded-lg px-4 py-3 text-xl font-serif font-semibold text-sepia-900 focus:outline-none focus:ring-2 focus:ring-brass-400/40"
-          placeholder="Character Name"
+          placeholder={t('namePlaceholder')}
         />
         <input
           type="text"
           value={editForm.role || ''}
           onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
           className="w-full bg-parchment-200 border border-sepia-300/50 rounded-lg px-4 py-3 text-sm font-sans text-sepia-700 focus:outline-none focus:ring-2 focus:ring-brass-400/40"
-          placeholder="Role (e.g., Protagonist, Antagonist)"
+          placeholder={t('rolePlaceholder')}
         />
       </div>
       <div>
-        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Core Identity (Permanent Traits)</label>
+        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">{t('coreIdentityLabel')}</label>
         <textarea
           value={editForm.coreIdentity || ''}
           onChange={(e) => setEditForm({ ...editForm, coreIdentity: e.target.value })}
           className="w-full h-24 bg-parchment-200 border border-sepia-300/50 rounded-lg px-4 py-3 text-sm text-sepia-700 font-sans resize-y focus:outline-none focus:ring-2 focus:ring-brass-400/40"
-          placeholder="Baseline personality, permanent traits, deeply held values..."
+          placeholder={t('coreIdentityPlaceholder')}
         />
       </div>
       <div>
-        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Physical Description & Background</label>
+        <label className="block text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">{t('descLabel')}</label>
         <textarea
           value={editForm.description || ''}
           onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
           className="w-full h-32 bg-parchment-200 border border-sepia-300/50 rounded-lg px-4 py-3 text-sm text-sepia-700 font-sans resize-y focus:outline-none focus:ring-2 focus:ring-brass-400/40"
-          placeholder="Physical appearance, backstory, general biography..."
+          placeholder={t('descPlaceholder')}
         />
       </div>
       <div className="flex items-center gap-3 pt-2">
@@ -50,10 +53,10 @@ export function ProfileTab({ editForm, setEditForm }: ProfileTabProps) {
           onChange={(e) => setEditForm({ ...editForm, canonStatus: e.target.value as CanonStatus })}
           className="bg-parchment-200 border border-sepia-300/50 rounded-lg px-3 py-2 text-sm text-sepia-700 focus:outline-none focus:ring-2 focus:ring-brass-400/40"
         >
-          <option value="confirmed">Confirmed Canon</option>
-          <option value="flexible">Flexible Canon</option>
-          <option value="draft">Draft Idea</option>
-          <option value="discarded">Discarded</option>
+          <option value="confirmed">{tStatus('confirmed')}</option>
+          <option value="flexible">{tStatus('flexible')}</option>
+          <option value="draft">{tStatus('draft')}</option>
+          <option value="discarded">{tStatus('discarded')}</option>
         </select>
       </div>
     </div>

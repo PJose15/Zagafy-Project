@@ -49,6 +49,7 @@ import { CoachPanel } from '@/components/story-coach/coach-panel';
 import { getAdaptiveConfig } from '@/lib/adaptive-experience';
 import { ClosingRitual } from './closing-ritual';
 import { getPlainText } from '@/lib/editor/serialization';
+import { useTranslations } from 'next-intl';
 
 const PAUSE_TIMEOUT = 30000; // 30 seconds
 const MOMENTUM_DECAY_INTERVAL = 100; // ms
@@ -61,6 +62,7 @@ interface FlowEditorProps {
 }
 
 export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
+  const t = useTranslations('flow.editor');
   const { session, setFlowChapterId } = useSession();
   const { state } = useStory();
   const { scheduleAutosave, saveNow, initialContent } = useFlowAutosave(chapterId);
@@ -177,7 +179,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
         }
       });
       toast(
-        `Scene change complete! You wrote ${pendingReturn.wordsWritten} word${pendingReturn.wordsWritten !== 1 ? 's' : ''} in the other chapter.`,
+        t('sceneChangeCompleteToast', { count: pendingReturn.wordsWritten }),
         'success'
       );
     }
@@ -198,7 +200,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
 
     const alternateId = sceneChange.depart(
       chapterId,
-      chapter?.title || 'Untitled',
+      chapter?.title || t('untitled'),
       cursorPos,
       wordCount,
       nonDiscardedChapters
@@ -207,14 +209,14 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     if (!alternateId) return;
 
     setOverlayConfig({
-      message: 'Switching scenes...',
-      subtitle: 'A change of scenery to spark new ideas',
+      message: t('switchingScenes'),
+      subtitle: t('switchingScenesSub'),
       onComplete: () => {
         setOverlayConfig(null);
         setFlowChapterId(alternateId);
       },
     });
-  }, [content, saveNow, sceneChange, chapterId, chapter?.title, wordCount, nonDiscardedChapters, setFlowChapterId]);
+  }, [content, saveNow, sceneChange, chapterId, chapter?.title, wordCount, nonDiscardedChapters, setFlowChapterId, t]);
 
   const handleSceneChangeReturn = useCallback(() => {
     const originalId = sceneChange.sceneState?.originalChapterId;
@@ -223,7 +225,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     // Check if original chapter still exists
     const originalExists = state.chapters.some(ch => ch.id === originalId);
     if (!originalExists) {
-      toast('Original chapter was deleted. Staying in current chapter.', 'error');
+      toast(t('originalDeletedToast'), 'error');
       sceneChange.cancelSceneChange();
       return;
     }
@@ -231,14 +233,14 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     const ret = sceneChange.returnToOriginal(wordCount, content);
 
     setOverlayConfig({
-      message: 'Returning to your chapter...',
-      subtitle: `You wrote ${ret.wordsWritten} word${ret.wordsWritten !== 1 ? 's' : ''} during the detour`,
+      message: t('returningToChapter'),
+      subtitle: t('returningToChapterSub', { count: ret.wordsWritten }),
       onComplete: () => {
         setOverlayConfig(null);
         setFlowChapterId(originalId);
       },
     });
-  }, [sceneChange, wordCount, content, state.chapters, setFlowChapterId, toast]);
+  }, [sceneChange, wordCount, content, state.chapters, setFlowChapterId, toast, t]);
 
   const handleRecoveryReturn = useCallback(() => {
     setShowRecoveryModal(false);
@@ -256,9 +258,9 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     }
     if (sceneChange.isActive) {
       const confirmed = await confirm({
-        title: 'Active Scene Change',
-        message: 'You have an active scene change. Exiting will cancel it. Are you sure?',
-        confirmLabel: 'Exit anyway',
+        title: t('activeSceneChangeTitle'),
+        message: t('activeSceneChangeMessage'),
+        confirmLabel: t('activeSceneChangeConfirm'),
         variant: 'danger',
       });
       if (!confirmed) return;
@@ -269,7 +271,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
       return;
     }
     onExit();
-  }, [braindump, sceneChange, confirm, onExit, wordCount]);
+  }, [braindump, sceneChange, confirm, onExit, wordCount, t]);
 
   const handleSelectActive = useCallback((id: string) => {
     setActiveHeteronymId(id);
@@ -505,16 +507,16 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             />
           )}
           <h2 className="text-sm font-medium text-sepia-600 truncate max-w-xs">
-            {chapter?.title || 'Flow Mode'}
+            {chapter?.title || t('fallbackTitle')}
           </h2>
-          <span className="text-xs text-sepia-600">{wordCount} words</span>
+          <span className="text-xs text-sepia-600">{t('words', { count: wordCount })}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <button
               onClick={() => setVersionPanelOpen(!versionPanelOpen)}
               className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
-              aria-label="Version history"
+              aria-label={t('versionHistory')}
             >
               <BookCopy size={16} />
               {chapterVersions.versionCount > 1 && (
@@ -530,7 +532,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
                 onSwitch={(id) => {
                   // Save current content to current version before switching
                   if (chapterVersions.activeVersion) {
-                    chapterVersions.createVersion(content, chapterVersions.activeVersion.label + ' (auto)', 'auto-snapshot');
+                    chapterVersions.createVersion(content, chapterVersions.activeVersion.label + t('autoSuffix'), 'auto-snapshot');
                   }
                   const target = chapterVersions.switchVersion(id);
                   if (target) {
@@ -546,7 +548,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
                 onMarkCanonical={chapterVersions.markCanonical}
                 onDelete={chapterVersions.remove}
                 onCreate={() => {
-                  chapterVersions.createVersion(content, `Version ${String.fromCharCode(65 + chapterVersions.versionCount)}`, 'manual');
+                  chapterVersions.createVersion(content, t('versionLabel', { letter: String.fromCharCode(65 + chapterVersions.versionCount) }), 'manual');
                   setVersionPanelOpen(false);
                 }}
                 onCompare={() => {
@@ -572,7 +574,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             className={`text-sm transition-colors p-1.5 rounded-lg hover:bg-parchment-200 ${
               coachPanelOpen ? 'text-brass-500' : 'text-sepia-600 hover:text-sepia-700'
             }`}
-            aria-label="Story coach"
+            aria-label={t('storyCoach')}
             aria-pressed={coachPanelOpen}
           >
             <Lightbulb size={16} />
@@ -582,7 +584,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             <button
               onClick={() => setVoiceSwitchOpen(true)}
               className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
-              aria-label="Switch writing voice"
+              aria-label={t('switchVoice')}
             >
               <Theater size={16} />
             </button>
@@ -591,7 +593,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             <button
               onClick={handleSceneChangeDepart}
               className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
-              aria-label="Scene change"
+              aria-label={t('sceneChange')}
             >
               <Shuffle size={16} />
             </button>
@@ -612,14 +614,14 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             className={`text-sm transition-colors p-1.5 rounded-lg hover:bg-parchment-200 ${
               braindump.panelOpen ? 'text-red-400' : 'text-sepia-600 hover:text-sepia-700'
             }`}
-            aria-label="Voice braindump"
+            aria-label={t('voiceBraindump')}
           >
             <Mic size={16} />
           </button>
           <button
             onClick={braindump.openHistory}
             className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors p-1.5 rounded-lg hover:bg-parchment-200"
-            aria-label="Braindump history"
+            aria-label={t('braindumpHistory')}
           >
             <ClipboardList size={16} />
           </button>
@@ -627,7 +629,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             onClick={handleExitWithGuard}
             className="text-sm text-sepia-600 hover:text-sepia-700 transition-colors px-3 py-1 rounded-lg hover:bg-parchment-200"
           >
-            Exit Flow
+            {t('exit')}
           </button>
         </div>
       </div>
@@ -661,7 +663,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           autoFocus
-          placeholder="Start writing... no backspace, no delete, just forward."
+          placeholder={t('placeholder')}
           className="w-full max-w-3xl flex-1 bg-transparent text-sepia-900 text-lg leading-relaxed font-serif placeholder-sepia-400 focus:outline-none resize-none"
           spellCheck={false}
         />

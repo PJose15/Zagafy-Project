@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Activity, Heart, History, Save, X } from 'lucide-react';
 import type { Character } from '@/lib/store';
 import { ProfileTab } from './profile-tab';
@@ -30,6 +31,8 @@ export function CharacterEditForm({
   onSave,
   onCancel,
 }: CharacterEditFormProps) {
+  const t = useTranslations('characters');
+  const tCommon = useTranslations('common');
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-2 md:gap-4 border-b border-sepia-300/50 pb-4 overflow-x-auto">
@@ -37,25 +40,25 @@ export function CharacterEditForm({
           onClick={() => setActiveTab('profile')}
           className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === 'profile' ? 'bg-parchment-200 text-sepia-900' : 'text-sepia-600 hover:text-sepia-800'}`}
         >
-          Static Profile
+          {t('tabProfile')}
         </button>
         <button
           onClick={() => setActiveTab('state')}
           className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'state' ? 'bg-forest-500/20 text-brass-400' : 'text-sepia-600 hover:text-sepia-800'}`}
         >
-          <Activity size={16} aria-hidden="true" /> Live State Engine
+          <Activity size={16} aria-hidden="true" /> {t('tabState')}
         </button>
         <button
           onClick={() => setActiveTab('relationships')}
           className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'relationships' ? 'bg-wax-500/15 text-wax-500' : 'text-sepia-600 hover:text-sepia-800'}`}
         >
-          <Heart size={16} aria-hidden="true" /> Relationships
+          <Heart size={16} aria-hidden="true" /> {t('tabRelationships')}
         </button>
         <button
           onClick={() => setActiveTab('history')}
           className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${activeTab === 'history' ? 'bg-brass-500/20 text-brass-400' : 'text-sepia-600 hover:text-sepia-800'}`}
         >
-          <History size={16} aria-hidden="true" /> History
+          <History size={16} aria-hidden="true" /> {t('tabHistory')}
         </button>
       </div>
 
@@ -77,14 +80,14 @@ export function CharacterEditForm({
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sepia-600 hover:text-sepia-800 hover:bg-parchment-200 transition-colors"
         >
           <X size={18} aria-hidden="true" />
-          Cancel
+          {tCommon('cancel')}
         </button>
         <button
           onClick={onSave}
           className="flex items-center gap-2 bg-forest-700 text-cream-50 px-4 py-2 rounded-lg font-medium hover:bg-forest-600 transition-colors"
         >
           <Save size={18} aria-hidden="true" />
-          Save Character
+          {t('saveCharacter')}
         </button>
       </div>
     </div>

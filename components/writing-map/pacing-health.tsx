@@ -1,35 +1,26 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import {
   pacingVariance,
   pacingHealthStatus,
-  readingTimeLabel,
   type PacingHealthStatus,
 } from '@/lib/analytics/pacing';
+import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
 import { wordCount } from '@/lib/editor/serialization';
 
-const STATUS_COPY: Record<PacingHealthStatus, { label: string; description: string; tone: string }> = {
-  consistent: {
-    label: 'Consistent',
-    description: 'Chapters feel evenly paced.',
-    tone: 'text-forest-700',
-  },
-  varied: {
-    label: 'Varied',
-    description: 'Some chapters run longer than others — usually fine.',
-    tone: 'text-brass-600',
-  },
-  erratic: {
-    label: 'Erratic',
-    description: 'Chapter lengths swing widely. Worth a structural pass.',
-    tone: 'text-wax-600',
-  },
+const STATUS_TONE: Record<PacingHealthStatus, string> = {
+  consistent: 'text-forest-700',
+  varied: 'text-brass-600',
+  erratic: 'text-wax-600',
 };
 
 export function PacingHealth() {
+  const t = useTranslations('writingStats.pacing');
   const { state } = useStory();
+  const readingTime = useReadingTimeLabel();
 
   const data = useMemo(() => {
     const chapters = state.chapters
@@ -42,7 +33,7 @@ export function PacingHealth() {
   if (data.chapters.length === 0) {
     return (
       <p className="text-sm text-sepia-600" data-testid="pacing-empty">
-        Add chapters to see how their lengths compare.
+        {t('empty')}
       </p>
     );
   }
@@ -56,24 +47,24 @@ export function PacingHealth() {
   const upperBandPct =
     max === 0 ? 0 : Math.max(0, Math.min(100, ((variance.mean + variance.stdDev) / max) * 100));
 
-  const copy = STATUS_COPY[status];
-
   return (
     <div className="space-y-4" data-testid="pacing-health">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
         <div>
-          <p className={`text-sm font-medium ${copy.tone}`}>Pacing: {copy.label}</p>
-          <p className="text-xs text-sepia-600">{copy.description}</p>
+          <p className={`text-sm font-medium ${STATUS_TONE[status]}`}>{t('label', { status: t(status) })}</p>
+          <p className="text-xs text-sepia-600">{t(`${status}Desc`)}</p>
         </div>
         <div className="text-xs font-mono text-sepia-600">
-          mean {Math.round(variance.mean).toLocaleString()} words ·{' '}
-          {readingTimeLabel(Math.round(variance.mean))} ·{' '}
-          σ {Math.round(variance.stdDev).toLocaleString()} ·{' '}
-          cv {variance.coefficientOfVariation.toFixed(2)}
+          {t('statsLine', {
+            mean: Math.round(variance.mean).toLocaleString(),
+            reading: readingTime(Math.round(variance.mean)),
+            stdDev: Math.round(variance.stdDev).toLocaleString(),
+            cv: variance.coefficientOfVariation.toFixed(2),
+          })}
         </div>
       </div>
 
-      <ul className="space-y-1" aria-label="Chapter word-count bars">
+      <ul className="space-y-1" aria-label={t('barsAria')}>
         {chapters.map(ch => {
           const pct = max === 0 ? 0 : Math.min(100, (ch.wordCount / max) * 100);
           return (
@@ -97,7 +88,7 @@ export function PacingHealth() {
                     aria-hidden
                     className="absolute top-0 bottom-0 w-px bg-sepia-700/60"
                     style={{ left: `${meanLeftPct}%` }}
-                    title={`mean ${Math.round(variance.mean)} words`}
+                    title={t('meanTitle', { mean: Math.round(variance.mean) })}
                   />
                 </div>
                 <span className="w-20 text-right text-sepia-600 font-mono">

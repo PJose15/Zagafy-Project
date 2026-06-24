@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import { Timer, Check } from 'lucide-react';
 import type { DetourSession } from '@/lib/scenery-change/types';
 
@@ -11,6 +12,7 @@ interface DetourEditorProps {
 }
 
 export function DetourEditor({ detour, onEnd }: DetourEditorProps) {
+  const t = useTranslations('flow.detour');
   const [content, setContent] = useState(detour.content || '');
   const [elapsed, setElapsed] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -47,12 +49,12 @@ export function DetourEditor({ detour, onEnd }: DetourEditorProps) {
             <Timer size={14} />
             <span className="text-xs font-mono">{minutes}:{seconds.toString().padStart(2, '0')}</span>
           </div>
-          <span className="text-xs text-sepia-600">{wordCount} words</span>
+          <span className="text-xs text-sepia-600">{t('words', { count: wordCount })}</span>
           <button
             onClick={() => onEnd(content)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-forest-700 text-cream-50 hover:bg-forest-600 transition-colors"
           >
-            <Check size={14} /> Done
+            <Check size={14} /> {t('done')}
           </button>
         </div>
       </div>
@@ -68,7 +70,7 @@ export function DetourEditor({ detour, onEnd }: DetourEditorProps) {
           ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Start writing..."
+          placeholder={t('placeholder')}
           className="w-full max-w-3xl flex-1 bg-transparent text-sepia-900 text-lg leading-relaxed font-serif placeholder-sepia-400 focus:outline-none resize-none"
         />
       </div>

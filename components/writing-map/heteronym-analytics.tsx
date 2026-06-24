@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { ParchmentCard } from '@/components/antiquarian';
 import { readSessions, type WritingSession } from '@/lib/types/writing-session';
 import { readHeteronyms, type Heteronym } from '@/lib/types/heteronym';
 import { AvatarCircle } from '@/components/heteronyms/avatar-circle';
 
 export function HeteronymAnalytics() {
+  const t = useTranslations('writingStats.voice');
   const [sessions, setSessions] = useState<WritingSession[]>([]);
   const [heteronyms] = useState<Heteronym[]>(() => readHeteronyms());
   useEffect(() => { readSessions().then(setSessions); }, []);
@@ -53,7 +55,7 @@ export function HeteronymAnalytics() {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-sm font-medium text-sepia-700">Per-Voice Analytics</h3>
+      <h3 className="text-sm font-medium text-sepia-700">{t('title')}</h3>
 
       {/* Filter */}
       <div className="flex gap-2 flex-wrap">
@@ -63,7 +65,7 @@ export function HeteronymAnalytics() {
             selectedId === 'all' ? 'bg-brass-500 text-cream-50' : 'text-sepia-600 hover:bg-parchment-200'
           }`}
         >
-          All Voices
+          {t('allVoices')}
         </button>
         {heteronyms.map(h => (
           <button
@@ -82,19 +84,19 @@ export function HeteronymAnalytics() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Total Words</span>
+          <span className="text-[10px] text-sepia-600 block">{t('totalWords')}</span>
           <span className="text-lg font-mono text-sepia-800">{currentStats.words.toLocaleString()}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Sessions</span>
+          <span className="text-[10px] text-sepia-600 block">{t('sessions')}</span>
           <span className="text-lg font-mono text-sepia-800">{currentStats.sessions}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Avg Flow Score</span>
+          <span className="text-[10px] text-sepia-600 block">{t('avgFlow')}</span>
           <span className="text-lg font-mono text-sepia-800">{Math.round(currentStats.avgFlow)}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">Best Hour</span>
+          <span className="text-[10px] text-sepia-600 block">{t('bestHour')}</span>
           <span className="text-lg font-mono text-sepia-800">
             {currentStats.bestHour !== null ? `${currentStats.bestHour}:00` : '—'}
           </span>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Timer, Pen, Mountain, MessageCircle, Flame } from 'lucide-react';
 import { ParchmentCard } from '@/components/antiquarian';
 import { BrassButton } from '@/components/antiquarian';
@@ -19,6 +20,8 @@ interface SprintLauncherProps {
 }
 
 export function SprintLauncher({ onStart }: SprintLauncherProps) {
+  const t = useTranslations('gamification');
+  const tSprints = useTranslations('sprints');
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {SPRINT_THEMES.map((config) => {
@@ -30,15 +33,15 @@ export function SprintLauncher({ onStart }: SprintLauncherProps) {
                 <Icon size={20} className="text-brass-600" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-sepia-800">{config.name}</h3>
+                <h3 className="text-sm font-semibold text-sepia-800">{tSprints(`theme.${config.theme}.name`)}</h3>
                 <p className="text-[10px] font-mono text-sepia-600 mt-0.5">
-                  {config.durationMinutes}m · {config.targetWords}w target
+                  {t('durationTarget', { duration: config.durationMinutes, target: config.targetWords })}
                 </p>
               </div>
             </div>
-            <p className="text-xs text-sepia-600 leading-relaxed mb-3">{config.prompt}</p>
+            <p className="text-xs text-sepia-600 leading-relaxed mb-3">{tSprints(`theme.${config.theme}.prompt`)}</p>
             <BrassButton size="sm" onClick={() => onStart(config.theme)}>
-              Begin
+              {t('begin')}
             </BrassButton>
           </ParchmentCard>
         );

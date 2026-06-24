@@ -2,6 +2,7 @@
 
 import { ParchmentCard, ProgressRing } from '@/components/antiquarian';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { EntityCatalogEntry, RelationshipPair } from '@/lib/story-brain/types';
 
 interface EntityDetailCardProps {
@@ -11,6 +12,7 @@ interface EntityDetailCardProps {
 }
 
 export function EntityDetailCard({ entity, relationships, onClose }: EntityDetailCardProps) {
+  const t = useTranslations('storyBrain');
   const entityRelationships = relationships.filter(
     r => r.sourceId === entity.id || r.targetId === entity.id
   );
@@ -20,36 +22,36 @@ export function EntityDetailCard({ entity, relationships, onClose }: EntityDetai
       <button
         onClick={onClose}
         className="absolute top-3 right-3 p-1 text-sepia-600 hover:text-sepia-700 rounded"
-        aria-label="Close detail"
+        aria-label={t('detail.close')}
       >
         <X size={16} />
       </button>
 
       <h3 className="text-lg font-serif font-semibold text-sepia-900 mb-1">{entity.name}</h3>
-      <p className="text-xs text-sepia-600 uppercase tracking-wider mb-4">{entity.type}</p>
+      <p className="text-xs text-sepia-600 uppercase tracking-wider mb-4">{t(`entityTypeSingular.${entity.type}`)}</p>
 
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div>
-          <span className="text-[10px] text-sepia-600 block">Mentions</span>
+          <span className="text-[10px] text-sepia-600 block">{t('detail.mentions')}</span>
           <span className="text-lg font-mono text-sepia-800">{entity.mentionCount}</span>
         </div>
         <div>
-          <span className="text-[10px] text-sepia-600 block">First</span>
+          <span className="text-[10px] text-sepia-600 block">{t('detail.first')}</span>
           <span className="text-lg font-mono text-sepia-800">
-            {entity.firstAppearanceChapter >= 0 ? `Ch.${entity.firstAppearanceChapter + 1}` : '—'}
+            {entity.firstAppearanceChapter >= 0 ? t('catalog.chapterShort', { number: entity.firstAppearanceChapter + 1 }) : '—'}
           </span>
         </div>
         <div>
-          <span className="text-[10px] text-sepia-600 block">Last</span>
+          <span className="text-[10px] text-sepia-600 block">{t('detail.last')}</span>
           <span className="text-lg font-mono text-sepia-800">
-            {entity.lastAppearanceChapter >= 0 ? `Ch.${entity.lastAppearanceChapter + 1}` : '—'}
+            {entity.lastAppearanceChapter >= 0 ? t('catalog.chapterShort', { number: entity.lastAppearanceChapter + 1 }) : '—'}
           </span>
         </div>
       </div>
 
       {entityRelationships.length > 0 && (
         <div>
-          <h4 className="text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">Relationships</h4>
+          <h4 className="text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">{t('detail.relationships')}</h4>
           <div className="space-y-2">
             {entityRelationships.map(rel => {
               const otherName = rel.sourceId === entity.id ? rel.targetName : rel.sourceName;
@@ -57,8 +59,8 @@ export function EntityDetailCard({ entity, relationships, onClose }: EntityDetai
                 <div key={`${rel.sourceId}-${rel.targetId}`} className="flex items-center gap-3 p-2 bg-parchment-200/50 rounded-lg">
                   <span className="text-sm text-sepia-800 flex-1">{otherName}</span>
                   <div className="flex items-center gap-2">
-                    <ProgressRing value={rel.trustLevel} label="Trust" size="sm" />
-                    <ProgressRing value={rel.tensionLevel} label="Tension" size="sm" />
+                    <ProgressRing value={rel.trustLevel} label={t('detail.trust')} size="sm" />
+                    <ProgressRing value={rel.tensionLevel} label={t('detail.tension')} size="sm" />
                   </div>
                 </div>
               );
