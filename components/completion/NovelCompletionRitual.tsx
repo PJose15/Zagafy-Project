@@ -1,20 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import type { NovelCompletionStats } from '@/lib/gamification/finishing-engine';
 import { springs, stampSlam, fadeUp } from '@/lib/animations';
 import NovelShareCard, { generateShareCardPNG } from './NovelShareCard';
-
-// ─── Writer Quotes (Spanish) ───
-
-const WRITER_QUOTES = [
-  { text: 'No hay mayor agonia que llevar una historia no contada dentro de ti.', author: 'Maya Angelou' },
-  { text: 'Empieza escribiendo o empieza muriendo.', author: 'Charles Bukowski' },
-  { text: 'Una persona que no lee vive solo una vida. Un lector vive mil.', author: 'George R.R. Martin' },
-  { text: 'La primera vez que alguien te muestra quién es, créele.', author: 'Gabriel García Márquez' },
-  { text: 'Escribir es la manera de hablar sin que te interrumpan.', author: 'Jules Renard' },
-];
 
 // ─── CountUp Component ───
 
@@ -63,6 +54,11 @@ interface NovelCompletionRitualProps {
 }
 
 export default function NovelCompletionRitual({ stats, onDismiss }: NovelCompletionRitualProps) {
+  const t = useTranslations('novelCompletion');
+  const writerQuotes = useMemo(
+    () => [1, 2, 3, 4, 5].map(i => ({ text: t(`quotes.q${i}.text`), author: t(`quotes.q${i}.author`) })),
+    [t]
+  );
   const [act, setAct] = useState(1);
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -83,8 +79,9 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Random quote (stable per mount)
-  const [quote] = useState(() => WRITER_QUOTES[Math.floor(Math.random() * WRITER_QUOTES.length)]);
+  // Random quote index (stable per mount); resolve against the localized list
+  const [quoteIndex] = useState(() => Math.floor(Math.random() * 5));
+  const quote = writerQuotes[quoteIndex];
 
   const handleDownload = useCallback(async () => {
     if (!cardRef.current || downloading) return;
@@ -110,7 +107,7 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
       const blob = await generateShareCardPNG(cardRef.current);
       const file = new File([blob], 'zagafy_novel.png', { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: stats.title, text: 'Escribí mi novela.' });
+        await navigator.share({ files: [file], title: stats.title, text: t('shareText') });
       } else {
         // Fallback to download
         await handleDownload();
@@ -118,21 +115,21 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
     } catch {
       // User cancelled share or unsupported
     }
-  }, [stats.title, handleDownload]);
+  }, [stats.title, handleDownload, t]);
 
   const statItems = [
-    { label: 'Palabras', value: stats.totalWords },
-    { label: 'Capítulos', value: stats.totalChapters },
-    { label: 'Sesiones', value: stats.totalSessions },
-    { label: 'Días', value: stats.totalDays },
-    { label: 'Horas', value: stats.totalHoursWriting },
+    { label: t('statWords'), value: stats.totalWords },
+    { label: t('statChapters'), value: stats.totalChapters },
+    { label: t('statSessions'), value: stats.totalSessions },
+    { label: t('statDays'), value: stats.totalDays },
+    { label: t('statHours'), value: stats.totalHoursWriting },
   ];
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Ceremonia de completar novela"
+      aria-label={t('aria')}
       className="fixed inset-0 z-[9999] bg-black flex items-center justify-center overflow-hidden"
     >
       <AnimatePresence mode="wait">
@@ -238,19 +235,19 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
                 disabled={downloading}
                 className="px-8 py-3 bg-[#c49b48] text-[#3b1a0a] font-serif font-bold text-lg rounded-lg hover:bg-[#d4ab58] transition-colors disabled:opacity-50"
               >
-                {downloading ? 'Generando...' : 'Descargar mi logro'}
+                {downloading ? t('downloading') : t('download')}
               </button>
               <button
                 onClick={handleShare}
                 className="px-8 py-3 border border-[#c49b48]/40 text-[#c49b48] font-serif text-lg rounded-lg hover:border-[#c49b48] transition-colors"
               >
-                Compartir en redes
+                {t('share')}
               </button>
               <button
                 onClick={onDismiss}
                 className="text-[#f0dfc0]/40 text-sm hover:text-[#f0dfc0]/70 transition-colors mt-4"
               >
-                Cerrar
+                {t('close')}
               </button>
             </div>
           </motion.div>

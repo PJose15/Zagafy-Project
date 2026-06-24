@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Download, Loader2, FileText, FileType2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { springs } from '@/lib/animations';
 import { useStory } from '@/lib/store';
 import { InkStampButton, ParchmentInput, ParchmentTextarea } from '@/components/antiquarian';
@@ -32,6 +33,7 @@ function manuscriptWordCount(content: string): number {
 }
 
 export function ExportDialog({ open, onClose }: ExportDialogProps) {
+  const t = useTranslations('exportDialog');
   const { state, updateField } = useStory();
 
   const exportableChapters = useMemo(
@@ -131,14 +133,14 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               <div className="flex items-center gap-2">
                 <Download size={18} className="text-brass-500" />
                 <h2 id="export-dialog-title" className="font-serif font-semibold text-sepia-900">
-                  Export manuscript
+                  {t('title')}
                 </h2>
               </div>
               <button
                 onClick={onClose}
                 disabled={busy}
                 className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-40"
-                aria-label="Close"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>
@@ -147,11 +149,11 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
             <div className="p-4 space-y-5 max-h-[60vh] overflow-y-auto">
               {/* Format */}
               <div>
-                <p className="text-sm font-medium text-sepia-800 mb-2">Format</p>
+                <p className="text-sm font-medium text-sepia-800 mb-2">{t('format')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {([
-                    { id: 'docx' as Format, label: 'Word (.docx)', icon: <FileText size={16} /> },
-                    { id: 'pdf' as Format, label: 'PDF (.pdf)', icon: <FileType2 size={16} /> },
+                    { id: 'docx' as Format, label: t('formatDocx'), icon: <FileText size={16} /> },
+                    { id: 'pdf' as Format, label: t('formatPdf'), icon: <FileType2 size={16} /> },
                   ]).map(opt => (
                     <button
                       key={opt.id}
@@ -170,7 +172,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                   ))}
                 </div>
                 <p className="text-xs text-sepia-600 mt-1.5">
-                  Standard manuscript format — 12pt, double-spaced, 1″ margins.
+                  {t('formatNote')}
                 </p>
               </div>
 
@@ -183,26 +185,26 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                     onChange={e => setTitlePage(e.target.checked)}
                     className="accent-brass-500"
                   />
-                  Include a title page (contact info &amp; word count)
+                  {t('includeTitlePage')}
                 </label>
 
                 {titlePage && (
                   <div className="space-y-3 pl-1">
                     <ParchmentInput
-                      label="Author name"
-                      placeholder="Your name"
+                      label={t('authorName')}
+                      placeholder={t('authorNamePlaceholder')}
                       value={authorName}
                       onChange={e => setAuthorName(e.target.value)}
                     />
                     <ParchmentInput
-                      label="Email"
-                      placeholder="you@example.com"
+                      label={t('email')}
+                      placeholder={t('emailPlaceholder')}
                       value={authorEmail}
                       onChange={e => setAuthorEmail(e.target.value)}
                     />
                     <ParchmentTextarea
-                      label="Mailing address"
-                      placeholder="Street, City, State ZIP"
+                      label={t('mailingAddress')}
+                      placeholder={t('mailingPlaceholder')}
                       value={authorAddress}
                       onChange={e => setAuthorAddress(e.target.value)}
                       className="min-h-[60px]"
@@ -215,27 +217,27 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               {/* Chapter selection */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-sepia-800">Chapters</p>
+                  <p className="text-sm font-medium text-sepia-800">{t('chapters')}</p>
                   <div className="flex items-center gap-2 text-xs">
                     <button
                       type="button"
                       onClick={() => setSelected(new Set(exportableChapters.map(c => c.id)))}
                       className="text-brass-700 hover:text-brass-900 underline"
                     >
-                      All
+                      {t('all')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setSelected(new Set())}
                       className="text-brass-700 hover:text-brass-900 underline"
                     >
-                      None
+                      {t('none')}
                     </button>
                   </div>
                 </div>
 
                 {exportableChapters.length === 0 ? (
-                  <p className="text-sm text-sepia-600 italic">No chapters to export.</p>
+                  <p className="text-sm text-sepia-600 italic">{t('noChapters')}</p>
                 ) : (
                   <ul className="space-y-1 border border-sepia-300/40 rounded-lg p-2 max-h-48 overflow-y-auto">
                     {exportableChapters.map(c => (
@@ -247,9 +249,9 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                             onChange={() => toggleChapter(c.id)}
                             className="accent-brass-500"
                           />
-                          <span className="flex-1 text-sm text-sepia-800 truncate">{c.title || 'Untitled'}</span>
+                          <span className="flex-1 text-sm text-sepia-800 truncate">{c.title || t('untitled')}</span>
                           <span className="text-xs text-sepia-600 font-mono">
-                            {manuscriptWordCount(c.content).toLocaleString()}w
+                            {t('wordsShort', { count: manuscriptWordCount(c.content) })}
                           </span>
                         </label>
                       </li>
@@ -267,18 +269,18 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               {done && (
                 <div className="flex items-start gap-2 text-sm text-forest-700 bg-forest-500/10 border border-forest-500/30 rounded-lg p-2">
                   <CheckCircle2 size={15} className="mt-0.5 shrink-0" />
-                  <span>Your {format.toUpperCase()} is downloading.</span>
+                  <span>{t('downloadingNote', { format: format.toUpperCase() })}</span>
                 </div>
               )}
             </div>
 
             <div className="flex items-center justify-between p-4 border-t border-sepia-300/30 gap-3">
               <span className="text-sm text-sepia-600 font-mono">
-                {selectedChapters.length} chapter{selectedChapters.length === 1 ? '' : 's'} · {totalWords.toLocaleString()} words
+                {t('summary', { chapters: selectedChapters.length, words: totalWords })}
               </span>
               <div className="flex items-center gap-2">
                 <InkStampButton variant="ghost" size="sm" onClick={onClose} disabled={busy}>
-                  Close
+                  {t('close')}
                 </InkStampButton>
                 <InkStampButton
                   variant="primary"
@@ -287,7 +289,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                   disabled={!canExport}
                   icon={busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                 >
-                  {busy ? 'Generating…' : `Export ${format.toUpperCase()}`}
+                  {busy ? t('generating') : t('exportFormat', { format: format.toUpperCase() })}
                 </InkStampButton>
               </div>
             </div>

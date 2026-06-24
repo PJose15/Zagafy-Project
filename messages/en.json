@@ -46,6 +46,7 @@
     "dismissNotification": "Dismiss notification",
     "generating": "Generating...",
     "loading": "Loading...",
+    "loadingProject": "Loading project...",
     "networkError": "Error: Network request failed",
     "readingTimeMin": "~{minutes} min read",
     "readingTimeHour": "~{hours}h read",
@@ -492,7 +493,20 @@
     "title": "Character Chat",
     "selectLabel": "Select a Character",
     "choosePlaceholder": "-- Choose a character --",
-    "empty": "No characters yet. Add characters in the Characters page first."
+    "empty": "No characters yet. Add characters in the Characters page first.",
+    "modes": {
+      "exploration": "Exploration",
+      "scene": "Scene",
+      "confrontation": "Confrontation"
+    },
+    "startConversation": "Start a conversation with {name} in {mode} mode.",
+    "thinking": "Thinking...",
+    "insightsHeading": "Insights",
+    "oracleUnavailable": "The oracle could not see clearly this turn. Try again later.",
+    "notConfigured": "Character Chat isn't configured on this deployment yet.",
+    "noResponse": "The character couldn't respond.",
+    "tryAgain": "Try again",
+    "dismiss": "Dismiss"
   },
   "flow": {
     "errorTitle": "Flow Editor",
@@ -1577,5 +1591,142 @@
       "medium": "medium",
       "low": "low"
     }
+  },
+  "findReplace": {
+    "title": "Find & replace",
+    "close": "Close",
+    "findPlaceholder": "Find…",
+    "findAria": "Find query",
+    "replacePlaceholder": "Replace with…",
+    "replaceAria": "Replacement text",
+    "matchCase": "Match case",
+    "wholeWord": "Whole word",
+    "regex": "Regex",
+    "scope": "Scope:",
+    "scopeAria": "Find scope",
+    "allChapters": "All chapters",
+    "currentChapter": "Current chapter",
+    "invalidRegex": "Invalid regex: {error}",
+    "typeToSearch": "Type a query above to start searching.",
+    "noMatches": "No matches.",
+    "replaceInChapter": "Replace in this chapter",
+    "moreNotShown": "+ {count, number} more not shown",
+    "matchCount": "{count, plural, one {# match} other {# matches}}",
+    "chapterSuffix": " · {count, plural, one {# chapter} other {# chapters}}",
+    "invalidRegexShort": "invalid regex",
+    "replaceAll": "Replace all",
+    "confirmTitle": "Confirm replace",
+    "confirmLabel": "Replace",
+    "confirmCurrent": "Replace {count, plural, one {# occurrence} other {# occurrences}} of \"{query}\" in this chapter?",
+    "confirmAll": "Replace {count, plural, one {# occurrence} other {# occurrences}} of \"{query}\" across {chapters, plural, one {# chapter} other {# chapters}}?",
+    "confirmChapter": "Replace {count, plural, one {# occurrence} other {# occurrences}} in \"{title}\"?",
+    "formattingNotice": "{count, plural, one {# match spans a formatting boundary and was left unchanged — edit it manually.} other {# matches span a formatting boundary and were left unchanged — edit them manually.}}"
+  },
+  "manuscriptEditor": {
+    "bold": "Bold",
+    "boldTitle": "Bold (Ctrl+B)",
+    "italic": "Italic",
+    "italicTitle": "Italic (Ctrl+I)",
+    "underline": "Underline",
+    "underlineTitle": "Underline (Ctrl+U)",
+    "strikethrough": "Strikethrough",
+    "strikethroughTitle": "Strikethrough",
+    "blockQuote": "Block Quote",
+    "blockQuoteTitle": "Block Quote",
+    "sceneBreak": "Scene Break",
+    "sceneBreakTitle": "Scene Break (* * *)",
+    "contentAria": "Manuscript content editor",
+    "placeholder": "Begin writing..."
+  },
+  "exportDialog": {
+    "title": "Export manuscript",
+    "close": "Close",
+    "format": "Format",
+    "formatDocx": "Word (.docx)",
+    "formatPdf": "PDF (.pdf)",
+    "formatNote": "Standard manuscript format — 12pt, double-spaced, 1″ margins.",
+    "includeTitlePage": "Include a title page (contact info & word count)",
+    "authorName": "Author name",
+    "authorNamePlaceholder": "Your name",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "mailingAddress": "Mailing address",
+    "mailingPlaceholder": "Street, City, State ZIP",
+    "chapters": "Chapters",
+    "all": "All",
+    "none": "None",
+    "noChapters": "No chapters to export.",
+    "untitled": "Untitled",
+    "wordsShort": "{count, number}w",
+    "downloadingNote": "Your {format} is downloading.",
+    "summary": "{chapters, plural, one {# chapter} other {# chapters}} · {words, number} words",
+    "generating": "Generating…",
+    "exportFormat": "Export {format}"
+  },
+  "novelCompletion": {
+    "aria": "Novel completion ceremony",
+    "statWords": "Words",
+    "statChapters": "Chapters",
+    "statSessions": "Sessions",
+    "statDays": "Days",
+    "statHours": "Hours",
+    "download": "Download my achievement",
+    "downloading": "Generating...",
+    "share": "Share",
+    "close": "Close",
+    "shareText": "I wrote my novel.",
+    "quotes": {
+      "q1": {
+        "text": "There is no greater agony than bearing an untold story inside you.",
+        "author": "Maya Angelou"
+      },
+      "q2": {
+        "text": "Start writing or start dying.",
+        "author": "Charles Bukowski"
+      },
+      "q3": {
+        "text": "A person who doesn't read lives only one life. A reader lives a thousand.",
+        "author": "George R.R. Martin"
+      },
+      "q4": {
+        "text": "The first time someone shows you who they are, believe them.",
+        "author": "Gabriel García Márquez"
+      },
+      "q5": {
+        "text": "Writing is a way of talking without being interrupted.",
+        "author": "Jules Renard"
+      }
+    }
+  },
+  "billing": {
+    "title": "Billing",
+    "currentPlan": "Current plan:",
+    "perMonth": "${price}/mo",
+    "upgradePlan": "Upgrade your plan:",
+    "loading": "Loading...",
+    "upgradeTo": "Upgrade to {name}",
+    "manageBilling": "Manage billing",
+    "manageNote": "Update payment method, download invoices, or cancel your subscription.",
+    "checkoutError": "Failed to start checkout. Please try again.",
+    "portalError": "Failed to open billing portal. Please try again."
+  },
+  "aiStatus": {
+    "title": "AI features are unavailable on this deployment.",
+    "body": "<code>GEMINI_API_KEY</code> isn't configured. Set it in your hosting provider's environment variables (and redeploy) to enable the assistant, coaching, publishing, and ingestion.",
+    "dismiss": "Dismiss"
+  },
+  "projectSwitcher": {
+    "activeAria": "Active project: {title}. Switch project",
+    "projects": "Projects",
+    "chaptersShort": "{count, number}ch",
+    "newProject": "New project",
+    "manageProjects": "Manage projects",
+    "untitled": "Untitled Project"
+  },
+  "consent": {
+    "aria": "Analytics consent",
+    "body": "We use privacy-friendly analytics to understand how Zagafy is used and improve the experience. No manuscript content is ever collected. You can change this anytime in Settings.",
+    "accept": "Accept",
+    "decline": "Decline"
   }
 }

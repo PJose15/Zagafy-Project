@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Search, Replace, X, AlertTriangle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { springs } from '@/lib/animations';
 import { InkStampButton, ParchmentInput } from '@/components/antiquarian';
 import { useConfirm } from '@/components/antiquarian/parchment-modal';
@@ -40,6 +41,7 @@ export function FindReplaceDialog({
   currentChapterId,
   onApplyEdits,
 }: FindReplaceDialogProps) {
+  const t = useTranslations('findReplace');
   const [query, setQuery] = useState('');
   const [replacement, setReplacement] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -116,9 +118,9 @@ export function FindReplaceDialog({
   ) => {
     if (matches.length === 0 || working || error) return;
     const ok = await confirm({
-      title: 'Confirm replace',
+      title: t('confirmTitle'),
       message: confirmMessage,
-      confirmLabel: 'Replace',
+      confirmLabel: t('confirmLabel'),
       variant: 'danger',
     });
     if (!ok) return;
@@ -155,9 +157,7 @@ export function FindReplaceDialog({
       console.info(`[find-replace] replaced ${totalReplaced} occurrence(s) across ${edits.length} chapter(s)`);
       if (totalReplaced < expected) {
         const gap = expected - totalReplaced;
-        setNotice(
-          `${gap} match${gap === 1 ? '' : 'es'} ${gap === 1 ? 'spans' : 'span'} a formatting boundary and ${gap === 1 ? 'was' : 'were'} left unchanged — edit ${gap === 1 ? 'it' : 'them'} manually.`,
-        );
+        setNotice(t('formattingNotice', { count: gap }));
       }
     } finally {
       setWorking(false);
@@ -171,15 +171,15 @@ export function FindReplaceDialog({
     replaceInChapters(
       targets,
       scope === 'current-chapter'
-        ? `Replace ${matches.length} occurrence${matches.length === 1 ? '' : 's'} of "${query}" in this chapter?`
-        : `Replace ${matches.length} occurrence${matches.length === 1 ? '' : 's'} of "${query}" across ${grouped.size} chapter${grouped.size === 1 ? '' : 's'}?`,
+        ? t('confirmCurrent', { count: matches.length, query })
+        : t('confirmAll', { count: matches.length, query, chapters: grouped.size }),
     );
   };
 
   const handleReplaceInChapter = (chapterId: string, count: number, title: string) => {
     replaceInChapters(
       [chapterId],
-      `Replace ${count} occurrence${count === 1 ? '' : 's'} in "${title}"?`,
+      t('confirmChapter', { count, title }),
     );
   };
 
@@ -208,13 +208,13 @@ export function FindReplaceDialog({
               <div className="flex items-center gap-2">
                 <Search size={18} className="text-brass-500" />
                 <h2 id="find-replace-title" className="font-serif font-semibold text-sepia-900">
-                  Find &amp; replace
+                  {t('title')}
                 </h2>
               </div>
               <button
                 onClick={onClose}
                 className="p-1 rounded-full text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30"
-                aria-label="Close"
+                aria-label={t('close')}
               >
                 <X size={18} />
               </button>
@@ -225,42 +225,42 @@ export function FindReplaceDialog({
                 type="text"
                 value={query}
                 onChange={e => { setQuery(e.target.value); setNotice(null); }}
-                placeholder="Find…"
-                aria-label="Find query"
+                placeholder={t('findPlaceholder')}
+                aria-label={t('findAria')}
                 autoFocus
               />
               <ParchmentInput
                 type="text"
                 value={replacement}
                 onChange={e => setReplacement(e.target.value)}
-                placeholder="Replace with…"
-                aria-label="Replacement text"
+                placeholder={t('replacePlaceholder')}
+                aria-label={t('replaceAria')}
               />
 
               <div className="flex items-center gap-3 flex-wrap text-xs text-sepia-700">
                 <label className="inline-flex items-center gap-1 cursor-pointer">
                   <input type="checkbox" checked={caseSensitive} onChange={e => setCaseSensitive(e.target.checked)} className="accent-brass-500" />
-                  Match case
+                  {t('matchCase')}
                 </label>
                 <label className="inline-flex items-center gap-1 cursor-pointer">
                   <input type="checkbox" checked={wholeWord} onChange={e => setWholeWord(e.target.checked)} className="accent-brass-500" />
-                  Whole word
+                  {t('wholeWord')}
                 </label>
                 <label className="inline-flex items-center gap-1 cursor-pointer">
                   <input type="checkbox" checked={regex} onChange={e => setRegex(e.target.checked)} className="accent-brass-500" />
-                  Regex
+                  {t('regex')}
                 </label>
                 <span className="ml-auto inline-flex items-center gap-2">
-                  <span>Scope:</span>
+                  <span>{t('scope')}</span>
                   <select
                     value={scope}
                     onChange={e => setScope(e.target.value as FindScope)}
                     className="bg-parchment-200 border border-sepia-300/60 rounded px-2 py-0.5 text-xs"
-                    aria-label="Find scope"
+                    aria-label={t('scopeAria')}
                   >
-                    <option value="all-chapters">All chapters</option>
+                    <option value="all-chapters">{t('allChapters')}</option>
                     <option value="current-chapter" disabled={!currentChapterId}>
-                      Current chapter
+                      {t('currentChapter')}
                     </option>
                   </select>
                 </span>
@@ -269,7 +269,7 @@ export function FindReplaceDialog({
               {error && (
                 <div className="flex items-start gap-2 text-xs text-wax-700 bg-wax-500/10 border border-wax-500/30 rounded-lg p-2">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                  <span>Invalid regex: {error}</span>
+                  <span>{t('invalidRegex', { error })}</span>
                 </div>
               )}
 
@@ -287,11 +287,11 @@ export function FindReplaceDialog({
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {!query && (
                 <p className="text-sm text-sepia-600 italic">
-                  Type a query above to start searching.
+                  {t('typeToSearch')}
                 </p>
               )}
               {query && !error && matches.length === 0 && (
-                <p className="text-sm text-sepia-600 italic">No matches.</p>
+                <p className="text-sm text-sepia-600 italic">{t('noMatches')}</p>
               )}
               {Array.from(grouped.entries()).map(([chapterId, group]) => (
                 <div key={chapterId} className="border border-sepia-300/30 rounded-lg p-3">
@@ -299,7 +299,7 @@ export function FindReplaceDialog({
                     <div className="min-w-0">
                       <p className="font-serif font-semibold text-sepia-900 text-sm">{group.title}</p>
                       <p className="text-[10px] text-sepia-600 font-mono">
-                        {group.matches.length} match{group.matches.length === 1 ? '' : 'es'}
+                        {t('matchCount', { count: group.matches.length })}
                       </p>
                     </div>
                     <button
@@ -308,7 +308,7 @@ export function FindReplaceDialog({
                       disabled={working || !!error}
                       className="text-xs text-brass-700 hover:text-brass-900 underline disabled:opacity-50"
                     >
-                      Replace in this chapter
+                      {t('replaceInChapter')}
                     </button>
                   </div>
                   <ul className="mt-2 space-y-1">
@@ -327,7 +327,7 @@ export function FindReplaceDialog({
                     ))}
                     {group.matches.length > PREVIEW_LIMIT && (
                       <li className="text-[10px] text-sepia-600 italic">
-                        + {group.matches.length - PREVIEW_LIMIT} more not shown
+                        {t('moreNotShown', { count: group.matches.length - PREVIEW_LIMIT })}
                       </li>
                     )}
                   </ul>
@@ -337,12 +337,12 @@ export function FindReplaceDialog({
 
             <div className="flex items-center justify-between p-4 border-t border-sepia-300/30 gap-3">
               <span className="text-sm text-sepia-600 font-mono">
-                {error ? 'invalid regex' : `${matches.length} match${matches.length === 1 ? '' : 'es'}`}
-                {grouped.size > 0 && ` · ${grouped.size} chapter${grouped.size === 1 ? '' : 's'}`}
+                {error ? t('invalidRegexShort') : t('matchCount', { count: matches.length })}
+                {grouped.size > 0 && t('chapterSuffix', { count: grouped.size })}
               </span>
               <div className="flex items-center gap-2">
                 <InkStampButton variant="ghost" size="sm" onClick={onClose}>
-                  Close
+                  {t('close')}
                 </InkStampButton>
                 <InkStampButton
                   variant="primary"
@@ -351,7 +351,7 @@ export function FindReplaceDialog({
                   onClick={handleReplaceAll}
                   disabled={matches.length === 0 || working || !!error}
                 >
-                  Replace all
+                  {t('replaceAll')}
                 </InkStampButton>
               </div>
             </div>

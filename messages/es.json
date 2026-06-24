@@ -46,6 +46,7 @@
     "dismissNotification": "Descartar notificación",
     "generating": "Generando...",
     "loading": "Cargando...",
+    "loadingProject": "Cargando proyecto…",
     "networkError": "Error: Falló la solicitud de red",
     "readingTimeMin": "~{minutes} min de lectura",
     "readingTimeHour": "~{hours} h de lectura",
@@ -492,7 +493,20 @@
     "title": "Chat de Personajes",
     "selectLabel": "Selecciona un Personaje",
     "choosePlaceholder": "-- Elige un personaje --",
-    "empty": "Aún no hay personajes. Primero añade personajes en la página de Personajes."
+    "empty": "Aún no hay personajes. Primero añade personajes en la página de Personajes.",
+    "modes": {
+      "exploration": "Exploración",
+      "scene": "Escena",
+      "confrontation": "Confrontación"
+    },
+    "startConversation": "Inicia una conversación con {name} en modo {mode}.",
+    "thinking": "Pensando...",
+    "insightsHeading": "Perspectivas",
+    "oracleUnavailable": "El oráculo no pudo ver con claridad este turno. Inténtalo más tarde.",
+    "notConfigured": "El Chat de Personajes aún no está configurado en este despliegue.",
+    "noResponse": "El personaje no pudo responder.",
+    "tryAgain": "Intentar de nuevo",
+    "dismiss": "Descartar"
   },
   "flow": {
     "errorTitle": "Editor de Flujo",
@@ -1577,5 +1591,142 @@
       "medium": "media",
       "low": "baja"
     }
+  },
+  "findReplace": {
+    "title": "Buscar y reemplazar",
+    "close": "Cerrar",
+    "findPlaceholder": "Buscar…",
+    "findAria": "Texto a buscar",
+    "replacePlaceholder": "Reemplazar con…",
+    "replaceAria": "Texto de reemplazo",
+    "matchCase": "Distinguir mayúsculas",
+    "wholeWord": "Palabra completa",
+    "regex": "Regex",
+    "scope": "Alcance:",
+    "scopeAria": "Alcance de búsqueda",
+    "allChapters": "Todos los capítulos",
+    "currentChapter": "Capítulo actual",
+    "invalidRegex": "Regex inválida: {error}",
+    "typeToSearch": "Escribe una búsqueda arriba para empezar.",
+    "noMatches": "Sin coincidencias.",
+    "replaceInChapter": "Reemplazar en este capítulo",
+    "moreNotShown": "+ {count, number} más no mostradas",
+    "matchCount": "{count, plural, one {# coincidencia} other {# coincidencias}}",
+    "chapterSuffix": " · {count, plural, one {# capítulo} other {# capítulos}}",
+    "invalidRegexShort": "regex inválida",
+    "replaceAll": "Reemplazar todo",
+    "confirmTitle": "Confirmar reemplazo",
+    "confirmLabel": "Reemplazar",
+    "confirmCurrent": "¿Reemplazar {count, plural, one {# aparición} other {# apariciones}} de \"{query}\" en este capítulo?",
+    "confirmAll": "¿Reemplazar {count, plural, one {# aparición} other {# apariciones}} de \"{query}\" en {chapters, plural, one {# capítulo} other {# capítulos}}?",
+    "confirmChapter": "¿Reemplazar {count, plural, one {# aparición} other {# apariciones}} en \"{title}\"?",
+    "formattingNotice": "{count, plural, one {# coincidencia cruza un límite de formato y se dejó sin cambiar — edítala manualmente.} other {# coincidencias cruzan un límite de formato y se dejaron sin cambiar — edítalas manualmente.}}"
+  },
+  "manuscriptEditor": {
+    "bold": "Negrita",
+    "boldTitle": "Negrita (Ctrl+B)",
+    "italic": "Cursiva",
+    "italicTitle": "Cursiva (Ctrl+I)",
+    "underline": "Subrayado",
+    "underlineTitle": "Subrayado (Ctrl+U)",
+    "strikethrough": "Tachado",
+    "strikethroughTitle": "Tachado",
+    "blockQuote": "Cita",
+    "blockQuoteTitle": "Cita",
+    "sceneBreak": "Salto de escena",
+    "sceneBreakTitle": "Salto de escena (* * *)",
+    "contentAria": "Editor de contenido del manuscrito",
+    "placeholder": "Empieza a escribir..."
+  },
+  "exportDialog": {
+    "title": "Exportar manuscrito",
+    "close": "Cerrar",
+    "format": "Formato",
+    "formatDocx": "Word (.docx)",
+    "formatPdf": "PDF (.pdf)",
+    "formatNote": "Formato de manuscrito estándar — 12pt, doble espacio, márgenes de 1″.",
+    "includeTitlePage": "Incluir una portada (datos de contacto y recuento de palabras)",
+    "authorName": "Nombre del autor",
+    "authorNamePlaceholder": "Tu nombre",
+    "email": "Correo",
+    "emailPlaceholder": "tu@ejemplo.com",
+    "mailingAddress": "Dirección postal",
+    "mailingPlaceholder": "Calle, Ciudad, Estado CP",
+    "chapters": "Capítulos",
+    "all": "Todos",
+    "none": "Ninguno",
+    "noChapters": "No hay capítulos para exportar.",
+    "untitled": "Sin título",
+    "wordsShort": "{count, number}p",
+    "downloadingNote": "Tu {format} se está descargando.",
+    "summary": "{chapters, plural, one {# capítulo} other {# capítulos}} · {words, number} palabras",
+    "generating": "Generando…",
+    "exportFormat": "Exportar {format}"
+  },
+  "novelCompletion": {
+    "aria": "Ceremonia de completar novela",
+    "statWords": "Palabras",
+    "statChapters": "Capítulos",
+    "statSessions": "Sesiones",
+    "statDays": "Días",
+    "statHours": "Horas",
+    "download": "Descargar mi logro",
+    "downloading": "Generando...",
+    "share": "Compartir en redes",
+    "close": "Cerrar",
+    "shareText": "Escribí mi novela.",
+    "quotes": {
+      "q1": {
+        "text": "No hay mayor agonía que llevar una historia no contada dentro de ti.",
+        "author": "Maya Angelou"
+      },
+      "q2": {
+        "text": "Empieza escribiendo o empieza muriendo.",
+        "author": "Charles Bukowski"
+      },
+      "q3": {
+        "text": "Una persona que no lee vive solo una vida. Un lector vive mil.",
+        "author": "George R.R. Martin"
+      },
+      "q4": {
+        "text": "La primera vez que alguien te muestra quién es, créele.",
+        "author": "Gabriel García Márquez"
+      },
+      "q5": {
+        "text": "Escribir es la manera de hablar sin que te interrumpan.",
+        "author": "Jules Renard"
+      }
+    }
+  },
+  "billing": {
+    "title": "Facturación",
+    "currentPlan": "Plan actual:",
+    "perMonth": "${price}/mes",
+    "upgradePlan": "Mejora tu plan:",
+    "loading": "Cargando...",
+    "upgradeTo": "Mejorar a {name}",
+    "manageBilling": "Gestionar facturación",
+    "manageNote": "Actualiza el método de pago, descarga facturas o cancela tu suscripción.",
+    "checkoutError": "No se pudo iniciar el pago. Inténtalo de nuevo.",
+    "portalError": "No se pudo abrir el portal de facturación. Inténtalo de nuevo."
+  },
+  "aiStatus": {
+    "title": "Las funciones de IA no están disponibles en este despliegue.",
+    "body": "<code>GEMINI_API_KEY</code> no está configurada. Configúrala en las variables de entorno de tu proveedor de hosting (y vuelve a desplegar) para habilitar el asistente, el coaching, la publicación y la importación.",
+    "dismiss": "Descartar"
+  },
+  "projectSwitcher": {
+    "activeAria": "Proyecto activo: {title}. Cambiar de proyecto",
+    "projects": "Proyectos",
+    "chaptersShort": "{count, number}cap",
+    "newProject": "Nuevo proyecto",
+    "manageProjects": "Gestionar proyectos",
+    "untitled": "Proyecto sin título"
+  },
+  "consent": {
+    "aria": "Consentimiento de analíticas",
+    "body": "Usamos analíticas respetuosas con la privacidad para entender cómo se usa Zagafy y mejorar la experiencia. Nunca recopilamos el contenido del manuscrito. Puedes cambiar esto cuando quieras en Ajustes.",
+    "accept": "Aceptar",
+    "decline": "Rechazar"
   }
 }
