@@ -54,7 +54,7 @@
     "next-intl": "^4.13.0",
     "pdf-parse": "1.1.4",
     "postcss": "8.5.15",
-    "posthog-js": "1.383.0",
+    "posthog-js": "1.391.3",
     "posthog-node": "5.36.5",
     "react": "19.2.7",
     "react-dom": "19.2.7",
