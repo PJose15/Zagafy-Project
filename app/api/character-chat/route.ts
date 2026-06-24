@@ -2,10 +2,10 @@ import { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
 import { getErrorStatus } from '@/lib/api-error';
-import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
+import { err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { anthropicConfig } from '@/lib/ai-config';
-import { callAnthropicMessages } from '@/lib/ai/anthropic';
+import { streamAnthropicText } from '@/lib/ai/anthropic';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
 import type { Character, CharacterState } from '@/lib/store';
 import type { ChatMode } from '@/lib/types/character-chat';
@@ -157,10 +157,15 @@ export async function POST(req: NextRequest) {
     }
     apiMessages.push({ role: 'user', content: message.trim() });
 
-    // Single bounded upstream call. Insight generation is now a separate,
+    // Stream the reply token-by-token. Insight generation is a separate,
     // client-initiated request (/api/character-chat/insight) so the reply is
     // never gated on — or lost to — the secondary call's latency.
-    const apiResult = await callAnthropicMessages({
+    //
+    // On success the response is a plain-text token stream; on failure it's the
+    // usual JSON error envelope, so the client branches on res.ok. (An empty
+    // stream is treated as an error client-side, where the accumulated text is
+    // known.)
+    const streamResult = await streamAnthropicText({
       apiKey,
       system: systemPrompt,
       messages: apiMessages,
@@ -169,20 +174,19 @@ export async function POST(req: NextRequest) {
       deadlineMs: CHAT_DEADLINE_MS,
     });
 
-    if (!apiResult.ok) {
-      if (apiResult.kind === 'timeout') return err('upstream_timeout', 'Chat request timed out', 504);
-      if (apiResult.kind === 'rate_limited') return err('rate_limited', 'Rate limited by AI provider', 429);
-      return err(statusToCode(apiResult.status), 'AI provider error', apiResult.status);
+    if (!streamResult.ok) {
+      if (streamResult.kind === 'timeout') return err('upstream_timeout', 'Chat request timed out', 504);
+      if (streamResult.kind === 'rate_limited') return err('rate_limited', 'Rate limited by AI provider', 429);
+      return err(statusToCode(streamResult.status), 'AI provider error', streamResult.status);
     }
 
-    if (!apiResult.text) {
-      // Empty body (e.g. a refusal or a thinking-only response) — surface it as
-      // a retryable error instead of letting the UI render an empty bubble.
-      log.warn('character chat: empty reply from upstream');
-      return err('upstream_unavailable', 'The character returned an empty response', 502);
-    }
-
-    return ok({ reply: apiResult.text });
+    return new Response(streamResult.stream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Accel-Buffering': 'no', // disable proxy buffering so tokens flush live
+      },
+    });
   } catch (error: unknown) {
     log.error('Character chat API error', error);
     const status = getErrorStatus(error);

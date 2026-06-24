@@ -168,17 +168,40 @@ export function useCharacterChat(characterId: string | null) {
         throw e;
       }
 
-      const data = await res.json();
-
+      // The route streams the reply as plain text. Append tokens to a growing
+      // character bubble so it types out live instead of appearing all at once.
       const charMsg: CharacterChatMessage = {
         id: crypto.randomUUID(),
         role: 'character',
-        content: data.reply,
+        content: '',
         timestamp: new Date().toISOString(),
         mode,
       };
 
-      const finalMessages = [...updatedMessages, charMsg];
+      let acc = '';
+      let started = false;
+      const reader = res.body?.getReader();
+      if (reader) {
+        const decoder = new TextDecoder();
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          acc += decoder.decode(value, { stream: true });
+          if (!started) {
+            started = true;
+            setIsLoading(false); // first token arrived — drop the "thinking" pulse
+          }
+          setMessages([...updatedMessages, { ...charMsg, content: acc }]);
+        }
+      }
+
+      if (!acc.trim()) {
+        // Empty stream (refusal / thinking-only / dropped connection) — surface
+        // as a retryable error instead of leaving an empty bubble.
+        throw new Error("The character couldn't respond. Please try again.");
+      }
+
+      const finalMessages = [...updatedMessages, { ...charMsg, content: acc }];
       setMessages(finalMessages);
       updateChatSession(session.id, {
         messages: finalMessages,
