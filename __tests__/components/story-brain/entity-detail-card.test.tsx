@@ -68,7 +68,7 @@ describe('EntityDetailCard', () => {
   it('renders entity name and type', () => {
     render(<EntityDetailCard {...defaultProps} />);
     expect(screen.getByText('Alice')).toBeDefined();
-    expect(screen.getByText('character')).toBeDefined();
+    expect(screen.getByText('Character')).toBeDefined();
   });
 
   it('shows mention count', () => {

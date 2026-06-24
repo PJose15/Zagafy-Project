@@ -591,7 +591,89 @@
     },
     "entityCatalogTitle": "Entity Catalog",
     "plotHolesTitle": "Plot Holes",
-    "noInconsistencies": "No inconsistencies detected. Your story is clean!"
+    "noInconsistencies": "No inconsistencies detected. Your story is clean!",
+    "toggle": {
+      "label": "Story Brain",
+      "aria": "Story Brain",
+      "ariaUnresolved": "Story Brain — {count, plural, one {# unresolved} other {# unresolved}}"
+    },
+    "entityTypes": {
+      "character": "Characters",
+      "location": "Locations",
+      "event": "Events",
+      "conflict": "Conflicts"
+    },
+    "entityTypeSingular": {
+      "character": "Character",
+      "location": "Location",
+      "event": "Event",
+      "conflict": "Conflict"
+    },
+    "catalog": {
+      "searchPlaceholder": "Search entities...",
+      "searchLabel": "Search entities",
+      "all": "All",
+      "empty": "No entities found.",
+      "groupHeader": "{label} ({count})",
+      "mentions": "{count, plural, one {# mention} other {# mentions}}",
+      "chapterShort": "Ch.{number}"
+    },
+    "canonBadge": {
+      "confirmed": "confirmed",
+      "flexible": "flexible",
+      "draft": "draft",
+      "discarded": "discarded"
+    },
+    "detail": {
+      "close": "Close detail",
+      "mentions": "Mentions",
+      "first": "First",
+      "last": "Last",
+      "relationships": "Relationships",
+      "trust": "Trust",
+      "tension": "Tension"
+    },
+    "severity": {
+      "critical": "critical",
+      "high": "high",
+      "medium": "medium",
+      "low": "low"
+    },
+    "resolutionAction": {
+      "ignore": "ignore",
+      "correct": "correct",
+      "intentional": "intentional"
+    },
+    "alert": {
+      "resolved": "Resolved: {action}",
+      "undo": "Undo",
+      "ignore": "Ignore",
+      "correct": "Correct",
+      "intentional": "Intentional"
+    },
+    "plotHole": {
+      "impact": "Impact: {value}",
+      "ignore": "Ignore",
+      "fix": "Fix",
+      "intentional": "Intentional",
+      "undo": "Undo",
+      "goToChapter": "Go to Ch.{number}"
+    },
+    "plotHolePanel": {
+      "empty": "No plot holes detected. Your narrative is solid!",
+      "types": {
+        "character_disappearance": "Character Disappearances",
+        "conflict_unresolved": "Unresolved Conflicts",
+        "late_introduction": "Late Introductions",
+        "foreshadowing_unfulfilled": "Unfulfilled Foreshadowing",
+        "stale_open_loop": "Stale Open Loops"
+      }
+    },
+    "matrix": {
+      "empty": "No character relationships defined.",
+      "ariaLabel": "Character relationship matrix",
+      "cellTitle": "Trust: {trust}% | Tension: {tension}%"
+    }
   },
   "canon": {
     "title": "Canon Lock",

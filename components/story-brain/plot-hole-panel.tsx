@@ -1,18 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { PlotHole, PlotHoleType } from '@/lib/story-brain/plot-hole-types';
 import type { InconsistencyResolution, ResolutionAction } from '@/lib/story-brain/types';
 import { PlotHoleCard } from './plot-hole-card';
-
-const TYPE_LABELS: Record<PlotHoleType, string> = {
-  character_disappearance: 'Character Disappearances',
-  conflict_unresolved: 'Unresolved Conflicts',
-  late_introduction: 'Late Introductions',
-  foreshadowing_unfulfilled: 'Unfulfilled Foreshadowing',
-  stale_open_loop: 'Stale Open Loops',
-};
 
 interface PlotHolePanelProps {
   plotHoles: PlotHole[];
@@ -23,6 +16,7 @@ interface PlotHolePanelProps {
 }
 
 export function PlotHolePanel({ plotHoles, resolutions, onResolve, onUnresolve, onGoToChapter }: PlotHolePanelProps) {
+  const t = useTranslations('storyBrain');
   const [expandedTypes, setExpandedTypes] = useState<Set<PlotHoleType>>(new Set());
   const resolvedIds = new Set(resolutions.map(r => r.inconsistencyId));
 
@@ -43,7 +37,7 @@ export function PlotHolePanel({ plotHoles, resolutions, onResolve, onUnresolve, 
   };
 
   if (plotHoles.length === 0) {
-    return <p className="text-sm text-sepia-600 text-center py-8">No plot holes detected. Your narrative is solid!</p>;
+    return <p className="text-sm text-sepia-600 text-center py-8">{t('plotHolePanel.empty')}</p>;
   }
 
   const types: PlotHoleType[] = ['conflict_unresolved', 'foreshadowing_unfulfilled', 'character_disappearance', 'late_introduction', 'stale_open_loop'];
@@ -64,7 +58,7 @@ export function PlotHolePanel({ plotHoles, resolutions, onResolve, onUnresolve, 
               className="flex items-center gap-2 w-full text-left py-2 px-1 hover:bg-parchment-200/50 rounded-lg transition-colors"
             >
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              <span className="text-sm font-medium text-sepia-800">{TYPE_LABELS[type]}</span>
+              <span className="text-sm font-medium text-sepia-800">{t(`plotHolePanel.types.${type}`)}</span>
               <span className="text-[10px] font-mono text-sepia-600">{unresolvedCount}/{items.length}</span>
             </button>
             {isExpanded && (

@@ -2,6 +2,7 @@
 
 import { ParchmentCard } from '@/components/antiquarian';
 import { AlertTriangle, Eye, CheckCircle, Paintbrush } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import type { Inconsistency, InconsistencyResolution, ResolutionAction } from '@/lib/story-brain/types';
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -19,6 +20,7 @@ interface InconsistencyAlertProps {
 }
 
 export function InconsistencyAlert({ inconsistency, resolution, onResolve, onUnresolve }: InconsistencyAlertProps) {
+  const t = useTranslations('storyBrain');
   const isResolved = !!resolution;
 
   return (
@@ -29,7 +31,7 @@ export function InconsistencyAlert({ inconsistency, resolution, onResolve, onUnr
           <div className="flex items-center gap-2 mb-1">
             <h4 className="text-sm font-medium text-sepia-800 truncate">{inconsistency.title}</h4>
             <span className={`text-[10px] px-1.5 py-0.5 rounded border ${SEVERITY_STYLES[inconsistency.severity]}`}>
-              {inconsistency.severity}
+              {t(`severity.${inconsistency.severity}`)}
             </span>
           </div>
           <p className="text-xs text-sepia-600 leading-relaxed">{inconsistency.description}</p>
@@ -37,13 +39,13 @@ export function InconsistencyAlert({ inconsistency, resolution, onResolve, onUnr
           {isResolved ? (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-[10px] text-forest-600 flex items-center gap-1">
-                <CheckCircle size={10} /> Resolved: {resolution.action}
+                <CheckCircle size={10} /> {t('alert.resolved', { action: t(`resolutionAction.${resolution.action}`) })}
               </span>
               <button
                 onClick={() => onUnresolve(inconsistency.id)}
                 className="text-[10px] text-sepia-600 hover:text-sepia-700 underline"
               >
-                Undo
+                {t('alert.undo')}
               </button>
             </div>
           ) : (
@@ -52,19 +54,19 @@ export function InconsistencyAlert({ inconsistency, resolution, onResolve, onUnr
                 onClick={() => onResolve(inconsistency.id, 'ignore')}
                 className="text-[10px] px-2 py-1 rounded bg-sepia-200/50 text-sepia-600 hover:bg-sepia-200 transition-colors flex items-center gap-1"
               >
-                <Eye size={10} /> Ignore
+                <Eye size={10} /> {t('alert.ignore')}
               </button>
               <button
                 onClick={() => onResolve(inconsistency.id, 'correct')}
                 className="text-[10px] px-2 py-1 rounded bg-forest-700/10 text-forest-700 hover:bg-forest-700/20 transition-colors flex items-center gap-1"
               >
-                <Paintbrush size={10} /> Correct
+                <Paintbrush size={10} /> {t('alert.correct')}
               </button>
               <button
                 onClick={() => onResolve(inconsistency.id, 'intentional')}
                 className="text-[10px] px-2 py-1 rounded bg-brass-500/10 text-brass-600 hover:bg-brass-500/20 transition-colors flex items-center gap-1"
               >
-                <CheckCircle size={10} /> Intentional
+                <CheckCircle size={10} /> {t('alert.intentional')}
               </button>
             </div>
           )}

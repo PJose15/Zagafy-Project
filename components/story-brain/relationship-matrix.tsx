@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { RelationshipPair } from '@/lib/story-brain/types';
 
 interface RelationshipMatrixProps {
@@ -7,8 +8,9 @@ interface RelationshipMatrixProps {
 }
 
 export function RelationshipMatrix({ relationships }: RelationshipMatrixProps) {
+  const t = useTranslations('storyBrain');
   if (relationships.length === 0) {
-    return <p className="text-sm text-sepia-600 text-center py-8">No character relationships defined.</p>;
+    return <p className="text-sm text-sepia-600 text-center py-8">{t('matrix.empty')}</p>;
   }
 
   // Collect unique character names
@@ -28,7 +30,7 @@ export function RelationshipMatrix({ relationships }: RelationshipMatrixProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs" role="grid" aria-label="Character relationship matrix">
+      <table className="w-full text-xs" role="grid" aria-label={t('matrix.ariaLabel')}>
         <thead>
           <tr>
             <th className="p-2 text-left text-sepia-600 font-medium" />
@@ -53,7 +55,7 @@ export function RelationshipMatrix({ relationships }: RelationshipMatrixProps) {
                 }
                 return (
                   <td key={colName} className="p-2">
-                    <div className="flex flex-col items-center gap-0.5" title={`Trust: ${rel.trustLevel}% | Tension: ${rel.tensionLevel}%`}>
+                    <div className="flex flex-col items-center gap-0.5" title={t('matrix.cellTitle', { trust: rel.trustLevel, tension: rel.tensionLevel })}>
                       <div
                         className="w-6 h-3 rounded-sm"
                         style={{

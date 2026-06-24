@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { ParchmentCard } from '@/components/antiquarian';
 import { Search, Users, MapPin, CalendarDays, Swords } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -14,19 +15,13 @@ const TYPE_ICONS: Record<EntityType, React.FC<{ size?: number; className?: strin
   conflict: Swords,
 };
 
-const TYPE_LABELS: Record<EntityType, string> = {
-  character: 'Characters',
-  location: 'Locations',
-  event: 'Events',
-  conflict: 'Conflicts',
-};
-
 interface EntityCatalogProps {
   entities: EntityCatalogEntry[];
   onSelect?: (entity: EntityCatalogEntry) => void;
 }
 
 export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
+  const t = useTranslations('storyBrain');
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<EntityType | 'all'>('all');
 
@@ -64,8 +59,8 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search entities..."
-            aria-label="Search entities"
+            placeholder={t('catalog.searchPlaceholder')}
+            aria-label={t('catalog.searchLabel')}
             className="w-full pl-9 pr-3 py-2 bg-parchment-200 border border-sepia-300/40 rounded-lg text-sm text-sepia-900 focus:outline-none focus:border-brass-500/60"
           />
         </div>
@@ -77,7 +72,7 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
               filterType === 'all' ? 'bg-brass-500 text-cream-50' : 'text-sepia-600 hover:bg-parchment-200'
             }`}
           >
-            All
+            {t('catalog.all')}
           </button>
           {types.map(type => {
             const Icon = TYPE_ICONS[type];
@@ -91,7 +86,7 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
                 }`}
               >
                 <Icon size={12} />
-                {TYPE_LABELS[type]}
+                {t(`entityTypes.${type}`)}
               </button>
             );
           })}
@@ -100,7 +95,7 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
 
       {/* Entity List */}
       {filtered.length === 0 ? (
-        <p className="text-sm text-sepia-600 text-center py-8">No entities found.</p>
+        <p className="text-sm text-sepia-600 text-center py-8">{t('catalog.empty')}</p>
       ) : (
         filterType === 'all' ? (
           types.map(type => {
@@ -111,7 +106,7 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
               <div key={type} className="space-y-2">
                 <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider flex items-center gap-2">
                   <GroupIcon size={14} />
-                  {TYPE_LABELS[type]} ({items.length})
+                  {t('catalog.groupHeader', { label: t(`entityTypes.${type}`), count: items.length })}
                 </h3>
                 <div className="space-y-1.5">
                   {items.map((entity, i) => (
@@ -134,6 +129,7 @@ export function EntityCatalog({ entities, onSelect }: EntityCatalogProps) {
 }
 
 function EntityRow({ entity, index, onClick }: { entity: EntityCatalogEntry; index: number; onClick?: () => void }) {
+  const t = useTranslations('storyBrain');
   return (
     <motion.div {...stagger.cards(index)}>
       <ParchmentCard
@@ -151,14 +147,14 @@ function EntityRow({ entity, index, onClick }: { entity: EntityCatalogEntry; ind
                 entity.canonStatus === 'flexible' ? 'bg-brass-500/10 text-brass-600' :
                 'bg-wax-500/10 text-wax-600'
               }`}>
-                {entity.canonStatus}
+                {t(`canonBadge.${entity.canonStatus}`)}
               </span>
             )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <span className="text-[10px] font-mono text-sepia-600">{entity.mentionCount} mentions</span>
+            <span className="text-[10px] font-mono text-sepia-600">{t('catalog.mentions', { count: entity.mentionCount })}</span>
             {entity.firstAppearanceChapter >= 0 && (
-              <span className="text-[10px] font-mono text-sepia-600">Ch.{entity.firstAppearanceChapter + 1}</span>
+              <span className="text-[10px] font-mono text-sepia-600">{t('catalog.chapterShort', { number: entity.firstAppearanceChapter + 1 })}</span>
             )}
           </div>
         </div>

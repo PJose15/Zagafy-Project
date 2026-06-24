@@ -591,7 +591,89 @@
     },
     "entityCatalogTitle": "Catálogo de Entidades",
     "plotHolesTitle": "Vacíos de Trama",
-    "noInconsistencies": "No se detectaron inconsistencias. ¡Tu historia está limpia!"
+    "noInconsistencies": "No se detectaron inconsistencias. ¡Tu historia está limpia!",
+    "toggle": {
+      "label": "Cerebro de la Historia",
+      "aria": "Cerebro de la Historia",
+      "ariaUnresolved": "Cerebro de la Historia — {count, plural, one {# sin resolver} other {# sin resolver}}"
+    },
+    "entityTypes": {
+      "character": "Personajes",
+      "location": "Lugares",
+      "event": "Eventos",
+      "conflict": "Conflictos"
+    },
+    "entityTypeSingular": {
+      "character": "Personaje",
+      "location": "Lugar",
+      "event": "Evento",
+      "conflict": "Conflicto"
+    },
+    "catalog": {
+      "searchPlaceholder": "Buscar entidades...",
+      "searchLabel": "Buscar entidades",
+      "all": "Todas",
+      "empty": "No se encontraron entidades.",
+      "groupHeader": "{label} ({count})",
+      "mentions": "{count, plural, one {# mención} other {# menciones}}",
+      "chapterShort": "Cap.{number}"
+    },
+    "canonBadge": {
+      "confirmed": "confirmado",
+      "flexible": "flexible",
+      "draft": "borrador",
+      "discarded": "descartado"
+    },
+    "detail": {
+      "close": "Cerrar detalle",
+      "mentions": "Menciones",
+      "first": "Primera",
+      "last": "Última",
+      "relationships": "Relaciones",
+      "trust": "Confianza",
+      "tension": "Tensión"
+    },
+    "severity": {
+      "critical": "crítica",
+      "high": "alta",
+      "medium": "media",
+      "low": "baja"
+    },
+    "resolutionAction": {
+      "ignore": "ignorar",
+      "correct": "corregir",
+      "intentional": "intencional"
+    },
+    "alert": {
+      "resolved": "Resuelto: {action}",
+      "undo": "Deshacer",
+      "ignore": "Ignorar",
+      "correct": "Corregir",
+      "intentional": "Intencional"
+    },
+    "plotHole": {
+      "impact": "Impacto: {value}",
+      "ignore": "Ignorar",
+      "fix": "Corregir",
+      "intentional": "Intencional",
+      "undo": "Deshacer",
+      "goToChapter": "Ir al Cap.{number}"
+    },
+    "plotHolePanel": {
+      "empty": "No se detectaron vacíos de trama. ¡Tu narrativa es sólida!",
+      "types": {
+        "character_disappearance": "Desapariciones de Personajes",
+        "conflict_unresolved": "Conflictos Sin Resolver",
+        "late_introduction": "Introducciones Tardías",
+        "foreshadowing_unfulfilled": "Presagios Sin Cumplir",
+        "stale_open_loop": "Hilos Abiertos Estancados"
+      }
+    },
+    "matrix": {
+      "empty": "No hay relaciones entre personajes definidas.",
+      "ariaLabel": "Matriz de relaciones entre personajes",
+      "cellTitle": "Confianza: {trust}% | Tensión: {tension}%"
+    }
   },
   "canon": {
     "title": "Bloqueo de Canon",
