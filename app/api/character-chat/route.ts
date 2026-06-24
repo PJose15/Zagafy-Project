@@ -8,7 +8,7 @@ import { anthropicConfig } from '@/lib/ai-config';
 import { streamAnthropicText } from '@/lib/ai/anthropic';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
 import type { Character, CharacterState } from '@/lib/store';
-import type { ChatMode } from '@/lib/types/character-chat';
+import type { ChatMode, StoryContext } from '@/lib/types/character-chat';
 
 export const maxDuration = 30;
 
@@ -31,6 +31,12 @@ const MAX_NAME = 200;
 const MAX_ROLE = 200;
 const MAX_LONG = 2_000;
 const MAX_STATE = 500;
+
+// Caps for the story-grounding payload (keeps prompt size + proxy abuse bounded)
+const MAX_PREMISE = 1_500;
+const MAX_CANON_ITEMS = 40;
+const MAX_CANON_ITEM = 400;
+const MAX_STORY_SO_FAR = 12_000;
 
 function str(v: unknown, max: number): string | null {
   if (typeof v !== 'string') return null;
@@ -89,6 +95,21 @@ function sanitizeCharacter(input: unknown): Character | null {
   };
 }
 
+function sanitizeStoryContext(input: unknown): StoryContext | undefined {
+  if (!input || typeof input !== 'object') return undefined;
+  const o = input as Record<string, unknown>;
+  const premise = optStr(o.premise, MAX_PREMISE);
+  const canonRaw = Array.isArray(o.canon)
+    ? o.canon
+        .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+        .slice(0, MAX_CANON_ITEMS)
+        .map(x => x.trim().slice(0, MAX_CANON_ITEM))
+    : [];
+  const storySoFar = optStr(o.storySoFar, MAX_STORY_SO_FAR);
+  if (!premise && canonRaw.length === 0 && !storySoFar) return undefined;
+  return { premise, canon: canonRaw.length ? canonRaw : undefined, storySoFar };
+}
+
 export async function POST(req: NextRequest) {
   const requestId = makeRequestId();
   const log = createRouteLogger({ endpoint: '/api/character-chat', requestId });
@@ -100,7 +121,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { message, mode, character, messages } = body;
+    const { message, mode, character, messages, storyContext: storyContextRaw } = body;
 
     // Validate message (the new turn from the user)
     if (typeof message !== 'string' || message.trim().length === 0) {
@@ -136,7 +157,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const systemPrompt = buildSystemPrompt(sanitized, mode as ChatMode);
+    const storyContext = sanitizeStoryContext(storyContextRaw);
+    const systemPrompt = buildSystemPrompt(sanitized, mode as ChatMode, storyContext);
 
     // Build conversation history with caps to prevent abuse
     const apiMessages: Array<{ role: string; content: string }> = [];
