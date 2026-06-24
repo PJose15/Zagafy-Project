@@ -6,6 +6,7 @@ import {
   CharacterChatMessage,
   CharacterChatSession,
   CharacterInsight,
+  EvolvedState,
   readChatSessions,
   updateChatSession,
   addChatSession,
@@ -13,9 +14,15 @@ import {
   addInsight,
   markInsightAsCanon as markCanon,
 } from '@/lib/types/character-chat';
-import { useStory } from '@/lib/store';
+import { useStory, type CharacterState } from '@/lib/store';
 
 export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
+
+/** Narrow a full CharacterState down to the conversation-evolving slice. */
+function toEvolved(s: CharacterState | undefined): EvolvedState | null {
+  if (!s || !s.pressureLevel || !s.indicator) return null;
+  return { emotionalState: s.emotionalState ?? '', pressureLevel: s.pressureLevel, indicator: s.indicator };
+}
 
 export function useCharacterChat(characterId: string | null) {
   const { state } = useStory();
@@ -29,6 +36,15 @@ export function useCharacterChat(characterId: string | null) {
   // user's message silently vanishing. `notConfigured` means the server is
   // missing ANTHROPIC_API_KEY; `lastInput` lets the UI offer a one-click retry.
   const [error, setError] = useState<{ message: string; notConfigured: boolean; lastInput: string } | null>(null);
+  // Living state — the character's conversation-evolving emotional state, shown
+  // as a live meter and fed back into the next prompt. Ref mirrors it for reads
+  // inside sendMessage without adding a dependency.
+  const [liveState, setLiveStateRaw] = useState<EvolvedState | null>(null);
+  const liveStateRef = useRef<EvolvedState | null>(null);
+  const setLiveState = useCallback((s: EvolvedState | null) => {
+    liveStateRef.current = s;
+    setLiveStateRaw(s);
+  }, []);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load or create session when characterId changes
@@ -37,6 +53,7 @@ export function useCharacterChat(characterId: string | null) {
       setSession(null);
       setMessages([]);
       setInsights([]);
+      setLiveState(null);
       return;
     }
 
@@ -46,8 +63,10 @@ export function useCharacterChat(characterId: string | null) {
       setSession(existing);
       setMessages(existing.messages);
       setModeState(existing.mode);
+      setLiveState(existing.evolvedState ?? toEvolved(state.characters.find(c => c.id === characterId)?.currentState));
     } else {
       const character = state.characters.find(c => c.id === characterId);
+      setLiveState(toEvolved(character?.currentState));
       const newSession: CharacterChatSession = {
         id: crypto.randomUUID(),
         characterId,
@@ -69,7 +88,7 @@ export function useCharacterChat(characterId: string | null) {
       return s?.characterId === characterId;
     });
     setInsights(allInsights);
-  }, [characterId, state.characters]);
+  }, [characterId, state.characters, setLiveState]);
 
   // Cross-tab sync
   useEffect(() => {
@@ -80,6 +99,7 @@ export function useCharacterChat(characterId: string | null) {
         if (updated) {
           setSession(updated);
           setMessages(updated.messages);
+          if (updated.evolvedState) setLiveState(updated.evolvedState);
         }
       }
       if (e.key === 'zagafy_character_insights' && characterId) {
@@ -93,7 +113,7 @@ export function useCharacterChat(characterId: string | null) {
     }
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, [session, characterId]);
+  }, [session, characterId, setLiveState]);
 
   const setMode = useCallback((newMode: ChatMode) => {
     setModeState(newMode);
@@ -140,7 +160,11 @@ export function useCharacterChat(characterId: string | null) {
         description: character.description,
         coreIdentity: character.coreIdentity,
         relationships: character.relationships,
-        currentState: character.currentState,
+        // Feed the conversation-evolved state back in so the character continues
+        // from its escalated emotional state, not the authored baseline.
+        currentState: liveStateRef.current
+          ? { ...character.currentState, ...liveStateRef.current }
+          : character.currentState,
       };
 
       const res = await fetch('/api/character-chat', {
@@ -250,6 +274,42 @@ export function useCharacterChat(characterId: string | null) {
           }
         })();
       }
+
+      // Living state — evolve the character's momentary emotional state from
+      // this exchange (non-blocking). Updates the live meter and is persisted to
+      // the session so it carries across reloads and into the next prompt.
+      {
+        const stateTranscript = finalMessages
+          .map(m => `${m.role === 'character' ? 'assistant' : 'user'}: ${m.content}`)
+          .join('\n')
+          .slice(0, 30_000);
+        const priorState = liveStateRef.current ?? toEvolved(character.currentState);
+        void (async () => {
+          try {
+            const sres = await fetch('/api/character-chat/state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                characterName: character.name,
+                mode,
+                transcript: stateTranscript,
+                currentState: priorState,
+              }),
+            });
+            if (!sres.ok) return;
+            const sdata = await sres.json();
+            if (sdata.state) {
+              setLiveState(sdata.state as EvolvedState);
+              updateChatSession(session.id, {
+                evolvedState: sdata.state,
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          } catch {
+            /* non-blocking — leave the meter as-is */
+          }
+        })();
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       // Revert the optimistic user message and surface a visible, retryable error
@@ -263,7 +323,7 @@ export function useCharacterChat(characterId: string | null) {
       // up for the request still in flight instead of clearing it here.
       if (!controller.signal.aborted) setIsLoading(false);
     }
-  }, [session, characterId, messages, mode, state.characters]);
+  }, [session, characterId, messages, mode, state.characters, setLiveState]);
 
   const saveInsightAsCanon = useCallback((insightId: string) => {
     markCanon(insightId);
@@ -274,8 +334,15 @@ export function useCharacterChat(characterId: string | null) {
     if (!session) return;
     const cleared: CharacterChatMessage[] = [];
     setMessages(cleared);
-    updateChatSession(session.id, { messages: cleared, updatedAt: new Date().toISOString() });
-  }, [session]);
+    // Reset the evolving state back to the character's authored baseline.
+    const baseline = toEvolved(state.characters.find(c => c.id === characterId)?.currentState);
+    setLiveState(baseline);
+    updateChatSession(session.id, {
+      messages: cleared,
+      evolvedState: baseline ?? undefined,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [session, characterId, state.characters, setLiveState]);
 
   const clearError = useCallback(() => setError(null), []);
 
@@ -300,5 +367,6 @@ export function useCharacterChat(characterId: string | null) {
     error,
     clearError,
     retry,
+    liveState,
   };
 }

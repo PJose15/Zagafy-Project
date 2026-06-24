@@ -5,6 +5,7 @@ import { Trash2, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { CarvedHeader, BrassButton } from '@/components/antiquarian';
 import { useCharacterChat } from '@/hooks/use-character-chat';
+import type { EvolvedState } from '@/lib/types/character-chat';
 import { ChatModeSelector } from './chat-mode-selector';
 import { ChatMessageBubble } from './chat-message-bubble';
 import { ChatInput } from './chat-input';
@@ -15,8 +16,24 @@ interface CharacterChatPanelProps {
   characterName: string;
 }
 
+const PRESSURE_INDEX: Record<EvolvedState['pressureLevel'], number> = {
+  Low: 1,
+  Medium: 2,
+  High: 3,
+  Critical: 4,
+};
+
+const INDICATOR_COLOR: Record<EvolvedState['indicator'], string> = {
+  'stable': 'bg-forest-500',
+  'shifting': 'bg-sepia-400',
+  'under pressure': 'bg-brass-500',
+  'emotionally conflicted': 'bg-wax-600',
+  'at risk of contradiction': 'bg-wax-500',
+};
+
 export function CharacterChatPanel({ characterId, characterName }: CharacterChatPanelProps) {
   const t = useTranslations('characterChat');
+  const tChar = useTranslations('characters');
   const {
     messages,
     mode,
@@ -30,6 +47,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     error,
     clearError,
     retry,
+    liveState,
   } = useCharacterChat(characterId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -57,6 +75,43 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
           </BrassButton>
         </div>
         <ChatModeSelector activeMode={mode} onModeChange={setMode} />
+
+        {/* Living state — a pressure meter + indicator that shifts as the
+            character reacts to the conversation. */}
+        {liveState && (
+          <div className="mt-2 flex items-center gap-2">
+            <div
+              className="flex items-center gap-0.5"
+              role="meter"
+              aria-valuemin={1}
+              aria-valuemax={4}
+              aria-valuenow={PRESSURE_INDEX[liveState.pressureLevel]}
+              aria-label={t('pressureMeterAria', {
+                name: characterName,
+                level: tChar(`pressure.${liveState.pressureLevel}`),
+              })}
+            >
+              {[1, 2, 3, 4].map(seg => (
+                <span
+                  key={seg}
+                  className={`h-1.5 w-5 rounded-full transition-colors ${
+                    seg <= PRESSURE_INDEX[liveState.pressureLevel]
+                      ? INDICATOR_COLOR[liveState.indicator]
+                      : 'bg-cream-100/10'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-[11px] font-medium text-cream-300">
+              {tChar(`indicator.${liveState.indicator}`)}
+            </span>
+            {liveState.emotionalState && (
+              <span className="text-[11px] italic text-cream-400/60 truncate">
+                — {liveState.emotionalState}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Messages */}
