@@ -7,6 +7,7 @@ import {
   CharacterChatSession,
   CharacterInsight,
   EvolvedState,
+  StoryContext,
   readChatSessions,
   updateChatSession,
   addChatSession,
@@ -14,7 +15,7 @@ import {
   addInsight,
   markInsightAsCanon as markCanon,
 } from '@/lib/types/character-chat';
-import { useStory, type CharacterState } from '@/lib/store';
+import { useStory, type CharacterState, type Character, type StoryState } from '@/lib/store';
 
 export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
 
@@ -22,6 +23,54 @@ export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limi
 function toEvolved(s: CharacterState | undefined): EvolvedState | null {
   if (!s || !s.pressureLevel || !s.indicator) return null;
   return { emotionalState: s.emotionalState ?? '', pressureLevel: s.pressureLevel, indicator: s.indicator };
+}
+
+/**
+ * Ground the character in the actual story: premise, canon facts (preferring
+ * ones that mention this character), and what's happened so far (chapter
+ * summaries, or excerpts mentioning them when summaries are absent). Server
+ * re-caps everything; these client caps just bound the payload.
+ */
+function buildStoryContext(state: StoryState, character: Character): StoryContext {
+  const premise = [state.title, state.synopsis]
+    .map(s => (s || '').trim())
+    .filter(Boolean)
+    .join(' — ')
+    .slice(0, 1500);
+
+  const name = character.name.toLowerCase();
+  const allCanon = Array.isArray(state.canon_items) ? state.canon_items : [];
+  const relevant = allCanon.filter(c => (c.description || '').toLowerCase().includes(name));
+  const canon = (relevant.length ? relevant : allCanon)
+    .slice(0, 40)
+    .map(c => `${c.category ? `[${c.category}] ` : ''}${(c.description || '').trim()}`.trim())
+    .filter(Boolean);
+
+  const chapters = Array.isArray(state.chapters) ? state.chapters : [];
+  const summarized = chapters.filter(ch => (ch.summary || '').trim());
+  let storySoFar = '';
+  if (summarized.length) {
+    storySoFar = summarized.map(ch => `${ch.title}: ${ch.summary.trim()}`).join('\n');
+  } else {
+    const excerpts: string[] = [];
+    for (const ch of chapters) {
+      const text = ch.content || '';
+      const idx = text.toLowerCase().indexOf(name);
+      if (idx >= 0) {
+        const slice = text.slice(Math.max(0, idx - 150), idx + 350).replace(/\s+/g, ' ').trim();
+        excerpts.push(`${ch.title}: …${slice}…`);
+      }
+      if (excerpts.length >= 12) break;
+    }
+    storySoFar = excerpts.join('\n');
+  }
+  storySoFar = storySoFar.slice(0, 12000);
+
+  const ctx: StoryContext = {};
+  if (premise) ctx.premise = premise;
+  if (canon.length) ctx.canon = canon;
+  if (storySoFar.trim()) ctx.storySoFar = storySoFar;
+  return ctx;
 }
 
 export function useCharacterChat(characterId: string | null) {
@@ -175,6 +224,7 @@ export function useCharacterChat(characterId: string | null) {
           mode,
           character: characterPayload,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          storyContext: buildStoryContext(state, character),
         }),
         signal: controller.signal,
       });
@@ -323,7 +373,7 @@ export function useCharacterChat(characterId: string | null) {
       // up for the request still in flight instead of clearing it here.
       if (!controller.signal.aborted) setIsLoading(false);
     }
-  }, [session, characterId, messages, mode, state.characters, setLiveState]);
+  }, [session, characterId, messages, mode, state, setLiveState]);
 
   const saveInsightAsCanon = useCallback((insightId: string) => {
     markCanon(insightId);

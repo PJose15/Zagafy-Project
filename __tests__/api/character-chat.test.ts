@@ -248,6 +248,39 @@ describe('POST /api/character-chat (streaming)', () => {
     expect(options.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('grounds the system prompt in the supplied story context', async () => {
+    mockFetch.mockResolvedValue(sseResponse(textDeltaEvent('ok')));
+    await POST(makeRequest({
+      ...validBody,
+      storyContext: {
+        premise: 'A kingdom of falsified maps',
+        canon: ['Alice carries a silver sword'],
+        storySoFar: 'Chapter 1: the journey began',
+      },
+    }));
+    const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(fetchBody.system).toContain('STORY GROUNDING');
+    expect(fetchBody.system).toContain('A kingdom of falsified maps');
+    expect(fetchBody.system).toContain('Alice carries a silver sword');
+    expect(fetchBody.system).toContain('the journey began');
+  });
+
+  it('caps oversized story context (canon items + story-so-far length)', async () => {
+    mockFetch.mockResolvedValue(sseResponse(textDeltaEvent('ok')));
+    const bigCanon = Array.from({ length: 100 }, (_, i) => `fact ${i}`);
+    await POST(makeRequest({
+      ...validBody,
+      storyContext: { canon: bigCanon, storySoFar: 'y'.repeat(20000) },
+    }));
+    const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    // Max 40 canon items kept (indices 0..39)
+    expect(fetchBody.system).toContain('fact 39');
+    expect(fetchBody.system).not.toContain('fact 40');
+    // story-so-far capped at 12000 chars
+    expect(fetchBody.system).toContain('y'.repeat(12000));
+    expect(fetchBody.system).not.toContain('y'.repeat(12001));
+  });
+
   it('does not make a second (insight) call — insight is a separate route now', async () => {
     mockFetch.mockResolvedValue(sseResponse(textDeltaEvent('Main reply')));
 

@@ -1,5 +1,23 @@
 import type { Character } from '@/lib/store';
-import type { ChatMode, CharacterChatMessage } from '@/lib/types/character-chat';
+import type { ChatMode, CharacterChatMessage, StoryContext } from '@/lib/types/character-chat';
+
+function buildStoryGrounding(ctx?: StoryContext): string {
+  if (!ctx) return '';
+  const parts: string[] = [];
+  if (ctx.premise) parts.push(`The story: ${ctx.premise}`);
+  if (ctx.canon && ctx.canon.length) {
+    parts.push(`Established canon — immutable truths about you and your world:\n- ${ctx.canon.join('\n- ')}`);
+  }
+  if (ctx.storySoFar) parts.push(`What has happened so far:\n${ctx.storySoFar}`);
+  if (parts.length === 0) return '';
+
+  return `
+
+=== STORY GROUNDING ===
+${parts.join('\n\n')}
+
+You exist within this story. Speak from it — treat these events and facts as your own lived experience and memory. NEVER contradict the canon facts above; they are immutable truth. If asked about something not covered here, you may speculate in character, but never in a way that conflicts with established canon.`;
+}
 
 const MODE_ADDENDUMS: Record<ChatMode, string> = {
   exploration:
@@ -10,7 +28,7 @@ const MODE_ADDENDUMS: Record<ChatMode, string> = {
     'The user is challenging you. Defend your position, reveal hidden truths under pressure. Push back, get emotional, let cracks show. This is an interrogation of your soul — react accordingly.',
 };
 
-export function buildSystemPrompt(character: Character, mode: ChatMode): string {
+export function buildSystemPrompt(character: Character, mode: ChatMode, storyContext?: StoryContext): string {
   const state = character.currentState;
   const stateBlock = state
     ? `
@@ -31,6 +49,7 @@ Description: ${character.description}
 ${character.coreIdentity ? `Core Identity: ${character.coreIdentity}` : ''}
 ${character.relationships ? `Relationships: ${character.relationships}` : ''}
 ${stateBlock}
+${buildStoryGrounding(storyContext)}
 
 MODE: ${mode.toUpperCase()}
 ${MODE_ADDENDUMS[mode]}

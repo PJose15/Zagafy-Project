@@ -13,6 +13,20 @@ export interface EvolvedState {
   indicator: CharacterState['indicator'];
 }
 
+/**
+ * Story grounding sent with a chat request so the character answers from the
+ * actual manuscript and stays consistent with established canon — not as a
+ * generic persona. Built client-side from the store; capped server-side.
+ */
+export interface StoryContext {
+  /** Title + synopsis — the overall premise the character lives inside. */
+  premise?: string;
+  /** Established canon facts (immutable truth the character must not contradict). */
+  canon?: string[];
+  /** What has happened so far — chapter summaries, or excerpts mentioning them. */
+  storySoFar?: string;
+}
+
 export interface CharacterChatMessage {
   id: string;
   role: 'user' | 'character';
