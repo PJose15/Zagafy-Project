@@ -55,7 +55,7 @@
     "pdf-parse": "1.1.4",
     "postcss": "8.5.15",
     "posthog-js": "1.383.0",
-    "posthog-node": "5.36.5",
+    "posthog-node": "5.38.2",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-markdown": "10.1.0",
