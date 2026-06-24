@@ -144,3 +144,109 @@ export async function callAnthropicMessages(params: CallParams): Promise<Anthrop
     return { ok: false, kind: 'upstream', status: 500 };
   }
 }
+
+export type AnthropicStreamResult =
+  | { ok: true; stream: ReadableStream<Uint8Array> }
+  | { ok: false; kind: 'timeout' | 'rate_limited' | 'upstream'; status: number };
+
+/**
+ * Streaming variant: opens an SSE request to Anthropic and returns a
+ * ReadableStream that emits only the assistant's *text* deltas (thinking
+ * deltas are dropped). The single abort timer bounds the whole stream to
+ * `deadlineMs` (no per-attempt retry — once bytes flow you can't retry, and
+ * streaming already removes the all-or-nothing timeout risk).
+ */
+export async function streamAnthropicText(params: CallParams): Promise<AnthropicStreamResult> {
+  const {
+    apiKey,
+    model = anthropicConfig.model,
+    system,
+    messages,
+    maxTokens,
+    temperature,
+    deadlineMs,
+  } = params;
+
+  const body: Record<string, unknown> = { model, max_tokens: maxTokens, system, messages, stream: true };
+  if (temperature !== undefined && supportsSamplingParams(model)) {
+    body.temperature = temperature;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(1, deadlineMs));
+
+  let upstream: Response;
+  try {
+    upstream = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (e: unknown) {
+    clearTimeout(timer);
+    if (e instanceof Error && e.name === 'AbortError') return { ok: false, kind: 'timeout', status: 504 };
+    return { ok: false, kind: 'upstream', status: 500 };
+  }
+
+  if (!upstream.ok || !upstream.body) {
+    clearTimeout(timer);
+    if (upstream.status === 429) return { ok: false, kind: 'rate_limited', status: 429 };
+    return { ok: false, kind: 'upstream', status: upstream.status || 502 };
+  }
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(out) {
+      const reader = upstream.body!.getReader();
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      let buffer = '';
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          // SSE events are separated by a blank line.
+          let sep: number;
+          while ((sep = buffer.indexOf('\n\n')) !== -1) {
+            const rawEvent = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            for (const line of rawEvent.split('\n')) {
+              const trimmed = line.trimStart();
+              if (!trimmed.startsWith('data:')) continue;
+              const data = trimmed.slice(5).trim();
+              if (!data || data === '[DONE]') continue;
+              try {
+                const evt = JSON.parse(data);
+                if (
+                  evt.type === 'content_block_delta' &&
+                  evt.delta?.type === 'text_delta' &&
+                  typeof evt.delta.text === 'string'
+                ) {
+                  out.enqueue(encoder.encode(evt.delta.text));
+                }
+              } catch {
+                // keep-alive ping or partial/non-JSON line — ignore
+              }
+            }
+          }
+        }
+      } catch {
+        // upstream/stream interrupted mid-flight — end cleanly with what we have
+      } finally {
+        clearTimeout(timer);
+        try { out.close(); } catch { /* already closed */ }
+      }
+    },
+    cancel() {
+      clearTimeout(timer);
+      try { controller.abort(); } catch { /* noop */ }
+    },
+  });
+
+  return { ok: true, stream };
+}

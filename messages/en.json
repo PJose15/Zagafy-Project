@@ -490,6 +490,7 @@
     }
   },
   "characterChat": {
+    "pressureMeterAria": "{name}'s pressure level: {level}",
     "title": "Character Chat",
     "selectLabel": "Select a Character",
     "choosePlaceholder": "-- Choose a character --",

@@ -1,4 +1,17 @@
+import type { CharacterState } from '@/lib/store';
+
 export type ChatMode = 'exploration' | 'scene' | 'confrontation';
+
+/**
+ * The conversation-local, evolving slice of a character's state. Updated after
+ * each exchange so the character visibly reacts and escalates *within* a chat,
+ * without mutating the authored character baseline.
+ */
+export interface EvolvedState {
+  emotionalState: string;
+  pressureLevel: CharacterState['pressureLevel'];
+  indicator: CharacterState['indicator'];
+}
 
 export interface CharacterChatMessage {
   id: string;
@@ -16,6 +29,8 @@ export interface CharacterChatSession {
   mode: ChatMode;
   createdAt: string;
   updatedAt: string;
+  /** Conversation-local evolving emotional state (see EvolvedState). */
+  evolvedState?: EvolvedState;
 }
 
 export interface CharacterInsight {

@@ -490,6 +490,7 @@
     }
   },
   "characterChat": {
+    "pressureMeterAria": "Nivel de presión de {name}: {level}",
     "title": "Chat de Personajes",
     "selectLabel": "Selecciona un Personaje",
     "choosePlaceholder": "-- Elige un personaje --",
