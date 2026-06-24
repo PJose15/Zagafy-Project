@@ -3,14 +3,19 @@ import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
 import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
-import { withRetry, isRetryableUpstream } from '@/lib/ai/retry';
 import { createRouteLogger } from '@/lib/logger';
 import { anthropicConfig } from '@/lib/ai-config';
+import { callAnthropicMessages } from '@/lib/ai/anthropic';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
 import type { Character, CharacterState } from '@/lib/store';
 import type { ChatMode } from '@/lib/types/character-chat';
 
 export const maxDuration = 30;
+
+// Wall-clock budget for the single upstream call. Kept comfortably under
+// maxDuration so a slow generation + one retry still returns gracefully
+// (with a 504) instead of letting the platform hard-kill the function.
+const CHAT_DEADLINE_MS = 27_000;
 
 const VALID_MODES: ChatMode[] = ['exploration', 'scene', 'confrontation'];
 const VALID_PRESSURE = ['Low', 'Medium', 'High', 'Critical'] as const;
@@ -95,7 +100,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { message, mode, character, messages, generateInsight } = body;
+    const { message, mode, character, messages } = body;
 
     // Validate message (the new turn from the user)
     if (typeof message !== 'string' || message.trim().length === 0) {
@@ -152,151 +157,32 @@ export async function POST(req: NextRequest) {
     }
     apiMessages.push({ role: 'user', content: message.trim() });
 
-    let response: Response;
-    try {
-      response = await withRetry(
-        async () => {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), anthropicConfig.timeouts.characterChat);
-          try {
-            const r = await fetch('https://api.anthropic.com/v1/messages', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-              },
-              body: JSON.stringify({
-                model: anthropicConfig.model,
-                max_tokens: 2048,
-                temperature: anthropicConfig.temperatures.characterChat,
-                system: systemPrompt,
-                messages: apiMessages,
-              }),
-              signal: controller.signal,
-            });
-            if ([429, 502, 503, 504, 529].includes(r.status)) {
-              const e: Error & { status?: number } = new Error(`Anthropic ${r.status}`);
-              e.status = r.status;
-              throw e;
-            }
-            return r;
-          } finally {
-            clearTimeout(timer);
-          }
-        },
-        {
-          retryableErrors: (e) =>
-            !(e instanceof Error && e.name === 'AbortError') && isRetryableUpstream(e),
-        },
-      );
-    } catch (fetchError: unknown) {
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return err('upstream_timeout', 'Chat request timed out', 504);
-      }
-      if (fetchError && typeof fetchError === 'object' && 'status' in fetchError) {
-        const status = Number((fetchError as { status: number }).status);
-        if (status === 429) return err('rate_limited', 'Rate limited by AI provider', 429);
-        return err(statusToCode(status), 'AI provider error', status);
-      }
-      throw fetchError;
+    // Single bounded upstream call. Insight generation is now a separate,
+    // client-initiated request (/api/character-chat/insight) so the reply is
+    // never gated on — or lost to — the secondary call's latency.
+    const apiResult = await callAnthropicMessages({
+      apiKey,
+      system: systemPrompt,
+      messages: apiMessages,
+      maxTokens: 2048,
+      temperature: anthropicConfig.temperatures.characterChat,
+      deadlineMs: CHAT_DEADLINE_MS,
+    });
+
+    if (!apiResult.ok) {
+      if (apiResult.kind === 'timeout') return err('upstream_timeout', 'Chat request timed out', 504);
+      if (apiResult.kind === 'rate_limited') return err('rate_limited', 'Rate limited by AI provider', 429);
+      return err(statusToCode(apiResult.status), 'AI provider error', apiResult.status);
     }
 
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
-        return err('rate_limited', 'Rate limited by AI provider', 429);
-      }
-      return err(statusToCode(status), 'AI provider error', status);
+    if (!apiResult.text) {
+      // Empty body (e.g. a refusal or a thinking-only response) — surface it as
+      // a retryable error instead of letting the UI render an empty bubble.
+      log.warn('character chat: empty reply from upstream');
+      return err('upstream_unavailable', 'The character returned an empty response', 502);
     }
 
-    const data = await response.json();
-    const reply = data.content?.[0]?.text?.trim() || '';
-
-    type InsightError = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
-    const result: {
-      reply: string;
-      insight: string | null;
-      insightError?: InsightError;
-    } = { reply, insight: null };
-
-    // Generate insight if requested and enough messages.
-    // CB-09: when this optional secondary call fails, surface a structured
-    // signal so the client can render "Insight unavailable" instead of a
-    // phantom feature.
-    if (generateInsight && Array.isArray(messages) && messages.length >= 5) {
-      const insightController = new AbortController();
-      const insightTimeout = setTimeout(
-        () => insightController.abort(),
-        anthropicConfig.timeouts.insight,
-      );
-      try {
-        const transcript = apiMessages
-          .map(m => `${m.role}: ${m.content}`)
-          .join('\n')
-          .slice(0, MAX_HISTORY_CHARS);
-
-        const insightResponse = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: anthropicConfig.model,
-            max_tokens: 256,
-            temperature: anthropicConfig.temperatures.characterInsight,
-            system: 'You are a literary analyst. Extract character insights from conversations.',
-            messages: [
-              {
-                role: 'user',
-                content: `Analyze this conversation and extract ONE key insight about the character "${sanitized.name}":\n\n${transcript}\nassistant: ${reply}`,
-              },
-            ],
-          }),
-          signal: insightController.signal,
-        });
-
-        if (insightResponse.ok) {
-          let insightData: { content?: Array<{ text?: string }> } | null = null;
-          try {
-            insightData = await insightResponse.json();
-          } catch {
-            log.warn('insight: parse-error on JSON body');
-            result.insightError = 'parse_error';
-          }
-          if (insightData) {
-            const text = insightData.content?.[0]?.text?.trim();
-            if (text) {
-              result.insight = text;
-            } else {
-              result.insightError = 'parse_error';
-              log.warn('insight: empty/unrecognized response shape');
-            }
-          }
-        } else if (insightResponse.status === 429) {
-          result.insightError = 'rate_limited';
-          log.warn('insight: rate-limited by upstream');
-        } else {
-          result.insightError = 'upstream_error';
-          log.warn('insight: upstream non-ok', { status: insightResponse.status });
-        }
-      } catch (insightErr: unknown) {
-        if (insightErr instanceof Error && insightErr.name === 'AbortError') {
-          result.insightError = 'timeout';
-          log.warn('insight: 15s timeout');
-        } else {
-          result.insightError = 'upstream_error';
-          const msg = insightErr instanceof Error ? insightErr.message : String(insightErr);
-          log.warn('insight: upstream throw', { errorMessage: msg });
-        }
-      } finally {
-        clearTimeout(insightTimeout);
-      }
-    }
-
-    return ok(result);
+    return ok({ reply: apiResult.text });
   } catch (error: unknown) {
     log.error('Character chat API error', error);
     const status = getErrorStatus(error);

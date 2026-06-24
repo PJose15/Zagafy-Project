@@ -60,6 +60,34 @@ describe('POST /api/character-chat', () => {
     expect(data.reply).toBe('I am Alice, pleased to meet you.');
   });
 
+  it('extracts the first text block, skipping a leading thinking block', async () => {
+    // Newer models (Opus 4.7+) emit a thinking block before the text block.
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        content: [
+          { type: 'thinking', thinking: 'Let me consider how Alice would respond.' },
+          { type: 'text', text: 'I am Alice.' },
+        ],
+      }),
+    });
+
+    const res = await POST(makeRequest(validBody));
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.reply).toBe('I am Alice.');
+  });
+
+  it('returns 502 when the reply is empty (refusal / thinking-only)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ content: [{ type: 'thinking', thinking: '...' }] }),
+    });
+
+    const res = await POST(makeRequest(validBody));
+    expect(res.status).toBe(502);
+  });
+
   it('returns 400 for missing character', async () => {
     const { character: _c, ...rest } = validBody;
     void _c;
@@ -191,7 +219,7 @@ describe('POST /api/character-chat', () => {
     expect(options.headers['anthropic-version']).toBe('2023-06-01');
   });
 
-  it('uses temperature 0.6 and max_tokens 2048', async () => {
+  it('uses temperature 0.6 and max_tokens 2048 on a sampling-capable model', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ content: [{ text: 'ok' }] }),
@@ -217,139 +245,22 @@ describe('POST /api/character-chat', () => {
     expect(options.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it('generates insight when requested with 5+ messages', async () => {
-    // First call: main reply, second call: insight
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ content: [{ text: 'They fear the unknown.' }] }),
-      });
-
-    const messages = Array.from({ length: 6 }, (_, i) => ({
-      role: i % 2 === 0 ? 'user' : 'character',
-      content: `Message ${i}`,
-    }));
-
-    const res = await POST(makeRequest({
-      ...validBody,
-      messages,
-      generateInsight: true,
-    }));
-    const data = await res.json();
-
-    expect(data.reply).toBe('Main reply');
-    expect(data.insight).toBe('They fear the unknown.');
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-  });
-
-  it('does not generate insight when fewer than 5 messages', async () => {
+  it('does not make a second (insight) call — insight is a separate route now', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ content: [{ text: 'reply' }] }),
+      json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
     });
 
-    const res = await POST(makeRequest({
-      ...validBody,
-      messages: [{ role: 'user', content: 'Hi' }],
-      generateInsight: true,
+    const messages = Array.from({ length: 6 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'character',
+      content: `Message ${i}`,
     }));
+
+    const res = await POST(makeRequest({ ...validBody, messages }));
     const data = await res.json();
 
-    expect(data.reply).toBe('reply');
-    // CB-09: insight is now always present in the shape (null if not run).
-    expect(data.insight).toBeNull();
-    expect(data.insightError).toBeUndefined();
+    expect(data.reply).toBe('Main reply');
+    expect(data.insight).toBeUndefined();
     expect(mockFetch).toHaveBeenCalledTimes(1);
-  });
-
-  it('returns reply even if insight generation fails', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
-      })
-      .mockRejectedValue(new Error('Insight failed'));
-
-    const messages = Array.from({ length: 6 }, (_, i) => ({
-      role: i % 2 === 0 ? 'user' : 'character',
-      content: `Message ${i}`,
-    }));
-
-    const res = await POST(makeRequest({
-      ...validBody,
-      messages,
-      generateInsight: true,
-    }));
-    const data = await res.json();
-
-    expect(data.reply).toBe('Main reply');
-    expect(data.insight).toBeNull();
-    // CB-09: surfaces a stable error reason instead of silently disappearing.
-    expect(data.insightError).toBe('upstream_error');
-  });
-
-  // ── CB-09 (Phase 3.4) — explicit insight error surfacing ──
-
-  it('surfaces insightError="rate_limited" when insight upstream returns 429', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
-      })
-      .mockResolvedValueOnce({ ok: false, status: 429 });
-
-    const messages = Array.from({ length: 6 }, (_, i) => ({
-      role: i % 2 === 0 ? 'user' : 'character',
-      content: `Message ${i}`,
-    }));
-
-    const res = await POST(makeRequest({ ...validBody, messages, generateInsight: true }));
-    const data = await res.json();
-    expect(data.reply).toBe('Main reply');
-    expect(data.insight).toBeNull();
-    expect(data.insightError).toBe('rate_limited');
-  });
-
-  it('surfaces insightError="upstream_error" when insight upstream returns 500', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
-      })
-      .mockResolvedValueOnce({ ok: false, status: 500 });
-
-    const messages = Array.from({ length: 6 }, (_, i) => ({
-      role: i % 2 === 0 ? 'user' : 'character',
-      content: `Message ${i}`,
-    }));
-
-    const res = await POST(makeRequest({ ...validBody, messages, generateInsight: true }));
-    const data = await res.json();
-    expect(data.insightError).toBe('upstream_error');
-  });
-
-  it('surfaces insightError="parse_error" when insight body has unexpected shape', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ content: [{ text: 'Main reply' }] }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ /* no content array */ }),
-      });
-
-    const messages = Array.from({ length: 6 }, (_, i) => ({
-      role: i % 2 === 0 ? 'user' : 'character',
-      content: `Message ${i}`,
-    }));
-
-    const res = await POST(makeRequest({ ...validBody, messages, generateInsight: true }));
-    const data = await res.json();
-    expect(data.insightError).toBe('parse_error');
   });
 });

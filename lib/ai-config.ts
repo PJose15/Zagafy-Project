@@ -13,10 +13,12 @@ export const SAFETY_SETTINGS = [
 ];
 
 // Anthropic configuration — Claude model used for character chat and polish.
-// Override the model via the ANTHROPIC_MODEL env var when needed (e.g. to upgrade
-// to a newer Sonnet without code changes). See .env.example.
+// Override the model via the ANTHROPIC_MODEL env var when needed. Sampling
+// params (temperature) are sent only for models that accept them — see
+// supportsSamplingParams() in lib/ai/anthropic.ts — so upgrading to Opus 4.7+
+// or Fable via this env var won't 400. See .env.example.
 export const anthropicConfig = {
-  model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-5-20250929',
+  model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
   defaultMaxTokens: 4096,
   temperatures: {
     characterChat: 0.6,

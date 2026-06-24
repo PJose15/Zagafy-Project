@@ -23,7 +23,7 @@ describe('anthropicConfig', () => {
 
   it('falls back to the default Sonnet model when ANTHROPIC_MODEL is unset', async () => {
     const { anthropicConfig } = await loadConfig();
-    expect(anthropicConfig.model).toBe('claude-sonnet-4-5-20250929');
+    expect(anthropicConfig.model).toBe('claude-sonnet-4-6');
   });
 
   it('honors ANTHROPIC_MODEL env override', async () => {
