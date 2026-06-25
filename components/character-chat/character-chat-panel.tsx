@@ -48,6 +48,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     clearError,
     retry,
     liveState,
+    contradictions,
   } = useCharacterChat(characterId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,6 +151,23 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
               />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Canon contradiction flag — the character broke established canon */}
+      {contradictions.length > 0 && (
+        <div className="px-4 py-2 border-t border-brass-500/40 bg-brass-500/10">
+          <p className="text-[10px] uppercase tracking-widest text-brass-400/80 mb-1 flex items-center gap-1">
+            <AlertTriangle size={12} aria-hidden="true" /> {t('contradictionHeading')}
+          </p>
+          <ul className="space-y-1">
+            {contradictions.map((c, i) => (
+              <li key={i} className="text-[12px] leading-snug text-cream-300">
+                <span className="text-cream-200 font-medium">{c.fact}</span>
+                <span className="text-cream-400/70"> — {c.explanation}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

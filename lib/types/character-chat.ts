@@ -27,6 +27,18 @@ export interface StoryContext {
   storySoFar?: string;
 }
 
+/**
+ * A detected conflict between a character's reply and an established canon fact.
+ * Surfaced in the chat so the writer catches the character "breaking canon"
+ * (the Story-Brain consistency idea, applied live to dialogue).
+ */
+export interface ContradictionFlag {
+  /** The canon fact the reply contradicts. */
+  fact: string;
+  /** One-sentence explanation of how the reply conflicts with it. */
+  explanation: string;
+}
+
 export interface CharacterChatMessage {
   id: string;
   role: 'user' | 'character';
