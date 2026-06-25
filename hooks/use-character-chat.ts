@@ -8,6 +8,7 @@ import {
   CharacterInsight,
   EvolvedState,
   StoryContext,
+  ContradictionFlag,
   readChatSessions,
   updateChatSession,
   addChatSession,
@@ -81,6 +82,8 @@ export function useCharacterChat(characterId: string | null) {
   const [isLoading, setIsLoading] = useState(false);
   const [insights, setInsights] = useState<CharacterInsight[]>([]);
   const [lastInsightError, setLastInsightError] = useState<CharacterInsightErrorReason | null>(null);
+  // Canon contradictions detected in the most recent reply (Story-Brain check).
+  const [contradictions, setContradictions] = useState<ContradictionFlag[]>([]);
   // Surfaced when a send fails so the chat shows a clear message instead of the
   // user's message silently vanishing. `notConfigured` means the server is
   // missing ANTHROPIC_API_KEY; `lastInput` lets the UI offer a one-click retry.
@@ -189,6 +192,7 @@ export function useCharacterChat(characterId: string | null) {
     setMessages(updatedMessages);
     setIsLoading(true);
     setError(null);
+    setContradictions([]); // clear any flag from the previous reply
 
     // Cancel any in-flight request
     if (abortRef.current) abortRef.current.abort();
@@ -216,6 +220,8 @@ export function useCharacterChat(characterId: string | null) {
           : character.currentState,
       };
 
+      const storyContext = buildStoryContext(state, character);
+
       const res = await fetch('/api/character-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,7 +230,7 @@ export function useCharacterChat(characterId: string | null) {
           mode,
           character: characterPayload,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
-          storyContext: buildStoryContext(state, character),
+          storyContext,
         }),
         signal: controller.signal,
       });
@@ -360,6 +366,32 @@ export function useCharacterChat(characterId: string | null) {
           }
         })();
       }
+
+      // Canon contradiction check — flag when the reply breaks established
+      // canon (Story-Brain consistency, applied to dialogue). Non-blocking.
+      if (storyContext.canon && storyContext.canon.length) {
+        const replyText = acc;
+        void (async () => {
+          try {
+            const cres = await fetch('/api/character-chat/contradiction', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                characterName: character.name,
+                reply: replyText,
+                canon: storyContext.canon,
+              }),
+            });
+            if (!cres.ok) return;
+            const cdata = await cres.json();
+            if (Array.isArray(cdata.contradictions) && cdata.contradictions.length) {
+              setContradictions(cdata.contradictions as ContradictionFlag[]);
+            }
+          } catch {
+            /* non-blocking — no flag shown */
+          }
+        })();
+      }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       // Revert the optimistic user message and surface a visible, retryable error
@@ -384,6 +416,7 @@ export function useCharacterChat(characterId: string | null) {
     if (!session) return;
     const cleared: CharacterChatMessage[] = [];
     setMessages(cleared);
+    setContradictions([]);
     // Reset the evolving state back to the character's authored baseline.
     const baseline = toEvolved(state.characters.find(c => c.id === characterId)?.currentState);
     setLiveState(baseline);
@@ -418,5 +451,6 @@ export function useCharacterChat(characterId: string | null) {
     clearError,
     retry,
     liveState,
+    contradictions,
   };
 }

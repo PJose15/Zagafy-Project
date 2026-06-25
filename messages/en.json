@@ -491,6 +491,7 @@
   },
   "characterChat": {
     "pressureMeterAria": "{name}'s pressure level: {level}",
+    "contradictionHeading": "Possible canon contradiction",
     "title": "Character Chat",
     "selectLabel": "Select a Character",
     "choosePlaceholder": "-- Choose a character --",
