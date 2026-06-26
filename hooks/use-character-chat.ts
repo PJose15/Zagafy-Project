@@ -97,6 +97,9 @@ export function useCharacterChat(characterId: string | null) {
     liveStateRef.current = s;
     setLiveStateRaw(s);
   }, []);
+  // Durable cross-session memory of past conversations (ref for reads inside
+  // sendMessage without a dependency; persisted on the session).
+  const memoryRef = useRef<string | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load or create session when characterId changes
@@ -116,9 +119,11 @@ export function useCharacterChat(characterId: string | null) {
       setMessages(existing.messages);
       setModeState(existing.mode);
       setLiveState(existing.evolvedState ?? toEvolved(state.characters.find(c => c.id === characterId)?.currentState));
+      memoryRef.current = existing.memory;
     } else {
       const character = state.characters.find(c => c.id === characterId);
       setLiveState(toEvolved(character?.currentState));
+      memoryRef.current = undefined;
       const newSession: CharacterChatSession = {
         id: crypto.randomUUID(),
         characterId,
@@ -231,6 +236,7 @@ export function useCharacterChat(characterId: string | null) {
           character: characterPayload,
           messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
           storyContext,
+          memory: memoryRef.current,
         }),
         signal: controller.signal,
       });
@@ -389,6 +395,34 @@ export function useCharacterChat(characterId: string | null) {
             }
           } catch {
             /* non-blocking — no flag shown */
+          }
+        })();
+      }
+
+      // Cross-session memory — update the durable running memory of past
+      // conversations (non-blocking, on the insight cadence to limit calls).
+      // Persisted on the session so it survives clears and seeds future chats.
+      if (shouldGenerateInsight) {
+        const memTranscript = finalMessages
+          .map(m => `${m.role === 'character' ? 'assistant' : 'user'}: ${m.content}`)
+          .join('\n')
+          .slice(0, 30_000);
+        const existingMemory = memoryRef.current;
+        void (async () => {
+          try {
+            const mres = await fetch('/api/character-chat/memory', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ characterName: character.name, transcript: memTranscript, existingMemory }),
+            });
+            if (!mres.ok) return;
+            const mdata = await mres.json();
+            if (typeof mdata.memory === 'string' && mdata.memory.trim()) {
+              memoryRef.current = mdata.memory;
+              updateChatSession(session.id, { memory: mdata.memory, updatedAt: new Date().toISOString() });
+            }
+          } catch {
+            /* non-blocking — keep existing memory */
           }
         })();
       }

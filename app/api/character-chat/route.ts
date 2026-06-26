@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { message, mode, character, messages, storyContext: storyContextRaw } = body;
+    const { message, mode, character, messages, storyContext: storyContextRaw, memory: memoryRaw } = body;
 
     // Validate message (the new turn from the user)
     if (typeof message !== 'string' || message.trim().length === 0) {
@@ -158,7 +158,8 @@ export async function POST(req: NextRequest) {
     }
 
     const storyContext = sanitizeStoryContext(storyContextRaw);
-    const systemPrompt = buildSystemPrompt(sanitized, mode as ChatMode, storyContext);
+    const memory = optStr(memoryRaw, 4_000);
+    const systemPrompt = buildSystemPrompt(sanitized, mode as ChatMode, storyContext, memory);
 
     // Build conversation history with caps to prevent abuse
     const apiMessages: Array<{ role: string; content: string }> = [];

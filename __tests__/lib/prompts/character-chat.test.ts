@@ -35,6 +35,14 @@ describe('buildSystemPrompt — story grounding', () => {
     expect(p).toContain('NEVER contradict');
   });
 
+  it('renders the cross-session memory block when memory is provided', () => {
+    const p = buildSystemPrompt(char, 'exploration', undefined, '- She promised to help me.\n- We parted on warm terms.');
+    expect(p).toContain('WHAT YOU REMEMBER');
+    expect(p).toContain('She promised to help me.');
+    const none = buildSystemPrompt(char, 'exploration', undefined, '   ');
+    expect(none).not.toContain('WHAT YOU REMEMBER');
+  });
+
   it('still renders the character identity alongside grounding', () => {
     const p = buildSystemPrompt(char, 'exploration', { premise: 'X' });
     expect(p).toContain('You are Mira');

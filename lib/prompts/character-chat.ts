@@ -28,7 +28,15 @@ const MODE_ADDENDUMS: Record<ChatMode, string> = {
     'The user is challenging you. Defend your position, reveal hidden truths under pressure. Push back, get emotional, let cracks show. This is an interrogation of your soul — react accordingly.',
 };
 
-export function buildSystemPrompt(character: Character, mode: ChatMode, storyContext?: StoryContext): string {
+export function buildSystemPrompt(
+  character: Character,
+  mode: ChatMode,
+  storyContext?: StoryContext,
+  memory?: string,
+): string {
+  const memoryBlock = memory && memory.trim()
+    ? `\n\n=== WHAT YOU REMEMBER ===\nFrom your earlier conversations with this person:\n${memory.trim()}\nDraw on these memories naturally — you already know this person and what passed between you.`
+    : '';
   const state = character.currentState;
   const stateBlock = state
     ? `
@@ -49,7 +57,7 @@ Description: ${character.description}
 ${character.coreIdentity ? `Core Identity: ${character.coreIdentity}` : ''}
 ${character.relationships ? `Relationships: ${character.relationships}` : ''}
 ${stateBlock}
-${buildStoryGrounding(storyContext)}
+${buildStoryGrounding(storyContext)}${memoryBlock}
 
 MODE: ${mode.toUpperCase()}
 ${MODE_ADDENDUMS[mode]}

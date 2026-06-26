@@ -57,6 +57,12 @@ export interface CharacterChatSession {
   updatedAt: string;
   /** Conversation-local evolving emotional state (see EvolvedState). */
   evolvedState?: EvolvedState;
+  /**
+   * Durable cross-session memory — a concise running summary of what the
+   * character has learned/revealed across conversations. Survives a session
+   * clear and is fed back into the prompt so the character recalls past chats.
+   */
+  memory?: string;
 }
 
 export interface CharacterInsight {
