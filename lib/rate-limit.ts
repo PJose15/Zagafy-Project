@@ -27,8 +27,13 @@ function serviceUnavailableResponse(reason: string): NextResponse {
 // ─── Mode resolution ──────────────────────────────────────────────
 // Re-evaluated on each call so tests can flip env vars between cases.
 // - 'upstash':  UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set
-// - 'memory':   non-production fallback (development, test)
-// - 'disabled': production with no Upstash configured — every request 503s
+// - 'memory':   fallback when Upstash is absent (development, test, and—by
+//               default—production). On serverless the in-memory limiter is
+//               per-instance, so it's weaker than Upstash but keeps the app
+//               functional instead of rejecting every request.
+// - 'disabled': production with no Upstash AND opt-in RATE_LIMIT_STRICT=true —
+//               every request 503s (fail closed). Use once Upstash is wired up
+//               to guarantee distributed limiting can never silently vanish.
 
 export type RateLimitMode = 'upstash' | 'memory' | 'disabled';
 
@@ -38,7 +43,14 @@ export function getRateLimitMode(): RateLimitMode {
     process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
   );
   if (hasUpstash) return 'upstash';
-  if (process.env.NODE_ENV === 'production') return 'disabled';
+  // Opt-in hard fail: only 503 in production without Upstash when explicitly
+  // requested. Keeps the strict posture available without making it the default
+  // that silently takes the whole app offline when an env var is missing.
+  if (process.env.NODE_ENV === 'production' && process.env.RATE_LIMIT_STRICT === 'true') {
+    return 'disabled';
+  }
+  // Default everywhere else (including production): degrade to the in-memory
+  // limiter rather than 503-ing every request.
   return 'memory';
 }
 
@@ -206,23 +218,41 @@ function memoryRateLimit(key: string, maxRequests: number, windowMs: number): bo
 // ─── Startup banner ───────────────────────────────────────────────
 /**
  * Validate rate-limit configuration at startup.
- * In production with Upstash missing, prints an unmissable banner — the
- * server will still boot, but every rate-limited endpoint will respond 503.
+ * In production with Upstash missing, prints an unmissable banner. By default
+ * the server degrades to the in-memory limiter (still functional); with
+ * RATE_LIMIT_STRICT=true it fails closed and every endpoint responds 503.
  */
 export function validateRateLimitConfig(): void {
   if (process.env.NODE_ENV !== 'production') return;
   const mode = getRateLimitMode();
   if (mode === 'upstash') return;
 
-  console.error(`
+  if (mode === 'disabled') {
+    console.error(`
 ╔══════════════════════════════════════════════════════════════════╗
-║  ✗  RATE LIMITING DISABLED — UPSTASH NOT CONFIGURED             ║
+║  ✗  RATE LIMITING DISABLED — UPSTASH NOT CONFIGURED (STRICT)    ║
 ║                                                                  ║
-║  UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are         ║
-║  missing in production. Every rate-limited endpoint will         ║
-║  respond 503 until these are set in the Vercel project.          ║
+║  RATE_LIMIT_STRICT=true but UPSTASH_REDIS_REST_URL / _TOKEN are  ║
+║  missing. Every rate-limited endpoint will respond 503 until     ║
+║  the Upstash env vars are set in the Vercel project.             ║
 ║                                                                  ║
 ║  → Set the Upstash env vars and redeploy.                        ║
+╚══════════════════════════════════════════════════════════════════╝
+`);
+    return;
+  }
+
+  // mode === 'memory' in production: degraded but functional.
+  console.warn(`
+╔══════════════════════════════════════════════════════════════════╗
+║  ⚠  RATE LIMITING DEGRADED — UPSTASH NOT CONFIGURED            ║
+║                                                                  ║
+║  Falling back to an in-memory limiter. On serverless this is     ║
+║  per-instance — counters don't span lambdas, so limits are       ║
+║  looser than intended. The app remains fully functional.         ║
+║                                                                  ║
+║  → Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN for     ║
+║    robust distributed limiting (recommended for production).     ║
 ╚══════════════════════════════════════════════════════════════════╝
 `);
 }

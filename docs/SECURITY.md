@@ -82,11 +82,16 @@ known accepted risk until then. The mitigations that already apply:
   on the response surface.
 - `frame-ancestors 'none'` and `X-Frame-Options DENY` block clickjacking.
 
-### 3.2 In-memory rate limiter on dev / test only
+### 3.2 In-memory rate limiter is the fallback when Upstash is absent
 
-The in-memory limiter is **never** used in production after Phase 2.1.
-Production without Upstash configured fails closed (503 on every
-rate-limited endpoint) — see `lib/rate-limit.ts:getRateLimitMode()`.
+Upstash is the intended production limiter (distributed sliding window).
+When it isn't configured, the limiter degrades to the in-memory limiter
+rather than failing closed, so the app stays functional — but on serverless
+this is **per-instance**, so limits are looser than intended (counters don't
+span lambdas). Set `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` for
+robust limiting. To restore the strict fail-closed posture (503 on every
+rate-limited endpoint when Upstash is missing), set `RATE_LIMIT_STRICT=true`.
+See `lib/rate-limit.ts:getRateLimitMode()`.
 
 ### 3.3 AI Studio embed mode bypasses auth
 
