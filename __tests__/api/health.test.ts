@@ -22,4 +22,12 @@ describe('GET /api/health', () => {
     expect(['upstash', 'memory', 'disabled']).toContain(body.rateLimit.mode);
     expect(typeof body.rateLimit.reachable).toBe('boolean');
   });
+
+  it('reports AI provider key presence as booleans (never values)', async () => {
+    const res = GET();
+    const body = await res.json();
+    expect(body.ai).toBeDefined();
+    expect(typeof body.ai.gemini).toBe('boolean');
+    expect(typeof body.ai.anthropic).toBe('boolean');
+  });
 });
