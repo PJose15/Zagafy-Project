@@ -57,13 +57,24 @@ const tourStyles = {
   close: (base: Record<string, unknown>) => ({
     ...base,
     color: '#7a5a30',
-    width: '12px',
-    height: '12px',
+    // WCAG 2.2 (2.5.8) target size: keep the glyph small but give it a
+    // 24x24 clickable box via padding + box-sizing.
+    width: '24px',
+    height: '24px',
+    padding: '6px',
+    boxSizing: 'border-box',
+    top: '10px',
+    right: '10px',
   }),
   dot: (base: Record<string, unknown>, state: { current?: boolean }) => ({
     ...base,
     backgroundColor: state?.current ? '#c49b48' : '#e4cfa0',
     borderColor: '#c49b48',
+    // WCAG 2.2 (2.5.8): 12px dots with 6px side margin put target centers
+    // ~24px apart, satisfying the undersized-target spacing exception.
+    width: '12px',
+    height: '12px',
+    margin: '0 6px',
   }),
   arrow: (base: Record<string, unknown>) => ({
     ...base,
