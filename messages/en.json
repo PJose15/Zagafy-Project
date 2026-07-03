@@ -1300,6 +1300,11 @@
     "exists": "Exists: “{name}”",
     "acceptedBadge": "Accepted",
     "rejectedBadge": "Rejected",
+    "mergedBadge": "Merged",
+    "mergedCount": "{count} to merge",
+    "willMerge": "{count} will merge into existing.",
+    "importResolved": "Apply {count} Items",
+    "mergeAria": "Merge into existing “{name}”",
     "field": {
       "title": "Title",
       "summary": "Summary",

@@ -24,6 +24,7 @@ import { UploadCloud, FileText, CheckCircle2, Loader2, ArrowRight, X, ChevronUp,
 import { useToast } from '@/components/toast';
 import { CarvedHeader, ParchmentCard, BrassButton, InkStampButton } from '@/components/antiquarian';
 import { ImportReviewQueue, type ReviewItem } from '@/components/import/ImportReviewQueue';
+import { mergeFill, normalizeForMatch } from '@/lib/import/mergeEntities';
 
 export default function ImportPage() {
   const t = useTranslations('importPage');
@@ -107,8 +108,10 @@ export default function ImportPage() {
     }
   };
 
-  // CB-11: Handle confirmed import from the review queue — only accepted items
-  const handleReviewConfirm = useCallback((acceptedItems: ReviewItem[]) => {
+  // CB-11: Handle confirmed import from the review queue. Accepted items are
+  // added as new entities; merged items (duplicates of existing entities) fold
+  // their details into the existing entity non-destructively.
+  const handleReviewConfirm = useCallback((resolvedItems: ReviewItem[]) => {
     // Deduplicates incoming against existing AND against itself. O(n+m).
     const dedup = <T,>(existing: T[], incoming: T[], key: keyof T): T[] => {
       const normalize = (item: T) => String(item[key] ?? '').toLowerCase().trim();
@@ -138,7 +141,33 @@ export default function ImportPage() {
       foreshadowing_elements: [] as ExtractedForeshadowing[],
     };
 
-    for (const item of acceptedItems) {
+    // CB-11 merge: build non-destructive field patches for merged duplicates,
+    // keyed by the normalized name/title of the existing entity they matched.
+    // Only the six categories with duplicate detection can be merged.
+    type Patch = Record<string, unknown>;
+    const mergePatches = {
+      characters: new Map<string, Patch>(),
+      chapters: new Map<string, Patch>(),
+      active_conflicts: new Map<string, Patch>(),
+      world_rules: new Map<string, Patch>(),
+      locations: new Map<string, Patch>(),
+      themes: new Map<string, Patch>(),
+    };
+    const addMergePatch = (item: ReviewItem) => {
+      if (!item.duplicateOf) return;
+      const key = normalizeForMatch(item.duplicateOf);
+      switch (item.category) {
+        case 'characters': { const c = item.entity as ExtractedCharacter; mergePatches.characters.set(key, { role: c.role, description: c.description, coreIdentity: c.core_traits?.join(', ') }); break; }
+        case 'chapters': { const c = item.entity as ExtractedChapter; mergePatches.chapters.set(key, { summary: c.summary, content: c.raw_text_reference }); break; }
+        case 'active_conflicts': { const c = item.entity as ExtractedConflict; mergePatches.active_conflicts.set(key, { description: c.description }); break; }
+        case 'world_rules': { const w = item.entity as ExtractedWorldRule; mergePatches.world_rules.set(key, { category: w.scope, rule: w.rule }); break; }
+        case 'locations': { const l = item.entity as ExtractedLocation; mergePatches.locations.set(key, { description: l.description, importance: l.importance, associatedRules: l.associated_rules }); break; }
+        case 'themes': { const th = item.entity as ExtractedTheme; mergePatches.themes.set(key, { evidence: th.evidence }); break; }
+      }
+    };
+
+    for (const item of resolvedItems) {
+      if (item.status === 'merged') { addMergePatch(item); continue; }
       switch (item.category) {
         case 'chapters': accepted.chapters.push(item.entity as ExtractedChapter); break;
         case 'characters': accepted.characters.push(item.entity as ExtractedCharacter); break;
@@ -152,6 +181,23 @@ export default function ImportPage() {
         case 'foreshadowing_elements': accepted.foreshadowing_elements.push(item.entity as ExtractedForeshadowing); break;
       }
     }
+
+    // Apply merge patches to the existing entities (fill empties, union arrays).
+    const applyMerges = <T extends object>(
+      existing: T[], matchField: keyof T, patches: Map<string, Patch>,
+    ): T[] => {
+      if (patches.size === 0) return existing;
+      return existing.map(e => {
+        const patch = patches.get(normalizeForMatch(String(e[matchField] ?? '')));
+        return patch ? mergeFill(e, patch as Partial<T>) : e;
+      });
+    };
+    const baseCharacters = applyMerges(state.characters, 'name', mergePatches.characters);
+    const baseChapters = applyMerges(state.chapters, 'title', mergePatches.chapters);
+    const baseConflicts = applyMerges(state.active_conflicts, 'title', mergePatches.active_conflicts);
+    const baseWorldRules = applyMerges(state.world_rules, 'rule', mergePatches.world_rules);
+    const baseLocations = applyMerges(state.locations || [], 'name', mergePatches.locations);
+    const baseThemes = applyMerges(state.themes || [], 'theme', mergePatches.themes);
 
     // Use full extracted data for relationships and character states (linked data)
     const rawRelationships = extractedData.relationships || [];
@@ -366,15 +412,15 @@ export default function ImportPage() {
       source: 'ai-inferred' as const,
     }));
 
-    // Apply deduped merges
-    updateField('characters', [...state.characters, ...dedup(state.characters, newCharacters, 'name')]);
-    updateField('chapters', [...state.chapters, ...dedup(state.chapters, newChapters, 'title')]);
+    // Apply merges (updated existing entities) + deduped new accepted entities.
+    updateField('characters', [...baseCharacters, ...dedup(baseCharacters, newCharacters, 'name')]);
+    updateField('chapters', [...baseChapters, ...dedup(baseChapters, newChapters, 'title')]);
     updateField('scenes', [...state.scenes, ...dedup(state.scenes, newScenes, 'title')]);
-    updateField('active_conflicts', [...state.active_conflicts, ...dedup(state.active_conflicts, newConflicts, 'title')]);
+    updateField('active_conflicts', [...baseConflicts, ...dedup(baseConflicts, newConflicts, 'title')]);
     updateField('timeline_events', [...state.timeline_events, ...dedup(state.timeline_events, newTimelineEvents, 'description')]);
-    updateField('world_rules', [...state.world_rules, ...dedup(state.world_rules, newWorldRules, 'rule')]);
-    updateField('locations', [...(state.locations || []), ...dedup(state.locations || [], newLocations, 'name')]);
-    updateField('themes', [...(state.themes || []), ...dedup(state.themes || [], newThemes, 'theme')]);
+    updateField('world_rules', [...baseWorldRules, ...dedup(baseWorldRules, newWorldRules, 'rule')]);
+    updateField('locations', [...baseLocations, ...dedup(baseLocations, newLocations, 'name')]);
+    updateField('themes', [...baseThemes, ...dedup(baseThemes, newThemes, 'theme')]);
     updateField('canon_items', [...(state.canon_items || []), ...dedup(state.canon_items || [], newCanonItems, 'description')]);
     updateField('ambiguities', [...(state.ambiguities || []), ...dedup(state.ambiguities || [], newAmbiguities, 'issue')]);
     updateField('open_loops', [...state.open_loops, ...dedup(state.open_loops, newOpenLoops, 'description')]);
@@ -398,9 +444,9 @@ export default function ImportPage() {
       if (parts.length) updateField('style_profile', parts.join('. '));
     }
 
-    setImportedCount(acceptedItems.length);
+    setImportedCount(resolvedItems.length);
     setUploadStatus('success');
-    toast(t('toastImported', { count: acceptedItems.length }), 'success');
+    toast(t('toastImported', { count: resolvedItems.length }), 'success');
   }, [extractedData, state, updateField, toast, t]);
 
   const reset = () => {

@@ -24,6 +24,7 @@ import {
   CircleDot,
   Eye,
   Shield,
+  GitMerge,
 } from 'lucide-react';
 import { ParchmentCard, InkStampButton } from '@/components/antiquarian';
 import type {
@@ -42,7 +43,7 @@ import type {
 
 // ─── Types ───
 
-export type ReviewStatus = 'pending' | 'accepted' | 'rejected';
+export type ReviewStatus = 'pending' | 'accepted' | 'rejected' | 'merged';
 
 export type EntityCategory =
   | 'chapters'
@@ -256,14 +257,15 @@ export function ImportReviewQueue({
 
   // Stats
   const stats = useMemo(() => {
-    let accepted = 0, rejected = 0, pending = 0, duplicates = 0;
+    let accepted = 0, rejected = 0, pending = 0, merged = 0, duplicates = 0;
     for (const item of items) {
       if (item.status === 'accepted') accepted++;
       else if (item.status === 'rejected') rejected++;
+      else if (item.status === 'merged') merged++;
       else pending++;
       if (item.duplicateOf) duplicates++;
     }
-    return { accepted, rejected, pending, duplicates, total: items.length };
+    return { accepted, rejected, pending, merged, duplicates, total: items.length };
   }, [items]);
 
   const updateItem = (id: string, status: ReviewStatus) => {
@@ -305,7 +307,9 @@ export function ImportReviewQueue({
   };
 
   const handleConfirm = () => {
-    onConfirm(items.filter(i => i.status === 'accepted'));
+    // Accepted items are added as new; merged items fold into existing entities.
+    // Both are "resolved for import"; the page branches on item.status.
+    onConfirm(items.filter(i => i.status === 'accepted' || i.status === 'merged'));
   };
 
   return (
@@ -325,6 +329,12 @@ export function ImportReviewQueue({
               <X size={14} className="inline -mt-0.5 mr-1" />
               {t('rejectedCount', { count: stats.rejected })}
             </span>
+            {stats.merged > 0 && (
+              <span className="text-brass-700">
+                <GitMerge size={14} className="inline -mt-0.5 mr-1" />
+                {t('mergedCount', { count: stats.merged })}
+              </span>
+            )}
             <span className="text-sepia-600">
               {t('pendingCount', { count: stats.pending })}
             </span>
@@ -462,6 +472,7 @@ export function ImportReviewQueue({
                         onAccept={() => updateItem(item.id, 'accepted')}
                         onReject={() => updateItem(item.id, 'rejected')}
                         onReset={() => updateItem(item.id, 'pending')}
+                        onMerge={() => updateItem(item.id, 'merged')}
                         onEdit={() => setEditingId(editingId === item.id ? null : item.id)}
                         onSaveEdit={(entity) => updateItemEntity(item.id, entity)}
                         onCancelEdit={() => setEditingId(null)}
@@ -481,6 +492,11 @@ export function ImportReviewQueue({
       <div className="flex items-center justify-between pt-6 border-t border-sepia-300/50">
         <div className="text-sm text-sepia-600">
           {t('willImport', { accepted: stats.accepted, total: stats.total })}
+          {stats.merged > 0 && (
+            <span className="text-brass-700 ml-2">
+              {t('willMerge', { count: stats.merged })}
+            </span>
+          )}
           {stats.pending > 0 && (
             <span className="text-brass-700 ml-2">
               {t('stillPending', { count: stats.pending })}
@@ -494,10 +510,12 @@ export function ImportReviewQueue({
           <InkStampButton
             variant="primary"
             onClick={handleConfirm}
-            disabled={stats.accepted === 0}
+            disabled={stats.accepted === 0 && stats.merged === 0}
             icon={<Check size={18} />}
           >
-            {t('importAccepted', { count: stats.accepted })}
+            {stats.merged > 0
+              ? t('importResolved', { count: stats.accepted + stats.merged })
+              : t('importAccepted', { count: stats.accepted })}
           </InkStampButton>
         </div>
       </div>
@@ -513,6 +531,7 @@ interface ReviewItemRowProps {
   onAccept: () => void;
   onReject: () => void;
   onReset: () => void;
+  onMerge: () => void;
   onEdit: () => void;
   onSaveEdit: (entity: AnyEntity) => void;
   onCancelEdit: () => void;
@@ -526,6 +545,7 @@ function ReviewItemRow({
   onAccept,
   onReject,
   onReset,
+  onMerge,
   onEdit,
   onSaveEdit,
   onCancelEdit,
@@ -536,6 +556,7 @@ function ReviewItemRow({
     pending: 'border-sepia-300/30 bg-parchment-200/50',
     accepted: 'border-forest-600/30 bg-forest-600/5',
     rejected: 'border-wax-500/30 bg-wax-500/5 opacity-60',
+    merged: 'border-brass-500/40 bg-brass-400/10',
   };
 
   return (
@@ -578,6 +599,11 @@ function ReviewItemRow({
             {item.status === 'rejected' && (
               <span className="text-[10px] text-wax-600 bg-wax-500/10 px-1.5 py-0.5 rounded-full">{t('rejectedBadge')}</span>
             )}
+            {item.status === 'merged' && (
+              <span className="text-[10px] text-brass-700 bg-brass-400/15 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                <GitMerge size={10} /> {t('mergedBadge')}
+              </span>
+            )}
           </div>
           {item.subtitle && (
             <p className="text-xs text-sepia-600 mt-1 line-clamp-2">{item.subtitle}</p>
@@ -605,6 +631,18 @@ function ReviewItemRow({
           >
             <Edit3 size={14} />
           </button>
+          {/* Merge is only meaningful for items that duplicate an existing entity */}
+          {item.duplicateOf && item.status !== 'merged' && (
+            <button
+              type="button"
+              onClick={onMerge}
+              className="p-1.5 text-sepia-600 hover:text-brass-700 hover:bg-brass-400/15 rounded transition-colors"
+              aria-label={t('mergeAria', { name: item.duplicateOf })}
+              title={t('mergeAria', { name: item.duplicateOf })}
+            >
+              <GitMerge size={14} />
+            </button>
+          )}
           {item.status !== 'accepted' && (
             <button
               type="button"

@@ -1300,6 +1300,11 @@
     "exists": "Ya existe: “{name}”",
     "acceptedBadge": "Aceptada",
     "rejectedBadge": "Rechazada",
+    "mergedBadge": "Fusionada",
+    "mergedCount": "{count} para fusionar",
+    "willMerge": "{count} se fusionarán con las existentes.",
+    "importResolved": "Aplicar {count} elementos",
+    "mergeAria": "Fusionar con la existente «{name}»",
     "field": {
       "title": "Título",
       "summary": "Resumen",
