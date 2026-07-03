@@ -96,6 +96,12 @@
     "vitest": "^4.0.18"
   },
   "overrides": {
-    "eslint-plugin-react-hooks": "7.0.1"
+    "eslint-plugin-react-hooks": "7.0.1",
+    "next": {
+      "postcss": "^8.5.10"
+    },
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
+    }
   }
 }
