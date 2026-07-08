@@ -316,11 +316,7 @@ export function FindReplaceDialog({
                       <li key={`${m.chapterId}-${m.index}-${i}`} className="text-xs text-sepia-700 font-mono leading-relaxed">
                         <span className="text-sepia-600">…{m.contextBefore}</span>
                         <mark className="bg-brass-300/60 text-sepia-900 rounded px-0.5">
-                          {m.contextBefore.length > 0 || m.contextAfter.length > 0
-                            ? // Reconstruct the matched text from the chapter (we don't store the raw match).
-                              // Falls back to query when context is empty.
-                              query
-                            : query}
+                          {m.matchText}
                         </mark>
                         <span className="text-sepia-600">{m.contextAfter}…</span>
                       </li>

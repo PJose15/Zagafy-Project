@@ -69,6 +69,16 @@ describe('findInChapter', () => {
     expect(findInChapter(c, 'foo')).toHaveLength(3);
   });
 
+  it('records the exact matched text (not the query) for each hit', () => {
+    // Under case-insensitive/regex mode the matched substring can differ from
+    // the query; the preview highlight must show the real match.
+    const c = ch('a', 'A', 'Foo foo FOO');
+    expect(findInChapter(c, 'foo').map(m => m.matchText)).toEqual(['Foo', 'foo', 'FOO']);
+
+    const r = ch('b', 'B', 'foo123 bar456');
+    expect(findInChapter(r, '\\d+', { regex: true }).map(m => m.matchText)).toEqual(['123', '456']);
+  });
+
   it('case-sensitive when requested', () => {
     const c = ch('a', 'A', 'Foo foo FOO');
     expect(findInChapter(c, 'foo', { caseSensitive: true })).toHaveLength(1);

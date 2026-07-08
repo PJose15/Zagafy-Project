@@ -3,11 +3,14 @@ import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
 import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
-import { withRetry, isRetryableUpstream } from '@/lib/ai/retry';
+import { callAnthropicMessages } from '@/lib/ai/anthropic';
 import { createRouteLogger } from '@/lib/logger';
-import { anthropicConfig } from '@/lib/ai-config';
 
 export const maxDuration = 30;
+
+// Wall-clock budget for the Anthropic call, kept a few seconds under maxDuration
+// so the function returns before the platform kills it.
+const POLISH_DEADLINE_MS = 27_000;
 
 const POLISH_SYSTEM_PROMPT = `You are a skilled prose editor. The user will provide a raw voice transcript — spoken words captured via dictation. Your job:
 
@@ -43,69 +46,29 @@ export async function POST(req: NextRequest) {
       return err('internal_error', 'Anthropic API key not configured', 500);
     }
 
-    let response: Response;
-    try {
-      response = await withRetry(
-        async () => {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), anthropicConfig.timeouts.polish);
-          try {
-            const r = await fetch('https://api.anthropic.com/v1/messages', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-              },
-              body: JSON.stringify({
-                model: anthropicConfig.model,
-                max_tokens: 4096,
-                system: POLISH_SYSTEM_PROMPT,
-                messages: [{ role: 'user', content: transcript.trim() }],
-              }),
-              signal: controller.signal,
-            });
-            // Throw on retryable upstream statuses so withRetry kicks in.
-            if ([429, 502, 503, 504, 529].includes(r.status)) {
-              const e: Error & { status?: number } = new Error(`Anthropic ${r.status}`);
-              e.status = r.status;
-              throw e;
-            }
-            return r;
-          } finally {
-            clearTimeout(timer);
-          }
-        },
-        {
-          // Our deliberate timeout is not transient; do not retry on AbortError.
-          retryableErrors: (e) =>
-            !(e instanceof Error && e.name === 'AbortError') && isRetryableUpstream(e),
-        },
-      );
-    } catch (fetchError: unknown) {
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+    // Route through the shared Anthropic caller: it enforces one wall-clock
+    // deadline across retries and extracts the first *text* block (skipping
+    // leading thinking blocks), so an ANTHROPIC_MODEL upgrade to a thinking-first
+    // model like Opus 4.7+/Fable doesn't silently return empty polishedText.
+    const result = await callAnthropicMessages({
+      apiKey,
+      system: POLISH_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: transcript.trim() }],
+      maxTokens: 4096,
+      deadlineMs: POLISH_DEADLINE_MS,
+    });
+
+    if (!result.ok) {
+      if (result.kind === 'timeout') {
         return err('upstream_timeout', 'Polish request timed out', 504);
       }
-      if (fetchError && typeof fetchError === 'object' && 'status' in fetchError) {
-        const status = Number((fetchError as { status: number }).status);
-        if (status === 429) return err('rate_limited', 'Rate limited by AI provider', 429);
-        return err(statusToCode(status), 'AI provider error', status);
-      }
-      throw fetchError;
-    }
-
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
+      if (result.kind === 'rate_limited') {
         return err('rate_limited', 'Rate limited by AI provider', 429);
       }
-      return err(statusToCode(status), 'AI provider error', status);
+      return err(statusToCode(result.status), 'AI provider error', result.status);
     }
 
-    const data = await response.json();
-    const polishedText = data.content?.[0]?.text?.trim() || '';
-
-    return ok({ polishedText });
+    return ok({ polishedText: result.text });
   } catch (error: unknown) {
     log.error('Polish API error', error);
     const status = getErrorStatus(error);

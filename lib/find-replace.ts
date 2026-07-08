@@ -27,6 +27,9 @@ export interface Match {
   chapterTitle: string;
   index: number;
   length: number;
+  /** The exact substring that matched (may differ from the query under
+   *  case-insensitive or regex mode — e.g. query "the" matching "The"/"THE"). */
+  matchText: string;
   contextBefore: string;
   contextAfter: string;
 }
@@ -96,6 +99,7 @@ export function findInChapter(
       chapterTitle: chapter.title,
       index: start,
       length: exec[0].length,
+      matchText: exec[0],
       contextBefore: before,
       contextAfter: after,
     });

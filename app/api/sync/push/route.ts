@@ -6,6 +6,7 @@ import { requireUser, isAuthError } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
+import { wordCount as lexicalWordCount } from '@/lib/editor/serialization';
 import type { PushRequest, SyncDelta, ConflictRecord } from '@/lib/sync/types';
 
 export const runtime = 'nodejs';
@@ -229,7 +230,9 @@ async function applyChapterUpsert(
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
   const content = (payload.content as string) ?? '';
-  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  // content may be Lexical JSON (CB-07); count words on the decoded prose so the
+  // stored word_count is meaningful, not a count of JSON tokens.
+  const wordCount = lexicalWordCount(content);
   const clientVersion = typeof payload.version === 'number' ? payload.version : 1;
 
   // Check for optimistic concurrency conflict. Scope to the owned story so a

@@ -158,6 +158,25 @@ describe('POST /api/polish', () => {
     expect(data.polishedText).toBe('');
   });
 
+  it('extracts the text block even when a thinking block comes first (Opus 4.7+/Fable)', async () => {
+    // A thinking-first model returns the reasoning block at content[0]; the old
+    // content[0].text extraction returned empty. extractText skips it.
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        content: [
+          { type: 'thinking', thinking: 'Consider the filler words...' },
+          { type: 'text', text: 'The polished result.' },
+        ],
+      }),
+    });
+
+    const res = await POST(makeRequest({ transcript: 'um so the text' }));
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.polishedText).toBe('The polished result.');
+  });
+
   it('trims polished text', async () => {
     mockFetch.mockResolvedValue({
       ok: true,

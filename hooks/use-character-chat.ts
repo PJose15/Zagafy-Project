@@ -16,7 +16,7 @@ import {
   addInsight,
   markInsightAsCanon as markCanon,
 } from '@/lib/types/character-chat';
-import { useStory, type CharacterState, type Character, type StoryState } from '@/lib/store';
+import { useStory, type CharacterState, type Character, type StoryState, type CanonItem } from '@/lib/store';
 
 export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
 
@@ -75,7 +75,7 @@ function buildStoryContext(state: StoryState, character: Character): StoryContex
 }
 
 export function useCharacterChat(characterId: string | null) {
-  const { state } = useStory();
+  const { state, updateField } = useStory();
   const [session, setSession] = useState<CharacterChatSession | null>(null);
   const [messages, setMessages] = useState<CharacterChatMessage[]>([]);
   const [mode, setModeState] = useState<ChatMode>('exploration');
@@ -444,7 +444,25 @@ export function useCharacterChat(characterId: string | null) {
   const saveInsightAsCanon = useCallback((insightId: string) => {
     markCanon(insightId);
     setInsights(prev => prev.map(i => i.id === insightId ? { ...i, savedAsCanon: true } : i));
-  }, []);
+
+    // Actually promote the insight into the story's canon so it grounds/enforces
+    // future AI (previously this only flipped a localStorage flag and the insight
+    // never reached state.canon_items).
+    const insight = insights.find(i => i.id === insightId);
+    if (!insight) return;
+    const existing = Array.isArray(state.canon_items) ? state.canon_items : [];
+    const sourceReference = `character-chat:${insightId}`;
+    if (existing.some(c => c.sourceReference === sourceReference)) return; // idempotent
+    const character = state.characters.find(c => c.id === insight.characterId);
+    const canonItem: CanonItem = {
+      id: crypto.randomUUID(),
+      category: 'character',
+      description: character ? `${character.name}: ${insight.content}` : insight.content,
+      status: 'confirmed',
+      sourceReference,
+    };
+    updateField('canon_items', [...existing, canonItem]);
+  }, [insights, state.canon_items, state.characters, updateField]);
 
   const clearSession = useCallback(() => {
     if (!session) return;
