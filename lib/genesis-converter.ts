@@ -108,6 +108,11 @@ export function convertGenesisToStory(data: GenesisData): Partial<StoryState> {
     });
   }
 
+  // Tones are collected by the wizard (and gate the genre-tone step) but were
+  // previously discarded on create. Fold them into the style profile so they
+  // reach StoryState and inform the AI's voice.
+  const style_profile = (data.tones ?? []).map(t => t.trim()).filter(Boolean).join(', ');
+
   return {
     title: data.projectName.trim(),
     genre: data.genres,
@@ -115,5 +120,6 @@ export function convertGenesisToStory(data: GenesisData): Partial<StoryState> {
     characters,
     active_conflicts: conflicts,
     world_rules: worldRules,
+    ...(style_profile ? { style_profile } : {}),
   };
 }

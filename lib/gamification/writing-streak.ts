@@ -13,6 +13,22 @@ const STREAK_WARNING_REMINDER_HOUR = 18; // 6 PM — gentle reminder
 let _cachedHistoryKey: string | null = null;
 let _cachedHistory: StreakDay[] | null = null;
 
+/**
+ * Content hash of the qualifying-date set. Order-independent (XOR-combined) so
+ * it doesn't need sorting. The history is a pure function of these keys, so
+ * hashing the actual keys (not just their count) prevents stale-cache hits when
+ * two different session sets share a size — including across project switches.
+ */
+function hashQualifyingDates(keys: Set<string>): string {
+  let combined = 0;
+  for (const key of keys) {
+    let h = 0;
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+    combined = (combined ^ h) | 0;
+  }
+  return `${keys.size}:${combined}`;
+}
+
 // ─── Qualifying Session ───
 
 export function isQualifyingSession(session: WritingSession): boolean {
@@ -62,8 +78,9 @@ export function updateStreak(
 
   const longestStreak = Math.max(state.longestStreak, currentStreak);
 
-  // M16: Build streak history for recent days (last 90), cached by sessions+today
-  const cacheKey = `${todayKey}:${sessions.length}:${qualifyingDates.size}`;
+  // M16: Build streak history for recent days (last 90), cached by the actual
+  // qualifying dates + today (content-addressed — see hashQualifyingDates).
+  const cacheKey = `${todayKey}:${hashQualifyingDates(qualifyingDates)}`;
   let streakHistory: StreakDay[];
   if (_cachedHistoryKey === cacheKey && _cachedHistory !== null) {
     streakHistory = _cachedHistory;

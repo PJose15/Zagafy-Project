@@ -246,6 +246,22 @@ describe('analyzeStoryState', () => {
     expect(result.entities[0].mentionCount).toBe(1);
   });
 
+  it('appearance detection uses word boundaries, not substring', () => {
+    // "Al" occurs only inside "always"/"also" in ch0, and standalone in ch1.
+    // Substring includes() would falsely mark ch0 as the first appearance.
+    const state = makeEmptyState({
+      chapters: [
+        { id: 'ch0', title: '', content: 'She always walks. Also he ran.', summary: '' },
+        { id: 'ch1', title: '', content: 'Al finally arrived.', summary: '' },
+      ],
+      characters: [{ id: 'c1', name: 'Al', role: '', description: '', relationships: '' }],
+    });
+    const result = analyzeStoryState(state);
+    expect(result.entities[0].mentionCount).toBe(1);
+    expect(result.entities[0].firstAppearanceChapter).toBe(1);
+    expect(result.entities[0].lastAppearanceChapter).toBe(1);
+  });
+
   it('escapes regex metacharacters in character names', () => {
     // A name containing a regex metachar must not explode or over-match.
     const state = makeEmptyState({

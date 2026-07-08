@@ -153,17 +153,23 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function countMentions(chapterTexts: string[], searchTerm: string): number {
-  if (!searchTerm || searchTerm.length < 2) return 0;
-  // Reject matches flanked by letters/digits so "Alex" isn't counted inside
-  // "Alexandria", while still allowing names that end in punctuation (e.g.
-  // "D.J." followed by whitespace or a sentence break).
-  // Dynamic by design: searchTerm is escaped via escapeRegExp above.
+/**
+ * Word-boundary matcher shared by every mention/appearance check so they all
+ * agree. Rejects matches flanked by letters/digits so "Al"/"An" aren't counted
+ * inside "always"/"another", while allowing names ending in punctuation.
+ * Dynamic by design: searchTerm is escaped via escapeRegExp.
+ */
+function wordBoundaryRegExp(searchTerm: string): RegExp {
   // eslint-disable-next-line security/detect-non-literal-regexp
-  const re = new RegExp(
+  return new RegExp(
     `(?<![\\p{L}\\p{N}])${escapeRegExp(searchTerm)}(?![\\p{L}\\p{N}])`,
     'giu'
   );
+}
+
+function countMentions(chapterTexts: string[], searchTerm: string): number {
+  if (!searchTerm || searchTerm.length < 2) return 0;
+  const re = wordBoundaryRegExp(searchTerm);
   let count = 0;
   for (const text of chapterTexts) {
     const matches = text.match(re);
@@ -177,10 +183,14 @@ function findAppearances(
   searchTerm: string
 ): { first: number; last: number } {
   if (!searchTerm || searchTerm.length < 2) return { first: -1, last: -1 };
+  // Word-boundary match (same as countMentions) — substring includes() would
+  // count "Al" as present in any chapter containing "always", skewing gap and
+  // disappearance detection.
+  const re = wordBoundaryRegExp(searchTerm);
   let first = -1;
   let last = -1;
   for (let i = 0; i < chapterTexts.length; i++) {
-    if (chapterTexts[i].includes(searchTerm)) {
+    if (chapterTexts[i].match(re)) {
       if (first === -1) first = i;
       last = i;
     }
@@ -190,10 +200,12 @@ function findAppearances(
 
 function findEntityScenes(entityName: string, state: StoryState): string[] {
   const nameLower = entityName.toLowerCase();
+  if (nameLower.length < 2) return [];
+  const re = wordBoundaryRegExp(nameLower);
   return state.scenes
     .filter(s => {
       const text = `${s.title} ${s.content} ${s.summary}`.toLowerCase();
-      return text.includes(nameLower);
+      return text.match(re) !== null;
     })
     .map(s => s.id);
 }

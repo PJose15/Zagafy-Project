@@ -58,6 +58,16 @@ describe('convertGenesisToStory', () => {
     expect(result.synopsis).toBe('A disgraced knight seeks redemption.');
   });
 
+  it('maps tones into the style profile (previously discarded)', () => {
+    const result = convertGenesisToStory(makeGenesisData());
+    expect(result.style_profile).toBe('Dark, Epic');
+  });
+
+  it('omits style_profile when no tones are provided', () => {
+    const result = convertGenesisToStory(makeGenesisData({ tones: [] }));
+    expect(result.style_profile).toBeUndefined();
+  });
+
   it('creates protagonist character', () => {
     const result = convertGenesisToStory(makeGenesisData());
     expect(result.characters).toBeDefined();
