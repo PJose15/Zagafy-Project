@@ -23,7 +23,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
-    "@clerk/nextjs": "7.3.3",
+    "@clerk/nextjs": "7.5.14",
     "@google/genai": "1.43.0",
     "@lexical/clipboard": "^0.45.0",
     "@lexical/html": "^0.45.0",
