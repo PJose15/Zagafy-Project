@@ -143,22 +143,26 @@ export async function POST(req: NextRequest) {
     return err('unauthorized', 'Invalid webhook signature', 401, undefined, { requestId });
   }
 
-  // Idempotency: skip events we've already processed
+  // Idempotency: atomically *claim* the event before processing. A separate
+  // check-then-record left a TOCTOU window where concurrent or retried
+  // duplicate deliveries could both pass the check and double-process (e.g. send
+  // two confirmation emails). Insert-with-onConflictDoNothing is atomic: an
+  // empty returning means another delivery already claimed it → skip.
   if (HANDLED_EVENTS.has(event.type)) {
     try {
-      const [existing] = await db()
-        .select({ id: stripeEvents.id })
-        .from(stripeEvents)
-        .where(eq(stripeEvents.id, event.id))
-        .limit(1);
+      const claimed = await db()
+        .insert(stripeEvents)
+        .values({ id: event.id, type: event.type })
+        .onConflictDoNothing()
+        .returning({ id: stripeEvents.id });
 
-      if (existing) {
+      if (claimed.length === 0) {
         log.info('duplicate event skipped', { eventId: event.id, type: event.type });
         return ok({ skipped: 'duplicate' }, { requestId });
       }
     } catch (dbErr) {
-      log.error('Idempotency check failed', dbErr);
-      // Continue processing — better to double-process than drop
+      log.error('Idempotency claim failed', dbErr);
+      // Continue processing — better to double-process than drop.
     }
   }
 
@@ -265,20 +269,18 @@ export async function POST(req: NextRequest) {
         return ok({ ignored: event.type }, { requestId });
     }
 
-    // Record processed event for idempotency
-    if (HANDLED_EVENTS.has(event.type)) {
-      try {
-        await db()
-          .insert(stripeEvents)
-          .values({ id: event.id, type: event.type })
-          .onConflictDoNothing();
-      } catch (dbErr) {
-        log.warn('Failed to record event for idempotency', { err: String(dbErr) });
-      }
-    }
-
     return ok({ processed: event.type }, { requestId });
   } catch (e) {
+    // Processing failed after the event was claimed — release the claim so
+    // Stripe's automatic retry can re-process it instead of being skipped as a
+    // duplicate against a claim whose work never completed.
+    if (HANDLED_EVENTS.has(event.type)) {
+      try {
+        await db().delete(stripeEvents).where(eq(stripeEvents.id, event.id));
+      } catch (delErr) {
+        log.warn('Failed to release idempotency claim after error', { err: String(delErr) });
+      }
+    }
     log.error('Webhook processing failed', e);
     return err('internal_error', 'Webhook processing failed', 500, undefined, { requestId });
   }

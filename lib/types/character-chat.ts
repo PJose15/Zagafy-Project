@@ -143,8 +143,12 @@ export function writeChatSessions(sessions: CharacterChatSession[]): void {
 
 export function addChatSession(session: CharacterChatSession): boolean {
   const sessions = readChatSessions();
-  if (sessions.length >= MAX_CHAT_SESSIONS) return false;
   sessions.push(session);
+  // writeChatSessions keeps only the newest MAX_CHAT_SESSIONS, so at the cap the
+  // OLDEST session is evicted rather than the new one being silently dropped.
+  // (Previously this returned false without persisting, yet callers still set the
+  // session in React state — so the 51st character's messages/insights never
+  // persisted and later updateChatSession() calls no-op'd.)
   writeChatSessions(sessions);
   return true;
 }

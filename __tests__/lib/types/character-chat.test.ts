@@ -143,12 +143,16 @@ describe('addChatSession', () => {
     expect(readChatSessions()).toHaveLength(1);
   });
 
-  it('returns false when at limit', () => {
+  it('evicts the oldest session at the limit so the new one still persists', () => {
     const sessions = Array.from({ length: MAX_CHAT_SESSIONS }, (_, i) =>
       makeSession({ id: `sess-${i}` })
     );
     writeChatSessions(sessions);
-    expect(addChatSession(makeSession({ id: 'overflow' }))).toBe(false);
+    expect(addChatSession(makeSession({ id: 'overflow' }))).toBe(true);
+    const stored = readChatSessions();
+    expect(stored).toHaveLength(MAX_CHAT_SESSIONS);
+    expect(stored.some(s => s.id === 'overflow')).toBe(true); // new session persisted
+    expect(stored.some(s => s.id === 'sess-0')).toBe(false);  // oldest evicted
   });
 });
 

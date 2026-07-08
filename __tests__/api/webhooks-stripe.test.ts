@@ -20,7 +20,10 @@ vi.mock('@/lib/email', () => ({
 }));
 
 // Mock DB
-const mockInsertOnConflictDoNothing = vi.fn().mockResolvedValue(undefined);
+// Idempotency claim: insert(...).values(...).onConflictDoNothing().returning().
+// A non-empty return = claimed (proceed); [] = duplicate (skip).
+const mockClaimReturning = vi.fn().mockResolvedValue([{ id: 'evt_test_123' }]);
+const mockInsertOnConflictDoNothing = vi.fn(() => ({ returning: mockClaimReturning }));
 const mockInsertValues = vi.fn(() => ({ onConflictDoNothing: mockInsertOnConflictDoNothing }));
 const mockInsert = vi.fn(() => ({ values: mockInsertValues }));
 
@@ -29,6 +32,11 @@ const mockUpdateSetWhere = vi.fn(() => ({ returning: mockUpdateReturning }));
 const mockUpdateSet = vi.fn(() => ({ where: mockUpdateSetWhere }));
 const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
 
+// Release-claim-on-failure path: delete(...).where(...).
+const mockDeleteWhere = vi.fn().mockResolvedValue(undefined);
+const mockDelete = vi.fn(() => ({ where: mockDeleteWhere }));
+
+// Contact lookup for emails: select(...).from(...).where(...).limit().
 const mockSelectLimit = vi.fn().mockResolvedValue([]);
 const mockSelectFrom = vi.fn(() => ({ where: () => ({ limit: mockSelectLimit }) }));
 const mockSelect = vi.fn(() => ({ from: mockSelectFrom }));
@@ -38,6 +46,7 @@ vi.mock('@/db/client', () => ({
     insert: mockInsert,
     update: mockUpdate,
     select: mockSelect,
+    delete: mockDelete,
   })),
   isDatabaseConfigured: vi.fn(() => true),
 }));
@@ -86,7 +95,9 @@ describe('POST /api/webhooks/stripe', () => {
     mockUpdateSet.mockClear();
     mockUpdateSetWhere.mockClear();
     mockUpdateReturning.mockClear().mockResolvedValue([{ id: 'user_abc' }]);
-    mockSelectLimit.mockReset().mockResolvedValue([]); // no duplicate by default
+    mockSelectLimit.mockReset().mockResolvedValue([]); // no contact by default
+    mockClaimReturning.mockReset().mockResolvedValue([{ id: 'evt_test_123' }]); // claimed by default
+    mockDeleteWhere.mockClear();
     mockSendEmail.mockClear().mockResolvedValue(true);
     mockSubRetrieve.mockReset();
   });
@@ -245,8 +256,8 @@ describe('POST /api/webhooks/stripe', () => {
   });
 
   it('skips duplicate events (idempotency)', async () => {
-    // Simulate event already processed
-    mockSelectLimit.mockResolvedValue([{ id: 'evt_dup' }]);
+    // Simulate the claim losing the race — onConflictDoNothing returns no row.
+    mockClaimReturning.mockResolvedValue([]);
     mockConstructEvent.mockReturnValue(
       fakeEvent('checkout.session.completed', {
         id: 'cs_test',
@@ -266,7 +277,7 @@ describe('POST /api/webhooks/stripe', () => {
     expect(mockUpdateSet).not.toHaveBeenCalled();
   });
 
-  it('records event after processing for idempotency', async () => {
+  it('claims the event (records it) before processing for idempotency', async () => {
     mockConstructEvent.mockReturnValue(
       fakeEvent('customer.subscription.deleted', {
         customer: 'cus_abc',
@@ -280,13 +291,27 @@ describe('POST /api/webhooks/stripe', () => {
     expect(mockInsertValues).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'customer.subscription.deleted' }),
     );
+    // Successful processing keeps the claim (no release).
+    expect(mockDeleteWhere).not.toHaveBeenCalled();
+  });
+
+  it('releases the idempotency claim when processing fails so Stripe can retry', async () => {
+    // Make the plan update throw mid-processing.
+    mockUpdateReturning.mockRejectedValueOnce(new Error('db unavailable'));
+    mockConstructEvent.mockReturnValue(
+      fakeEvent('customer.subscription.deleted', { customer: 'cus_abc', status: 'canceled' }),
+    );
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(500);
+    // The claim is released (deleted) so the retried delivery isn't skipped.
+    expect(mockDeleteWhere).toHaveBeenCalled();
   });
 
   it('sends a subscription_confirmed email on checkout when the user is resolvable', async () => {
-    // 1st select = idempotency (not a duplicate), 2nd select = contact lookup.
-    mockSelectLimit.mockReset()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ email: 'writer@example.com', name: 'Ada' }]);
+    // Only select now is the contact lookup (idempotency is an insert-claim).
+    mockSelectLimit.mockReset().mockResolvedValue([{ email: 'writer@example.com', name: 'Ada' }]);
     mockConstructEvent.mockReturnValue(
       fakeEvent('checkout.session.completed', {
         id: 'cs_email',
@@ -310,9 +335,7 @@ describe('POST /api/webhooks/stripe', () => {
   });
 
   it('sends a payment_failed email on invoice.payment_failed', async () => {
-    mockSelectLimit.mockReset()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ email: 'writer@example.com', name: null }]);
+    mockSelectLimit.mockReset().mockResolvedValue([{ email: 'writer@example.com', name: null }]);
     mockConstructEvent.mockReturnValue(
       fakeEvent('invoice.payment_failed', {
         id: 'in_email',
@@ -330,9 +353,7 @@ describe('POST /api/webhooks/stripe', () => {
   });
 
   it('sends a subscription_canceled email on subscription.deleted', async () => {
-    mockSelectLimit.mockReset()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ email: 'writer@example.com', name: 'Ada' }]);
+    mockSelectLimit.mockReset().mockResolvedValue([{ email: 'writer@example.com', name: 'Ada' }]);
     mockConstructEvent.mockReturnValue(
       fakeEvent('customer.subscription.deleted', { customer: 'cus_abc', status: 'canceled' }),
     );
