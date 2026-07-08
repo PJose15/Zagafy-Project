@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 
 /**
  * E2E Flow 7: Collaborate — invite, accept, edit as collaborator
@@ -8,11 +9,7 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Collaboration', () => {
   test('invite a collaborator', async ({ page }) => {
-    await page.goto('/');
-
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured for E2E');
-    }
+    await gotoApp(page, '/');
 
     // Navigate to a story / manuscript
     const manuscriptLink = page.locator('[href*="manuscript"], [data-testid="manuscript"]');

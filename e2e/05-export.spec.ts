@@ -1,15 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 
 /**
  * E2E Flow 5: Export to .docx
  */
 test.describe('Export', () => {
   test('export manuscript as docx', async ({ page }) => {
-    await page.goto('/');
-
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured for E2E');
-    }
+    await gotoApp(page, '/');
 
     // Navigate to manuscript or settings for export
     const manuscriptLink = page.locator('[href*="manuscript"], [data-testid="manuscript"]');

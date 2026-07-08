@@ -1,21 +1,18 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 
 /**
  * E2E Flow 1: Sign up → Genesis → first chapter → save → reload → still there
  *
- * This test covers the critical onboarding path. In CI, Clerk test mode
- * provides a test user. Locally, we use the embed-mode bypass.
+ * This test covers the critical onboarding path. In CI, Clerk test-mode
+ * credentials sign in a dedicated test user (see docs/E2E.md); with auth
+ * disabled the app is reached directly.
  */
 test.describe('Sign-up and Genesis flow', () => {
   test('complete genesis and verify first chapter persists', async ({ page }) => {
-    // Navigate to the app — in embed mode, auth is bypassed
-    await page.goto('/');
+    // Signs in via Clerk when auth is enabled and credentials are configured.
+    await gotoApp(page, '/');
     await expect(page).toHaveTitle(/Zagafy|Story/i);
-
-    // If redirected to sign-in, use test credentials
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Clerk test mode not configured — skipping auth flow');
-    }
 
     // Look for genesis or dashboard
     const hasGenesis = await page.locator('[data-testid="genesis"], [href*="genesis"]').count();

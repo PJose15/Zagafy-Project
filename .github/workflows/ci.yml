@@ -70,11 +70,22 @@ jobs:
       # Visual-regression specs are excluded: they need baseline screenshots
       # generated in-environment and committed, which isn't set up yet. The
       # functional + a11y smoke flows run here.
+      #
+      # S6-M3 — authenticated flows: when the four E2E_CLERK_* repo secrets are
+      # configured (Clerk DEVELOPMENT-instance keys + a dedicated test user;
+      # see docs/E2E.md), the dev server boots with auth enabled and the specs
+      # sign in via @clerk/testing instead of self-skipping. With the secrets
+      # absent these env vars are empty strings → auth stays disabled → the
+      # suite behaves exactly as before.
       - name: Run E2E tests
         run: npx playwright test --grep-invert "Visual regression"
         env:
           GEMINI_API_KEY: dummy-key-for-build
           BASE_URL: http://localhost:3000
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+          E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
 
       - name: Upload E2E artifacts on failure
         if: failure()

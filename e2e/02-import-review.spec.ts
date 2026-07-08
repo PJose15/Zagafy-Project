@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 import path from 'path';
 
 /**
@@ -6,11 +7,7 @@ import path from 'path';
  */
 test.describe('Import flow', () => {
   test('import a text file and verify manuscript update', async ({ page }) => {
-    await page.goto('/');
-
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured for E2E');
-    }
+    await gotoApp(page, '/');
 
     // Navigate to import
     const importLink = page.locator('[href*="import"], [data-testid="import"]');

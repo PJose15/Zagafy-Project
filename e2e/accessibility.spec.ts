@@ -1,12 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 import AxeBuilder from '@axe-core/playwright';
 
 test.describe('Accessibility (WCAG 2.2 AA)', () => {
   test('dashboard has no critical a11y violations', async ({ page }) => {
-    await page.goto('/');
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured');
-    }
+    await gotoApp(page, '/');
     await page.waitForLoadState('networkidle');
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
@@ -30,10 +28,7 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
   });
 
   test('settings page has no critical a11y violations', async ({ page }) => {
-    await page.goto('/');
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured');
-    }
+    await gotoApp(page, '/');
     const settingsLink = page.locator('[href*="settings"]');
     if (await settingsLink.count() > 0) {
       await settingsLink.first().click();
@@ -49,10 +44,7 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
   });
 
   test('manuscript page has no critical a11y violations', async ({ page }) => {
-    await page.goto('/manuscript');
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured');
-    }
+    await gotoApp(page, '/manuscript');
     await page.waitForLoadState('networkidle');
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
@@ -64,10 +56,7 @@ test.describe('Accessibility (WCAG 2.2 AA)', () => {
   });
 
   test('flow mode page has no critical a11y violations', async ({ page }) => {
-    await page.goto('/flow');
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured');
-    }
+    await gotoApp(page, '/flow');
     await page.waitForLoadState('networkidle');
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])

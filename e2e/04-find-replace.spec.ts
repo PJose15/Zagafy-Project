@@ -1,15 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 
 /**
  * E2E Flow 4: Find-and-replace across chapters
  */
 test.describe('Find and replace', () => {
   test('find text and replace across manuscript', async ({ page }) => {
-    await page.goto('/');
-
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured for E2E');
-    }
+    await gotoApp(page, '/');
 
     // Navigate to manuscript
     const manuscriptLink = page.locator('[href*="manuscript"], [data-testid="manuscript"]');

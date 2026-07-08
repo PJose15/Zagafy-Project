@@ -1,15 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 
 /**
  * E2E Flow 3: Flow mode session → braindump → polish → save
  */
 test.describe('Flow mode', () => {
   test('enter flow mode, write content, and save', async ({ page }) => {
-    await page.goto('/');
-
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured for E2E');
-    }
+    await gotoApp(page, '/');
 
     // Navigate to flow mode
     const flowLink = page.locator('[href*="flow"], [data-testid="flow-mode"]');

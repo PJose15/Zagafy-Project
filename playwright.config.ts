@@ -11,6 +11,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  // S6-M3: mints a Clerk Testing Token when E2E auth credentials are
+  // configured; a no-op otherwise. See e2e/global-setup.ts and docs/E2E.md.
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

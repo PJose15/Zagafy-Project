@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoApp } from './helpers/auth';
 
 /**
  * E2E Flow 6: Subscribe to Writer plan (Stripe test mode)
@@ -9,11 +10,7 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Subscription', () => {
   test('initiate checkout for Writer plan', async ({ page }) => {
-    await page.goto('/');
-
-    if (page.url().includes('/sign-in')) {
-      test.skip(true, 'Auth not configured for E2E');
-    }
+    await gotoApp(page, '/');
 
     // Navigate to settings / billing
     const settingsLink = page.locator(
