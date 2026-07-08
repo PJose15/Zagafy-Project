@@ -18,7 +18,12 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      # `npm install` (not `npm ci`) so CI reconciles cross-platform optional-dep
+      # drift the same way Vercel's build does. Tailwind 4's wasm fallback
+      # (@tailwindcss/oxide-wasm32-wasi) pulls @emnapi/* transitive deps that a
+      # Windows-generated lockfile omits, which makes strict `npm ci` fail on
+      # Linux. --no-audit/--no-fund keep output clean; auditing is a separate step.
+      - run: npm install --no-audit --no-fund
 
       # Task 6.1 — SG-03: fail on high+ vulnerabilities in PRODUCTION deps.
       # --omit=dev excludes build/test-only tooling (esbuild via vite/drizzle-kit/
@@ -56,7 +61,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      # See the build job: npm install reconciles cross-platform lockfile drift.
+      - run: npm install --no-audit --no-fund
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
