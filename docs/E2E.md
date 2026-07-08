@@ -12,27 +12,30 @@ The Playwright suite runs in two modes:
    sign-in, export-with-auth, billing, and collaboration paths that previously
    self-skipped in CI.
 
-## One-time setup (requires the Clerk dashboard)
+## One-time setup
 
-1. In [Clerk](https://dashboard.clerk.com), open the **Development** instance
-   of the Zagafy application (never use production keys for E2E).
-2. Copy the development **Publishable key** (`pk_test_…`) and **Secret key**
-   (`sk_test_…`).
-3. Create a dedicated test user on that instance, e.g.
-   `e2e+clerk_test@zagafy.com`, with **password** authentication enabled and a
-   strong password. (`+clerk_test` addresses are Clerk test identifiers — no
-   real email is sent.)
-4. Add the four repository secrets:
+The only manual step is copying the two keys — everything else is scripted.
+
+1. In [Clerk](https://dashboard.clerk.com), open the Zagafy application with
+   the **Development** instance selected (never use production keys for E2E),
+   then Configure → **API Keys**: copy the **Publishable key** (`pk_test_…`)
+   and **Secret key** (`sk_test_…`).
+2. From the repo root, in your own terminal:
 
    ```bash
-   gh secret set E2E_CLERK_PUBLISHABLE_KEY --body "pk_test_..."
-   gh secret set E2E_CLERK_SECRET_KEY --body "sk_test_..."
-   gh secret set E2E_CLERK_USER_EMAIL --body "e2e+clerk_test@zagafy.com"
-   gh secret set E2E_CLERK_USER_PASSWORD --body "<the test user's password>"
+   node scripts/setup-e2e-clerk.mjs pk_test_... sk_test_...
    ```
 
-That's it — the next pull request's `e2e` job picks them up automatically
-(`.github/workflows/ci.yml` maps them into the dev server + test env).
+   The script creates (or reuses) the `e2e+clerk_test@zagafy.com` test user
+   via the Clerk Backend API with a freshly generated password, and sets all
+   four repo secrets (`E2E_CLERK_PUBLISHABLE_KEY`, `E2E_CLERK_SECRET_KEY`,
+   `E2E_CLERK_USER_EMAIL`, `E2E_CLERK_USER_PASSWORD`) via `gh secret set`,
+   piping values over stdin. It refuses `pk_live_`/`sk_live_` keys. Rerun it
+   any time to rotate the test user's password.
+
+That's it — the next pull request's `e2e` job picks the secrets up
+automatically (`.github/workflows/ci.yml` maps them into the dev server +
+test env).
 
 ## Running authenticated E2E locally
 
