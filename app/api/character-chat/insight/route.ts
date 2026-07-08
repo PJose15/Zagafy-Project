@@ -6,6 +6,7 @@ import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { anthropicConfig } from '@/lib/ai-config';
 import { callAnthropicMessages } from '@/lib/ai/anthropic';
+import { buildLocaleBlock } from '@/lib/prompts/locale';
 
 export const maxDuration = 30;
 
@@ -31,8 +32,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { characterName, transcript } = body;
+    const { characterName, transcript, language } = body;
 
+    const lang = typeof language === 'string' && language.trim() ? language.trim() : 'English';
     const name =
       typeof characterName === 'string' ? characterName.trim().slice(0, MAX_NAME) : '';
     const text =
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     const result = await callAnthropicMessages({
       apiKey,
-      system: 'You are a literary analyst. Extract character insights from conversations.',
+      system: `You are a literary analyst. Extract character insights from conversations.\n\n${buildLocaleBlock(lang)}`,
       messages: [
         {
           role: 'user',

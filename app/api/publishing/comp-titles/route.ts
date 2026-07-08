@@ -7,6 +7,14 @@ import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { withRetry } from '@/lib/ai/retry';
 import { buildLocaleBlock } from '@/lib/prompts/locale';
+import { safeParseGeminiResponse } from '@/lib/ai/safe-json-parse';
+
+interface CompTitle {
+  title: string;
+  author: string;
+  year: number;
+  rationale: string;
+}
 
 export const maxDuration = 60;
 
@@ -84,14 +92,14 @@ Respond in ${lang} for the rationale text.`;
     );
 
     const raw = response.text || '[]';
-    let compTitles;
-    try {
-      // Strip markdown code fences if present
-      const cleaned = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
-      compTitles = JSON.parse(cleaned);
-    } catch {
-      compTitles = [{ title: 'Parse error', author: '', year: 0, rationale: raw }];
-    }
+    // Use the shared fence-tolerant parser (direct → strip fences → regex-extract
+    // the first array/object) instead of hand-rolling fence stripping.
+    const fallback: CompTitle[] = [{ title: 'Parse error', author: '', year: 0, rationale: raw }];
+    const compTitles = safeParseGeminiResponse<CompTitle[]>(
+      raw,
+      fallback,
+      (v): v is CompTitle[] => Array.isArray(v),
+    );
 
     return ok({ compTitles });
   } catch (error: unknown) {

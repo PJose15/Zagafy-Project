@@ -5,6 +5,7 @@ import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { callAnthropicMessages } from '@/lib/ai/anthropic';
+import { buildLocaleBlock } from '@/lib/prompts/locale';
 
 export const maxDuration = 30;
 
@@ -31,8 +32,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { characterName, transcript, existingMemory } = body;
+    const { characterName, transcript, existingMemory, language } = body;
 
+    const lang = typeof language === 'string' && language.trim() ? language.trim() : 'English';
     const name = typeof characterName === 'string' ? characterName.trim().slice(0, MAX_NAME) : '';
     const text = typeof transcript === 'string' ? transcript.trim().slice(0, MAX_TRANSCRIPT_CHARS) : '';
     const prior =
@@ -54,7 +56,8 @@ export async function POST(req: NextRequest) {
     const result = await callAnthropicMessages({
       apiKey,
       system:
-        'You maintain a concise running memory of what a fictional character has learned and revealed across conversations with one person. Given the prior memory and the latest conversation, produce an UPDATED memory: 4-8 short bullet points capturing durable facts the character revealed, promises or agreements made, the emotional tone of the relationship, and unresolved threads. Merge new developments into the prior memory; drop nothing important. Respond with ONLY the memory as bullet points — no preamble, no headings.',
+        'You maintain a concise running memory of what a fictional character has learned and revealed across conversations with one person. Given the prior memory and the latest conversation, produce an UPDATED memory: 4-8 short bullet points capturing durable facts the character revealed, promises or agreements made, the emotional tone of the relationship, and unresolved threads. Merge new developments into the prior memory; drop nothing important. Respond with ONLY the memory as bullet points — no preamble, no headings.' +
+        `\n\n${buildLocaleBlock(lang)}`,
       messages: [
         {
           role: 'user',

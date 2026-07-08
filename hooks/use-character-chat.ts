@@ -309,7 +309,7 @@ export function useCharacterChat(characterId: string | null) {
             const ires = await fetch('/api/character-chat/insight', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ characterName: character.name, transcript }),
+              body: JSON.stringify({ characterName: character.name, transcript, language: state.language }),
             });
             if (!ires.ok) {
               setLastInsightError('upstream_error');
@@ -413,7 +413,7 @@ export function useCharacterChat(characterId: string | null) {
             const mres = await fetch('/api/character-chat/memory', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ characterName: character.name, transcript: memTranscript, existingMemory }),
+              body: JSON.stringify({ characterName: character.name, transcript: memTranscript, existingMemory, language: state.language }),
             });
             if (!mres.ok) return;
             const mdata = await mres.json();
