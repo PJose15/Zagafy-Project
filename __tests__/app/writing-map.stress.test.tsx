@@ -96,7 +96,7 @@ vi.mock('@/lib/types/writing-session', () => ({
   readSessions: () => Promise.resolve(mockSessions),
 }));
 
-import WritingMapPage from '@/app/writing-map/page';
+import WritingMapPage from '@/app/(app)/writing-map/page';
 
 describe('WritingMapPage STRESS', () => {
   beforeEach(() => {
