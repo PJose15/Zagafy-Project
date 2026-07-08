@@ -1,6 +1,7 @@
 'use client';
 
 import React, { forwardRef } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import type { NovelCompletionStats } from '@/lib/gamification/finishing-engine';
 
 interface NovelShareCardProps {
@@ -9,13 +10,15 @@ interface NovelShareCardProps {
 
 const NovelShareCard = forwardRef<HTMLDivElement, NovelShareCardProps>(
   function NovelShareCard({ stats }, ref) {
+    const t = useTranslations('novelCompletion.shareCard');
+    const locale = useLocale();
     const statItems = [
-      { label: 'Palabras', value: stats.totalWords.toLocaleString() },
-      { label: 'Capítulos', value: String(stats.totalChapters) },
-      { label: 'Sesiones', value: String(stats.totalSessions) },
-      { label: 'Días', value: String(stats.totalDays) },
-      { label: 'Horas', value: String(stats.totalHoursWriting) },
-      { label: 'Completada', value: new Date(stats.completedAt).toLocaleDateString('es', { year: 'numeric', month: 'short', day: 'numeric' }) },
+      { label: t('words'), value: stats.totalWords.toLocaleString(locale) },
+      { label: t('chapters'), value: String(stats.totalChapters) },
+      { label: t('sessions'), value: String(stats.totalSessions) },
+      { label: t('days'), value: String(stats.totalDays) },
+      { label: t('hours'), value: String(stats.totalHoursWriting) },
+      { label: t('completed'), value: new Date(stats.completedAt).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' }) },
     ];
 
     return (
@@ -95,7 +98,7 @@ const NovelShareCard = forwardRef<HTMLDivElement, NovelShareCardProps>(
             marginBottom: 32,
           }}
         >
-          Escribí mi novela.
+          {t('tagline')}
         </div>
 
         {/* Branding */}

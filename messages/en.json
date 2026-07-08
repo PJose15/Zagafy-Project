@@ -309,12 +309,30 @@
     "next": "Next",
     "review": "Review",
     "steps": {
-      "name": { "label": "Project Name", "description": "What will you call this story?" },
-      "logline": { "label": "Logline", "description": "Describe your story in one or two sentences." },
-      "genre-tone": { "label": "Genre & Tone", "description": "Pick the genres and tones that define your narrative." },
-      "protagonist": { "label": "Protagonist", "description": "Who drives this story forward?" },
-      "antagonist": { "label": "Antagonist", "description": "What force stands in opposition?" },
-      "world": { "label": "World", "description": "Where and when does this story take place?" }
+      "name": {
+        "label": "Project Name",
+        "description": "What will you call this story?"
+      },
+      "logline": {
+        "label": "Logline",
+        "description": "Describe your story in one or two sentences."
+      },
+      "genre-tone": {
+        "label": "Genre & Tone",
+        "description": "Pick the genres and tones that define your narrative."
+      },
+      "protagonist": {
+        "label": "Protagonist",
+        "description": "Who drives this story forward?"
+      },
+      "antagonist": {
+        "label": "Antagonist",
+        "description": "What force stands in opposition?"
+      },
+      "world": {
+        "label": "World",
+        "description": "Where and when does this story take place?"
+      }
     },
     "antagonistType": {
       "character": "character",
@@ -1703,6 +1721,15 @@
         "text": "Writing is a way of talking without being interrupted.",
         "author": "Jules Renard"
       }
+    },
+    "shareCard": {
+      "words": "Words",
+      "chapters": "Chapters",
+      "sessions": "Sessions",
+      "days": "Days",
+      "hours": "Hours",
+      "completed": "Completed",
+      "tagline": "I wrote my novel."
     }
   },
   "billing": {
@@ -1893,5 +1920,12 @@
       "privacySecurityTitle": "Privacy & Security",
       "privacySecurityContent": "Zagafy is built with privacy as a default. Manuscripts are stored locally unless you opt into cloud sync. Analytics via PostHog are opt-in and can be disabled at any time through the consent banner.\n\nWhen you use AI features, relevant portions of your manuscript are sent to the Google Gemini API for processing. Google does not retain your content after the request is complete and does not use it for training.\n\nAll data in transit is encrypted via TLS. Cloud-stored manuscripts are encrypted at rest. You can delete all your data at any time from the Settings page."
     }
+  },
+  "tour": {
+    "manuscript": "Your manuscript lives here. Write, organize chapters, and build your story scene by scene.",
+    "flow": "Flow mode for deep writing. A distraction-free environment that tracks your writing streaks.",
+    "assistant": "AI copilot for stuck moments. Get suggestions, brainstorm ideas, and overcome writer’s block.",
+    "storyBrain": "Story Brain catches inconsistencies. It watches your canon, timeline, and characters for conflicts.",
+    "settings": "Settings, sync, and export. Manage your project, language preferences, and data backups."
   }
 }

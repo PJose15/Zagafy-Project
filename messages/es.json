@@ -309,12 +309,30 @@
     "next": "Siguiente",
     "review": "Revisar",
     "steps": {
-      "name": { "label": "Nombre del Proyecto", "description": "¿Cómo llamarás a esta historia?" },
-      "logline": { "label": "Logline", "description": "Describe tu historia en una o dos frases." },
-      "genre-tone": { "label": "Género y Tono", "description": "Elige los géneros y tonos que definen tu narrativa." },
-      "protagonist": { "label": "Protagonista", "description": "¿Quién impulsa esta historia?" },
-      "antagonist": { "label": "Antagonista", "description": "¿Qué fuerza se opone?" },
-      "world": { "label": "Mundo", "description": "¿Dónde y cuándo transcurre esta historia?" }
+      "name": {
+        "label": "Nombre del Proyecto",
+        "description": "¿Cómo llamarás a esta historia?"
+      },
+      "logline": {
+        "label": "Logline",
+        "description": "Describe tu historia en una o dos frases."
+      },
+      "genre-tone": {
+        "label": "Género y Tono",
+        "description": "Elige los géneros y tonos que definen tu narrativa."
+      },
+      "protagonist": {
+        "label": "Protagonista",
+        "description": "¿Quién impulsa esta historia?"
+      },
+      "antagonist": {
+        "label": "Antagonista",
+        "description": "¿Qué fuerza se opone?"
+      },
+      "world": {
+        "label": "Mundo",
+        "description": "¿Dónde y cuándo transcurre esta historia?"
+      }
     },
     "antagonistType": {
       "character": "personaje",
@@ -1703,6 +1721,15 @@
         "text": "Escribir es la manera de hablar sin que te interrumpan.",
         "author": "Jules Renard"
       }
+    },
+    "shareCard": {
+      "words": "Palabras",
+      "chapters": "Capítulos",
+      "sessions": "Sesiones",
+      "days": "Días",
+      "hours": "Horas",
+      "completed": "Completada",
+      "tagline": "Escribí mi novela."
     }
   },
   "billing": {
@@ -1893,5 +1920,12 @@
       "privacySecurityTitle": "Privacidad y seguridad",
       "privacySecurityContent": "Zagafy está construido con la privacidad por defecto. Los manuscritos se almacenan localmente a menos que actives la sincronización en la nube. Las analíticas a través de PostHog son opcionales y se pueden desactivar en cualquier momento mediante el banner de consentimiento.\n\nCuando usas las funciones de IA, las partes relevantes de tu manuscrito se envían a la API de Google Gemini para su procesamiento. Google no conserva tu contenido una vez completada la solicitud ni lo utiliza para entrenamiento.\n\nTodos los datos en tránsito se cifran mediante TLS. Los manuscritos almacenados en la nube se cifran en reposo. Puedes eliminar todos tus datos en cualquier momento desde la página de Ajustes."
     }
+  },
+  "tour": {
+    "manuscript": "Tu manuscrito vive aquí. Escribe, organiza capítulos y construye tu historia escena a escena.",
+    "flow": "Modo Flujo para escritura profunda. Un entorno sin distracciones que registra tus rachas de escritura.",
+    "assistant": "Copiloto de IA para momentos de bloqueo. Obtén sugerencias, genera ideas y supera el bloqueo del escritor.",
+    "storyBrain": "Story Brain detecta inconsistencias. Vigila tu canon, cronología y personajes en busca de conflictos.",
+    "settings": "Ajustes, sincronización y exportación. Gestiona tu proyecto, preferencias de idioma y copias de seguridad."
   }
 }

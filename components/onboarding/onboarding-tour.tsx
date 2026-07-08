@@ -1,32 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { TourProvider, useTour, type StylesObj } from '@reactour/tour';
 
 const TOUR_STORAGE_KEY = 'zagafy_tour_completed';
 
-const tourSteps = [
-  {
-    selector: '[href="/manuscript"]',
-    content: 'Your manuscript lives here. Write, organize chapters, and build your story scene by scene.',
-  },
-  {
-    selector: '[href="/flow"]',
-    content: 'Flow mode for deep writing. A distraction-free environment that tracks your writing streaks.',
-  },
-  {
-    selector: '[href="/assistant"]',
-    content: 'AI copilot for stuck moments. Get suggestions, brainstorm ideas, and overcome writer\'s block.',
-  },
-  {
-    selector: '[href="/story-brain"]',
-    content: 'Story Brain catches inconsistencies. It watches your canon, timeline, and characters for conflicts.',
-  },
-  {
-    selector: '[href="/settings"]',
-    content: 'Settings, sync, and export. Manage your project, language preferences, and data backups.',
-  },
-];
+// Selector + translation key per step. Content is resolved from the `tour`
+// message namespace so the tour is localized (previously hardcoded English).
+const TOUR_STEP_DEFS = [
+  { selector: '[href="/manuscript"]', key: 'manuscript' },
+  { selector: '[href="/flow"]', key: 'flow' },
+  { selector: '[href="/assistant"]', key: 'assistant' },
+  { selector: '[href="/story-brain"]', key: 'storyBrain' },
+  { selector: '[href="/settings"]', key: 'settings' },
+] as const;
 
 const tourStyles = {
   popover: (base: Record<string, unknown>) => ({
@@ -120,7 +108,7 @@ export function useTourState() {
 
 function TourAutoStart() {
   const { setIsOpen } = useTour();
-  const { showTour, completeTour } = useTourState();
+  const { showTour } = useTourState();
 
   useEffect(() => {
     if (showTour) {
@@ -132,23 +120,17 @@ function TourAutoStart() {
     }
   }, [showTour, setIsOpen]);
 
-  // Listen for tour close to mark as completed
-  useEffect(() => {
-    const checkClosed = () => {
-      // This effect is just for cleanup on unmount
-    };
-    checkClosed();
-  }, [completeTour]);
-
   return null;
 }
 
 export function OnboardingTour({ children }: { children?: React.ReactNode }) {
   const { completeTour } = useTourState();
+  const t = useTranslations('tour');
+  const steps = TOUR_STEP_DEFS.map(({ selector, key }) => ({ selector, content: t(key) }));
 
   return (
     <TourProvider
-      steps={tourSteps}
+      steps={steps}
       styles={tourStyles as StylesObj}
       onClickClose={({ setIsOpen }) => {
         setIsOpen(false);
