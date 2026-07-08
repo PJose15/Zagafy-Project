@@ -131,6 +131,12 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
   const sessionStartOffsetRef = useRef<number>(initialContent.length);
   const noRetreatStartTimeRef = useRef<number>(0);
   const noRetreatStartWordCountRef = useRef<number>(0);
+  // Word count when this flow session started (the editor is keyed by chapterId,
+  // so this baseline is per chapter). Used to report the SESSION delta in the
+  // closing ritual instead of the whole chapter's word count.
+  const sessionStartWordCountRef = useRef<number>(
+    initialContent.trim().split(/\s+/).filter(Boolean).length
+  );
 
   // Block detector
   const blockDetectorContext = useMemo(() => ({
@@ -772,7 +778,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
       <ClosingRitual
         open={closingRitualOpen}
         stats={{
-          wordsWritten: wordCount,
+          wordsWritten: Math.max(0, wordCount - sessionStartWordCountRef.current),
           sessionDurationMs: Date.now() - sessionStartTimeRef.current,
           content,
         }}

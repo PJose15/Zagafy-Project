@@ -174,7 +174,26 @@ export async function POST(req: NextRequest) {
           ? session.customer
           : session.customer.id;
 
-        const plan = planFromMetadata(session.metadata) ?? 'writer';
+        // Prefer the plan our checkout route stamped into metadata. If it's
+        // absent (e.g. a Checkout Session created outside the app), derive the
+        // tier from the actual subscription price rather than assuming a tier —
+        // a hard-coded 'writer' fallback would over-grant on a cheaper plan.
+        let plan = planFromMetadata(session.metadata);
+        if (!plan) {
+          try {
+            const subId = typeof session.subscription === 'string'
+              ? session.subscription
+              : session.subscription.id;
+            const subscription = await stripe().subscriptions.retrieve(subId);
+            plan = await planFromSubscription(subscription);
+          } catch (subErr) {
+            log.warn('could not derive plan from subscription; defaulting to free', {
+              customerId,
+              err: String(subErr),
+            });
+            plan = 'free';
+          }
+        }
 
         // Link stripeCustomerId + set plan via userId from metadata
         const userId = session.metadata?.userId;

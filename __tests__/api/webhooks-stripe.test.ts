@@ -5,9 +5,11 @@ const originalEnv = { ...process.env };
 
 // Mock Stripe SDK
 const mockConstructEvent = vi.fn();
+const mockSubRetrieve = vi.fn();
 vi.mock('@/lib/stripe', () => ({
   stripe: () => ({
     webhooks: { constructEvent: mockConstructEvent },
+    subscriptions: { retrieve: mockSubRetrieve },
   }),
 }));
 
@@ -86,6 +88,7 @@ describe('POST /api/webhooks/stripe', () => {
     mockUpdateReturning.mockClear().mockResolvedValue([{ id: 'user_abc' }]);
     mockSelectLimit.mockReset().mockResolvedValue([]); // no duplicate by default
     mockSendEmail.mockClear().mockResolvedValue(true);
+    mockSubRetrieve.mockReset();
   });
 
   it('returns 500 when STRIPE_WEBHOOK_SECRET is unset', async () => {
@@ -134,6 +137,32 @@ describe('POST /api/webhooks/stripe', () => {
     expect(body.processed).toBe('checkout.session.completed');
     expect(mockUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({ stripeCustomerId: 'cus_abc', plan: 'writer' }),
+    );
+  });
+
+  it('derives the plan from the subscription price when metadata.plan is absent', async () => {
+    // No plan in metadata → retrieve the subscription and infer from price
+    // ($49/mo → studio) instead of hard-coding 'writer'.
+    mockSubRetrieve.mockResolvedValue({
+      metadata: {},
+      items: { data: [{ price: { unit_amount: 4900, recurring: { interval: 'month' } } }] },
+    });
+    mockConstructEvent.mockReturnValue(
+      fakeEvent('checkout.session.completed', {
+        id: 'cs_no_plan',
+        mode: 'subscription',
+        customer: 'cus_abc',
+        subscription: 'sub_xyz',
+        metadata: { userId: 'user_abc' }, // no plan
+      }),
+    );
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockSubRetrieve).toHaveBeenCalledWith('sub_xyz');
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({ stripeCustomerId: 'cus_abc', plan: 'studio' }),
     );
   });
 

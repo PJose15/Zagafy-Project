@@ -8,6 +8,10 @@ import { ok, err, makeRequestId } from '@/lib/api-response';
 import { withRetry } from '@/lib/ai/retry';
 import { createRouteLogger } from '@/lib/logger';
 
+// Pin the serverless budget like the other AI routes so a slow Gemini call is
+// bounded (and the graceful canned-question fallback still runs in time).
+export const maxDuration = 15;
+
 const FALLBACK_QUESTIONS = [
   'What surprised you about what you wrote today?',
   'Which character felt most alive in this session?',

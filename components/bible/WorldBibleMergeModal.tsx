@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckSquare, Square, AlertTriangle } from 'lucide-react';
@@ -20,6 +20,14 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
   const t = useTranslations('bible');
   const tCommon = useTranslations('common');
   const [selected, setSelected] = useState<Set<string>>(() => new Set(incoming.map((s) => s.id)));
+
+  // The modal stays mounted (visibility is driven by `open`), so the lazy
+  // initializer above only runs once. Re-seed the selection with all incoming
+  // sections whenever the modal opens or a fresh extraction changes `incoming`,
+  // otherwise a second extraction's sections would render unselected.
+  useEffect(() => {
+    if (open) setSelected(new Set(incoming.map((s) => s.id)));
+  }, [open, incoming]);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
