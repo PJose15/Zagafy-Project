@@ -5,6 +5,7 @@ import { db, isDatabaseConfigured } from '@/db/client';
 import { users } from '@/db/schema';
 import { err, ok, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -93,6 +94,18 @@ export async function POST(req: NextRequest) {
           set: { email, name },
         });
       log.info('user synced', { userId: evt.data.id, type: evt.type });
+
+      // Send the welcome email on first sign-up only (not on profile updates).
+      // Best-effort: sendEmail no-ops when Resend is unconfigured and never throws,
+      // so a mail failure can't break the user-sync webhook.
+      if (evt.type === 'user.created') {
+        const data: Record<string, string> = {};
+        if (name) data.name = name;
+        const appUrl = process.env.APP_URL;
+        if (appUrl) data.appUrl = appUrl;
+        await sendEmail({ to: email, template: 'welcome', data });
+      }
+
       return ok({ synced: evt.data.id }, { requestId });
     }
 

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import { CalendarHeatmap } from '@/components/writing-map/calendar-heatmap';
 import type { WritingSession } from '@/lib/types/writing-session';
+import { formatDateKey } from '@/lib/gamification/date-utils';
 
 function makeSession(overrides: Partial<WritingSession> = {}): WritingSession {
   return {
@@ -110,5 +111,18 @@ describe('CalendarHeatmap', () => {
     render(<CalendarHeatmap sessions={sessions} />);
     const cell = screen.getByLabelText('2026-03-10: 300 words');
     expect(cell).toBeTruthy();
+  });
+
+  it('buckets sessions under the same LOCAL date key the streak uses (REG-10)', () => {
+    // The heatmap must key days by local date (via the same convention as
+    // formatDateKey, which the writing streak uses) — not the ISO string's UTC
+    // date. Assert the cell is labeled with formatDateKey's output so the two
+    // views can never disagree by a day for west-of-UTC evening sessions.
+    const startedAt = '2026-03-10T09:00:00Z';
+    const sessions = [makeSession({ startedAt, wordsAdded: 420 })];
+    render(<CalendarHeatmap sessions={sessions} />);
+    const expectedKey = formatDateKey(new Date(startedAt));
+    const cell = screen.getByLabelText(`${expectedKey}: 420 words`);
+    expect(cell.getAttribute('class')).not.toContain('fill-sepia-300/50');
   });
 });

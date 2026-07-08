@@ -3,6 +3,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
 import { CalendarHeatmap } from '@/components/writing-map/calendar-heatmap';
 import type { WritingSession } from '@/lib/types/writing-session';
+import { formatDateKey } from '@/lib/gamification/date-utils';
 
 function makeSession(overrides: Partial<WritingSession> = {}): WritingSession {
   return {
@@ -227,8 +228,18 @@ describe('CalendarHeatmap STRESS', () => {
         makeSession({ id: 's2', startedAt: '2026-01-01T00:00:00Z', endedAt: '2026-01-01T01:00:00Z', wordsAdded: 200 }),
       ];
       render(<CalendarHeatmap sessions={sessions} />);
-      expect(screen.getByLabelText('2025-12-31: 100 words')).toBeTruthy();
-      expect(screen.getByLabelText('2026-01-01: 200 words')).toBeTruthy();
+      // REG-10: sessions bucket by LOCAL date (the streak's convention), not the
+      // ISO string's UTC date. Derive the expected day keys the same way so the
+      // assertion is timezone-independent (near a midnight/year boundary the two
+      // sessions may even fall on the same local day and aggregate).
+      const expected = new Map<string, number>();
+      for (const s of sessions) {
+        const key = formatDateKey(new Date(s.startedAt));
+        expected.set(key, (expected.get(key) ?? 0) + s.wordsAdded);
+      }
+      for (const [key, words] of expected) {
+        expect(screen.getByLabelText(`${key}: ${words} words`)).toBeTruthy();
+      }
     });
 
     it('handles leap year Feb 29', () => {
@@ -241,11 +252,11 @@ describe('CalendarHeatmap STRESS', () => {
     });
 
     it('handles session starting at midnight', () => {
-      const sessions = [
-        makeSession({ startedAt: '2026-03-10T00:00:00Z', endedAt: '2026-03-10T00:30:00Z', wordsAdded: 100 }),
-      ];
-      render(<CalendarHeatmap sessions={sessions} />);
-      expect(screen.getByLabelText('2026-03-10: 100 words')).toBeTruthy();
+      const startedAt = '2026-03-10T00:00:00Z';
+      render(<CalendarHeatmap sessions={[makeSession({ startedAt, endedAt: '2026-03-10T00:30:00Z', wordsAdded: 100 })]} />);
+      // REG-10: bucket by the session's LOCAL date (timezone-independent assertion).
+      const key = formatDateKey(new Date(startedAt));
+      expect(screen.getByLabelText(`${key}: 100 words`)).toBeTruthy();
     });
 
     it('renders correctly with sessions far in the past (ignored by calendar)', () => {

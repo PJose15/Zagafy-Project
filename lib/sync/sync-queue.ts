@@ -11,7 +11,7 @@
 
 import { db } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
-import type { SyncEntityType, SyncQueueEntry } from './types';
+import type { SyncEntityType, SyncQueueEntry, SyncMeta } from './types';
 
 /**
  * Record a local mutation in the sync queue. Call this after a successful
@@ -87,9 +87,9 @@ export async function hasPendingDeltas(): Promise<boolean> {
 // ─── Sync metadata (one row per project) ───
 
 /** Read the active project's sync metadata. Returns null if not yet initialized. */
-export async function getSyncMeta(): Promise<SyncQueueEntry | null> {
+export async function getSyncMeta(): Promise<SyncMeta | null> {
   const row = await db.syncMeta.get(getActiveProjectId());
-  return (row as SyncQueueEntry | undefined) ?? null;
+  return (row as SyncMeta | undefined) ?? null;
 }
 
 /** Read the active project's server story ID, or null if first sync hasn't happened. */

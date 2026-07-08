@@ -206,7 +206,7 @@ function buildReviewItems(
     }
   };
 
-  addItems('chapters', data.chapters, existingNames.characters, (e) => (e as ExtractedChapter).title || '');
+  addItems('chapters', data.chapters, existingNames.chapters, (e) => (e as ExtractedChapter).title || '');
   addItems('characters', data.characters, existingNames.characters, (e) => (e as ExtractedCharacter).name || '');
   addItems('active_conflicts', data.active_conflicts, existingNames.conflicts, (e) => (e as ExtractedConflict).title || '');
   addItems('timeline_events', data.timeline_events, [], () => '');

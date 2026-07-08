@@ -1,11 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// Mock sync-queue before importing SyncEngine
+// Mock sync-queue before importing SyncEngine.
+// getSyncMeta defaults to a BOUND project (serverStoryId set) so the pull-apply
+// tests below exercise the normal bound path; unbound behavior is covered by a
+// dedicated test.
 vi.mock('@/lib/sync/sync-queue', () => ({
   readQueue: vi.fn(async () => []),
   clearEntries: vi.fn(async () => {}),
   updateSyncMeta: vi.fn(async () => {}),
   getServerStoryId: vi.fn(async () => null),
+  getSyncMeta: vi.fn(async () => ({
+    id: 'current',
+    serverStoryId: 'server-story-1',
+    lastPulledAt: null,
+    lastPushedAt: null,
+  })),
 }));
 
 vi.mock('@/lib/storage/dexie-db', () => ({
@@ -32,7 +41,7 @@ const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 import { SyncEngine } from '@/lib/sync/sync-engine';
-import { readQueue, clearEntries, getServerStoryId } from '@/lib/sync/sync-queue';
+import { readQueue, clearEntries, getServerStoryId, getSyncMeta } from '@/lib/sync/sync-queue';
 import { db } from '@/lib/storage/dexie-db';
 
 describe('SyncEngine', () => {
@@ -42,6 +51,14 @@ describe('SyncEngine', () => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     mockFetch.mockReset();
+    // clearAllMocks resets call history but NOT implementations, so a per-test
+    // mockResolvedValue would leak. Re-assert the bound-project default each test.
+    vi.mocked(getSyncMeta).mockResolvedValue({
+      id: 'current',
+      serverStoryId: 'server-story-1',
+      lastPulledAt: null,
+      lastPushedAt: null,
+    });
     engine = new SyncEngine({ pushDebounceMs: 100, pullIntervalMs: 60000 });
   });
 
@@ -330,10 +347,16 @@ describe('SyncEngine', () => {
   // ─── pull ───
 
   describe('pull (via syncNow)', () => {
-    it('calls fetch with correct URL', async () => {
-      // Start engine
-      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
-      vi.mocked(db.syncMeta.get).mockResolvedValue({ id: 'sync', serverStoryId: 'server-story-1', lastPulledAt: '2026-01-01T00:00:00Z', lastPushedAt: null } as any);
+    it('calls fetch with the bound storyId and the incremental since watermark', async () => {
+      // REG-3: the since watermark comes from the project-keyed sync meta
+      // (getSyncMeta), not a hardcoded 'sync' row. Bound project with a prior
+      // pull timestamp → the pull URL must carry both storyId and since.
+      vi.mocked(getSyncMeta).mockResolvedValue({
+        id: 'current',
+        serverStoryId: 'server-story-1',
+        lastPulledAt: '2026-01-01T00:00:00Z',
+        lastPushedAt: null,
+      });
 
       mockFetch.mockResolvedValue(
         new Response(JSON.stringify({ data: { storyId: 'server-story-1', story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }),
@@ -348,6 +371,32 @@ describe('SyncEngine', () => {
       expect(pullCalls.length).toBeGreaterThan(0);
       const pullUrl = pullCalls[0][0] as string;
       expect(pullUrl).toContain('/api/sync/pull');
+      expect(pullUrl).toContain('storyId=server-story-1');
+      expect(pullUrl).toContain(`since=${encodeURIComponent('2026-01-01T00:00:00Z')}`);
+    });
+
+    it('does NOT pull for an unbound project (no serverStoryId) — prevents cross-project overwrite', async () => {
+      // REG-4: an unbound project must never adopt the server's "most recent
+      // story", which would overwrite the active project. Pull should no-op:
+      // no GET to /api/sync/pull, no destructive writes to the stories table.
+      vi.mocked(getSyncMeta).mockResolvedValue({
+        id: 'current',
+        serverStoryId: null,
+        lastPulledAt: null,
+        lastPushedAt: null,
+      });
+      vi.mocked(readQueue).mockResolvedValue([]);
+
+      await engine.start();
+
+      const pullCalls = mockFetch.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && (call[0] as string).startsWith('/api/sync/pull'),
+      );
+      expect(pullCalls.length).toBe(0);
+      expect(db.stories.put).not.toHaveBeenCalled();
+      expect(db.chapters.put).not.toHaveBeenCalled();
+      // The engine still settles into a normal idle state.
+      expect(engine.getStatus()).toBe('idle');
     });
 
     it('applies story data to Dexie stories table', async () => {

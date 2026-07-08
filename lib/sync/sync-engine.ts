@@ -24,6 +24,7 @@ import {
   clearEntries,
   updateSyncMeta,
   getServerStoryId,
+  getSyncMeta,
 } from './sync-queue';
 
 export interface SyncEngineConfig {
@@ -236,13 +237,30 @@ export class SyncEngine {
     this.setStatus('pulling');
 
     try {
-      const serverStoryId = await getServerStoryId();
-      const meta = await dexieDb.syncMeta.get('sync');
+      // Read this project's sync metadata (keyed per project — see the Dexie v8
+      // migration). `getSyncMeta()` resolves both the server binding and the
+      // last-pulled watermark from the correct row.
+      const meta = await getSyncMeta();
+      const serverStoryId = meta?.serverStoryId ?? null;
+
+      // Multi-project safety: only pull for a project that is bound to a server
+      // story. An UNBOUND project must not pull, because the server falls back
+      // to "the user's most recent story" when no storyId is given — adopting
+      // that would silently overwrite the active project's blob + chapters with
+      // an unrelated story. The binding (serverStoryId) is created on the first
+      // push; until then there is nothing on the server for this project to pull.
+      if (!serverStoryId) {
+        this.setStatus(prevStatus === 'conflict' ? 'conflict' : 'idle');
+        return;
+      }
+
+      // Honor the incremental watermark so periodic pulls only fetch changes
+      // since the last successful pull (not the entire dataset every cycle).
       const since = meta?.lastPulledAt ?? null;
 
       const params = new URLSearchParams();
       if (since) params.set('since', since);
-      if (serverStoryId) params.set('storyId', serverStoryId);
+      params.set('storyId', serverStoryId);
 
       const res = await fetch(`/api/sync/pull?${params.toString()}`);
 
@@ -250,7 +268,6 @@ export class SyncEngine {
         if (res.status === 401) {
           this.setStatus('error');
           this.emit({ type: 'error', message: 'Authentication expired' });
-          this.pulling = false;
           return;
         }
         throw new Error(`Pull failed: ${res.status}`);
@@ -259,12 +276,7 @@ export class SyncEngine {
       const data = await res.json() as { data: PullResponse };
       const result = data.data;
 
-      // If server has a story and we don't have a serverStoryId, adopt it
-      if (result.storyId && !serverStoryId) {
-        await updateSyncMeta({ serverStoryId: result.storyId });
-      }
-
-      // Apply pulled data to Dexie
+      // Apply pulled data to Dexie (scoped to the active/bound project).
       const counts = await this.applyPulledData(result);
 
       await updateSyncMeta({ lastPulledAt: result.serverTimestamp });
@@ -433,11 +445,16 @@ export class SyncEngine {
    * apply the server's version locally (server-authoritative).
    */
   private async applyConflictResolutions(conflicts: ConflictRecord[]): Promise<void> {
+    // Chapters are stored per project; without projectId the row is dropped from
+    // getAllChapterContents(projectId) and its content silently vanishes from the
+    // active project. Scope the overwrite to the active project like applyPulledData.
+    const projectId = getActiveProjectId();
     for (const c of conflicts) {
       if (c.entityType === 'chapter' && c.serverPayload) {
         const sp = c.serverPayload;
         await dexieDb.chapters.put({
           id: sp.id as string,
+          projectId,
           title: (sp.title as string) ?? '',
           content: (sp.content as string) ?? '',
           summary: (sp.summary as string) ?? '',

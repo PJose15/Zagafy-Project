@@ -568,6 +568,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
                   chapterTitle: chapter?.title,
                   storyContext: storyContext.synopsis ?? '',
                   heteronymVoice: activeHeteronym ? { name: activeHeteronym.name, voice: activeHeteronym.voice, styleNote: activeHeteronym.styleNote } : undefined,
+                  language: state.language,
                 });
               }
             }}
@@ -760,6 +761,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             chapterTitle: chapter?.title,
             storyContext: storyContext.synopsis ?? '',
             heteronymVoice: activeHeteronym?.voice,
+            language: state.language,
           })}
           onDismiss={storyCoach.dismissInsight}
           onClose={() => setCoachPanelOpen(false)}

@@ -62,7 +62,19 @@ export default function FlowPage() {
 
   return (
     <FeatureErrorBoundary title={t('errorTitle')}>
-      <FlowEditor chapterId={session.flowChapterId} onExit={handleExit} />
+      {/*
+        Key by chapterId so a scene-change depart/return (which swaps
+        session.flowChapterId) remounts the editor. This re-seeds `content` from
+        the newly-selected chapter (preventing the previous chapter's text from
+        being displayed and then autosaved over the new chapter), and lets the
+        editor's on-mount effects (pending-return cursor restore + toast,
+        expired-scene recovery modal) run on the switch as designed.
+      */}
+      <FlowEditor
+        key={session.flowChapterId}
+        chapterId={session.flowChapterId}
+        onExit={handleExit}
+      />
     </FeatureErrorBoundary>
   );
 }

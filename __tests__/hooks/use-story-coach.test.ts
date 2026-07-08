@@ -90,6 +90,20 @@ describe('useStoryCoach', () => {
     expect(body.heteronymVoice).toEqual({ tone: 'poetic' });
   });
 
+  it('forwards the story language so coaching matches the prose language', async () => {
+    globalThis.fetch = mockFetchSuccess([]);
+
+    const { result } = renderHook(() => useStoryCoach());
+
+    await act(async () => {
+      result.current.refresh('ch-3', { chapterContent: 'Texto del capítulo', language: 'Spanish' });
+    });
+
+    const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(call[1].body);
+    expect(body.language).toBe('Spanish');
+  });
+
   it('sets error on fetch failure', async () => {
     globalThis.fetch = mockFetchError(500);
 

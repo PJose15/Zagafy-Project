@@ -183,6 +183,18 @@ function useGamificationInternal(): GamificationAPI {
     });
   }, [storyState]);
 
+  // REG-7: keep the finishing analysis in sync with the story. The mount effect
+  // seeds `finishing` once, but milestone progress and novel-completion detection
+  // must advance live as the writer adds chapters/characters/words — and must also
+  // recover when the story hydrates from Dexie *after* this provider mounts
+  // (otherwise it analyzes an empty story and stays stale). `refreshFinishing` is
+  // memoized on `storyState`, so this re-runs whenever the story changes. It only
+  // mutates gamification state (never the story), so there is no update loop.
+  useEffect(() => {
+    if (!isLoaded) return;
+    refreshFinishing();
+  }, [isLoaded, refreshFinishing]);
+
   return {
     gamification,
     isLoaded,

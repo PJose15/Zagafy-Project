@@ -11,6 +11,12 @@ vi.mock('@/lib/stripe', () => ({
   }),
 }));
 
+// Mock the email module (also avoids importing 'server-only' from lib/email).
+const mockSendEmail = vi.fn().mockResolvedValue(true);
+vi.mock('@/lib/email', () => ({
+  sendEmail: mockSendEmail,
+}));
+
 // Mock DB
 const mockInsertOnConflictDoNothing = vi.fn().mockResolvedValue(undefined);
 const mockInsertValues = vi.fn(() => ({ onConflictDoNothing: mockInsertOnConflictDoNothing }));
@@ -35,7 +41,7 @@ vi.mock('@/db/client', () => ({
 }));
 
 vi.mock('@/db/schema', () => ({
-  users: { id: 'id', stripeCustomerId: 'stripe_customer_id', plan: 'plan' },
+  users: { id: 'id', stripeCustomerId: 'stripe_customer_id', plan: 'plan', email: 'email', name: 'name' },
   stripeEvents: { id: 'id', type: 'type' },
 }));
 
@@ -79,6 +85,7 @@ describe('POST /api/webhooks/stripe', () => {
     mockUpdateSetWhere.mockClear();
     mockUpdateReturning.mockClear().mockResolvedValue([{ id: 'user_abc' }]);
     mockSelectLimit.mockReset().mockResolvedValue([]); // no duplicate by default
+    mockSendEmail.mockClear().mockResolvedValue(true);
   });
 
   it('returns 500 when STRIPE_WEBHOOK_SECRET is unset', async () => {
@@ -244,6 +251,81 @@ describe('POST /api/webhooks/stripe', () => {
     expect(mockInsertValues).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'customer.subscription.deleted' }),
     );
+  });
+
+  it('sends a subscription_confirmed email on checkout when the user is resolvable', async () => {
+    // 1st select = idempotency (not a duplicate), 2nd select = contact lookup.
+    mockSelectLimit.mockReset()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ email: 'writer@example.com', name: 'Ada' }]);
+    mockConstructEvent.mockReturnValue(
+      fakeEvent('checkout.session.completed', {
+        id: 'cs_email',
+        mode: 'subscription',
+        customer: 'cus_abc',
+        subscription: 'sub_abc',
+        metadata: { userId: 'user_abc', plan: 'author' },
+      }),
+    );
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'writer@example.com',
+        template: 'subscription_confirmed',
+        data: expect.objectContaining({ plan: 'author', name: 'Ada' }),
+      }),
+    );
+  });
+
+  it('sends a payment_failed email on invoice.payment_failed', async () => {
+    mockSelectLimit.mockReset()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ email: 'writer@example.com', name: null }]);
+    mockConstructEvent.mockReturnValue(
+      fakeEvent('invoice.payment_failed', {
+        id: 'in_email',
+        customer: 'cus_abc',
+        attempt_count: 1,
+      }),
+    );
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'writer@example.com', template: 'payment_failed' }),
+    );
+  });
+
+  it('sends a subscription_canceled email on subscription.deleted', async () => {
+    mockSelectLimit.mockReset()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ email: 'writer@example.com', name: 'Ada' }]);
+    mockConstructEvent.mockReturnValue(
+      fakeEvent('customer.subscription.deleted', { customer: 'cus_abc', status: 'canceled' }),
+    );
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'writer@example.com', template: 'subscription_canceled' }),
+    );
+  });
+
+  it('does not send email when no user matches the Stripe customer', async () => {
+    // idempotency [] then contact [] (no user) → notifyCustomer no-ops.
+    mockConstructEvent.mockReturnValue(
+      fakeEvent('customer.subscription.deleted', { customer: 'cus_missing', status: 'canceled' }),
+    );
+
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
   it('handles customer as object (expanded)', async () => {

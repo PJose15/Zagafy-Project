@@ -25,7 +25,7 @@ interface UseStoryCoachReturn {
   insights: CoachingInsight[];
   isLoading: boolean;
   error: string | null;
-  refresh: (chapterId: string, options?: { focusLens?: string; chapterContent?: string; chapterTitle?: string; storyContext?: string; heteronymVoice?: unknown }) => void;
+  refresh: (chapterId: string, options?: { focusLens?: string; chapterContent?: string; chapterTitle?: string; storyContext?: string; heteronymVoice?: unknown; language?: string }) => void;
   dismissInsight: (insightId: string) => void;
 }
 
@@ -55,6 +55,7 @@ export function useStoryCoach(): UseStoryCoachReturn {
       chapterTitle?: string;
       storyContext?: string;
       heteronymVoice?: unknown;
+      language?: string;
     }
   ) => {
     // Check cache (unless explicit refresh with different options)
@@ -94,6 +95,9 @@ export function useStoryCoach(): UseStoryCoachReturn {
         storyContext: options?.storyContext,
         focusLens: options?.focusLens,
         heteronymVoice: options?.heteronymVoice,
+        // Forward the story's language so coaching insights match the prose
+        // language (the route defaults to English when this is absent).
+        language: options?.language,
         writerInsightsPrompt,
       }),
       signal: controller.signal,

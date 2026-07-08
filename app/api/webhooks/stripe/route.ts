@@ -6,6 +6,7 @@ import { stripe } from '@/lib/stripe';
 import { db, isDatabaseConfigured } from '@/db/client';
 import { users, stripeEvents } from '@/db/schema';
 import { isPlanId, type PlanId } from '@/lib/billing';
+import { sendEmail, type EmailTemplate } from '@/lib/email';
 import type Stripe from 'stripe';
 
 export const runtime = 'nodejs';
@@ -16,10 +17,13 @@ export const runtime = 'nodejs';
  * Public route — verification is via Stripe webhook signature, not session
  * auth. Handles the subscription lifecycle:
  *
- * - checkout.session.completed → link customer + upgrade plan
+ * - checkout.session.completed → link customer + upgrade plan + confirmation email
  * - customer.subscription.updated → adjust plan on up/downgrade
- * - customer.subscription.deleted → revert to free
- * - invoice.payment_failed → log (email handled by Resend in Phase 5.10)
+ * - customer.subscription.deleted → revert to free + cancellation email
+ * - invoice.payment_failed → log + payment-failed email
+ *
+ * All emails are best-effort (Resend no-ops when unconfigured; never throws), so
+ * a mail failure can never fail the webhook.
  */
 
 const HANDLED_EVENTS = new Set([
@@ -72,6 +76,41 @@ async function updateUserPlan(
     log.warn('No user found for Stripe customer', { customerId, plan });
   } else {
     log.info('user plan updated', { userId: result[0].id, plan, customerId });
+  }
+}
+
+/**
+ * Send a best-effort transactional email to the user behind a Stripe customer.
+ * Looks the user up by stripeCustomerId; no-ops (with a warning) when the user
+ * or their email can't be resolved. Never throws — a mail failure must not fail
+ * the webhook (Stripe would otherwise retry a fully-processed event).
+ */
+async function notifyCustomer(
+  customerId: string,
+  template: EmailTemplate,
+  extra: Record<string, string>,
+  log: ReturnType<typeof createRouteLogger>,
+): Promise<void> {
+  try {
+    const [contact] = await db()
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.stripeCustomerId, customerId))
+      .limit(1);
+
+    if (!contact?.email) {
+      log.warn('no user email for notification', { customerId, template });
+      return;
+    }
+
+    const data: Record<string, string> = { ...extra };
+    if (contact.name) data.name = contact.name;
+    const appUrl = process.env.APP_URL;
+    if (appUrl) data.appUrl = appUrl;
+
+    await sendEmail({ to: contact.email, template, data });
+  } catch (e) {
+    log.warn('notification email failed', { customerId, template, err: String(e) });
   }
 }
 
@@ -149,6 +188,10 @@ export async function POST(req: NextRequest) {
           // Fallback: update by customer ID (already linked via checkout route)
           await updateUserPlan(customerId, plan, log);
         }
+
+        // Confirmation email (only here — renewals/plan changes on
+        // customer.subscription.updated stay silent to avoid duplicate mail).
+        await notifyCustomer(customerId, 'subscription_confirmed', { plan }, log);
         break;
       }
 
@@ -178,6 +221,7 @@ export async function POST(req: NextRequest) {
           : subscription.customer.id;
         await updateUserPlan(customerId, 'free', log);
         log.info('subscription deleted — downgraded to free', { customerId });
+        await notifyCustomer(customerId, 'subscription_canceled', {}, log);
         break;
       }
 
@@ -191,7 +235,9 @@ export async function POST(req: NextRequest) {
           invoiceId: invoice.id,
           attemptCount: invoice.attempt_count,
         });
-        // Email notification is handled in Phase 5.10 (Resend)
+        if (customerId) {
+          await notifyCustomer(customerId, 'payment_failed', {}, log);
+        }
         break;
       }
 

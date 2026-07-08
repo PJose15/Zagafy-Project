@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { paginateText, estimateReadingTime } from '@/lib/reader-utils';
+import { paginateTextWithOffsets, estimateReadingTime } from '@/lib/reader-utils';
 import { ParchmentCard } from '@/components/antiquarian';
 import { ProseAnnotations } from './prose-annotations';
 import type { ProseIssue } from '@/lib/prose-analysis';
@@ -16,9 +16,29 @@ interface PrintBookViewProps {
 
 export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
   const t = useTranslations('readerView');
-  const pages = useMemo(() => paginateText(content), [content]);
+  const pages = useMemo(() => paginateTextWithOffsets(content), [content]);
   const [currentPage, setCurrentPage] = useState(0);
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);
+
+  const page = pages[currentPage];
+  const pageText = page?.text ?? '';
+
+  // Prose issues carry indices relative to the WHOLE chapter, but this view
+  // renders one page at a time. Keep only the issues overlapping the current
+  // page and re-base their indices to page-local coordinates so ProseAnnotations
+  // underlines the correct words (previously they were mis-placed on every page
+  // after the first).
+  const pageIssues = useMemo(() => {
+    if (!page) return [];
+    const pageEnd = page.start + pageText.length;
+    return issues
+      .filter(i => i.startIndex < pageEnd && i.endIndex > page.start)
+      .map(i => ({
+        ...i,
+        startIndex: i.startIndex - page.start,
+        endIndex: i.endIndex - page.start,
+      }));
+  }, [issues, page, pageText]);
   const readTimeLabel = readingTime.minutes < 60
     ? t('readTimeMin', { minutes: readingTime.minutes })
     : t('readTimeHourMin', { hours: Math.floor(readingTime.minutes / 60), minutes: readingTime.minutes % 60 });
@@ -38,10 +58,10 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
           className="font-serif text-sm text-sepia-900 leading-[1.8] whitespace-pre-wrap"
           style={{ fontFamily: "'Playfair Display', serif", fontSize: '14px' }}
         >
-          {issues.length > 0 ? (
-            <ProseAnnotations text={pages[currentPage] || ''} issues={issues} />
+          {pageIssues.length > 0 ? (
+            <ProseAnnotations text={pageText} issues={pageIssues} />
           ) : (
-            pages[currentPage]
+            pageText
           )}
         </div>
         {/* Page number */}

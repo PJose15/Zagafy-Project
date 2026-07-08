@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import type { WritingSession } from '@/lib/types/writing-session';
+import { formatDateKey } from '@/lib/gamification/date-utils';
 
 const CELL_SIZE = 14;
 const CELL_GAP = 2;
@@ -71,7 +72,11 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
     // Build a map of date -> aggregated data
     const dayMap = new Map<string, { words: number; sessionCount: number; flowScores: number[]; totalMs: number; flowMomentCount: number; autoFlowScores: number[] }>();
     for (const session of sessions) {
-      const date = session.startedAt.slice(0, 10);
+      // REG-10: bucket by the session's LOCAL date so the heatmap agrees with the
+      // writing streak (which keys days via formatDateKey/local time). Using the
+      // ISO string's UTC date here caused west-of-UTC late-evening sessions to
+      // land on a different day than the streak counted them.
+      const date = formatDateKey(new Date(session.startedAt));
       const existing = dayMap.get(date) || { words: 0, sessionCount: 0, flowScores: [], totalMs: 0, flowMomentCount: 0, autoFlowScores: [] };
       existing.words += session.wordsAdded;
       existing.sessionCount++;
@@ -106,7 +111,9 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
       const row = cursor.getDay();
       if (row === 0 && cursor > startDate) col++;
 
-      const dateStr = cursor.toISOString().slice(0, 10);
+      // REG-10: key grid cells by LOCAL date to match both the cursor's local
+      // getDay()/getMonth() (rows/month labels) and the local session buckets above.
+      const dateStr = formatDateKey(cursor);
       const raw = dayMap.get(dateStr);
       const words = raw?.words || 0;
       const dayData: DayData = {

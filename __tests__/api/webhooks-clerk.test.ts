@@ -9,6 +9,12 @@ class MockWebhook {
 }
 vi.mock('svix', () => ({ Webhook: MockWebhook }));
 
+// Mock the email module (also avoids importing 'server-only' from lib/email).
+const mockSendEmail = vi.fn().mockResolvedValue(true);
+vi.mock('@/lib/email', () => ({
+  sendEmail: mockSendEmail,
+}));
+
 const mockInsertOnConflict = vi.fn().mockResolvedValue(undefined);
 const mockInsertValues = vi.fn(() => ({ onConflictDoUpdate: mockInsertOnConflict }));
 const mockInsert = vi.fn(() => ({ values: mockInsertValues }));
@@ -43,6 +49,7 @@ describe('POST /api/webhooks/clerk', () => {
     mockInsertOnConflict.mockClear();
     mockDelete.mockClear();
     mockDeleteWhere.mockClear();
+    mockSendEmail.mockClear().mockResolvedValue(true);
   });
 
   it('returns 500 when CLERK_WEBHOOK_SECRET is unset', async () => {
@@ -92,6 +99,32 @@ describe('POST /api/webhooks/clerk', () => {
       name: 'Pedro Acosta',
     });
     expect(mockInsertOnConflict).toHaveBeenCalled();
+    // Welcome email is sent on first sign-up.
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'pj@example.com',
+        template: 'welcome',
+        data: expect.objectContaining({ name: 'Pedro Acosta' }),
+      }),
+    );
+  });
+
+  it('does NOT send a welcome email on user.updated', async () => {
+    mockVerify.mockReturnValue({
+      type: 'user.updated',
+      data: {
+        id: 'user_abc123',
+        email_addresses: [{ id: 'email_1', email_address: 'pj@example.com' }],
+        primary_email_address_id: 'email_1',
+        first_name: 'Pedro',
+        last_name: 'Acosta',
+      },
+    });
+    const { POST } = await import('@/app/api/webhooks/clerk/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(200);
+    expect(mockInsertValues).toHaveBeenCalled();
+    expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
   it('uses primary email when multiple emails present', async () => {

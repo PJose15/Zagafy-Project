@@ -38,9 +38,9 @@ export interface SyncDelta {
   timestamp: number;
 }
 
-/** Persistent sync metadata stored in Dexie. */
+/** Persistent sync metadata stored in Dexie. One row per project. */
 export interface SyncMeta {
-  /** Always 'sync' -- single-row table. */
+  /** The active project id -- the row is keyed per project (see dexie v8 migration). */
   id: string;
   /** Server-side story UUID. Created on first sync. */
   serverStoryId: string | null;
