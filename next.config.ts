@@ -15,6 +15,18 @@ const cspScriptSrc = isDev
   ? "'self' 'unsafe-inline' 'unsafe-eval'"
   : "'self' 'unsafe-inline'";
 
+// The AI Studio applet runs framed inside ai.studio / aistudio.google.com, so
+// in embed mode the app must be frameable by those hosts. `X-Frame-Options: DENY`
+// has no cross-origin allowlist, so it's omitted in embed mode and framing is
+// governed solely by CSP frame-ancestors. SaaS mode stays locked down.
+const isEmbed = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'embed';
+const frameAncestors = isEmbed
+  ? "'self' https://ai.studio https://*.ai.studio https://aistudio.google.com https://*.google.com"
+  : "'none'";
+const frameOptionsHeader = isEmbed
+  ? []
+  : [{ key: 'X-Frame-Options', value: 'DENY' }];
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ['pdf-parse', '@react-pdf/renderer', 'docx'],
   headers: async () => [
@@ -22,9 +34,9 @@ const nextConfig: NextConfig = {
       source: '/(.*)',
       headers: [
         { key: 'X-Content-Type-Options', value: 'nosniff' },
-        { key: 'X-Frame-Options', value: 'DENY' },
+        ...frameOptionsHeader,
         { key: 'X-XSS-Protection', value: '0' },
-        { key: 'Content-Security-Policy', value: `default-src 'self'; script-src ${cspScriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com; frame-ancestors 'none'` },
+        { key: 'Content-Security-Policy', value: `default-src 'self'; script-src ${cspScriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com; frame-ancestors ${frameAncestors}` },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
