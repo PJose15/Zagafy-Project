@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
-import { CarvedHeader, ParchmentCard, FeatureErrorBoundary } from '@/components/antiquarian';
+import { CarvedHeader, ParchmentCard, ParchmentSelect, FeatureErrorBoundary } from '@/components/antiquarian';
 import { CharacterChatPanel } from '@/components/character-chat/character-chat-panel';
 import { MessageCircle } from 'lucide-react';
 
@@ -19,13 +19,16 @@ function CharacterChatContent() {
       <CarvedHeader title={t('title')} icon={<MessageCircle size={24} />} />
 
       <ParchmentCard className="p-4">
-        <label className="block text-xs text-cream-400/60 font-mono uppercase tracking-widest mb-2">
+        <label
+          htmlFor="character-chat-select"
+          className="block text-xs text-sepia-600 font-mono uppercase tracking-widest mb-2"
+        >
           {t('selectLabel')}
         </label>
-        <select
+        <ParchmentSelect
+          id="character-chat-select"
           value={selectedCharacterId || ''}
           onChange={(e) => setSelectedCharacterId(e.target.value || null)}
-          className="w-full bg-mahogany-800/50 border border-mahogany-700/30 rounded-lg px-3 py-2 text-sm text-cream-100 focus:outline-none focus:ring-1 focus:ring-brass-500/50"
         >
           <option value="">{t('choosePlaceholder')}</option>
           {state.characters.map(c => (
@@ -33,7 +36,7 @@ function CharacterChatContent() {
               {c.name} ({c.role})
             </option>
           ))}
-        </select>
+        </ParchmentSelect>
       </ParchmentCard>
 
       {state.characters.length === 0 && (

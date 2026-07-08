@@ -41,7 +41,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   }, []);
 
   return (
-    <div className="flex gap-2 items-end p-3 border-t border-mahogany-700/30 bg-mahogany-900/50">
+    <div className="flex gap-2 items-end p-3 border-t border-sepia-300/30 bg-parchment-200/60">
       <textarea
         ref={textareaRef}
         value={value}
@@ -50,7 +50,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
         disabled={isLoading}
         placeholder={isLoading ? t('inputWaiting') : t('inputPlaceholder')}
         rows={1}
-        className="flex-1 resize-none bg-mahogany-800/50 border border-mahogany-700/30 rounded-lg px-3 py-2 text-sm text-cream-100 placeholder:text-cream-400/40 focus:outline-none focus:ring-1 focus:ring-brass-500/50 disabled:opacity-50"
+        className="flex-1 resize-none bg-parchment-50 border border-sepia-300/60 rounded-lg px-3 py-2 text-sm text-sepia-900 placeholder:text-sepia-500 focus:outline-none focus:ring-2 focus:ring-brass-400/40 focus:border-brass-500/60 disabled:opacity-50"
       />
       <BrassButton
         onClick={handleSend}

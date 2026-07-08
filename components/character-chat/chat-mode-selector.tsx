@@ -19,7 +19,7 @@ interface ChatModeSelectorProps {
 export function ChatModeSelector({ activeMode, onModeChange }: ChatModeSelectorProps) {
   const t = useTranslations('characterChat');
   return (
-    <div className="flex gap-1 p-1 bg-mahogany-800/50 rounded-lg border border-mahogany-700/30">
+    <div className="flex gap-1 p-1 bg-parchment-200 rounded-lg border border-sepia-300/40">
       {modes.map(({ value, icon: Icon }) => {
         const isActive = activeMode === value;
         return (
@@ -30,7 +30,7 @@ export function ChatModeSelector({ activeMode, onModeChange }: ChatModeSelectorP
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               isActive
                 ? 'bg-forest-700 text-cream-50'
-                : 'text-cream-300/70 hover:bg-mahogany-700/50 hover:text-cream-100'
+                : 'text-sepia-700 hover:bg-parchment-300/60 hover:text-sepia-900'
             }`}
           >
             <Icon size={14} />

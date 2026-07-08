@@ -61,12 +61,12 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] bg-mahogany-900/30 rounded-xl border border-mahogany-700/30 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-12rem)] bg-parchment-100 rounded-xl border border-sepia-300/40 overflow-hidden texture-parchment">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-mahogany-700/30 bg-mahogany-900/50">
+      <div className="px-4 py-3 border-b border-sepia-300/30 bg-parchment-200/60">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-forest-700/30 flex items-center justify-center text-forest-300 font-serif font-bold text-lg">
+            <div className="w-10 h-10 rounded-full bg-forest-700/15 flex items-center justify-center text-forest-700 font-serif font-bold text-lg">
               {characterName.charAt(0).toUpperCase()}
             </div>
             <CarvedHeader title={characterName} />
@@ -98,16 +98,16 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
                   className={`h-1.5 w-5 rounded-full transition-colors ${
                     seg <= PRESSURE_INDEX[liveState.pressureLevel]
                       ? INDICATOR_COLOR[liveState.indicator]
-                      : 'bg-cream-100/10'
+                      : 'bg-sepia-300/40'
                   }`}
                 />
               ))}
             </div>
-            <span className="text-[11px] font-medium text-cream-300">
+            <span className="text-[11px] font-medium text-sepia-800">
               {tChar(`indicator.${liveState.indicator}`)}
             </span>
             {liveState.emotionalState && (
-              <span className="text-[11px] italic text-cream-400/60 truncate">
+              <span className="text-[11px] italic text-sepia-600 truncate">
                 — {liveState.emotionalState}
               </span>
             )}
@@ -118,7 +118,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
-          <div className="text-center text-cream-400/40 text-sm py-12">
+          <div className="text-center text-sepia-600/80 text-sm py-12">
             {t('startConversation', { name: characterName, mode: t(`modes.${mode}`) })}
           </div>
         )}
@@ -131,8 +131,8 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
         ))}
         {isLoading && (
           <div className="flex justify-start mb-3">
-            <div className="px-4 py-2.5 rounded-xl bg-cream-100/10 border border-cream-200/10">
-              <span className="text-cream-400/60 text-sm animate-pulse">{t('thinking')}</span>
+            <div className="px-4 py-2.5 rounded-xl bg-parchment-200 border border-sepia-300/30">
+              <span className="text-sepia-600 text-sm animate-pulse">{t('thinking')}</span>
             </div>
           </div>
         )}
@@ -140,8 +140,8 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
 
       {/* Insights */}
       {insights.length > 0 && (
-        <div className="px-4 py-2 border-t border-mahogany-700/30 max-h-40 overflow-y-auto">
-          <p className="text-[10px] text-brass-400/60 uppercase tracking-widest mb-1">{t('insightsHeading')}</p>
+        <div className="px-4 py-2 border-t border-sepia-300/30 max-h-40 overflow-y-auto">
+          <p className="text-[10px] text-brass-700 uppercase tracking-widest mb-1">{t('insightsHeading')}</p>
           <div className="space-y-2">
             {insights.map(insight => (
               <InsightCard
@@ -157,14 +157,14 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       {/* Canon contradiction flag — the character broke established canon */}
       {contradictions.length > 0 && (
         <div className="px-4 py-2 border-t border-brass-500/40 bg-brass-500/10">
-          <p className="text-[10px] uppercase tracking-widest text-brass-400/80 mb-1 flex items-center gap-1">
+          <p className="text-[10px] uppercase tracking-widest text-brass-700 mb-1 flex items-center gap-1">
             <AlertTriangle size={12} aria-hidden="true" /> {t('contradictionHeading')}
           </p>
           <ul className="space-y-1">
             {contradictions.map((c, i) => (
-              <li key={i} className="text-[12px] leading-snug text-cream-300">
-                <span className="text-cream-200 font-medium">{c.fact}</span>
-                <span className="text-cream-400/70"> — {c.explanation}</span>
+              <li key={i} className="text-[12px] leading-snug text-sepia-800">
+                <span className="text-sepia-900 font-medium">{c.fact}</span>
+                <span className="text-sepia-700"> — {c.explanation}</span>
               </li>
             ))}
           </ul>
@@ -173,8 +173,8 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
 
       {/* CB-09: insight unavailable hint — non-blocking, antiquarian-styled */}
       {lastInsightError && (
-        <div className="px-4 py-2 border-t border-mahogany-700/30">
-          <p className="text-[11px] italic text-cream-400/60">
+        <div className="px-4 py-2 border-t border-sepia-300/30">
+          <p className="text-[11px] italic text-sepia-600">
             {t('oracleUnavailable')}
           </p>
         </div>
@@ -184,26 +184,26 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       {error && (
         <div role="alert" className="px-4 py-3 border-t border-wax-500/30 bg-wax-500/10">
           <div className="flex items-start gap-2">
-            <AlertTriangle size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-wax-400" />
+            <AlertTriangle size={15} aria-hidden="true" className="mt-0.5 shrink-0 text-wax-600" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-wax-200">
+              <p className="text-sm text-wax-800">
                 {error.notConfigured
                   ? t('notConfigured')
                   : t('noResponse')}
               </p>
-              <p className="text-xs text-cream-400/70 mt-0.5">{error.message}</p>
+              <p className="text-xs text-sepia-600 mt-0.5">{error.message}</p>
               <div className="flex items-center gap-3 mt-2">
                 {!error.notConfigured && (
                   <button
                     onClick={retry}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-brass-300 hover:text-brass-200"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-brass-700 hover:text-brass-900"
                   >
                     <RotateCcw size={12} aria-hidden="true" /> {t('tryAgain')}
                   </button>
                 )}
                 <button
                   onClick={clearError}
-                  className="inline-flex items-center gap-1 text-xs text-cream-400/60 hover:text-cream-300"
+                  className="inline-flex items-center gap-1 text-xs text-sepia-600 hover:text-sepia-800"
                 >
                   <X size={12} aria-hidden="true" /> {t('dismiss')}
                 </button>
