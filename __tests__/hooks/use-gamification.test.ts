@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import React from 'react';
 
@@ -51,8 +51,10 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
+// Mutable so individual tests can seed sessions (e.g. to build a streak).
+const mockSessions: unknown[] = [];
 vi.mock('@/lib/types/writing-session', () => ({
-  readSessions: () => Promise.resolve([]),
+  readSessions: () => Promise.resolve(mockSessions),
 }));
 
 import { useGamification, GamificationProvider } from '@/hooks/use-gamification';
@@ -317,5 +319,73 @@ describe('useGamification', () => {
       renderHook(() => useGamification());
     }).toThrow('useGamification must be used within a GamificationProvider');
     spy.mockRestore();
+  });
+
+  // ── S5-G1: one-shot CHAPTER_FINISHED / STREAK_MILESTONE awards ──
+
+  describe('one-shot awards (S5-G1)', () => {
+    afterEach(() => {
+      (mockStoryState.chapters as unknown[]).length = 0;
+      mockSessions.length = 0;
+    });
+
+    it('awards CHAPTER_FINISHED once per finished chapter, idempotent across remounts', async () => {
+      const words = Array.from({ length: 520 }, (_, i) => `w${i}`).join(' ');
+      (mockStoryState.chapters as unknown[]).push({ id: 'ch1', title: 'One', content: words, summary: '' });
+
+      const first = renderHook(() => useGamification(), { wrapper });
+      await waitFor(() => expect(first.result.current.isLoaded).toBe(true));
+      await waitFor(() => expect(first.result.current.gamification.xp.totalXP).toBe(100));
+      expect(first.result.current.gamification.xp.events.some((e) => e.type === 'chapter')).toBe(true);
+      expect(first.result.current.gamification.awards?.chapterHighWater).toBe(1);
+      first.unmount();
+
+      // Same localStorage, fresh mount — the high-water blocks a double award.
+      const second = renderHook(() => useGamification(), { wrapper });
+      await waitFor(() => expect(second.result.current.isLoaded).toBe(true));
+      await waitFor(() => expect(second.result.current.gamification.awards?.chapterHighWater).toBe(1));
+      expect(second.result.current.gamification.xp.totalXP).toBe(100);
+      second.unmount();
+    });
+
+    it('does not award for chapters under the finished bar', async () => {
+      const words = Array.from({ length: 100 }, (_, i) => `w${i}`).join(' ');
+      (mockStoryState.chapters as unknown[]).push({ id: 'ch1', title: 'Stub', content: words, summary: '' });
+
+      const { result, unmount } = renderHook(() => useGamification(), { wrapper });
+      await waitFor(() => expect(result.current.isLoaded).toBe(true));
+      expect(result.current.gamification.xp.totalXP).toBe(0);
+      unmount();
+    });
+
+    it('awards STREAK_MILESTONE once when the streak reaches 7 days', async () => {
+      // Seed 7 consecutive local days of qualifying (30-min) sessions.
+      for (let i = 0; i < 7; i++) {
+        const start = new Date();
+        start.setDate(start.getDate() - i);
+        start.setHours(10, 0, 0, 0);
+        const end = new Date(start.getTime() + 30 * 60_000);
+        mockSessions.push({
+          id: `s-${i}`,
+          startedAt: start.toISOString(),
+          endedAt: end.toISOString(),
+          wordsAdded: 200,
+        });
+      }
+
+      const first = renderHook(() => useGamification(), { wrapper });
+      await waitFor(() => expect(first.result.current.isLoaded).toBe(true));
+      expect(first.result.current.streak.currentStreak).toBe(7);
+      expect(first.result.current.gamification.xp.totalXP).toBe(200);
+      expect(first.result.current.gamification.xp.events.some((e) => e.type === 'streak')).toBe(true);
+      expect(first.result.current.gamification.awards?.streakMilestoneAwarded).toBe(7);
+      first.unmount();
+
+      // Remount same day — the marker blocks a double award.
+      const second = renderHook(() => useGamification(), { wrapper });
+      await waitFor(() => expect(second.result.current.isLoaded).toBe(true));
+      expect(second.result.current.gamification.xp.totalXP).toBe(200);
+      second.unmount();
+    });
   });
 });

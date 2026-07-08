@@ -6,10 +6,12 @@ import {
   readGamification,
   writeGamification,
   defaultGamificationState,
+  defaultAwardsState,
 } from '@/lib/types/gamification';
 import type { GamificationState, SprintTheme } from '@/lib/types/gamification';
 import { isGamificationState } from '@/lib/types/gamification';
-import { awardXP, xpToNextLevel } from '@/lib/gamification/xp';
+import { awardXP, xpToNextLevel, XP_RATES } from '@/lib/gamification/xp';
+import { evaluateChapterAward, evaluateStreakMilestone } from '@/lib/gamification/awards';
 import { updateStreak, getStreakWarning } from '@/lib/gamification/writing-streak';
 import { refreshQuests, completeQuest as completeQuestFn } from '@/lib/gamification/daily-quests';
 import { startSprint as startSprintFn, endSprint as endSprintFn, abandonSprint as abandonSprintFn } from '@/lib/gamification/sprints';
@@ -64,11 +66,25 @@ function useGamificationInternal(): GamificationAPI {
       const updatedQuests = refreshQuests(stored.quests, storyState, todayKey);
       const updatedFinishing = analyzeStory(storyState, stored.finishing.milestones);
 
+      // S5-G1: award STREAK_MILESTONE (7/30/100 days) once per streak run.
+      // The marker persists in `awards` and resets when the streak breaks, so
+      // reloads never double-award and a rebuilt streak can earn it again.
+      const awards = stored.awards ?? defaultAwardsState();
+      const streakResult = evaluateStreakMilestone(
+        updatedStreak.currentStreak,
+        awards.streakMilestoneAwarded,
+      );
+      const updatedXP = streakResult.milestone
+        ? awardXP(stored.xp, 'streak', XP_RATES.STREAK_MILESTONE, `${streakResult.milestone}-day streak`)
+        : stored.xp;
+
       const updated: GamificationState = {
         ...stored,
+        xp: updatedXP,
         streak: updatedStreak,
         quests: updatedQuests,
         finishing: updatedFinishing,
+        awards: { ...awards, streakMilestoneAwarded: streakResult.marker },
       };
 
       setGamification(updated);
@@ -194,6 +210,34 @@ function useGamificationInternal(): GamificationAPI {
     if (!isLoaded) return;
     refreshFinishing();
   }, [isLoaded, refreshFinishing]);
+
+  // S5-G1: award CHAPTER_FINISHED as chapters cross the finished bar (500+
+  // words, matching the finishing engine). The persisted high-water mark makes
+  // this idempotent across reloads and blocks delete/re-add farming; running on
+  // story changes (not just mount) awards live as the writer works and after a
+  // late Dexie hydration.
+  useEffect(() => {
+    if (!isLoaded) return;
+    setGamification((prev) => {
+      const awards = prev.awards ?? defaultAwardsState();
+      const result = evaluateChapterAward(storyState.chapters ?? [], awards.chapterHighWater);
+      if (result.newlyFinished === 0 && result.newHighWater === awards.chapterHighWater) return prev;
+      const next: GamificationState = {
+        ...prev,
+        xp: result.newlyFinished > 0
+          ? awardXP(
+              prev.xp,
+              'chapter',
+              result.newlyFinished * XP_RATES.CHAPTER_FINISHED,
+              result.newlyFinished === 1 ? 'Chapter finished' : `${result.newlyFinished} chapters finished`,
+            )
+          : prev.xp,
+        awards: { ...awards, chapterHighWater: result.newHighWater },
+      };
+      writeGamification(next);
+      return next;
+    });
+  }, [isLoaded, storyState.chapters]);
 
   return {
     gamification,

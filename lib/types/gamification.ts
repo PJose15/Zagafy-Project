@@ -97,6 +97,29 @@ export interface FinishingEngineState {
   nextSuggestion: string;
 }
 
+// ─── One-time Award Markers (S5-G1) ───
+
+/**
+ * Idempotency markers for the one-shot XP awards (CHAPTER_FINISHED,
+ * STREAK_MILESTONE). Optional on the interface so blobs written before this
+ * field existed stay valid — readGamification() deep-merges the defaults in,
+ * and no version bump is needed (a bump would destructively reset progress).
+ */
+export interface AwardsState {
+  /**
+   * Highest streak milestone (7/30/100) already awarded within the CURRENT
+   * streak run. Resets when the streak breaks, so a rebuilt streak can earn
+   * its milestones again.
+   */
+  streakMilestoneAwarded: number;
+  /**
+   * High-water mark of finished chapters (>= CHAPTER_FINISHED_MIN_WORDS) that
+   * have already been awarded XP. Prevents re-awarding on reload and blocks
+   * delete/re-add farming (count must exceed the high-water to award again).
+   */
+  chapterHighWater: number;
+}
+
 // ─── Root State ───
 
 export interface GamificationState {
@@ -106,6 +129,7 @@ export interface GamificationState {
   quests: QuestsState;
   sprints: SprintsState;
   finishing: FinishingEngineState;
+  awards?: AwardsState;
 }
 
 // ─── Defaults ───
@@ -141,6 +165,10 @@ export function defaultFinishingState(): FinishingEngineState {
   };
 }
 
+export function defaultAwardsState(): AwardsState {
+  return { streakMilestoneAwarded: 0, chapterHighWater: 0 };
+}
+
 export function defaultGamificationState(): GamificationState {
   return {
     version: STATE_VERSION,
@@ -149,6 +177,7 @@ export function defaultGamificationState(): GamificationState {
     quests: defaultQuestsState(),
     sprints: defaultSprintsState(),
     finishing: defaultFinishingState(),
+    awards: defaultAwardsState(),
   };
 }
 
@@ -229,6 +258,7 @@ export function readGamification(): GamificationState {
       quests: { ...defaultQuestsState(), ...(parsed.quests || {}) },
       sprints: { ...defaultSprintsState(), ...(parsed.sprints || {}) },
       finishing: { ...defaultFinishingState(), ...(parsed.finishing || {}) },
+      awards: { ...defaultAwardsState(), ...(parsed.awards || {}) },
     };
   } catch {
     return defaultGamificationState();
