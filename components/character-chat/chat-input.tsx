@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
 import { Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { BrassButton } from '@/components/antiquarian';
 
 interface ChatInputProps {
@@ -10,6 +11,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ onSend, isLoading }: ChatInputProps) {
+  const t = useTranslations('characterChat');
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -46,7 +48,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
         onChange={(e) => { setValue(e.target.value); handleInput(); }}
         onKeyDown={handleKeyDown}
         disabled={isLoading}
-        placeholder={isLoading ? 'Waiting for response...' : 'Say something...'}
+        placeholder={isLoading ? t('inputWaiting') : t('inputPlaceholder')}
         rows={1}
         className="flex-1 resize-none bg-mahogany-800/50 border border-mahogany-700/30 rounded-lg px-3 py-2 text-sm text-cream-100 placeholder:text-cream-400/40 focus:outline-none focus:ring-1 focus:ring-brass-500/50 disabled:opacity-50"
       />

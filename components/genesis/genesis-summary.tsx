@@ -34,6 +34,7 @@ function SectionHeader({ icon, title, editLabel, onEdit }: { icon: React.ReactNo
 
 export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSummaryProps) {
   const t = useTranslations('genesisSummary');
+  const tg = useTranslations('genesis');
   return (
     <motion.div {...fadeUp} className="space-y-6 max-w-2xl mx-auto">
       <div className="text-center space-y-2">
@@ -111,7 +112,7 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
           />
           <p className="text-sm font-medium text-sepia-800">
             {data.antagonist.name}
-            <span className="text-xs text-sepia-600 ml-2">({data.antagonist.type})</span>
+            <span className="text-xs text-sepia-600 ml-2">({tg(`antagonistType.${data.antagonist.type}`)})</span>
           </p>
           {data.antagonist.description && (
             <p className="text-xs text-sepia-600 mt-1">{data.antagonist.description}</p>

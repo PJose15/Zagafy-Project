@@ -526,7 +526,11 @@
     "notConfigured": "El Chat de Personajes aún no está configurado en este despliegue.",
     "noResponse": "El personaje no pudo responder.",
     "tryAgain": "Intentar de nuevo",
-    "dismiss": "Descartar"
+    "dismiss": "Descartar",
+    "inputPlaceholder": "Di algo...",
+    "inputWaiting": "Esperando respuesta...",
+    "saveAsCanon": "Guardar como canon",
+    "savedAsCanon": "Guardado como canon"
   },
   "flow": {
     "errorTitle": "Editor de Flujo",

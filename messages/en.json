@@ -526,7 +526,11 @@
     "notConfigured": "Character Chat isn't configured on this deployment yet.",
     "noResponse": "The character couldn't respond.",
     "tryAgain": "Try again",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "inputPlaceholder": "Say something...",
+    "inputWaiting": "Waiting for response...",
+    "saveAsCanon": "Save as Canon",
+    "savedAsCanon": "Saved as Canon"
   },
   "flow": {
     "errorTitle": "Flow Editor",
