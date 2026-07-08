@@ -32,7 +32,6 @@ export function AudiobookView({ title, content }: AudiobookViewProps) {
   }
 
   // Highlight current sentence region
-  const beforeCurrent = content.slice(0, tts.currentIndex);
   const afterCurrent = content.slice(tts.currentIndex);
   const sentenceEnd = afterCurrent.search(/[.!?]\s/) + 1;
   const highlightEnd = tts.currentIndex + (sentenceEnd > 0 ? sentenceEnd : Math.min(100, afterCurrent.length));

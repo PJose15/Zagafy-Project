@@ -49,8 +49,9 @@ export function AmbientParticles() {
       const cx = canvas.width / 2;
       const cy = canvas.height / 2;
       const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(canvas.width, canvas.height) * 0.4);
-      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.06)');
-      gradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.03)');
+      // Antiquarian brass glow (was off-brand indigo/purple).
+      gradient.addColorStop(0, 'rgba(196, 155, 72, 0.06)');
+      gradient.addColorStop(0.5, 'rgba(150, 100, 50, 0.03)');
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -68,7 +69,7 @@ export function AmbientParticles() {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(200, 200, 220, ${p.opacity})`;
+        ctx.fillStyle = `rgba(240, 223, 192, ${p.opacity})`;
         ctx.fill();
       }
 

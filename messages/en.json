@@ -1548,7 +1548,8 @@
       "noWriting": "No writing",
       "less": "Less",
       "more": "More"
-    }
+    },
+    "flowMomentsDetected": "{count, plural, one {# flow moment detected} other {# flow moments detected}}"
   },
   "readerView": {
     "empty": "This chapter is empty.",

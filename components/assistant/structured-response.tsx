@@ -198,7 +198,7 @@ export function StructuredBlockedResponse({ data }: StructuredBlockedResponsePro
 
       {/* Scene starter */}
       {data.sceneStarter && (
-        <div className="bg-parchment-200 border border-sepia-300/40/30 rounded-lg p-4 mt-2">
+        <div className="bg-parchment-200 border border-sepia-300/30 rounded-lg p-4 mt-2">
           <div className="text-xs font-medium text-sepia-600 uppercase tracking-wider mb-2">{t('sceneStarter')}</div>
           <div className="prose prose-sepia max-w-none text-sm italic leading-relaxed">
             <Markdown>{data.sceneStarter}</Markdown>

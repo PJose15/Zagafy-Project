@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import type { Inconsistency, InconsistencyResolution, ResolutionAction } from '@/lib/story-brain/types';
 
 const SEVERITY_STYLES: Record<string, string> = {
-  critical: 'bg-red-500/10 text-red-600 border-red-500/20',
+  critical: 'bg-wax-700/10 text-wax-800 border-wax-700/20',
   high: 'bg-wax-500/10 text-wax-600 border-wax-500/20',
   medium: 'bg-brass-500/10 text-brass-600 border-brass-500/20',
   low: 'bg-sepia-300/10 text-sepia-600 border-sepia-300/20',

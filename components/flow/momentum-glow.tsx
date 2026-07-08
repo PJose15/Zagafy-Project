@@ -14,7 +14,8 @@ export function MomentumGlow({ momentum }: MomentumGlowProps) {
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse at center, rgba(99, 102, 241, ${momentum * 0.15}) 0%, rgba(139, 92, 246, ${momentum * 0.08}) 40%, transparent 70%)`,
+          // Antiquarian brass/amber glow (was off-brand indigo/purple).
+          background: `radial-gradient(ellipse at center, rgba(196, 155, 72, ${momentum * 0.15}) 0%, rgba(150, 100, 50, ${momentum * 0.08}) 40%, transparent 70%)`,
         }}
       />
     </div>

@@ -1,5 +1,5 @@
 import type { Character } from '@/lib/store';
-import type { ChatMode, CharacterChatMessage, StoryContext } from '@/lib/types/character-chat';
+import type { ChatMode, StoryContext } from '@/lib/types/character-chat';
 
 function buildStoryGrounding(ctx?: StoryContext): string {
   if (!ctx) return '';
@@ -67,23 +67,4 @@ Guidelines:
 - Keep responses between 1-4 paragraphs unless the conversation demands more.
 - Reference your backstory, relationships, and emotional state naturally.
 - Never use meta-language like "as a character" or "in this story."`;
-}
-
-export function buildInsightPrompt(messages: CharacterChatMessage[]): string {
-  const transcript = messages
-    .map(m => `${m.role === 'user' ? 'Interviewer' : 'Character'}: ${m.content}`)
-    .join('\n\n');
-
-  return `Analyze this conversation between an interviewer and a fictional character. Extract ONE key character insight — something revealed about who this character truly is beneath the surface.
-
-The insight should be:
-- A single sentence or two, maximum
-- About the character's psychology, hidden motivations, contradictions, or growth potential
-- Something a writer could use to deepen scenes involving this character
-- Written in third person (e.g., "They secretly fear...")
-
-Conversation:
-${transcript}
-
-Respond with ONLY the insight, no preamble or explanation.`;
 }

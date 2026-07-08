@@ -169,24 +169,7 @@ function ToolbarPlugin() {
 function AutoFormatPlugin() {
   const [editor] = useLexicalComposerContext();
 
-  useEffect(() => {
-    return editor.registerTextContentListener((textContent) => {
-      // We use registerNodeTransform instead for real-time replacements
-    });
-  }, [editor]);
-
-  useEffect(() => {
-    // Register text transforms for auto-formatting
-    return editor.registerUpdateListener(({ editorState, dirtyElements, dirtyLeaves }) => {
-      if (dirtyLeaves.size === 0) return;
-
-      editorState.read(() => {
-        // Only process on actual edits, not initial load
-      });
-    });
-  }, [editor]);
-
-  // Handle auto-replace on keypress via input events
+  // Auto-replace (em-dash, curly quotes) on keypress via input events.
   useEffect(() => {
     const root = editor.getRootElement();
     if (!root) return;

@@ -87,7 +87,7 @@ export function RelationshipsTab({ editForm, setEditForm, characters, currentCha
                       onChange={(e) => {
                         updateRels(rels.map((r, i) => (i === idx ? { ...r, tensionLevel: parseInt(e.target.value) } : r)));
                       }}
-                      className="w-full accent-red-500"
+                      className="w-full accent-wax-600"
                     />
                   </div>
                 </div>

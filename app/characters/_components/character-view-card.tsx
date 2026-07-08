@@ -181,27 +181,27 @@ export function CharacterViewCard({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/50/40 hover:border-sepia-300/40 transition-colors">
+                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/40 hover:border-sepia-300/60 transition-colors">
                     <span className="text-[10px] uppercase tracking-wider text-sepia-600 block mb-1">{t('field.emotionalState')}</span>
                     <p className="text-sm text-sepia-800">{char.currentState?.emotionalState || '—'}</p>
                   </div>
-                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/50/40 hover:border-sepia-300/40 transition-colors">
+                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/40 hover:border-sepia-300/60 transition-colors">
                     <span className="text-[10px] uppercase tracking-wider text-sepia-600 block mb-1">{t('field.visibleGoal')}</span>
                     <p className="text-sm text-sepia-800">{char.currentState?.visibleGoal || '—'}</p>
                   </div>
-                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/50/40 hover:border-sepia-300/40 transition-colors">
+                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/40 hover:border-sepia-300/60 transition-colors">
                     <span className="text-[10px] uppercase tracking-wider text-sepia-600 block mb-1">{t('field.hiddenNeed')}</span>
                     <p className="text-sm text-sepia-800">{char.currentState?.hiddenNeed || '—'}</p>
                   </div>
-                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/50/40 hover:border-sepia-300/40 transition-colors">
+                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/40 hover:border-sepia-300/60 transition-colors">
                     <span className="text-[10px] uppercase tracking-wider text-sepia-600 block mb-1">{t('field.currentFear')}</span>
                     <p className="text-sm text-sepia-800">{char.currentState?.currentFear || '—'}</p>
                   </div>
-                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/50/40 hover:border-sepia-300/40 transition-colors">
+                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/40 hover:border-sepia-300/60 transition-colors">
                     <span className="text-[10px] uppercase tracking-wider text-sepia-600 block mb-1">{t('field.dominantBelief')}</span>
                     <p className="text-sm text-sepia-800">{char.currentState?.dominantBelief || '—'}</p>
                   </div>
-                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/50/40 hover:border-sepia-300/40 transition-colors">
+                  <div className="bg-parchment-100/40 p-3 rounded-xl border border-sepia-300/40 hover:border-sepia-300/60 transition-colors">
                     <span className="text-[10px] uppercase tracking-wider text-sepia-600 block mb-1">{t('field.emotionalWound')}</span>
                     <p className="text-sm text-sepia-800">{char.currentState?.emotionalWound || '—'}</p>
                   </div>
@@ -219,7 +219,7 @@ export function CharacterViewCard({
                       return (
                         <div
                           key={idx}
-                          className={`bg-parchment-100/40 p-3 rounded-xl border flex flex-col gap-2 ${targetChar ? 'border-sepia-300/50/40' : 'border-red-800/40'}`}
+                          className={`bg-parchment-100/40 p-3 rounded-xl border flex flex-col gap-2 ${targetChar ? 'border-sepia-300/40' : 'border-wax-700/40'}`}
                         >
                           <div className="flex justify-between items-center">
                             <span className={`text-sm font-medium ${targetChar ? 'text-sepia-800' : 'text-wax-500'}`}>

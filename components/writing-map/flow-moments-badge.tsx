@@ -1,6 +1,7 @@
 'use client';
 
 import { Flame } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface FlowMomentsBadgeProps {
   count: number;
@@ -8,6 +9,7 @@ interface FlowMomentsBadgeProps {
 }
 
 export function FlowMomentsBadge({ count, size = 'sm' }: FlowMomentsBadgeProps) {
+  const t = useTranslations('writingStats');
   if (count === 0) return null;
 
   const sizeClasses = size === 'sm'
@@ -18,11 +20,11 @@ export function FlowMomentsBadge({ count, size = 'sm' }: FlowMomentsBadgeProps) 
 
   return (
     <span
-      className={`inline-flex items-center ${sizeClasses} rounded-full bg-amber-100 text-amber-700 font-medium`}
+      className={`inline-flex items-center ${sizeClasses} rounded-full bg-brass-300/30 text-brass-800 font-medium`}
       data-testid="flow-moments-badge"
-      title={`${count} flow moment${count !== 1 ? 's' : ''} detected`}
+      title={t('flowMomentsDetected', { count })}
     >
-      <Flame size={iconSize} className="text-amber-500" />
+      <Flame size={iconSize} className="text-brass-600" />
       {count}
     </span>
   );

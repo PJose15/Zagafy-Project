@@ -1548,7 +1548,8 @@
       "noWriting": "Sin escritura",
       "less": "Menos",
       "more": "Más"
-    }
+    },
+    "flowMomentsDetected": "{count, plural, one {# momento de flujo detectado} other {# momentos de flujo detectados}}"
   },
   "readerView": {
     "empty": "Este capítulo está vacío.",

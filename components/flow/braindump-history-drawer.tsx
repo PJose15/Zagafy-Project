@@ -112,7 +112,7 @@ export function BraindumpHistoryDrawer({ braindump }: BraindumpHistoryDrawerProp
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 mt-2 pt-2 border-t border-sepia-300/50/30">
+                <div className="flex items-center gap-1 mt-2 pt-2 border-t border-sepia-300/30">
                   <button
                     onClick={() => braindump.reInsertFromHistory(entry.id)}
                     className="flex items-center gap-1 px-2 py-1 rounded text-xs text-sepia-600 hover:text-sepia-800 hover:bg-parchment-200 transition-colors"

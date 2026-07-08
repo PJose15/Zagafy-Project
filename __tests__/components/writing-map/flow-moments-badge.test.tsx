@@ -41,11 +41,11 @@ describe('FlowMomentsBadge', () => {
     expect(badge.className).toContain('text-sm');
   });
 
-  it('has amber styling', () => {
+  it('has brass (antiquarian) styling', () => {
     const { getByTestId } = render(<FlowMomentsBadge count={1} />);
     const badge = getByTestId('flow-moments-badge');
-    expect(badge.className).toContain('bg-amber-100');
-    expect(badge.className).toContain('text-amber-700');
+    expect(badge.className).toContain('bg-brass-300/30');
+    expect(badge.className).toContain('text-brass-800');
   });
 
   it('renders large count correctly', () => {
