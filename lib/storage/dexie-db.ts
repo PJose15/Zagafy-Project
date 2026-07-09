@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import { getActiveProjectId } from '@/lib/projects/active-project';
+import type { ManuscriptComment } from '@/lib/types/comment';
 
 export interface DexieChapter {
   id: string;
@@ -126,6 +127,7 @@ class ZagafyDB extends Dexie {
   writerInsights!: Table<DexieWriterInsight, string>;
   syncQueue!: Table<DexieSyncQueueEntry, string>;
   syncMeta!: Table<DexieSyncMeta, string>;
+  comments!: Table<ManuscriptComment, string>;
 
   constructor() {
     super('zagafy');
@@ -259,6 +261,24 @@ class ZagafyDB extends Dexie {
           await tx.table('syncMeta').delete('sync');
         }
       });
+    // Version 9 (Phase 4 / MP-05): margin comments anchored to chapter text.
+    // Note: `resolved` is a boolean, which IndexedDB cannot index — the schema
+    // entry is a documented no-op and reads filter in JS after the chapterId
+    // lookup (same trade-off writerInsights avoided with a 0/1 `pinned`).
+    this.version(9).stores({
+      chapters: 'id, projectId, title, updatedAt',
+      sessions: 'id, projectId, startedAt',
+      chapterVersions: 'id, projectId, chapterId, createdAt',
+      meta: 'id',
+      chatMessages: 'id, projectId, timestamp, chapterId',
+      stories: 'id, updatedAt',
+      chapterAnalysis: 'chapterId, projectId, contentHash, analyzedAt',
+      storySnapshots: 'id, storyId, createdAt',
+      writerInsights: 'id, projectId, category, lastObservedAt, evidenceCount, pinned',
+      syncQueue: 'id, projectId, entityType, entityId, timestamp',
+      syncMeta: 'id',
+      comments: 'id, projectId, chapterId, resolved, createdAt',
+    });
   }
 }
 
@@ -601,9 +621,10 @@ export async function getProjectRows(): Promise<DexieStory[]> {
 export async function deleteProjectData(projectId: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.chapterAnalysis, db.writerInsights, db.syncQueue, db.syncMeta],
+    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.chapterAnalysis, db.writerInsights, db.syncQueue, db.syncMeta, db.comments],
     async () => {
       await db.stories.delete(projectId);
+      await db.comments.where('projectId').equals(projectId).delete();
       await db.chapters.where('projectId').equals(projectId).delete();
       await db.chapterVersions.where('projectId').equals(projectId).delete();
       await db.sessions.where('projectId').equals(projectId).delete();
@@ -620,9 +641,10 @@ export async function deleteProjectData(projectId: string): Promise<void> {
 export async function clearAllStoryData(): Promise<void> {
   await db.transaction(
     'rw',
-    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.meta, db.chapterAnalysis, db.storySnapshots, db.writerInsights, db.syncQueue, db.syncMeta],
+    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.meta, db.chapterAnalysis, db.storySnapshots, db.writerInsights, db.syncQueue, db.syncMeta, db.comments],
     async () => {
       await db.stories.clear();
+      await db.comments.clear();
       await db.chapters.clear();
       await db.chapterVersions.clear();
       await db.sessions.clear();

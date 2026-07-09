@@ -1932,5 +1932,29 @@
     "assistant": "Copiloto de IA para momentos de bloqueo. Obtén sugerencias, genera ideas y supera el bloqueo del escritor.",
     "storyBrain": "Story Brain detecta inconsistencias. Vigila tu canon, cronología y personajes en busca de conflictos.",
     "settings": "Ajustes, sincronización y exportación. Gestiona tu proyecto, preferencias de idioma y copias de seguridad."
+  },
+  "comments": {
+    "panelTitle": "Comentarios",
+    "panelAria": "Comentarios del capítulo",
+    "add": "Añadir comentario",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "placeholder": "Escribe un comentario…",
+    "reply": "Responder",
+    "replyPlaceholder": "Responder…",
+    "replyAria": "Responder al comentario",
+    "resolve": "Resolver",
+    "unresolve": "Reabrir",
+    "resolvedGroup": "Resueltos ({count})",
+    "delete": "Eliminar",
+    "deleteAria": "Eliminar comentario",
+    "deleteTitle": "Eliminar comentario",
+    "deleteMessage": "Este comentario y sus respuestas se eliminarán permanentemente.",
+    "orphanedTitle": "Comentarios huérfanos",
+    "orphanedExplanation": "El texto al que estaban anclados estos comentarios ya no existe. Resuélvelos o elimínalos.",
+    "empty": "Aún no hay comentarios.",
+    "shortcutHint": "Selecciona texto y pulsa Ctrl/⌘+Mayús+C para comentar.",
+    "mobileButtonAria": "Abrir comentarios ({count})",
+    "close": "Cerrar comentarios"
   }
 }

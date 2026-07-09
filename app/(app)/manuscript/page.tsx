@@ -1,7 +1,7 @@
 'use client';
 
 import { useStory, Chapter, CanonStatus } from '@/lib/store';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy, Search } from 'lucide-react';
@@ -14,6 +14,8 @@ import { FindReplaceDialog } from '@/components/manuscript/FindReplaceDialog';
 import { ManuscriptEditor } from '@/components/editor/ManuscriptEditor';
 import { getPlainText, wordCount, isLexicalJson } from '@/lib/editor/serialization';
 import { addVersion } from '@/lib/types/chapter-version';
+import { CommentsPanel } from '@/components/comments/CommentsPanel';
+import type { CommentSelection } from '@/lib/types/comment';
 
 function VersionCount({ chapterId }: { chapterId: string }) {
   const t = useTranslations('manuscript');
@@ -40,6 +42,21 @@ export default function ManuscriptPage() {
   const [editForm, setEditForm] = useState<Partial<Chapter>>({});
   const [isNewItem, setIsNewItem] = useState(false);
   useUnsavedChanges(editingId !== null);
+
+  // MP-05 — margin comments: latest non-collapsed editor selection (ref so
+  // selection churn doesn't re-render) + the selection pinned for composing.
+  const selectionRef = useRef<CommentSelection | null>(null);
+  const [pendingSelection, setPendingSelection] = useState<CommentSelection | null>(null);
+  const handleCommentSelection = useCallback((sel: CommentSelection | null) => {
+    if (sel) selectionRef.current = sel;
+  }, []);
+  const handleCommentShortcut = useCallback(() => {
+    if (selectionRef.current) setPendingSelection(selectionRef.current);
+  }, []);
+  const editingPlainText = useMemo(
+    () => getPlainText(editForm.content || ''),
+    [editForm.content],
+  );
 
   const handleAddChapter = () => {
     const newChapter: Chapter = {
@@ -79,6 +96,8 @@ export default function ManuscriptPage() {
     updateField('chapters', updatedChapters as Chapter[]);
     setEditingId(null);
     setIsNewItem(false);
+    setPendingSelection(null);
+    selectionRef.current = null;
   };
 
   const handleCancel = () => {
@@ -87,6 +106,8 @@ export default function ManuscriptPage() {
     }
     setEditingId(null);
     setIsNewItem(false);
+    setPendingSelection(null);
+    selectionRef.current = null;
   };
 
   const handleDelete = async (id: string) => {
@@ -204,11 +225,23 @@ export default function ManuscriptPage() {
                     className="text-xl font-serif font-semibold"
                     placeholder={t('titlePlaceholder')}
                   />
-                  <ManuscriptEditor
-                    initialContent={editForm.content || ''}
-                    onChange={(json) => setEditForm((f) => ({ ...f, content: json }))}
-                    placeholder={t('editorPlaceholder')}
-                  />
+                  <div className="flex gap-4 items-start">
+                    <div className="flex-1 min-w-0">
+                      <ManuscriptEditor
+                        initialContent={editForm.content || ''}
+                        onChange={(json) => setEditForm((f) => ({ ...f, content: json }))}
+                        placeholder={t('editorPlaceholder')}
+                        onCommentSelection={handleCommentSelection}
+                        onCommentShortcut={handleCommentShortcut}
+                      />
+                    </div>
+                    <CommentsPanel
+                      chapterId={chapter.id}
+                      plainText={editingPlainText}
+                      pendingSelection={pendingSelection}
+                      onClearSelection={() => setPendingSelection(null)}
+                    />
+                  </div>
                   <ParchmentTextarea
                     value={editForm.summary || ''}
                     onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
@@ -264,6 +297,8 @@ export default function ManuscriptPage() {
                         onClick={() => {
                           setEditingId(chapter.id);
                           setEditForm(chapter);
+                          setPendingSelection(null);
+                          selectionRef.current = null;
                         }}
                         className="p-2 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={t('editAria', { title: chapter.title })}
