@@ -60,3 +60,31 @@ Without those vars, `npm run test:e2e` runs keyless exactly as before.
 
 Visual-regression specs remain excluded in CI — they need committed baseline
 screenshots, which is a separate piece of work.
+
+## Visual regression baselines
+
+`e2e/visual-regression.spec.ts` compares five pages (dashboard, manuscript,
+flow, corkboard, settings) against committed screenshots in
+`e2e/visual-regression.spec.ts-snapshots/` with a 0.1% pixel-diff tolerance
+(`maxDiffPixelRatio` in `playwright.config.ts`).
+
+Playwright snapshots are **platform-specific** — baselines generated on
+Windows/macOS will not match the linux CI runners. Baselines are therefore
+generated on linux by the manual `visual-baselines.yml` workflow:
+
+```bash
+gh workflow run visual-baselines.yml
+```
+
+The workflow (workflow_dispatch only) checks out `master`, runs the visual
+spec with `--update-snapshots` (the Playwright config boots the dev server
+itself), uploads the snapshots as an artifact for inspection, and commits any
+changed baselines back to `master` as `github-actions[bot]` with `[skip ci]`.
+
+Re-run it after any **intentional** UI change that shifts one of the captured
+pages — a red visual diff in CI after a deliberate redesign means the
+baselines are stale, not that the app is broken.
+
+Once the first successful run has committed linux baselines, the CI `e2e` job
+can drop its `--grep-invert "Visual regression"` filter and include the
+visual spec.
