@@ -216,3 +216,9 @@ vercel logs --filter "requestId=<uuid>"
 vercel logs --filter "_metric=endpoint"
 vercel logs --filter "_metric=ai_cost"
 ```
+
+## Onboarding Drip Cron
+
+- `/api/cron/onboarding` sends the day 1/3/7 onboarding emails; Vercel auto-registers the daily 09:00 UTC cron from `vercel.json` on deploy.
+- Apply migration `0001_onboarding_stage` (`npm run db:migrate`) BEFORE the cron can deliver — it adds `users.onboarding_stage`.
+- Set `CRON_SECRET` in the Vercel project env — the route returns 500 in production without it, and Vercel sends it as the cron's bearer token.
