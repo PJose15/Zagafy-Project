@@ -1,0 +1,55 @@
+# Regenerates the visual-regression baseline screenshots on linux (the CI
+# platform — Playwright snapshots are platform-specific) and commits them to
+# master. Manual-only: run after intentional UI changes via
+#   gh workflow run visual-baselines.yml
+# See docs/E2E.md ("Visual regression baselines").
+name: Visual Baselines
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-baselines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Generate baselines
+        # playwright.config.ts boots the dev server itself (webServer).
+        run: npx playwright test e2e/visual-regression.spec.ts --update-snapshots
+        continue-on-error: false
+        env:
+          GEMINI_API_KEY: dummy-key-for-build
+          BASE_URL: http://localhost:3000
+
+      - name: Upload snapshots artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-regression-baselines
+          path: e2e/visual-regression.spec.ts-snapshots/
+          if-no-files-found: warn
+
+      - name: Commit and push baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898994+github-actions[bot]@users.noreply.github.com"
+          git add e2e/*-snapshots/
+          git diff --cached --quiet || git commit -m "test(e2e): update visual-regression baselines [skip ci]"
+          git push

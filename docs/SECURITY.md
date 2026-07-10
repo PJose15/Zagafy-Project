@@ -56,31 +56,40 @@ We do **not** defend against:
 
 ## 3. Known trade-offs
 
-### 3.1 CSP `'unsafe-inline'` for scripts
+### 3.1 CSP for scripts — nonce-based (Phase 7: DONE)
 
-`next.config.ts` ships:
+The `'unsafe-inline'` script-src trade-off documented here previously has
+been resolved. CSP is now generated **per request in `middleware.ts`**
+(`buildCsp` / `applyNonceCsp`) rather than statically in `next.config.ts`:
 
 ```
-script-src 'self' 'unsafe-inline'           // production
-script-src 'self' 'unsafe-inline' 'unsafe-eval'  // development
+script-src 'self' 'nonce-<per-request>' 'strict-dynamic'                 // production
+script-src 'self' 'nonce-<per-request>' 'strict-dynamic' 'unsafe-eval'   // development
 ```
 
-`'unsafe-inline'` is currently required because Next.js 15 emits inline
-scripts for streaming, hydration, and self-contained server-action
-responses. Removing it without a compatible nonce-based CSP breaks
-hydration.
+How it works (per the official Next.js CSP guide,
+<https://nextjs.org/docs/app/guides/content-security-policy>):
 
-The supported migration path is nonce-based CSP via middleware that
-injects a per-request `nonce` and propagates it to Next's emitted
-scripts. Reference: <https://nextjs.org/docs/app/guides/content-security-policy>.
+- Middleware generates a fresh nonce per page request, forwards it on the
+  request headers (`x-nonce` + `Content-Security-Policy`) via
+  `NextResponse.next({ request: { headers } })`, and sets the enforced
+  `Content-Security-Policy` on the response.
+- Next.js reads the request CSP header and stamps the nonce onto the inline
+  scripts it emits for streaming/hydration; `'strict-dynamic'` then trusts
+  scripts loaded by those nonce'd scripts.
+- All other directives (style/img/font/connect and the embed-aware
+  `frame-ancestors` allowlist) are unchanged from the former static CSP.
+- `/api/*` responses carry no CSP (unchanged — they return JSON only).
 
-That migration is scheduled for **Phase 7** (launch readiness). It is a
-known accepted risk until then. The mitigations that already apply:
+**Trade-off accepted:** a per-request nonce cannot be baked into
+prerendered HTML, so `app/layout.tsx` sets
+`export const dynamic = 'force-dynamic'` and pages that were previously
+`○ Static` now render dynamically (`ƒ`) at request time. This trades some
+edge-cache/TTFB benefit for the removal of `'unsafe-inline'`.
 
-- React escapes string children, so the most common XSS sink is closed.
-- All routes return JSON; there is no server-rendered user-generated HTML
-  on the response surface.
-- `frame-ancestors 'none'` and `X-Frame-Options DENY` block clickjacking.
+Clickjacking protection is unchanged: `frame-ancestors 'none'` (in the
+middleware CSP) and `X-Frame-Options: DENY` (still in `next.config.ts`)
+in SaaS mode; embed mode allowlists the AI Studio hosts.
 
 ### 3.2 In-memory rate limiter is the fallback when Upstash is absent
 

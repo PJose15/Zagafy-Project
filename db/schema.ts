@@ -30,6 +30,8 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   plan: text('plan').notNull().default('free'), // free | writer | author | studio
   stripeCustomerId: text('stripe_customer_id').unique(),
+  // Onboarding drip progress: 0 = none sent, 1/3/7 = highest day-N email sent.
+  onboardingStage: integer('onboarding_stage').default(0).notNull(),
 });
 
 // stories — owned by users

@@ -7,11 +7,15 @@ import {
   $isRangeSelection,
   $createParagraphNode,
   $createTextNode,
+  $isElementNode,
+  $isTextNode,
   FORMAT_TEXT_COMMAND,
   COMMAND_PRIORITY_LOW,
+  KEY_DOWN_COMMAND,
   KEY_TAB_COMMAND,
   type EditorState,
   type LexicalEditor,
+  type LexicalNode,
   type SerializedEditorState,
   type TextFormatType,
 } from 'lexical';
@@ -33,6 +37,7 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { isLexicalJson, buildLexicalStateFromText } from '@/lib/editor/serialization';
+import { COMMENT_ANCHOR_CONTEXT, type CommentSelection } from '@/lib/types/comment';
 
 // ─── Types ───
 
@@ -53,6 +58,14 @@ interface ManuscriptEditorProps {
   readOnly?: boolean;
   /** ID for accessibility */
   id?: string;
+  /**
+   * MP-05: called whenever the selection changes with the absolute plain-text
+   * offsets of the current selection (indexing into `getPlainText(content)`),
+   * or null when the selection is collapsed. Not emitted in readOnly mode.
+   */
+  onCommentSelection?: (selection: CommentSelection | null) => void;
+  /** MP-05: Cmd/Ctrl+Shift+C pressed while a non-collapsed selection exists. */
+  onCommentShortcut?: () => void;
 }
 
 // ─── Initial config ───
@@ -303,6 +316,150 @@ function EditorRefPlugin({ editorRef }: { editorRef: React.MutableRefObject<Lexi
   return null;
 }
 
+// ─── Comment selection plugin (MP-05) ───
+//
+// Computes ABSOLUTE plain-text offsets of the current selection using the
+// exact traversal/join rules of `lexicalJsonToPlaintext` (serialization.ts):
+// root children are joined with '\n'; inside any other element, children are
+// concatenated with no separator; text nodes contribute their text; nodes
+// that are neither text nor elements (linebreaks, decorators) contribute ''.
+// Offsets therefore index into `getPlainText(chapter.content)` exactly.
+
+/** Plain text of one node, mirroring `extractTextFromNode` for non-root nodes. */
+function $nodePlainText(node: LexicalNode): string {
+  if ($isTextNode(node)) return node.getTextContent();
+  if ($isElementNode(node)) return node.getChildren().map($nodePlainText).join('');
+  return '';
+}
+
+/** Full document plain text, mirroring `lexicalJsonToPlaintext`. */
+function $documentPlainText(): string {
+  return $getRoot().getChildren().map($nodePlainText).join('\n');
+}
+
+/**
+ * Absolute plain-text offset of a selection point. Walks the tree in document
+ * order, accumulating text lengths with the same join rules as above ('\n'
+ * between root children only).
+ */
+function $absolutePointOffset(point: { key: string; offset: number; type: 'text' | 'element' }): number | null {
+  const root = $getRoot();
+  const rootKey = root.getKey();
+  let acc = 0;
+  let result: number | null = null;
+
+  const resolveAt = (node: LexicalNode): void => {
+    if ($isTextNode(node)) {
+      result = acc + Math.min(point.offset, node.getTextContent().length);
+      return;
+    }
+    if ($isElementNode(node)) {
+      // Element point: offset is a child index — sum the preceding children.
+      const children = node.getChildren();
+      const isRoot = node.getKey() === rootKey;
+      let sub = 0;
+      for (let i = 0; i < point.offset && i < children.length; i++) {
+        if (isRoot && i > 0) sub += 1; // '\n' between top-level blocks
+        sub += $nodePlainText(children[i]).length;
+      }
+      // Position sits at the start of child `offset` — account for the '\n'
+      // separating it from the previous top-level block.
+      if (isRoot && point.offset > 0 && point.offset < children.length) sub += 1;
+      result = acc + sub;
+      return;
+    }
+    result = acc;
+  };
+
+  const visit = (node: LexicalNode): boolean => {
+    if (node.getKey() === point.key) {
+      resolveAt(node);
+      return true;
+    }
+    if ($isTextNode(node)) {
+      acc += node.getTextContent().length;
+      return false;
+    }
+    if ($isElementNode(node)) {
+      const children = node.getChildren();
+      const isRoot = node.getKey() === rootKey;
+      for (let i = 0; i < children.length; i++) {
+        if (isRoot && i > 0) acc += 1; // '\n' join between top-level blocks
+        if (visit(children[i])) return true;
+      }
+    }
+    return false;
+  };
+
+  visit(root);
+  return result;
+}
+
+/** Current selection as absolute offsets + quote/context, or null if collapsed. */
+function $computeCommentSelection(): CommentSelection | null {
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection) || selection.isCollapsed()) return null;
+
+  const anchor = $absolutePointOffset(selection.anchor);
+  const focus = $absolutePointOffset(selection.focus);
+  if (anchor === null || focus === null) return null;
+
+  const fullText = $documentPlainText();
+  const start = Math.min(Math.min(anchor, focus), fullText.length);
+  const end = Math.min(Math.max(anchor, focus), fullText.length);
+  if (start === end) return null;
+
+  return {
+    start,
+    end,
+    quote: fullText.slice(start, end),
+    prefix: fullText.slice(Math.max(0, start - COMMENT_ANCHOR_CONTEXT), start),
+    suffix: fullText.slice(end, end + COMMENT_ANCHOR_CONTEXT),
+  };
+}
+
+function CommentSelectionPlugin({
+  onCommentSelection,
+  onCommentShortcut,
+}: {
+  onCommentSelection?: (selection: CommentSelection | null) => void;
+  onCommentShortcut?: () => void;
+}) {
+  const [editor] = useLexicalComposerContext();
+  const hasSelectionRef = useRef(false);
+
+  useEffect(() => {
+    return mergeRegister(
+      editor.registerUpdateListener(({ editorState }) => {
+        editorState.read(() => {
+          const sel = $computeCommentSelection();
+          hasSelectionRef.current = sel !== null;
+          onCommentSelection?.(sel);
+        });
+      }),
+      editor.registerCommand(
+        KEY_DOWN_COMMAND,
+        (event: KeyboardEvent) => {
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.shiftKey &&
+            event.key.toLowerCase() === 'c' &&
+            hasSelectionRef.current
+          ) {
+            event.preventDefault();
+            onCommentShortcut?.();
+            return true;
+          }
+          return false;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    );
+  }, [editor, onCommentSelection, onCommentShortcut]);
+
+  return null;
+}
+
 // ─── Main component ───
 
 export function ManuscriptEditor({
@@ -314,6 +471,8 @@ export function ManuscriptEditor({
   className = '',
   readOnly = false,
   id,
+  onCommentSelection,
+  onCommentShortcut,
 }: ManuscriptEditorProps) {
   const t = useTranslations('manuscriptEditor');
   const placeholderText = placeholder ?? t('placeholder');
@@ -366,6 +525,12 @@ export function ManuscriptEditor({
         <OnChangePlugin onChange={handleChange} ignoreSelectionChange />
         <HistoryPlugin />
         {!readOnly && <AutoFormatPlugin />}
+        {!readOnly && (onCommentSelection || onCommentShortcut) && (
+          <CommentSelectionPlugin
+            onCommentSelection={onCommentSelection}
+            onCommentShortcut={onCommentShortcut}
+          />
+        )}
         <TabPlugin />
         <EditorRefPlugin editorRef={editorRef} />
       </div>

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -54,7 +54,7 @@ jobs:
     if: github.event_name == 'pull_request'
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v6
         with:
@@ -67,9 +67,9 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      # Visual-regression specs are excluded: they need baseline screenshots
-      # generated in-environment and committed, which isn't set up yet. The
-      # functional + a11y smoke flows run here.
+      # Visual-regression specs are INCLUDED: linux baselines live in
+      # e2e/visual-regression.spec.ts-snapshots/, regenerated via the manual
+      # visual-baselines.yml workflow after intentional UI changes (docs/E2E.md).
       #
       # S6-M3 — authenticated flows: when the four E2E_CLERK_* repo secrets are
       # configured (Clerk DEVELOPMENT-instance keys + a dedicated test user;
@@ -78,7 +78,7 @@ jobs:
       # absent these env vars are empty strings → auth stays disabled → the
       # suite behaves exactly as before.
       - name: Run E2E tests
-        run: npx playwright test --grep-invert "Visual regression"
+        run: npx playwright test
         env:
           GEMINI_API_KEY: dummy-key-for-build
           BASE_URL: http://localhost:3000

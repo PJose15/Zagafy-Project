@@ -1932,5 +1932,29 @@
     "assistant": "AI copilot for stuck moments. Get suggestions, brainstorm ideas, and overcome writer’s block.",
     "storyBrain": "Story Brain catches inconsistencies. It watches your canon, timeline, and characters for conflicts.",
     "settings": "Settings, sync, and export. Manage your project, language preferences, and data backups."
+  },
+  "comments": {
+    "panelTitle": "Comments",
+    "panelAria": "Chapter comments",
+    "add": "Add comment",
+    "save": "Save",
+    "cancel": "Cancel",
+    "placeholder": "Write a comment…",
+    "reply": "Reply",
+    "replyPlaceholder": "Reply…",
+    "replyAria": "Reply to comment",
+    "resolve": "Resolve",
+    "unresolve": "Reopen",
+    "resolvedGroup": "Resolved ({count})",
+    "delete": "Delete",
+    "deleteAria": "Delete comment",
+    "deleteTitle": "Delete comment",
+    "deleteMessage": "This comment and its replies will be permanently deleted.",
+    "orphanedTitle": "Orphaned comments",
+    "orphanedExplanation": "The text these comments were anchored to no longer exists. Resolve or delete them.",
+    "empty": "No comments yet.",
+    "shortcutHint": "Select text and press Ctrl/⌘+Shift+C to comment.",
+    "mobileButtonAria": "Open comments ({count})",
+    "close": "Close comments"
   }
 }
