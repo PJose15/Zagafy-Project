@@ -7,22 +7,16 @@ const withBundleAnalyzer = createBundleAnalyzer({
   openAnalyzer: false,
 });
 
-const isDev = process.env.NODE_ENV === 'development';
-// CSP: 'unsafe-inline' for scripts is required by Next.js 15 streaming /
-// hydration. Migrating to nonce-based CSP is on the Phase 7 roadmap. See
-// docs/SECURITY.md §3.1 for the trade-off and mitigations.
-const cspScriptSrc = isDev
-  ? "'self' 'unsafe-inline' 'unsafe-eval'"
-  : "'self' 'unsafe-inline'";
+// Content-Security-Policy is NOT set here. It is generated per-request in
+// middleware.ts (`buildCsp` / `applyNonceCsp`) so scripts use a nonce +
+// 'strict-dynamic' instead of 'unsafe-inline'. See docs/SECURITY.md §3.1.
 
 // The AI Studio applet runs framed inside ai.studio / aistudio.google.com, so
 // in embed mode the app must be frameable by those hosts. `X-Frame-Options: DENY`
 // has no cross-origin allowlist, so it's omitted in embed mode and framing is
-// governed solely by CSP frame-ancestors. SaaS mode stays locked down.
+// governed solely by CSP frame-ancestors (see middleware.ts buildCsp). SaaS
+// mode stays locked down.
 const isEmbed = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'embed';
-const frameAncestors = isEmbed
-  ? "'self' https://ai.studio https://*.ai.studio https://aistudio.google.com https://*.google.com"
-  : "'none'";
 const frameOptionsHeader = isEmbed
   ? []
   : [{ key: 'X-Frame-Options', value: 'DENY' }];
@@ -36,7 +30,7 @@ const nextConfig: NextConfig = {
         { key: 'X-Content-Type-Options', value: 'nosniff' },
         ...frameOptionsHeader,
         { key: 'X-XSS-Protection', value: '0' },
-        { key: 'Content-Security-Policy', value: `default-src 'self'; script-src ${cspScriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://generativelanguage.googleapis.com; frame-ancestors ${frameAncestors}` },
+        // Content-Security-Policy: set per-request in middleware.ts (nonce-based).
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },

@@ -22,6 +22,11 @@ const playfair = Playfair_Display({
   variable: '--font-serif',
 });
 
+// Nonce-based CSP (middleware.ts) requires dynamic rendering: the per-request
+// nonce can't be baked into prerendered HTML, so pages must render at request
+// time for Next.js to stamp the nonce onto its inline scripts.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Zagafy',
   description: 'Your antiquarian narrative workshop.',

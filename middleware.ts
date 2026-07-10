@@ -73,6 +73,63 @@ function logBotSignalsIfSuspicious(req: NextRequest): void {
 }
 
 /**
+ * ── Nonce-based CSP (Phase 7) ──────────────────────────────────────────────
+ * The Content-Security-Policy header moved here from next.config.ts so a
+ * fresh per-request nonce can replace `'unsafe-inline'` for scripts.
+ * Next.js reads the CSP header off the *request* (forwarded via
+ * `NextResponse.next({ request: { headers } })`) and stamps the nonce on the
+ * inline scripts it emits for streaming/hydration; `'strict-dynamic'` then
+ * trusts everything those nonce'd scripts load. Applied to PAGE requests
+ * only — /api/* responses are JSON and keep no CSP (unchanged behavior).
+ */
+
+export interface CspOptions {
+  /** Adds 'unsafe-eval' for React refresh / dev tooling. */
+  isDev?: boolean;
+  /** Embed mode: frameable by AI Studio hosts instead of 'none'. */
+  isEmbed?: boolean;
+}
+
+/**
+ * Builds the CSP string for a given nonce. Exported for unit tests.
+ * All non-script directives are identical to the former next.config.ts CSP,
+ * including the embed-aware frame-ancestors allowlist.
+ */
+export function buildCsp(nonce: string, opts?: CspOptions): string {
+  const isDev = opts?.isDev ?? process.env.NODE_ENV === 'development';
+  const isEmbed = opts?.isEmbed ?? process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'embed';
+  const scriptSrc = `'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`;
+  const frameAncestors = isEmbed
+    ? "'self' https://ai.studio https://*.ai.studio https://aistudio.google.com https://*.google.com"
+    : "'none'";
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://generativelanguage.googleapis.com",
+    `frame-ancestors ${frameAncestors}`,
+  ].join('; ');
+}
+
+/**
+ * Generates a nonce, forwards it (plus the CSP) on the request headers so
+ * Next.js can stamp its inline scripts, and sets the enforced CSP on the
+ * response. Shared by both middleware branches (clerk-wrapped and plain).
+ */
+export function applyNonceCsp(req: NextRequest): NextResponse {
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const csp = buildCsp(nonce);
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  res.headers.set('Content-Security-Policy', csp);
+  return res;
+}
+
+/**
  * CORS + bot-signal policy applied to every /api/* request. Returns a deny
  * response when the request fails the origin/referer allowlist; null when
  * the request should proceed.
@@ -137,17 +194,22 @@ const middlewareImpl: MiddlewareFn = isAuthEnabled()
       if (isApiRoute(req)) {
         const result = apiPolicy(req);
         if (result) return result;
+        return; // API routes: no CSP; let Clerk continue as before.
       }
       if (!isPublicRoute(req)) {
         await auth.protect();
       }
+      // Page request — attach the per-request nonce CSP.
+      return applyNonceCsp(req);
     }) as unknown as MiddlewareFn)
   : (req: NextRequest): NextResponse => {
       if (isApiRoute(req)) {
         const result = apiPolicy(req);
         if (result) return result;
+        return NextResponse.next();
       }
-      return NextResponse.next();
+      // Page request — attach the per-request nonce CSP.
+      return applyNonceCsp(req);
     };
 
 export default middlewareImpl;
