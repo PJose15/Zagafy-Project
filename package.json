@@ -59,7 +59,7 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-markdown": "10.1.0",
-    "recharts": "3.8.1",
+    "recharts": "3.9.2",
     "resend": "6.17.1",
     "stripe": "22.2.1",
     "svix": "1.96.1",
