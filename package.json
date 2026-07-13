@@ -49,7 +49,7 @@
     "lexical": "^0.45.0",
     "lucide-react": "1.18.0",
     "mammoth": "1.11.0",
-    "motion": "12.40.0",
+    "motion": "12.42.2",
     "next": "^15.5.19",
     "next-intl": "^4.13.1",
     "pdf-parse": "1.1.4",
