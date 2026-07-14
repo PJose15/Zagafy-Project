@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
+import { springs } from '@/lib/animations';
 import { useStory } from '@/lib/store';
 import { BookOpen, X } from 'lucide-react';
 
@@ -21,11 +22,18 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
       aria-modal="true"
       aria-labelledby="chapter-select-title"
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={springs.gentle}
         className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-lg w-full p-6 max-h-[70vh] flex flex-col texture-parchment"
       >
         <div className="flex items-center justify-between mb-6">
@@ -45,8 +53,11 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
         ) : (
           <div className="space-y-2 overflow-y-auto flex-1">
             {state.chapters.map((chapter, i) => (
-              <button
+              <motion.button
                 key={chapter.id}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ ...springs.gentle, delay: Math.min(i, 8) * 0.04 }}
                 onClick={() => onSelect(chapter.id)}
                 className="w-full text-left px-4 py-3 rounded-xl border border-sepia-300/50 hover:border-brass-500/50 hover:bg-parchment-200/50 transition-colors"
               >
@@ -56,7 +67,7 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
                 {chapter.summary && (
                   <p className="text-xs text-sepia-600 mt-1 line-clamp-1">{chapter.summary}</p>
                 )}
-              </button>
+              </motion.button>
             ))}
           </div>
         )}

@@ -24,11 +24,11 @@ Legend: [ ] open · [x] done
 
 ## Wave 2 — Motion for the static pages
 
-- [ ] W2-1 **Outline**: stagger card entries, `layout` animation on grid↔list toggle (currently a
-      full un-animated reflow — worst jank in app), animate filter changes. (HIGH)
-- [ ] W2-2 **Versions**: stagger snapshot list, skeleton while loading (bare "Loading..." text today).
-- [ ] W2-3 **Flow**: animate chapter-select modal entrance (fixed overlay pops in), richer
-      FlowEditor loading skeleton.
+- [x] W2-1 **Outline**: `layout` animation on grid↔list toggle + filter changes, card entry/exit
+      via AnimatePresence (matches canon/conflicts pattern).
+- [x] W2-2 **Versions**: skeleton cards while loading, snapshot entry/exit + `layout` animations.
+- [x] W2-3 **Flow**: chapter-select backdrop fade, card springs.gentle, chapter buttons slide-in
+      stagger (capped at 8). FlowEditor loading skeleton still open (minor).
 - [ ] W2-4 **Reader**: page-flip fade between print pages / chapters / modes; ink-swirl spinner on
       Analyze button (currently text-only, inconsistent with InkStampButton).
 - [ ] W2-5 **Character-chat**: message entry animation (match assistant), pressure-meter segment
@@ -45,8 +45,8 @@ Legend: [ ] open · [x] done
 
 ## Wave 3 — Cross-cutting UX gaps
 
-- [ ] W3-1 **Timeline mobile**: edit/delete only visible on `md:group-hover` — invisible on touch.
-      Always show on <md. (HIGH)
+- [x] W3-1 ~~Timeline mobile edit/delete hidden~~ — FALSE POSITIVE. Classes are `md:opacity-0
+      md:group-hover:opacity-100`: hidden-until-hover on desktop only, always visible on mobile.
 - [ ] W3-2 **Edit-mode transitions**: animate view↔edit swap (manuscript, timeline, characters,
       conflicts, bible section cards) — `AnimatePresence mode="wait"` or `layout`.
 - [ ] W3-3 **Tab switch motion**: characters editor tabs, story-brain tabs, publishing tabs.
@@ -81,9 +81,12 @@ Legend: [ ] open · [x] done
 
 ## Notes
 
+- Publishing submission-tracker `statusColors` uses raw `text-red-400/green-400/blue-400` — off the
+  antiquarian palette; sweep to wax/forest/brass tones when touching that table.
+- `template.tsx` must animate opacity ONLY — a y/scale transform creates a containing block for
+  `position: fixed` children mid-animation, shifting full-screen overlays (flow, modals).
+
 - `lib/animations.ts` presets still unused and available: `cardFlip`, `stagger.stampGrid` (and
   `physicalDrop`/`stampSlam` only lightly used).
 - Stagger delay caution: cap `stagger.cards(i)` index (e.g. `Math.min(i, 8)`) on long lists so the
   tail doesn't wait >0.5s.
-- `template.tsx` transform wrapper: motion removes the transform once animation settles, so
-  `position: fixed` overlays inside pages are unaffected post-entry.

@@ -23,9 +23,14 @@ vi.mock('motion/react', () => {
       return <div ref={ref as React.Ref<HTMLDivElement>} {...props as React.HTMLAttributes<HTMLDivElement>}>{children as React.ReactNode}</div>;
     }
   );
+  const MockMotionButton = React.forwardRef<HTMLButtonElement, Record<string, unknown>>(
+    function MockMotionButton({ children, initial, animate, exit, transition, ...props }, ref) {
+      return <button ref={ref as React.Ref<HTMLButtonElement>} {...props as React.ButtonHTMLAttributes<HTMLButtonElement>}>{children as React.ReactNode}</button>;
+    }
+  );
   return {
     AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    motion: { div: MockMotionDiv },
+    motion: { div: MockMotionDiv, button: MockMotionButton },
   };
 });
 

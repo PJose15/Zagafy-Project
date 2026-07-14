@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
+import { springs } from '@/lib/animations';
 import { Save, RotateCcw, Trash2, Clock } from 'lucide-react';
 import { useStory } from '@/lib/store';
 import {
@@ -184,7 +186,17 @@ export default function VersionsPage() {
           </h2>
 
           {snapshots === null && (
-            <p className="text-sm text-sepia-600 italic">{t('loading')}</p>
+            <div className="space-y-3 animate-pulse" aria-label={t('loading')}>
+              {[0, 1].map(i => (
+                <ParchmentCard key={i} padding="md">
+                  <div className="space-y-2">
+                    <div className="h-4 w-1/3 rounded bg-sepia-300/40" />
+                    <div className="h-3 w-2/3 rounded bg-sepia-300/30" />
+                    <div className="h-3 w-1/2 rounded bg-sepia-300/20" />
+                  </div>
+                </ParchmentCard>
+              ))}
+            </div>
           )}
 
           {snapshots && snapshots.length === 0 && (
@@ -197,8 +209,17 @@ export default function VersionsPage() {
             </ParchmentCard>
           )}
 
+          <AnimatePresence initial={false}>
           {snapshots?.map(snap => (
-            <ParchmentCard key={snap.id} padding="md">
+            <motion.div
+              key={snap.id}
+              layout
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={springs.gentle}
+            >
+            <ParchmentCard padding="md">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <p className="font-serif font-semibold text-sepia-900">{snap.name}</p>
@@ -235,7 +256,9 @@ export default function VersionsPage() {
                 </div>
               </div>
             </ParchmentCard>
+            </motion.div>
           ))}
+          </AnimatePresence>
         </section>
       </div>
     </FeatureErrorBoundary>

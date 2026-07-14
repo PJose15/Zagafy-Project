@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
+import { springs } from '@/lib/animations';
 import {
   ChevronUp, ChevronDown, LayoutGrid, List, Edit3, BookOpen, Zap, Trash2,
 } from 'lucide-react';
@@ -204,8 +206,18 @@ export default function OutlinePage() {
         )}
 
         <div className={cardLayoutClass}>
+          <AnimatePresence initial={false}>
           {filtered.map(({ chapter, originalIndex, wordCount }) => (
-            <ParchmentCard key={chapter.id} variant="aged" padding="md" className="flex flex-col gap-2">
+            <motion.div
+              key={chapter.id}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={springs.gentle}
+              className="min-w-0"
+            >
+            <ParchmentCard variant="aged" padding="md" className="flex flex-col gap-2 h-full">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-serif font-semibold text-sepia-900 leading-tight min-w-0 break-words">
                   {chapter.title}
@@ -311,7 +323,9 @@ export default function OutlinePage() {
                 </div>
               </div>
             </ParchmentCard>
+            </motion.div>
           ))}
+          </AnimatePresence>
         </div>
       </div>
     </FeatureErrorBoundary>
