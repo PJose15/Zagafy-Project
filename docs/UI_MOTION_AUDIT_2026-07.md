@@ -29,19 +29,20 @@ Legend: [ ] open · [x] done
 - [x] W2-2 **Versions**: skeleton cards while loading, snapshot entry/exit + `layout` animations.
 - [x] W2-3 **Flow**: chapter-select backdrop fade, card springs.gentle, chapter buttons slide-in
       stagger (capped at 8). FlowEditor loading skeleton still open (minor).
-- [ ] W2-4 **Reader**: page-flip fade between print pages / chapters / modes; ink-swirl spinner on
-      Analyze button (currently text-only, inconsistent with InkStampButton).
-- [ ] W2-5 **Character-chat**: message entry animation (match assistant), pressure-meter segment
-      stagger, `no-retreat-glow` pulse on contradiction flags, toast on "Save as Canon". (HIGH — no
-      feedback today)
-- [ ] W2-6 **Settings**: `fadeUp` per section, toast feedback on saves (all silent today).
-- [ ] W2-7 **Writing-map**: heatmap cell fill-in stagger, streak badge glow ≥7 days, stat entrance.
-- [ ] W2-8 **Publishing**: tab content transition (`AnimatePresence mode="wait"`), copy-to-clipboard
-      buttons on generated text, loading placeholder during generation.
-- [ ] W2-9 **Sprints**: stat card stagger (`stagger.cards`), launcher entrance to match
-      SprintResults' stampSlam polish.
-- [ ] W2-10 **Import**: animate state transitions (idle→uploading→analyzing→review→success),
-      review queue item stagger.
+- [x] W2-4 **Reader**: crossfade on chapter/mode switches (soft page turn), Loader2 spinner on
+      Analyze button.
+- [x] W2-5 **Character-chat**: NOTE — message bubbles + insight cards already had fadeUp (agent
+      finding overstated). Added: toast on Save-as-Canon, contradiction flag animates in/out,
+      thinking indicator entrance.
+- [x] W2-6 **Settings**: toast feedback on app-language / project-language / spellcheck (analytics
+      already toasted). Per-section fadeUp skipped — page already fades via template; low value.
+- [x] W2-7 **Writing-map**: heatmap cells sweep in left→right via CSS `heatmap-fill` (+12ms/col,
+      CSS not motion — ~370 rects). Streak-badge glow still open (LOW).
+- [x] W2-8 **Publishing**: tab crossfade (`AnimatePresence mode="wait"`), CopyResultButton with
+      toast on all 5 generated results.
+- [x] W2-9 **Sprints**: launcher/timer/results crossfade, stat cards stagger.cards.
+- [ ] W2-10 **Import**: state blocks already use tw-animate `animate-in` entrances — lower value
+      than assumed; remaining nicety = per-state AnimatePresence + review queue stagger.
 
 ## Wave 3 — Cross-cutting UX gaps
 
@@ -52,23 +53,25 @@ Legend: [ ] open · [x] done
 - [ ] W3-3 **Tab switch motion**: characters editor tabs, story-brain tabs, publishing tabs.
 - [ ] W3-4 **Loading skeletons** for async AI ops: character audit, bible extraction, assistant
       audit panel, publishing generation.
-- [ ] W3-5 **Action feedback**: toasts on silent CRUD (bible add-section, canon status change,
-      timeline event ops, settings toggles).
-- [ ] W3-6 **Dashboard health-card exit** — wrap in `AnimatePresence` (vanishes abruptly when
-      issues resolve).
+- [~] W3-5 **Action feedback**: settings toggles + save-as-canon DONE; bible add-section and
+      timeline event ops still silent.
+- [x] W3-6 ~~Dashboard health-card exit~~ — LOW VALUE: counts are computed once on mount and never
+      change during a visit (issues get resolved on other pages), so no live exit ever occurs.
 - [ ] W3-7 **Genesis validation**: inline error messages (currently silent disable) + loading state
       on Create.
 
 ## Wave 4 — Signature moments (antiquarian set-pieces)
 
-- [ ] W4-1 **Canon wax-seal press**: status icon does seal-press (scale 1→1.2→1 + slight rotate,
-      `springs.seal`) on status change.
-- [ ] W4-2 **Timeline draws itself**: vertical line `scaleY` reveal on mount + event cascade +
-      marker pulse on new event.
-- [ ] W4-3 **Genesis "Create" stampSlam** — notary-seal moment on project creation.
+- [x] W4-1 **Canon wax-seal press**: active status button slams down (scale 1.35→0.92→1, rotate
+      -8→3→0) on change; whileTap on all seals; aria-pressed added.
+- [x] W4-2 **Timeline draws itself**: line converted from ::before to real element, scaleY 0→1
+      origin-top on mount; events cascade with capped +80ms/index delay.
+- [x] W4-3 **Genesis "Create" stampSlam** + Loader2 spinner while creating.
 - [ ] W4-4 **Import success stamp** — checkmark scale-bounce like a stamp pressing down.
-- [ ] W4-5 **Manuscript word-count ticker** — animate count changes after edits.
-- [ ] W4-6 **Projects: new project `physicalDrop`** into the grid with brief glow.
+- [ ] W4-5 **Manuscript word-count ticker** — animate count changes after edits. (Manuscript page
+      currently has uncommitted foreign changes — do not touch until those land.)
+- [x] W4-6 ~~Projects physicalDrop~~ — already covered: new grid items mount through
+      stagger.cards, so they animate in today.
 
 ---
 

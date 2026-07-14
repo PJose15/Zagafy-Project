@@ -2,9 +2,9 @@
 
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import { fadeUp } from '@/lib/animations';
+import { fadeUp, stampSlam } from '@/lib/animations';
 import { ParchmentCard, BrassButton } from '@/components/antiquarian';
-import { Edit2, BookOpen, Users, Globe, Swords } from 'lucide-react';
+import { Edit2, BookOpen, Users, Globe, Swords, Loader2 } from 'lucide-react';
 import type { GenesisData, GenesisStep } from '@/lib/types/genesis';
 
 interface GenesisSummaryProps {
@@ -123,11 +123,18 @@ export function GenesisSummary({ data, onEdit, onCreate, isCreating }: GenesisSu
         </ParchmentCard>
       </div>
 
-      <div className="text-center pt-4">
+      {/* The notary seal — lands with stamp physics after the summary settles */}
+      <motion.div
+        initial={stampSlam.initial}
+        animate={stampSlam.animate}
+        transition={{ ...stampSlam.transition, delay: 0.25 }}
+        className="text-center pt-4"
+      >
         <BrassButton size="lg" onClick={onCreate} disabled={isCreating}>
+          {isCreating && <Loader2 size={16} className="animate-spin mr-2" aria-hidden="true" />}
           {isCreating ? t('creating') : t('create')}
         </BrassButton>
-      </div>
+      </motion.div>
     </motion.div>
   );
 }

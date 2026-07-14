@@ -207,7 +207,8 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
                 width={CELL_SIZE}
                 height={CELL_SIZE}
                 rx={3}
-                className={`${getColorClass(cell.words)} transition-colors cursor-pointer`}
+                className={`${getColorClass(cell.words)} heatmap-cell transition-colors cursor-pointer`}
+                style={{ animationDelay: `${cell.col * 12}ms` }}
                 role="gridcell"
                 aria-label={t('cellAria', { date: cell.date, words: cell.words })}
                 onMouseEnter={(e) => {

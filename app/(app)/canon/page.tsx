@@ -148,10 +148,16 @@ export default function CanonLockPage() {
                     const isActive = item.status === status;
 
                     return (
-                      <button
+                      <motion.button
                         key={status}
                         onClick={() => updateItemStatus(item.id, item.type, status)}
                         title={tStatus(status)}
+                        aria-pressed={isActive}
+                        initial={false}
+                        // Wax-seal press: the chosen seal slams down and settles
+                        animate={isActive ? { scale: [1.35, 0.92, 1], rotate: [-8, 3, 0] } : { scale: 1, rotate: 0 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        whileTap={{ scale: 0.85 }}
                         className={`p-1.5 rounded-md transition-colors ${
                           isActive
                             ? `${btnConfig.bg} ${btnConfig.color}`
@@ -159,7 +165,7 @@ export default function CanonLockPage() {
                         }`}
                       >
                         <BtnIcon size={16} />
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>

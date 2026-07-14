@@ -87,7 +87,16 @@ export default function TimelinePage() {
 
       <DecorativeDivider variant="chapter-break" className="my-4" />
 
-      <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-sepia-300/50 before:to-transparent">
+      <div className="relative space-y-8">
+        {/* The timeline thread draws itself down the page on mount */}
+        <div aria-hidden="true" className="absolute inset-0 ml-5 -translate-x-px md:mx-auto md:translate-x-0 w-0.5 pointer-events-none">
+          <motion.div
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 0.9, ease: 'easeOut' }}
+            className="h-full w-full origin-top bg-gradient-to-b from-transparent via-sepia-300/50 to-transparent"
+          />
+        </div>
         <AnimatePresence>
           {state.timeline_events.map((event, index) => (
             <motion.div
@@ -95,6 +104,7 @@ export default function TimelinePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ delay: Math.min(index, 6) * 0.08 }}
               className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
             >
               <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-parchment-50 ${markerColorByCanon[event.canonStatus || ''] || 'bg-brass-600'} text-sepia-600 group-hover:text-brass-500 group-hover:bg-brass-700 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-colors`}>
