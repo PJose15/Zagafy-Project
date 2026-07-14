@@ -2,6 +2,7 @@
 
 import { useState, useDeferredValue } from 'react';
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
 import { CarvedHeader, ParchmentCard, FeatureErrorBoundary } from '@/components/antiquarian';
 import { useStoryBrain } from '@/hooks/use-story-brain';
 import { EntityCatalog } from '@/components/story-brain/entity-catalog';
@@ -97,6 +98,14 @@ export default function StoryBrainPage() {
 
       {/* Tab Content — M2: dim while deferred value is stale */}
       <div role="tabpanel" className={`transition-opacity ${isStale ? 'opacity-60' : ''}`}>
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
         {activeTab === 'entities' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className={selectedEntity ? 'lg:col-span-2' : 'lg:col-span-3'}>
@@ -153,6 +162,8 @@ export default function StoryBrainPage() {
           />
           </FeatureErrorBoundary>
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

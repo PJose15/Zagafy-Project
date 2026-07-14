@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
 import { Activity, Heart, History, Save, X } from 'lucide-react';
 import type { Character } from '@/lib/store';
 import { ProfileTab } from './profile-tab';
@@ -62,17 +63,27 @@ export function CharacterEditForm({
         </button>
       </div>
 
-      {activeTab === 'profile' && <ProfileTab editForm={editForm} setEditForm={setEditForm} />}
-      {activeTab === 'state' && <StateTab editForm={editForm} setEditForm={setEditForm} />}
-      {activeTab === 'relationships' && (
-        <RelationshipsTab
-          editForm={editForm}
-          setEditForm={setEditForm}
-          characters={characters}
-          currentCharId={currentCharId}
-        />
-      )}
-      {activeTab === 'history' && <HistoryTab editForm={editForm} setEditForm={setEditForm} />}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
+          {activeTab === 'profile' && <ProfileTab editForm={editForm} setEditForm={setEditForm} />}
+          {activeTab === 'state' && <StateTab editForm={editForm} setEditForm={setEditForm} />}
+          {activeTab === 'relationships' && (
+            <RelationshipsTab
+              editForm={editForm}
+              setEditForm={setEditForm}
+              characters={characters}
+              currentCharId={currentCharId}
+            />
+          )}
+          {activeTab === 'history' && <HistoryTab editForm={editForm} setEditForm={setEditForm} />}
+        </motion.div>
+      </AnimatePresence>
 
       <div className="flex items-center justify-end gap-3 pt-6 border-t border-sepia-300/50">
         <button

@@ -99,8 +99,16 @@ export default function ConflictsPage() {
               exit={{ opacity: 0, scale: 0.9 }}
             >
             <ParchmentCard padding="none" className={`overflow-hidden ${conflict.status === 'resolved' ? 'border-l-4 border-l-forest-600 opacity-75' : 'border-l-4 border-l-wax-500'}`}>
+              <AnimatePresence mode="wait" initial={false}>
               {editingId === conflict.id ? (
-                <div className="p-6 space-y-4">
+                <motion.div
+                  key="edit"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="p-6 space-y-4"
+                >
                   <ParchmentInput
                     type="text"
                     value={editForm.title || ''}
@@ -141,9 +149,16 @@ export default function ConflictsPage() {
                       {tCommon('save')}
                     </InkStampButton>
                   </div>
-                </div>
+                </motion.div>
               ) : (
-                <div className="p-6">
+                <motion.div
+                  key="view"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="p-6"
+                >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <button
@@ -187,8 +202,9 @@ export default function ConflictsPage() {
                       {conflict.description || <span className="italic text-sepia-600">{t('noDescription')}</span>}
                     </p>
                   </div>
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
             </ParchmentCard>
             </motion.div>
           ))}

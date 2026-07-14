@@ -10,6 +10,7 @@ import {
   Landmark, Church, Coins, Languages, CalendarDays, AlertTriangle, X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useToast } from '@/components/toast';
 import {
   InkStampButton, CarvedHeader, DecorativeDivider,
   ParchmentInput, ParchmentTextarea, ParchmentCard, FeatureErrorBoundary, EmptyState,
@@ -37,6 +38,7 @@ const CATEGORY_ICONS: Record<WorldBibleCategory, LucideIcon> = {
 
 export default function BiblePage() {
   const t = useTranslations('bible');
+  const { toast } = useToast();
   const { state, updateField } = useStory();
   const [title, setTitle] = useState(state.title);
   const [synopsis, setSynopsis] = useState(state.synopsis);
@@ -156,7 +158,8 @@ export default function BiblePage() {
       canonStatus: 'draft',
     };
     updateField('world_bible', [...state.world_bible, newSection]);
-  }, [selectedCategory, state.world_bible, updateField, t]);
+    toast(t('sectionAddedToast'), 'success');
+  }, [selectedCategory, state.world_bible, updateField, t, toast]);
 
   const categorySections = state.world_bible.filter((s) => s.category === selectedCategory);
 

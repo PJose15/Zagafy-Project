@@ -927,6 +927,8 @@
     "title": "Timeline",
     "subtitle": "Track key events and their impact on the story.",
     "addEvent": "Add Event",
+    "savedToast": "Event saved",
+    "deletedToast": "Event deleted",
     "newEventDate": "Year 1, Day 1",
     "newEventDescription": "A new event begins...",
     "deleteTitle": "Delete timeline event?",
@@ -1239,7 +1241,8 @@
     "discard": "Discard",
     "toFlexible": "To Flexible",
     "toConfirmed": "To Confirmed",
-    "newSection": "New Section"
+    "newSection": "New Section",
+    "sectionAddedToast": "Section added to the bible"
   },
   "importPage": {
     "title": "Document Ingestion",

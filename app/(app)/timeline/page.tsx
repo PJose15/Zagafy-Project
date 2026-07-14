@@ -7,6 +7,7 @@ import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { Plus, Trash2, Edit3, Save, X, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '@/components/confirm-dialog';
+import { useToast } from '@/components/toast';
 import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, DecorativeDivider, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
 
 const markerColorByCanon: Record<string, string> = {
@@ -22,6 +23,7 @@ export default function TimelinePage() {
   const tCommon = useTranslations('common');
   const { state, updateField } = useStory();
   const { confirm } = useConfirm();
+  const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<TimelineEvent>>({});
   const [isNewItem, setIsNewItem] = useState(false);
@@ -50,6 +52,7 @@ export default function TimelinePage() {
     updateField('timeline_events', updated as TimelineEvent[]);
     setEditingId(null);
     setIsNewItem(false);
+    toast(t('savedToast'), 'success');
   };
 
   const handleCancel = () => {
@@ -70,6 +73,7 @@ export default function TimelinePage() {
     });
     if (!confirmed) return;
     updateField('timeline_events', state.timeline_events.filter((e) => e.id !== id));
+    toast(t('deletedToast'), 'success');
   };
 
   return (
@@ -112,8 +116,16 @@ export default function TimelinePage() {
               </div>
 
               <ParchmentCard className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)]">
+                <AnimatePresence mode="wait" initial={false}>
                 {editingId === event.id ? (
-                  <div className="space-y-4">
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className="space-y-4"
+                  >
                     <ParchmentInput
                       type="text"
                       value={editForm.date || ''}
@@ -151,9 +163,15 @@ export default function TimelinePage() {
                         {tCommon('save')}
                       </InkStampButton>
                     </div>
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div>
+                  <motion.div
+                    key="view"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                  >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm text-brass-500 bg-brass-400/10 px-2 py-1 rounded">{event.date}</span>
@@ -188,8 +206,9 @@ export default function TimelinePage() {
                         <p className="text-sm text-sepia-600">{event.impact}</p>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </ParchmentCard>
             </motion.div>
           ))}

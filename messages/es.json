@@ -927,6 +927,8 @@
     "title": "Cronología",
     "subtitle": "Rastrea los eventos clave y su impacto en la historia.",
     "addEvent": "Añadir Evento",
+    "savedToast": "Evento guardado",
+    "deletedToast": "Evento eliminado",
     "newEventDate": "Año 1, Día 1",
     "newEventDescription": "Comienza un nuevo evento...",
     "deleteTitle": "¿Eliminar evento de la cronología?",
@@ -1239,7 +1241,8 @@
     "discard": "Descartar",
     "toFlexible": "A Flexible",
     "toConfirmed": "A Confirmado",
-    "newSection": "Nueva Sección"
+    "newSection": "Nueva Sección",
+    "sectionAddedToast": "Sección añadida a la biblia"
   },
   "importPage": {
     "title": "Ingesta de Documentos",

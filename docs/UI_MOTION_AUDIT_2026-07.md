@@ -48,13 +48,15 @@ Legend: [ ] open · [x] done
 
 - [x] W3-1 ~~Timeline mobile edit/delete hidden~~ — FALSE POSITIVE. Classes are `md:opacity-0
       md:group-hover:opacity-100`: hidden-until-hover on desktop only, always visible on mobile.
-- [ ] W3-2 **Edit-mode transitions**: animate view↔edit swap (manuscript, timeline, characters,
-      conflicts, bible section cards) — `AnimatePresence mode="wait"` or `layout`.
-- [ ] W3-3 **Tab switch motion**: characters editor tabs, story-brain tabs, publishing tabs.
+- [~] W3-2 **Edit-mode transitions**: timeline + conflicts DONE (`AnimatePresence mode="wait"`,
+      0.18s crossfade). Manuscript skipped deliberately (Lexical editor remount side effects +
+      freshly-landed comment-highlight feature); bible section cards + characters card still open.
+- [x] W3-3 **Tab switch motion**: story-brain tabpanel + characters editor tabs crossfade.
+      Publishing done in wave 2b.
 - [ ] W3-4 **Loading skeletons** for async AI ops: character audit, bible extraction, assistant
       audit panel, publishing generation.
-- [~] W3-5 **Action feedback**: settings toggles + save-as-canon DONE; bible add-section and
-      timeline event ops still silent.
+- [x] W3-5 **Action feedback**: settings toggles, save-as-canon, bible add-section, timeline
+      save/delete all toast now.
 - [x] W3-6 ~~Dashboard health-card exit~~ — LOW VALUE: counts are computed once on mount and never
       change during a visit (issues get resolved on other pages), so no live exit ever occurs.
 - [ ] W3-7 **Genesis validation**: inline error messages (currently silent disable) + loading state
