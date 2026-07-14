@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
+import { fadeUp } from '@/lib/animations';
 import { useStory } from '@/lib/store';
 import { ReaderLayout } from '@/components/reader/reader-layout';
 import { PrintBookView } from '@/components/reader/print-book-view';
@@ -113,9 +115,14 @@ export default function ReaderPage() {
         ))}
       </div>
 
-      {mode === 'print' && <PrintBookView title={chapter.title} content={plainContent} issues={issues} />}
-      {mode === 'kindle' && <KindleView title={chapter.title} content={plainContent} issues={issues} />}
-      {mode === 'audiobook' && <AudiobookView title={chapter.title} content={plainContent} />}
+      {/* Crossfade between modes and chapters — a soft "page turn" */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div key={`${mode}-${chapterId}`} {...fadeUp}>
+          {mode === 'print' && <PrintBookView title={chapter.title} content={plainContent} issues={issues} />}
+          {mode === 'kindle' && <KindleView title={chapter.title} content={plainContent} issues={issues} />}
+          {mode === 'audiobook' && <AudiobookView title={chapter.title} content={plainContent} />}
+        </motion.div>
+      </AnimatePresence>
     </ReaderLayout>
     </FeatureErrorBoundary>
   );

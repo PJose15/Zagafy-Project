@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
+import { fadeUp } from '@/lib/animations';
 import { ParchmentCard, BrassButton, CarvedHeader, ParchmentInput, ParchmentTextarea, ParchmentSelect } from '@/components/antiquarian';
 import { useStory } from '@/lib/store';
 import { useConfirm } from '@/components/confirm-dialog';
+import { useToast } from '@/components/toast';
 import { wordCount } from '@/lib/editor/serialization';
 import { ExportDialog } from '@/components/publishing/ExportDialog';
-import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X, Download, Megaphone, Sparkles, Quote } from 'lucide-react';
+import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X, Download, Megaphone, Sparkles, Quote, Copy } from 'lucide-react';
 
 type Tab = 'kdp' | 'query' | 'synopsis' | 'comp' | 'blurb' | 'marketing' | 'logline' | 'tracker';
 
@@ -21,6 +24,30 @@ interface Submission {
 }
 
 const STORAGE_KEY = 'zagafy_submissions';
+
+/** Copies a generated result to the clipboard with toast feedback. */
+function CopyResultButton({ text }: { text: string }) {
+  const t = useTranslations('publishing');
+  const { toast } = useToast();
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(t('copiedToast'), 'success');
+    } catch {
+      toast(t('copyFailedToast'), 'error');
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="flex items-center gap-1.5 text-xs text-cream-300/60 hover:text-brass-300 transition-colors"
+    >
+      <Copy size={13} aria-hidden="true" />
+      {t('copyResult')}
+    </button>
+  );
+}
 
 function loadSubmissions(): Submission[] {
   if (typeof window === 'undefined') return [];
@@ -340,6 +367,9 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
         ))}
       </div>
 
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div key={tab} {...fadeUp}>
+
       {/* KDP Export Tab */}
       {tab === 'kdp' && (
         <ParchmentCard>
@@ -388,13 +418,14 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             {queryLoading ? tCommon('generating') : t('query.generate')}
           </BrassButton>
           {queryLetter && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <ParchmentTextarea
                 label={t('query.resultLabel')}
                 value={queryLetter}
                 onChange={e => setQueryLetter(e.target.value)}
                 rows={16}
               />
+              <div className="flex justify-end"><CopyResultButton text={queryLetter} /></div>
             </div>
           )}
         </ParchmentCard>
@@ -415,13 +446,14 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             </BrassButton>
           </div>
           {synopsisResult && (
-            <div className="mt-2">
+            <div className="mt-2 space-y-2">
               <ParchmentTextarea
                 label={t('synopsis.resultLabel')}
                 value={synopsisResult}
                 onChange={e => setSynopsisResult(e.target.value)}
                 rows={20}
               />
+              <div className="flex justify-end"><CopyResultButton text={synopsisResult} /></div>
             </div>
           )}
         </ParchmentCard>
@@ -466,13 +498,14 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             <p className="text-xs text-cream-300/60 mt-2">{t('blurb.needTitle')}</p>
           )}
           {blurb && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <ParchmentTextarea
                 label={t('blurb.resultLabel')}
                 value={blurb}
                 onChange={e => setBlurb(e.target.value)}
                 rows={10}
               />
+              <div className="flex justify-end"><CopyResultButton text={blurb} /></div>
             </div>
           )}
         </ParchmentCard>
@@ -493,13 +526,14 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             <p className="text-xs text-cream-300/60 mt-2">{t('marketing.needTitle')}</p>
           )}
           {marketing && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <ParchmentTextarea
                 label={t('marketing.resultLabel')}
                 value={marketing}
                 onChange={e => setMarketing(e.target.value)}
                 rows={20}
               />
+              <div className="flex justify-end"><CopyResultButton text={marketing} /></div>
             </div>
           )}
         </ParchmentCard>
@@ -520,13 +554,14 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             <p className="text-xs text-cream-300/60 mt-2">{t('logline.needTitle')}</p>
           )}
           {logline && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
               <ParchmentTextarea
                 label={t('logline.resultLabel')}
                 value={logline}
                 onChange={e => setLogline(e.target.value)}
                 rows={12}
               />
+              <div className="flex justify-end"><CopyResultButton text={logline} /></div>
             </div>
           )}
         </ParchmentCard>
@@ -624,6 +659,9 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
           </div>
         </ParchmentCard>
       )}
+
+      </motion.div>
+      </AnimatePresence>
 
       <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
     </div>

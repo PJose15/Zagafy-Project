@@ -242,7 +242,10 @@ export default function SettingsPage() {
           </p>
           <select
             value={uiLocale}
-            onChange={(e) => setPreferences({ uiLocale: normalizeLocale(e.target.value) })}
+            onChange={(e) => {
+              setPreferences({ uiLocale: normalizeLocale(e.target.value) });
+              toast(t('savedToast'), 'success');
+            }}
             className="bg-parchment-200 border border-sepia-300/60 text-sepia-900 px-4 py-2 rounded-lg font-medium focus:border-brass-500/60 focus:ring-2 focus:ring-brass-400/40 outline-none"
             aria-label={t('appLanguage.ariaLabel')}
           >
@@ -262,7 +265,10 @@ export default function SettingsPage() {
           </p>
           <select
             value={state.language || 'English'}
-            onChange={(e) => updateField('language', e.target.value)}
+            onChange={(e) => {
+              updateField('language', e.target.value);
+              toast(t('savedToast'), 'success');
+            }}
             className="bg-parchment-200 border border-sepia-300/60 text-sepia-900 px-4 py-2 rounded-lg font-medium focus:border-brass-500/60 focus:ring-2 focus:ring-brass-400/40 outline-none"
             aria-label={t('projectLanguage.ariaLabel')}
           >
@@ -314,7 +320,10 @@ export default function SettingsPage() {
             <input
               type="checkbox"
               checked={spellcheck.enabled}
-              onChange={spellcheck.toggle}
+              onChange={() => {
+                spellcheck.toggle();
+                toast(t('savedToast'), 'success');
+              }}
               aria-label={t('spellcheck.ariaLabel')}
               className="h-4 w-4 accent-brass-500"
             />

@@ -59,6 +59,7 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your project data and preferences.",
+    "savedToast": "Setting saved",
     "appLanguage": {
       "heading": "App Language",
       "description": "Choose the language for Zagafy's interface — menus, buttons, and labels. This is separate from your project's writing language below and never affects your manuscript or AI output.",
@@ -142,6 +143,9 @@
     },
     "errorPrefix": "Error",
     "failedToGenerate": "Failed to generate",
+    "copyResult": "Copy to clipboard",
+    "copiedToast": "Copied to clipboard",
+    "copyFailedToast": "Couldn't copy — select the text and copy manually",
     "kdp": {
       "heading": "KDP Formatting Preview",
       "exportButton": "Export manuscript (.docx / .pdf)",
@@ -533,6 +537,7 @@
     "inputPlaceholder": "Say something...",
     "inputWaiting": "Waiting for response...",
     "saveAsCanon": "Save as Canon",
+    "canonSavedToast": "Insight sealed into canon",
     "savedAsCanon": "Saved as Canon"
   },
   "flow": {

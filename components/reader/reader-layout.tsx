@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { ChevronLeft, ChevronRight, ArrowLeft, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Search, Loader2 } from 'lucide-react';
 import type { ProseIssue } from '@/lib/prose-analysis';
 import { useRelativeTime } from '@/lib/i18n/useRelativeTime';
 
@@ -70,7 +70,7 @@ export function ReaderLayout({
             }`}
             aria-label={t('analyzeAria')}
           >
-            <Search size={12} />
+            {isAnalyzing ? <Loader2 size={12} className="animate-spin" aria-hidden="true" /> : <Search size={12} />}
             {isAnalyzing ? t('analyzing') : issues.length > 0 ? t('issues', { count: issues.length }) : t('analyze')}
           </button>
         </div>

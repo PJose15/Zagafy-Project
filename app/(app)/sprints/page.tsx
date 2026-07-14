@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
+import { fadeUp, stagger } from '@/lib/animations';
 import { useStory } from '@/lib/store';
 import { wordCount } from '@/lib/editor/serialization';
 import { useGamification } from '@/hooks/use-gamification';
@@ -69,25 +71,31 @@ export default function SprintsPage() {
         icon={<Timer size={28} />}
       />
 
-      {/* Active sprint → timer */}
-      {activeSprint && !lastResult && (
-        <SprintTimer
-          sprint={activeSprint}
-          currentWords={totalWords}
-          onEnd={handleEnd}
-          onAbandon={handleAbandon}
-        />
-      )}
+      {/* Timer / results / launcher — crossfade between the three modes */}
+      <AnimatePresence mode="wait" initial={false}>
+        {activeSprint && !lastResult && (
+          <motion.div key="timer" {...fadeUp}>
+            <SprintTimer
+              sprint={activeSprint}
+              currentWords={totalWords}
+              onEnd={handleEnd}
+              onAbandon={handleAbandon}
+            />
+          </motion.div>
+        )}
 
-      {/* Results */}
-      {lastResult && (
-        <SprintResults result={lastResult} onDismiss={() => setLastResult(null)} />
-      )}
+        {lastResult && (
+          <motion.div key="results" {...fadeUp}>
+            <SprintResults result={lastResult} onDismiss={() => setLastResult(null)} />
+          </motion.div>
+        )}
 
-      {/* Launcher — when no active sprint */}
-      {!activeSprint && !lastResult && (
-        <SprintLauncher onStart={handleStart} />
-      )}
+        {!activeSprint && !lastResult && (
+          <motion.div key="launcher" {...fadeUp}>
+            <SprintLauncher onStart={handleStart} />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Stats summary */}
       {stats.completedSprints > 0 && (
@@ -97,22 +105,19 @@ export default function SprintsPage() {
             <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('statsHeading')}</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <ParchmentCard padding="sm">
-              <span className="text-2xl font-mono font-bold text-sepia-800">{stats.completedSprints}</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statSprints')}</span>
-            </ParchmentCard>
-            <ParchmentCard padding="sm">
-              <span className="text-2xl font-mono font-bold text-sepia-800">{stats.totalWordsWritten.toLocaleString()}</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statWords')}</span>
-            </ParchmentCard>
-            <ParchmentCard padding="sm">
-              <span className="text-2xl font-mono font-bold text-sepia-800">{stats.avgWordsPerSprint}</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statAvg')}</span>
-            </ParchmentCard>
-            <ParchmentCard padding="sm">
-              <span className="text-2xl font-mono font-bold text-sepia-800">{stats.targetMetRate}%</span>
-              <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{t('statTargetRate')}</span>
-            </ParchmentCard>
+            {[
+              { value: String(stats.completedSprints), label: t('statSprints') },
+              { value: stats.totalWordsWritten.toLocaleString(), label: t('statWords') },
+              { value: String(stats.avgWordsPerSprint), label: t('statAvg') },
+              { value: `${stats.targetMetRate}%`, label: t('statTargetRate') },
+            ].map((stat, i) => (
+              <motion.div key={stat.label} {...stagger.cards(i)}>
+                <ParchmentCard padding="sm">
+                  <span className="text-2xl font-mono font-bold text-sepia-800">{stat.value}</span>
+                  <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{stat.label}</span>
+                </ParchmentCard>
+              </motion.div>
+            ))}
           </div>
         </section>
       )}

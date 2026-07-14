@@ -59,6 +59,7 @@
   "settings": {
     "title": "Ajustes",
     "subtitle": "Gestiona los datos y preferencias de tu proyecto.",
+    "savedToast": "Ajuste guardado",
     "appLanguage": {
       "heading": "Idioma de la Aplicación",
       "description": "Elige el idioma de la interfaz de Zagafy: menús, botones y etiquetas. Es independiente del idioma de escritura de tu proyecto que aparece abajo y nunca afecta a tu manuscrito ni a las respuestas de la IA.",
@@ -142,6 +143,9 @@
     },
     "errorPrefix": "Error",
     "failedToGenerate": "No se pudo generar",
+    "copyResult": "Copiar al portapapeles",
+    "copiedToast": "Copiado al portapapeles",
+    "copyFailedToast": "No se pudo copiar — selecciona el texto y cópialo manualmente",
     "kdp": {
       "heading": "Vista Previa de Formato KDP",
       "exportButton": "Exportar manuscrito (.docx / .pdf)",
@@ -533,6 +537,7 @@
     "inputPlaceholder": "Di algo...",
     "inputWaiting": "Esperando respuesta...",
     "saveAsCanon": "Guardar como canon",
+    "canonSavedToast": "Revelación sellada en el canon",
     "savedAsCanon": "Guardado como canon"
   },
   "flow": {

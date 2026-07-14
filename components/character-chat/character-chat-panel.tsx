@@ -1,9 +1,12 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Trash2, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { fadeUp } from '@/lib/animations';
 import { CarvedHeader, BrassButton } from '@/components/antiquarian';
+import { useToast } from '@/components/toast';
 import { useCharacterChat } from '@/hooks/use-character-chat';
 import type { EvolvedState } from '@/lib/types/character-chat';
 import { ChatModeSelector } from './chat-mode-selector';
@@ -52,6 +55,12 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
   } = useCharacterChat(characterId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const handleSaveInsight = useCallback((insightId: string) => {
+    saveInsightAsCanon(insightId);
+    toast(t('canonSavedToast'), 'success');
+  }, [saveInsightAsCanon, toast, t]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -130,11 +139,11 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
           />
         ))}
         {isLoading && (
-          <div className="flex justify-start mb-3">
+          <motion.div {...fadeUp} className="flex justify-start mb-3">
             <div className="px-4 py-2.5 rounded-xl bg-parchment-200 border border-sepia-300/30">
               <span className="text-sepia-600 text-sm animate-pulse">{t('thinking')}</span>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -147,7 +156,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
               <InsightCard
                 key={insight.id}
                 insight={insight}
-                onSaveAsCanon={saveInsightAsCanon}
+                onSaveAsCanon={handleSaveInsight}
               />
             ))}
           </div>
@@ -155,8 +164,14 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       )}
 
       {/* Canon contradiction flag — the character broke established canon */}
+      <AnimatePresence initial={false}>
       {contradictions.length > 0 && (
-        <div className="px-4 py-2 border-t border-brass-500/40 bg-brass-500/10">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 8 }}
+          className="px-4 py-2 border-t border-brass-500/40 bg-brass-500/10"
+        >
           <p className="text-[10px] uppercase tracking-widest text-brass-700 mb-1 flex items-center gap-1">
             <AlertTriangle size={12} aria-hidden="true" /> {t('contradictionHeading')}
           </p>
@@ -168,8 +183,9 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
               </li>
             ))}
           </ul>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* CB-09: insight unavailable hint — non-blocking, antiquarian-styled */}
       {lastInsightError && (
