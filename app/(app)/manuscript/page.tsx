@@ -15,7 +15,7 @@ import { ManuscriptEditor } from '@/components/editor/ManuscriptEditor';
 import { getPlainText, wordCount, isLexicalJson } from '@/lib/editor/serialization';
 import { addVersion } from '@/lib/types/chapter-version';
 import { CommentsPanel } from '@/components/comments/CommentsPanel';
-import type { CommentSelection } from '@/lib/types/comment';
+import type { CommentSelection, ManuscriptComment } from '@/lib/types/comment';
 
 function VersionCount({ chapterId }: { chapterId: string }) {
   const t = useTranslations('manuscript');
@@ -52,6 +52,16 @@ export default function ManuscriptPage() {
   }, []);
   const handleCommentShortcut = useCallback(() => {
     if (selectionRef.current) setPendingSelection(selectionRef.current);
+  }, []);
+  // MP-05 — in-editor highlight ranges: open (unresolved, non-orphaned)
+  // comment anchors, decorated by the ManuscriptEditor overlay.
+  const [commentRanges, setCommentRanges] = useState<Array<{ start: number; end: number }>>([]);
+  const handleCommentsChange = useCallback((comments: ManuscriptComment[]) => {
+    setCommentRanges(
+      comments
+        .filter((c) => !c.resolved && !c.orphaned)
+        .map((c) => ({ start: c.startOffset, end: c.endOffset })),
+    );
   }, []);
   const editingPlainText = useMemo(
     () => getPlainText(editForm.content || ''),
@@ -233,6 +243,7 @@ export default function ManuscriptPage() {
                         placeholder={t('editorPlaceholder')}
                         onCommentSelection={handleCommentSelection}
                         onCommentShortcut={handleCommentShortcut}
+                        highlightRanges={commentRanges}
                       />
                     </div>
                     <CommentsPanel
@@ -240,6 +251,7 @@ export default function ManuscriptPage() {
                       plainText={editingPlainText}
                       pendingSelection={pendingSelection}
                       onClearSelection={() => setPendingSelection(null)}
+                      onCommentsChange={handleCommentsChange}
                     />
                   </div>
                   <ParchmentTextarea

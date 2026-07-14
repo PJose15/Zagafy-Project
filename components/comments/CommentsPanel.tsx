@@ -26,6 +26,11 @@ interface CommentsPanelProps {
   /** Selection captured from the editor, pending a new comment. */
   pendingSelection: CommentSelection | null;
   onClearSelection: () => void;
+  /**
+   * Called whenever the comment list changes (load, re-anchor, add, delete,
+   * resolve) — lets the page derive highlight ranges for the editor.
+   */
+  onCommentsChange?: (comments: ManuscriptComment[]) => void;
 }
 
 const REANCHOR_DEBOUNCE_MS = 400;
@@ -35,6 +40,7 @@ export function CommentsPanel({
   plainText,
   pendingSelection,
   onClearSelection,
+  onCommentsChange,
 }: CommentsPanelProps) {
   const t = useTranslations('comments');
   const [comments, setComments] = useState<ManuscriptComment[]>([]);
@@ -52,6 +58,12 @@ export function CommentsPanel({
       cancelled = true;
     };
   }, [chapterId]);
+
+  // Surface every comment-list change (load/re-anchor/add/delete/resolve) so
+  // the page can derive editor highlight ranges.
+  useEffect(() => {
+    onCommentsChange?.(comments);
+  }, [comments, onCommentsChange]);
 
   // Re-anchor against the current text (debounced — plainText changes on every
   // keystroke while editing). Persists any offset/orphan updates.

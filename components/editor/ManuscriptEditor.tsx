@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   $getRoot,
   $getSelection,
@@ -37,6 +38,11 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { isLexicalJson, buildLexicalStateFromText } from '@/lib/editor/serialization';
+import {
+  sliceRangesAcrossNodes,
+  type AbsoluteRange,
+  type HighlightNode,
+} from '@/lib/editor/highlight-geometry';
 import { COMMENT_ANCHOR_CONTEXT, type CommentSelection } from '@/lib/types/comment';
 
 // ─── Types ───
@@ -66,6 +72,12 @@ interface ManuscriptEditorProps {
   onCommentSelection?: (selection: CommentSelection | null) => void;
   /** MP-05: Cmd/Ctrl+Shift+C pressed while a non-collapsed selection exists. */
   onCommentShortcut?: () => void;
+  /**
+   * MP-05: absolute plain-text offset ranges (indexing into
+   * `getPlainText(content)`) to decorate with a highlight overlay — typically
+   * the anchors of open comments. Only active when not readOnly.
+   */
+  highlightRanges?: AbsoluteRange[];
 }
 
 // ─── Initial config ───
@@ -460,6 +472,203 @@ function CommentSelectionPlugin({
   return null;
 }
 
+// ─── Comment highlight plugin (MP-05) ───
+//
+// Non-invasive overlay decoration of commented ranges. Deliberately does NOT
+// insert Lexical mark/decorator nodes — that would mutate the chapter JSON
+// (dirtying content, word counts, sync deltas). Instead it converts absolute
+// plain-text ranges into per-text-node segments (same traversal/join rules as
+// `lexicalJsonToPlaintext`), measures them via DOM Ranges, and paints
+// absolutely-positioned tinted divs in an overlay portal.
+
+/** Brass-500 tint for commented text (see design palette). */
+const HIGHLIGHT_COLOR = 'rgba(196,155,72,0.22)';
+
+interface HighlightRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Walk text nodes in document order using the exact join rules of
+ * `lexicalJsonToPlaintext`: root children joined with '\n', other elements
+ * concatenated, non-text/non-element nodes contribute ''. Joins that occur
+ * before any text node (leading empty blocks) are carried by a zero-length
+ * sentinel entry, which `sliceRangesAcrossNodes` never emits segments for.
+ */
+function $collectHighlightNodes(): HighlightNode[] {
+  const nodes: HighlightNode[] = [];
+  const addJoin = () => {
+    if (nodes.length === 0) {
+      nodes.push({ key: '', length: 0, joinAfter: 1 });
+    } else {
+      nodes[nodes.length - 1].joinAfter += 1;
+    }
+  };
+  const root = $getRoot();
+  const rootKey = root.getKey();
+
+  const visit = (node: LexicalNode): void => {
+    if ($isTextNode(node)) {
+      nodes.push({ key: node.getKey(), length: node.getTextContent().length, joinAfter: 0 });
+      return;
+    }
+    if ($isElementNode(node)) {
+      const children = node.getChildren();
+      const isRoot = node.getKey() === rootKey;
+      for (let i = 0; i < children.length; i++) {
+        if (isRoot && i > 0) addJoin(); // '\n' join between top-level blocks
+        visit(children[i]);
+      }
+    }
+    // Other node types (linebreaks, decorators) contribute '' — skip.
+  };
+
+  visit(root);
+  return nodes;
+}
+
+/** First DOM Text descendant of a Lexical text node's element. */
+function firstTextDescendant(node: Node): Text | null {
+  if (node.nodeType === Node.TEXT_NODE) return node as Text;
+  for (let i = 0; i < node.childNodes.length; i++) {
+    const found = firstTextDescendant(node.childNodes[i]);
+    if (found) return found;
+  }
+  return null;
+}
+
+function CommentHighlightPlugin({ ranges }: { ranges: AbsoluteRange[] }) {
+  const [editor] = useLexicalComposerContext();
+  const [rects, setRects] = useState<HighlightRect[]>([]);
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const frameRef = useRef<number | null>(null);
+
+  const compute = useCallback(() => {
+    const rootEl = editor.getRootElement();
+    const container = rootEl?.parentElement ?? null;
+    if (!rootEl || !container || ranges.length === 0) {
+      setRects([]);
+      return;
+    }
+
+    const segments = editor
+      .getEditorState()
+      .read(() => sliceRangesAcrossNodes($collectHighlightNodes(), ranges));
+
+    const containerRect = container.getBoundingClientRect();
+    const next: HighlightRect[] = [];
+    for (const seg of segments) {
+      const el = editor.getElementByKey(seg.key);
+      if (!el) continue;
+      const textDom = firstTextDescendant(el);
+      if (!textDom) continue;
+      const max = textDom.data.length;
+      const range = document.createRange();
+      range.setStart(textDom, Math.min(seg.start, max));
+      range.setEnd(textDom, Math.min(seg.end, max));
+      const clientRects = range.getClientRects();
+      for (let i = 0; i < clientRects.length; i++) {
+        const r = clientRects[i];
+        if (r.width <= 0 || r.height <= 0) continue;
+        next.push({
+          left: r.left - containerRect.left,
+          top: r.top - containerRect.top,
+          width: r.width,
+          height: r.height,
+        });
+      }
+    }
+    setRects(next);
+  }, [editor, ranges]);
+
+  // Keep the latest compute in a ref so `schedule` stays stable across
+  // `ranges` changes (avoids re-registering listeners on every re-anchor).
+  const computeRef = useRef(compute);
+
+  const schedule = useCallback(() => {
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      computeRef.current();
+    });
+  }, []);
+
+  // Recompute when the ranges themselves change.
+  useEffect(() => {
+    computeRef.current = compute;
+    schedule();
+  }, [compute, schedule]);
+
+  // Recompute on editor updates, root resize, and internal scroll.
+  useEffect(() => {
+    let resizeObserver: ResizeObserver | null = null;
+    let scrollTarget: HTMLElement | null = null;
+
+    const detach = () => {
+      resizeObserver?.disconnect();
+      resizeObserver = null;
+      scrollTarget?.removeEventListener('scroll', schedule);
+      scrollTarget = null;
+    };
+
+    const unregister = mergeRegister(
+      editor.registerRootListener((rootElement) => {
+        detach();
+        setHost(rootElement?.parentElement ?? null);
+        if (rootElement) {
+          if (typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(schedule);
+            resizeObserver.observe(rootElement);
+          }
+          // The content area scrolls internally (overflow-y-auto).
+          rootElement.addEventListener('scroll', schedule, { passive: true });
+          scrollTarget = rootElement;
+          schedule();
+        }
+      }),
+      editor.registerUpdateListener(schedule),
+    );
+
+    return () => {
+      unregister();
+      detach();
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+    };
+  }, [editor, schedule]);
+
+  if (!host || rects.length === 0) return null;
+
+  return createPortal(
+    <div
+      aria-hidden="true"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
+    >
+      {rects.map((r, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            left: r.left,
+            top: r.top,
+            width: r.width,
+            height: r.height,
+            backgroundColor: HIGHLIGHT_COLOR,
+            borderRadius: 2,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
+    </div>,
+    host,
+  );
+}
+
 // ─── Main component ───
 
 export function ManuscriptEditor({
@@ -473,6 +682,7 @@ export function ManuscriptEditor({
   id,
   onCommentSelection,
   onCommentShortcut,
+  highlightRanges,
 }: ManuscriptEditorProps) {
   const t = useTranslations('manuscriptEditor');
   const placeholderText = placeholder ?? t('placeholder');
@@ -531,6 +741,7 @@ export function ManuscriptEditor({
             onCommentShortcut={onCommentShortcut}
           />
         )}
+        {!readOnly && highlightRanges && <CommentHighlightPlugin ranges={highlightRanges} />}
         <TabPlugin />
         <EditorRefPlugin editorRef={editorRef} />
       </div>
