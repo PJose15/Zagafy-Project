@@ -12,6 +12,7 @@ vi.mock('lucide-react', () => ({
   CornerDownRight: () => <span data-testid="icon-corner" />,
   RotateCcw: () => <span data-testid="icon-rotate" />,
   Trash2: () => <span data-testid="icon-trash" />,
+  Pencil: () => <span data-testid="icon-pencil" />,
 }));
 
 const confirmMock = vi.fn().mockResolvedValue(true);
@@ -47,7 +48,7 @@ const noop = () => {};
 describe('CommentCard', () => {
   it('renders the quote excerpt and comment text', () => {
     render(
-      <CommentCard comment={makeComment()} onResolveToggle={noop} onDelete={noop} onReply={noop} />,
+      <CommentCard comment={makeComment()} onResolveToggle={noop} onDelete={noop} onReply={noop} onEdit={noop} />,
     );
     expect(screen.getByText('rain')).toBeTruthy();
     expect(screen.getByText('Lovely imagery here')).toBeTruthy();
@@ -60,7 +61,7 @@ describe('CommentCard', () => {
         comment={makeComment({ quote: long })}
         onResolveToggle={noop}
         onDelete={noop}
-        onReply={noop}
+        onReply={noop} onEdit={noop}
       />,
     );
     expect(screen.getByText(`${'x'.repeat(80)}…`)).toBeTruthy();
@@ -73,7 +74,7 @@ describe('CommentCard', () => {
         comment={makeComment()}
         onResolveToggle={onResolveToggle}
         onDelete={noop}
-        onReply={noop}
+        onReply={noop} onEdit={noop}
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Resolve' }));
@@ -87,7 +88,7 @@ describe('CommentCard', () => {
         comment={makeComment({ resolved: true })}
         onResolveToggle={onResolveToggle}
         onDelete={noop}
-        onReply={noop}
+        onReply={noop} onEdit={noop}
       />,
     );
     expect(screen.queryByRole('textbox')).toBeNull();
@@ -98,7 +99,7 @@ describe('CommentCard', () => {
   it('submits a reply and clears the input', () => {
     const onReply = vi.fn();
     render(
-      <CommentCard comment={makeComment()} onResolveToggle={noop} onDelete={noop} onReply={onReply} />,
+      <CommentCard comment={makeComment()} onResolveToggle={noop} onDelete={noop} onReply={onReply} onEdit={noop} />,
     );
     const input = screen.getByRole('textbox', { name: 'Reply to comment' }) as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'Agreed!' } });
@@ -115,7 +116,7 @@ describe('CommentCard', () => {
         })}
         onResolveToggle={noop}
         onDelete={noop}
-        onReply={noop}
+        onReply={noop} onEdit={noop}
       />,
     );
     expect(screen.getByText('A reply')).toBeTruthy();
@@ -124,10 +125,22 @@ describe('CommentCard', () => {
   it('deletes after confirmation', async () => {
     const onDelete = vi.fn();
     render(
-      <CommentCard comment={makeComment()} onResolveToggle={noop} onDelete={onDelete} onReply={noop} />,
+      <CommentCard comment={makeComment()} onResolveToggle={noop} onDelete={onDelete} onReply={noop} onEdit={noop} />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Delete comment' }));
     await waitFor(() => expect(onDelete).toHaveBeenCalledWith('c1'));
     expect(confirmMock).toHaveBeenCalled();
   });
+});
+
+it("edits the comment text and calls onEdit", () => {
+  const onEdit = vi.fn();
+  render(
+    <CommentCard comment={makeComment()} onResolveToggle={noop} onDelete={noop} onReply={noop} onEdit={onEdit} />,
+  );
+  fireEvent.click(screen.getByLabelText("Edit comment"));
+  const box = screen.getByLabelText("Edit comment", { selector: "textarea" });
+  fireEvent.change(box, { target: { value: "Sharper note" } });
+  fireEvent.click(screen.getByText("Save"));
+  expect(onEdit).toHaveBeenCalledWith("c1", "Sharper note");
 });

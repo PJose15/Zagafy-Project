@@ -1955,7 +1955,8 @@
     "empty": "Aún no hay comentarios.",
     "shortcutHint": "Selecciona texto y pulsa Ctrl/⌘+Mayús+C para comentar.",
     "mobileButtonAria": "Abrir comentarios ({count})",
-    "close": "Cerrar comentarios"
+    "close": "Cerrar comentarios",
+    "editAria": "Editar comentario"
   },
   "collab": {
     "title": "Colaboración",

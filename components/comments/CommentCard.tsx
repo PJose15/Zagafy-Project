@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { Check, CornerDownRight, RotateCcw, Trash2 } from 'lucide-react';
+import { Check, CornerDownRight, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { useConfirm } from '@/components/antiquarian';
 import type { ManuscriptComment } from '@/lib/types/comment';
 
@@ -11,16 +11,26 @@ interface CommentCardProps {
   onResolveToggle: (id: string, resolved: boolean) => void;
   onDelete: (id: string) => void;
   onReply: (id: string, text: string) => void;
+  onEdit: (id: string, text: string) => void;
 }
 
 const QUOTE_TRUNCATE = 80;
 
-export function CommentCard({ comment, onResolveToggle, onDelete, onReply }: CommentCardProps) {
+export function CommentCard({ comment, onResolveToggle, onDelete, onReply, onEdit }: CommentCardProps) {
   const t = useTranslations('comments');
   const tCommon = useTranslations('common');
   const locale = useLocale();
   const { confirm } = useConfirm();
   const [replyText, setReplyText] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.text);
+
+  const handleEditSave = () => {
+    const text = editText.trim();
+    if (!text) return;
+    onEdit(comment.id, text);
+    setEditing(false);
+  };
 
   const quoteExcerpt =
     comment.quote.length > QUOTE_TRUNCATE
@@ -55,11 +65,51 @@ export function CommentCard({ comment, onResolveToggle, onDelete, onReply }: Com
         {quoteExcerpt}
       </blockquote>
 
-      <p className="text-sm text-sepia-800 whitespace-pre-wrap">{comment.text}</p>
+      {editing ? (
+        <div className="space-y-1.5">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            rows={3}
+            aria-label={t('editAria')}
+            className="w-full bg-parchment-100 border border-sepia-300/40 rounded px-2 py-1 text-sm text-sepia-800 focus:outline-none focus:border-brass-500 resize-none"
+          />
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => { setEditing(false); setEditText(comment.text); }}
+              className="text-xs text-sepia-600 hover:text-sepia-800 transition-colors"
+            >
+              {tCommon('cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleEditSave}
+              disabled={!editText.trim()}
+              className="text-xs text-brass-700 hover:text-brass-800 disabled:opacity-40 transition-colors"
+            >
+              {tCommon('save')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-sepia-800 whitespace-pre-wrap">{comment.text}</p>
+      )}
 
       <div className="flex items-center justify-between text-xs text-sepia-600">
         <span className="font-mono">{new Date(comment.createdAt).toLocaleDateString(locale)}</span>
         <div className="flex items-center gap-1">
+          {!comment.resolved && !editing && (
+            <button
+              type="button"
+              onClick={() => { setEditText(comment.text); setEditing(true); }}
+              className="p-1 rounded text-sepia-600 hover:text-brass-700 hover:bg-parchment-200/60 transition-colors"
+              aria-label={t('editAria')}
+              title={t('editAria')}
+            >
+              <Pencil size={14} aria-hidden="true" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onResolveToggle(comment.id, !comment.resolved)}

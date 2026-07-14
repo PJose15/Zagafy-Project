@@ -1955,7 +1955,8 @@
     "empty": "No comments yet.",
     "shortcutHint": "Select text and press Ctrl/⌘+Shift+C to comment.",
     "mobileButtonAria": "Open comments ({count})",
-    "close": "Close comments"
+    "close": "Close comments",
+    "editAria": "Edit comment"
   },
   "collab": {
     "title": "Collaboration",

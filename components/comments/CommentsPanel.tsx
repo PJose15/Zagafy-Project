@@ -14,6 +14,7 @@ import {
   putComments,
   reanchorAll,
   setResolved,
+  updateCommentText,
 } from '@/lib/comments/comments';
 import type { CommentSelection, ManuscriptComment } from '@/lib/types/comment';
 import { CommentCard } from './CommentCard';
@@ -118,6 +119,11 @@ export function CommentsPanel({
     void deleteComment(id);
   };
 
+  const handleEdit = (id: string, text: string) => {
+    setComments((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
+    void updateCommentText(id, text);
+  };
+
   const handleReply = (id: string, text: string) => {
     void addReply(id, text).then((reply) => {
       if (!reply) return;
@@ -170,6 +176,7 @@ export function CommentsPanel({
           onResolveToggle={handleResolveToggle}
           onDelete={handleDelete}
           onReply={handleReply}
+                onEdit={handleEdit}
         />
       ))}
 
@@ -196,6 +203,7 @@ export function CommentsPanel({
                 onResolveToggle={handleResolveToggle}
                 onDelete={handleDelete}
                 onReply={handleReply}
+                onEdit={handleEdit}
               />
             ))}
         </div>
