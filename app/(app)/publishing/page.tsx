@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { ParchmentCard, BrassButton, CarvedHeader, ParchmentInput, ParchmentTextarea, ParchmentSelect } from '@/components/antiquarian';
 import { useStory } from '@/lib/store';
+import { useConfirm } from '@/components/confirm-dialog';
 import { wordCount } from '@/lib/editor/serialization';
 import { ExportDialog } from '@/components/publishing/ExportDialog';
 import { BookOpen, FileText, Send, Search, Table2, Plus, Trash2, Edit3, Check, X, Download, Megaphone, Sparkles, Quote } from 'lucide-react';
@@ -39,6 +40,7 @@ export default function PublishingPage() {
   const { state } = useStory();
   const t = useTranslations('publishing');
   const tCommon = useTranslations('common');
+  const { confirm } = useConfirm();
   const genErr = useCallback(
     (data: { message?: string; error?: string }) =>
       `${t('errorPrefix')}: ${data.message || data.error || t('failedToGenerate')}`,
@@ -277,7 +279,17 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
     setShowAddRow(false);
   };
 
-  const deleteSubmission = (id: string) => setSubmissions(prev => prev.filter(s => s.id !== id));
+  const deleteSubmission = async (id: string) => {
+    const sub = submissions.find(s => s.id === id);
+    const confirmed = await confirm({
+      title: t('tracker.deleteConfirmTitle'),
+      message: t('tracker.deleteConfirmMessage', { agent: sub?.agentName || t('tracker.deleteConfirmFallback') }),
+      confirmLabel: tCommon('delete'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    setSubmissions(prev => prev.filter(s => s.id !== id));
+  };
 
   const startEdit = (sub: Submission) => { setEditingId(sub.id); setEditDraft({ ...sub }); };
   const cancelEdit = () => { setEditingId(null); setEditDraft(null); };

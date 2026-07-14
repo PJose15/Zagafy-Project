@@ -204,7 +204,10 @@
       "statusQueried": "Queried",
       "statusRequested": "Requested",
       "statusRejected": "Rejected",
-      "statusAccepted": "Accepted"
+      "statusAccepted": "Accepted",
+      "deleteConfirmTitle": "Delete submission?",
+      "deleteConfirmMessage": "Remove the submission to {agent}? This cannot be undone.",
+      "deleteConfirmFallback": "this agent"
     }
   },
   "dashboard": {
@@ -721,6 +724,9 @@
     "statWords": "Words",
     "statAvg": "Avg/Sprint",
     "statTargetRate": "Target Rate",
+    "abandonConfirmTitle": "Abandon this sprint?",
+    "abandonConfirmMessage": "Your progress in this sprint won't be counted. The words you wrote stay in your manuscript.",
+    "abandonConfirmLabel": "Abandon Sprint",
     "historyHeading": "History",
     "wordsSuffix": "{count}w",
     "status": {

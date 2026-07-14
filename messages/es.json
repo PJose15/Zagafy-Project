@@ -204,7 +204,10 @@
       "statusQueried": "Consultado",
       "statusRequested": "Solicitado",
       "statusRejected": "Rechazado",
-      "statusAccepted": "Aceptado"
+      "statusAccepted": "Aceptado",
+      "deleteConfirmTitle": "¿Eliminar envío?",
+      "deleteConfirmMessage": "¿Quitar el envío a {agent}? Esta acción no se puede deshacer.",
+      "deleteConfirmFallback": "este agente"
     }
   },
   "dashboard": {
@@ -721,6 +724,9 @@
     "statWords": "Palabras",
     "statAvg": "Prom./Sprint",
     "statTargetRate": "Tasa de Meta",
+    "abandonConfirmTitle": "¿Abandonar este sprint?",
+    "abandonConfirmMessage": "Tu progreso en este sprint no se contará. Las palabras que escribiste permanecen en tu manuscrito.",
+    "abandonConfirmLabel": "Abandonar Sprint",
     "historyHeading": "Historial",
     "wordsSuffix": "{count}p",
     "status": {

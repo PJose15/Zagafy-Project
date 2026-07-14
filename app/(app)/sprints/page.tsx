@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { wordCount } from '@/lib/editor/serialization';
 import { useGamification } from '@/hooks/use-gamification';
+import { useConfirm } from '@/components/confirm-dialog';
 import { CarvedHeader, ParchmentCard } from '@/components/antiquarian';
 import { SprintLauncher } from '@/components/gamification/sprint-launcher';
 import { SprintTimer } from '@/components/gamification/sprint-timer';
@@ -16,6 +17,7 @@ import { Timer, Trophy, Pen, BarChart3 } from 'lucide-react';
 
 export default function SprintsPage() {
   const t = useTranslations('sprints');
+  const { confirm } = useConfirm();
   const { state } = useStory();
   const { activeSprint, startSprint, endSprint, abandonSprint, gamification } = useGamification();
   const [lastResult, setLastResult] = useState<SprintResult | null>(null);
@@ -47,10 +49,17 @@ export default function SprintsPage() {
     setLastResult(result);
   }, [endSprint]);
 
-  const handleAbandon = useCallback(() => {
+  const handleAbandon = useCallback(async () => {
+    const confirmed = await confirm({
+      title: t('abandonConfirmTitle'),
+      message: t('abandonConfirmMessage'),
+      confirmLabel: t('abandonConfirmLabel'),
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     abandonSprint();
     setLastResult(null);
-  }, [abandonSprint]);
+  }, [abandonSprint, confirm, t]);
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
