@@ -24,10 +24,14 @@ vi.mock('@clerk/nextjs/server', () => ({
 
 const mockStoryFindFirst = vi.fn();
 const mockQueryStories = { findFirst: mockStoryFindFirst };
+const mockCollabFindFirst = vi.fn(async () => null);
 
 vi.mock('@/db/client', () => ({
   db: vi.fn(() => ({
-    query: { stories: mockQueryStories },
+    query: {
+      stories: mockQueryStories,
+      storyCollaborators: { findFirst: mockCollabFindFirst },
+    },
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
         onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
@@ -159,8 +163,9 @@ describe('Auth gates (Phase 5.13)', () => {
     it('/api/sync/push rejects push to another user\'s story', async () => {
       mockUserId = 'user_attacker';
 
-      // Story exists but is owned by user_victim
-      mockStoryFindFirst.mockResolvedValue(null); // ownership check returns null
+      // Story exists but is owned by user_victim, and the attacker has no
+      // collaborator row (mockCollabFindFirst resolves null)
+      mockStoryFindFirst.mockResolvedValue({ id: 'story-victim', ownerId: 'user_victim' });
 
       const mod = await import('@/app/api/sync/push/route');
       const res = await mod.POST(makeRequest('http://localhost/api/sync/push', 'POST', {

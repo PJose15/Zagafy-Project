@@ -6,6 +6,7 @@ import { requireUser, isAuthError } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
+import { getStoryAccess } from '@/lib/collab';
 
 export const runtime = 'nodejs';
 
@@ -41,17 +42,18 @@ export async function GET(req: NextRequest) {
   const sinceDate = sinceParam ? new Date(sinceParam) : null;
 
   try {
-    // Find the user's story. If storyId is provided, verify ownership.
-    // Otherwise, return the user's most recent story.
+    // Find the user's story. If storyId is provided, verify the caller has
+    // access (owner OR collaborator — collaborators pull shared stories).
+    // Otherwise, return the user's most recent OWNED story.
     let story: typeof schema.stories.$inferSelect | undefined;
 
     if (storyIdParam) {
-      story = await db().query.stories.findFirst({
-        where: and(
-          eq(schema.stories.id, storyIdParam),
-          eq(schema.stories.ownerId, userId),
-        ),
-      });
+      const access = await getStoryAccess(storyIdParam, userId);
+      if (access !== null) {
+        story = await db().query.stories.findFirst({
+          where: eq(schema.stories.id, storyIdParam),
+        });
+      }
     } else {
       story = await db().query.stories.findFirst({
         where: eq(schema.stories.ownerId, userId),

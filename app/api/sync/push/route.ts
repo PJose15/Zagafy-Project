@@ -7,6 +7,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { wordCount as lexicalWordCount } from '@/lib/editor/serialization';
+import { getStoryAccess } from '@/lib/collab';
 import type { PushRequest, SyncDelta, ConflictRecord } from '@/lib/sync/types';
 
 export const runtime = 'nodejs';
@@ -61,29 +62,50 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Ensure story exists (upsert). Verifies the user owns this story.
-    await db()
-      .insert(schema.stories)
-      .values({
-        id: storyId,
-        ownerId: userId,
-        title: storyTitle || 'Untitled',
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: schema.stories.id,
-        set: {
+    // Access check FIRST — owner and editor collaborators may push;
+    // readers and strangers may not.
+    const access = await getStoryAccess(storyId, userId);
+
+    if (access === null) {
+      // Either the story doesn't exist yet (first push — create it for the
+      // caller as owner) or it exists and the caller has no access (403).
+      const existing = await db().query.stories.findFirst({
+        where: eq(schema.stories.id, storyId),
+        columns: { id: true },
+      });
+      if (existing) {
+        return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
+      }
+      // First push: create the story owned by the caller. Kept as an upsert
+      // to stay race-safe against a concurrent first push from another tab.
+      await db()
+        .insert(schema.stories)
+        .values({
+          id: storyId,
+          ownerId: userId,
           title: storyTitle || 'Untitled',
           updatedAt: new Date(),
-        },
-      });
-
-    // Verify ownership (in case someone sends a storyId they don't own)
-    const story = await db().query.stories.findFirst({
-      where: and(eq(schema.stories.id, storyId), eq(schema.stories.ownerId, userId)),
-    });
-    if (!story) {
-      return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
+        })
+        .onConflictDoUpdate({
+          target: schema.stories.id,
+          set: {
+            title: storyTitle || 'Untitled',
+            updatedAt: new Date(),
+          },
+        });
+    } else if (access === 'owner' || access === 'editor') {
+      // Story exists and the caller may write: update title/updatedAt only.
+      // NEVER touches ownerId — editors cannot claim ownership.
+      await db()
+        .update(schema.stories)
+        .set({
+          title: storyTitle || 'Untitled',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.stories.id, storyId));
+    } else {
+      // 'reader' — read-only collaborators cannot push.
+      return err('forbidden', 'You do not have edit access to this story', 403, undefined, { requestId });
     }
 
     let applied = 0;

@@ -24,6 +24,7 @@ const mockUpdateWhere = vi.fn().mockResolvedValue(undefined);
 const mockDeleteWhere = vi.fn().mockResolvedValue(undefined);
 
 const mockStoryFindFirst = vi.fn(async (): Promise<unknown> => ({ id: 'story-1', ownerId: 'user_test' }));
+const mockCollabFindFirst = vi.fn(async (): Promise<unknown> => null);
 const mockChapterFindFirst = vi.fn(async () => null);
 
 vi.mock('@/db/client', () => ({
@@ -46,6 +47,7 @@ vi.mock('@/db/client', () => ({
     })),
     query: {
       stories: { findFirst: mockStoryFindFirst },
+      storyCollaborators: { findFirst: mockCollabFindFirst },
       chapters: { findFirst: mockChapterFindFirst },
       chapterVersions: { findFirst: vi.fn(async () => null) },
     },
@@ -55,6 +57,7 @@ vi.mock('@/db/client', () => ({
 
 vi.mock('@/db/schema', () => ({
   stories: { id: 'id', ownerId: 'ownerId' },
+  storyCollaborators: { storyId: 'storyId', userId: 'userId', role: 'role' },
   chapters: { id: 'id', storyId: 'storyId' },
   chapterVersions: { id: 'id' },
   storySnapshots: { id: 'id', storyId: 'storyId' },
@@ -83,6 +86,7 @@ describe('POST /api/sync/push', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockStoryFindFirst.mockResolvedValue({ id: 'story-1', ownerId: 'user_test' });
+    mockCollabFindFirst.mockResolvedValue(null);
   });
 
   it('returns 400 for invalid JSON body', async () => {
@@ -140,7 +144,9 @@ describe('POST /api/sync/push', () => {
   });
 
   it('returns 403 when user does not own the story', async () => {
-    mockStoryFindFirst.mockResolvedValue(null); // ownership check fails
+    // Story exists but is owned by someone else and no collaborator row
+    mockStoryFindFirst.mockResolvedValue({ id: 'story-other', ownerId: 'user_someone_else' });
+    mockCollabFindFirst.mockResolvedValue(null);
 
     const req = makeRequest({
       storyId: 'story-other',
@@ -173,6 +179,50 @@ describe('POST /api/sync/push', () => {
     expect(typeof data.data.applied).toBe('number');
     expect(Array.isArray(data.data.conflicts)).toBe(true);
     expect(data.data.serverTimestamp).toBeDefined();
+  });
+
+  it('returns 403 when a reader collaborator pushes', async () => {
+    mockStoryFindFirst.mockResolvedValue({ id: 'story-shared', ownerId: 'user_other' });
+    mockCollabFindFirst.mockResolvedValue({ storyId: 'story-shared', userId: 'user_test', role: 'reader' });
+
+    const req = makeRequest({
+      storyId: 'story-shared',
+      storyTitle: 'Shared',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Shared' }, timestamp: Date.now() },
+      ],
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.message).toContain('edit access');
+  });
+
+  it('allows an editor collaborator to push (never touching ownerId)', async () => {
+    mockStoryFindFirst.mockResolvedValue({ id: 'story-shared', ownerId: 'user_other' });
+    mockCollabFindFirst.mockResolvedValue({ storyId: 'story-shared', userId: 'user_test', role: 'editor' });
+
+    const req = makeRequest({
+      storyId: 'story-shared',
+      storyTitle: 'Shared',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Shared' }, timestamp: Date.now() },
+      ],
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.data.applied).toBe(1);
+    // Editor path must NOT go through the story insert/ownership upsert
+    expect(mockInsertValues).not.toHaveBeenCalled();
+    // Title/updatedAt updates must never set ownerId
+    for (const call of mockUpdateSet.mock.calls) {
+      expect(call[0]).not.toHaveProperty('ownerId');
+    }
   });
 
   it('returns 500 when database not configured', async () => {

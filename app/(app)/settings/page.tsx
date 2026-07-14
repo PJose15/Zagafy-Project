@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useProfile } from '@/hooks/use-profile';
 import { LOCALES, LOCALE_LABELS, normalizeLocale } from '@/lib/i18n/config';
 import { BillingSection } from '@/components/billing/billing-section';
+import { CollaborationSection } from '@/components/collab/CollaborationSection';
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
 import { HeteronymSettings } from '@/components/heteronyms/heteronym-settings';
@@ -228,6 +229,8 @@ export default function SettingsPage() {
         <ProfileSettings />
 
         <BillingSection />
+
+        <CollaborationSection />
 
         <ParchmentCard className="space-y-4">
           <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">

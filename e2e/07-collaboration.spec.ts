@@ -9,13 +9,13 @@ import { gotoApp } from './helpers/auth';
  */
 test.describe('Collaboration', () => {
   test('invite a collaborator', async ({ page }) => {
-    await gotoApp(page, '/');
+    // Collaboration lives in the settings page (CollaborationSection).
+    await gotoApp(page, '/settings');
 
-    // Navigate to a story / manuscript
-    const manuscriptLink = page.locator('[href*="manuscript"], [data-testid="manuscript"]');
-    if (await manuscriptLink.count() > 0) {
-      await manuscriptLink.first().click();
-      await page.waitForLoadState('networkidle');
+    // Wait for the collaboration section to render (SaaS mode only)
+    const collabSection = page.locator('[data-testid="collaboration"]');
+    if (await collabSection.count() > 0) {
+      await collabSection.scrollIntoViewIfNeeded();
     }
 
     // Look for share / collaborate button

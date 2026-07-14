@@ -16,6 +16,7 @@ vi.mock('@/lib/logger', () => ({
 }));
 
 const mockStoryFindFirst = vi.fn(async (): Promise<unknown> => null);
+const mockCollabFindFirst = vi.fn(async (): Promise<unknown> => null);
 const mockChaptersFindMany = vi.fn(async (): Promise<unknown[]> => []);
 const mockChapterVersionsFindMany = vi.fn(async () => []);
 const mockSnapshotsFindMany = vi.fn(async () => []);
@@ -27,6 +28,7 @@ vi.mock('@/db/client', () => ({
   db: vi.fn(() => ({
     query: {
       stories: { findFirst: mockStoryFindFirst },
+      storyCollaborators: { findFirst: mockCollabFindFirst },
       chapters: { findMany: mockChaptersFindMany },
       chapterVersions: { findMany: mockChapterVersionsFindMany },
       storySnapshots: { findMany: mockSnapshotsFindMany },
@@ -40,6 +42,7 @@ vi.mock('@/db/client', () => ({
 
 vi.mock('@/db/schema', () => ({
   stories: { id: 'id', ownerId: 'ownerId', updatedAt: 'updatedAt' },
+  storyCollaborators: { storyId: 'storyId', userId: 'userId', role: 'role' },
   chapters: { id: 'id', storyId: 'storyId', updatedAt: 'updatedAt' },
   chapterVersions: { id: 'id', chapterId: 'chapterId', createdAt: 'createdAt' },
   storySnapshots: { id: 'id', storyId: 'storyId', createdAt: 'createdAt' },
@@ -66,6 +69,7 @@ describe('GET /api/sync/pull', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockStoryFindFirst.mockResolvedValue(null);
+    mockCollabFindFirst.mockResolvedValue(null);
     mockChaptersFindMany.mockResolvedValue([]);
     mockChapterVersionsFindMany.mockResolvedValue([]);
     mockSnapshotsFindMany.mockResolvedValue([]);
@@ -172,6 +176,46 @@ describe('GET /api/sync/pull', () => {
 
     // Verify findFirst was called (which will use the storyId filter internally)
     expect(mockStoryFindFirst).toHaveBeenCalled();
+  });
+
+  it('allows a collaborator to pull a shared story by storyId', async () => {
+    const now = new Date();
+    // Story owned by someone else…
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'shared-story',
+      ownerId: 'user_other',
+      title: 'Shared Story',
+      state: {},
+      updatedAt: now,
+    });
+    // …but the caller has a collaborator row
+    mockCollabFindFirst.mockResolvedValue({ storyId: 'shared-story', userId: 'user_test', role: 'reader' });
+
+    const req = makeRequest({ storyId: 'shared-story' });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.data.storyId).toBe('shared-story');
+    expect(data.data.story).not.toBeNull();
+  });
+
+  it('returns empty payload for a storyId with no access', async () => {
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'private-story',
+      ownerId: 'user_other',
+      title: 'Private',
+      state: {},
+      updatedAt: new Date(),
+    });
+    mockCollabFindFirst.mockResolvedValue(null);
+
+    const req = makeRequest({ storyId: 'private-story' });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.storyId).toBeNull();
+    expect(data.data.story).toBeNull();
   });
 
   it('returns 500 when database not configured', async () => {

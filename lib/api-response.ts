@@ -19,6 +19,7 @@ export type ApiErrorCode =
   | 'unauthorized'
   | 'forbidden'
   | 'not_found'
+  | 'user_not_found'
   | 'upstream_unavailable'
   | 'upstream_timeout'
   | 'parse_error'
