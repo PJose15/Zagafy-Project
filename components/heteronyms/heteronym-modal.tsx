@@ -132,7 +132,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
               />
               <div className="flex justify-between mt-1">
                 {nameError ? (
-                  <p className="text-xs text-red-400">{nameError}</p>
+                  <p className="text-xs text-wax-600">{nameError}</p>
                 ) : (
                   <span />
                 )}
@@ -174,7 +174,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                     key={color}
                     type="button"
                     onClick={() => setAvatarColor(color)}
-                    className={`w-8 h-8 rounded-full transition-all ${
+                    className={`w-8 h-8 rounded-full transition ${
                       avatarColor === color ? 'ring-2 ring-white outline-offset-2 scale-110' : 'hover:scale-105'
                     }`}
                     style={{ backgroundColor: color }}
@@ -203,7 +203,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
                     key={emoji}
                     type="button"
                     onClick={() => setAvatarEmoji(emoji)}
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all ${
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition ${
                       avatarEmoji === emoji
                         ? 'bg-parchment-300 ring-2 ring-brass-400'
                         : 'hover:bg-parchment-200'

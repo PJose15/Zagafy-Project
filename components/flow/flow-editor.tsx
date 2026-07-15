@@ -619,7 +619,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
               braindump.openPanel();
             }}
             className={`text-sm transition-colors p-1.5 rounded-lg hover:bg-parchment-200 ${
-              braindump.panelOpen ? 'text-red-400' : 'text-sepia-600 hover:text-sepia-700'
+              braindump.panelOpen ? 'text-wax-500' : 'text-sepia-600 hover:text-sepia-700'
             }`}
             aria-label={t('voiceBraindump')}
           >

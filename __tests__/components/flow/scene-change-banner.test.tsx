@@ -49,12 +49,12 @@ describe('SceneChangeBanner', () => {
     expect(screen.getByText('(no more extensions)')).toBeDefined();
   });
 
-  it('shows expired state with red styling', () => {
+  it('shows expired state with wax styling', () => {
     const { container } = render(
       <SceneChangeBanner {...defaultProps} isExpired={true} remainingSeconds={0} />
     );
     const banner = container.firstElementChild as HTMLElement;
-    expect(banner.className).toContain('bg-red-500/10');
+    expect(banner.className).toContain('bg-wax-500/10');
   });
 
   it('shows expired message', () => {

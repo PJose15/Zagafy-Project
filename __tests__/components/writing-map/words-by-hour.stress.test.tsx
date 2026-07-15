@@ -170,7 +170,7 @@ describe('WordsByHour STRESS', () => {
       ];
       render(<WordsByHour sessions={sessions} />);
       const cells = screen.getAllByTestId('bar-cell');
-      const green = cells.filter(c => c.getAttribute('data-fill') === '#10b981');
+      const green = cells.filter(c => c.getAttribute('data-fill') === '#c49b48');
       expect(green).toHaveLength(3);
     });
 
@@ -181,14 +181,14 @@ describe('WordsByHour STRESS', () => {
       ];
       render(<WordsByHour sessions={sessions} />);
       const cells = screen.getAllByTestId('bar-cell');
-      const green = cells.filter(c => c.getAttribute('data-fill') === '#10b981');
+      const green = cells.filter(c => c.getAttribute('data-fill') === '#c49b48');
       expect(green).toHaveLength(2);
     });
 
     it('highlights 1 hour when only 1 has data', () => {
       render(<WordsByHour sessions={[makeSession({ wordsAdded: 100 })]} />);
       const cells = screen.getAllByTestId('bar-cell');
-      const green = cells.filter(c => c.getAttribute('data-fill') === '#10b981');
+      const green = cells.filter(c => c.getAttribute('data-fill') === '#c49b48');
       expect(green).toHaveLength(1);
     });
 
@@ -198,7 +198,7 @@ describe('WordsByHour STRESS', () => {
       );
       render(<WordsByHour sessions={sessions} />);
       const cells = screen.getAllByTestId('bar-cell');
-      const green = cells.filter(c => c.getAttribute('data-fill') === '#10b981');
+      const green = cells.filter(c => c.getAttribute('data-fill') === '#c49b48');
       expect(green).toHaveLength(3); // First 3 in sort order
     });
   });

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import type { WritingSession } from '@/lib/types/writing-session';
+import { inkRatingText } from '@/components/antiquarian/ink-rating';
 import { formatDateKey } from '@/lib/gamification/date-utils';
 
 const CELL_SIZE = 14;
@@ -29,13 +30,6 @@ function getColorClass(words: number): string {
   return COLORS[4];
 }
 
-const FLOW_EMOJIS: Record<number, string> = {
-  1: '😩',
-  2: '🙁',
-  3: '😐',
-  4: '🙂',
-  5: '🔥',
-};
 
 interface DayData {
   words: number;
@@ -194,7 +188,7 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
               weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
             });
             const { dayData } = cell;
-            const flowEmoji = dayData.avgFlowScore ? FLOW_EMOJIS[dayData.avgFlowScore] : null;
+            const flowRating = dayData.avgFlowScore ? inkRatingText(dayData.avgFlowScore) : null;
             const durationStr = dayData.totalMinutes < 60
               ? `${dayData.totalMinutes}m`
               : `${Math.floor(dayData.totalMinutes / 60)}h ${dayData.totalMinutes % 60}m`;
@@ -217,7 +211,7 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
                   if (dayData.sessionCount > 0) {
                     lines.push(t('words', { count: cell.words }));
                     lines.push(t('sessions', { count: dayData.sessionCount }));
-                    lines.push(flowEmoji ? t('avgFlow', { emoji: flowEmoji }) : t('noRating'));
+                    lines.push(flowRating ? t('avgFlow', { emoji: flowRating }) : t('noRating'));
                     if (dayData.avgAutoFlowScore !== null) {
                       lines.push(t('autoFlow', { score: dayData.avgAutoFlowScore }));
                     }

@@ -363,7 +363,7 @@ export default function AssistantPage() {
           <div className="flex justify-center pt-2">
             <button
               onClick={handleLoadEarlier}
-              className="inline-flex items-center gap-2 text-xs font-medium text-sepia-600 hover:text-sepia-800 bg-parchment-200 hover:bg-parchment-300 border border-sepia-300/50 hover:border-brass-400/40 rounded-full px-4 py-2 transition-all active:scale-95"
+              className="inline-flex items-center gap-2 text-xs font-medium text-sepia-600 hover:text-sepia-800 bg-parchment-200 hover:bg-parchment-300 border border-sepia-300/50 hover:border-brass-400/40 rounded-full px-4 py-2 transition active:scale-95"
               aria-label={t('loadEarlierAria', { count: Math.min(MESSAGE_WINDOW_STEP, hiddenCount) })}
             >
               <ChevronUp size={14} />
@@ -559,14 +559,14 @@ export default function AssistantPage() {
           <button
             onClick={() => handleSend(t('quickBlocked'))}
             disabled={isLoading || isAuditing || pendingAudit !== null}
-            className="text-xs font-medium bg-parchment-200 hover:bg-parchment-300 text-sepia-700 px-3 py-1.5 rounded-full transition-all border border-sepia-300/50 disabled:opacity-40 hover:border-brass-400/40 active:scale-95"
+            className="text-xs font-medium bg-parchment-200 hover:bg-parchment-300 text-sepia-700 px-3 py-1.5 rounded-full transition border border-sepia-300/50 disabled:opacity-40 hover:border-brass-400/40 active:scale-95"
           >
             &quot;{t('quickBlocked')}&quot;
           </button>
           <button
             onClick={() => handleSend(t('quickContinue'))}
             disabled={isLoading || isAuditing || pendingAudit !== null}
-            className="text-xs font-medium bg-parchment-200 hover:bg-parchment-300 text-sepia-700 px-3 py-1.5 rounded-full transition-all border border-sepia-300/50 disabled:opacity-40 hover:border-brass-400/40 active:scale-95"
+            className="text-xs font-medium bg-parchment-200 hover:bg-parchment-300 text-sepia-700 px-3 py-1.5 rounded-full transition border border-sepia-300/50 disabled:opacity-40 hover:border-brass-400/40 active:scale-95"
           >
             &quot;{t('quickContinue')}&quot;
           </button>
@@ -591,7 +591,7 @@ export default function AssistantPage() {
             <button
               onClick={handleAudit}
               disabled={!input.trim() || isLoading || isAuditing || pendingAudit !== null}
-              className="p-2.5 rounded-lg text-brass-600 bg-parchment-200 hover:bg-brass-500/15 border border-brass-400/30 disabled:opacity-40 disabled:hover:bg-parchment-200 transition-all active:scale-95"
+              className="p-2.5 rounded-lg text-brass-600 bg-parchment-200 hover:bg-brass-500/15 border border-brass-400/30 disabled:opacity-40 disabled:hover:bg-parchment-200 transition active:scale-95"
               aria-label={t('auditAria')}
             >
               {isAuditing ? <Loader2 size={18} className="animate-spin" /> : <ShieldAlert size={18} />}
@@ -599,7 +599,7 @@ export default function AssistantPage() {
             <button
               onClick={() => handleSend()}
               disabled={!input.trim() || isLoading || isAuditing || pendingAudit !== null}
-              className="p-2.5 rounded-lg bg-forest-700 text-cream-50 border-2 border-forest-800 hover:bg-forest-600 disabled:opacity-40 disabled:hover:bg-forest-700 transition-all active:scale-95 shadow-sm"
+              className="p-2.5 rounded-lg bg-forest-700 text-cream-50 border-2 border-forest-800 hover:bg-forest-600 disabled:opacity-40 disabled:hover:bg-forest-700 transition active:scale-95 shadow-sm"
               aria-label={t('sendAria')}
             >
               <Send size={18} />

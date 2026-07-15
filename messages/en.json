@@ -1562,6 +1562,11 @@
       "erratic": "Erratic",
       "erraticDesc": "Chapter lengths swing widely. Worth a structural pass."
     },
+    "byHour": {
+      "empty": "No session data yet. Start writing to see your hourly patterns.",
+      "tooltipSummary": "{count, plural, one {# session} other {# sessions}}, avg {words, number} words",
+      "tooltipLabel": "Sessions starting at {hour}"
+    },
     "heatmap": {
       "ariaLabel": "Writing activity heatmap for the past year",
       "cellAria": "{date}: {words} words",

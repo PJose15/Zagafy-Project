@@ -31,8 +31,8 @@ function CollapsibleSection({ title, children, defaultOpen = false, variant = 'd
   const [open, setOpen] = useState(defaultOpen);
   const variantStyles = {
     default: 'text-sepia-600',
-    warning: 'text-red-400',
-    info: 'text-amber-400',
+    warning: 'text-wax-600',
+    info: 'text-brass-600',
   };
 
   return (
@@ -62,12 +62,12 @@ export function StructuredNormalResponse({ data }: StructuredNormalResponseProps
     <div className="space-y-3">
       {/* Canon conflicts — prominent red warning */}
       {hasConflicts && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-red-400 text-xs font-bold uppercase tracking-wider mb-2">
+        <div className="bg-wax-500/10 border border-wax-500/30 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-wax-600 text-xs font-bold uppercase tracking-wider mb-2">
             <AlertTriangle size={14} />
             {t('canonConflicts')}
           </div>
-          <ul className="text-sm text-red-300 space-y-1">
+          <ul className="text-sm text-wax-700 space-y-1">
             {data.conflictsDetected.map((c, i) => (
               <li key={i}>- {c}</li>
             ))}
@@ -106,7 +106,7 @@ export function StructuredNormalResponse({ data }: StructuredNormalResponseProps
       {/* Information gaps */}
       {hasGaps && (
         <CollapsibleSection title={t('informationGaps')} variant="info">
-          <ul className="text-sm text-amber-400/80 space-y-1">
+          <ul className="text-sm text-brass-600/90 space-y-1">
             {data.informationGaps.map((g, i) => (
               <li key={i} className="flex items-start gap-2">
                 <Info size={12} className="mt-1 shrink-0" />
@@ -132,7 +132,7 @@ export function StructuredNormalResponse({ data }: StructuredNormalResponseProps
 
       {/* Validation warnings */}
       {validationWarnings.length > 0 && (
-        <div className="text-xs text-amber-500/80 space-y-0.5 pt-2 border-t border-sepia-300/30">
+        <div className="text-xs text-brass-600/80 space-y-0.5 pt-2 border-t border-sepia-300/30">
           {validationWarnings.map((w, i) => (
             <p key={i}>{w}</p>
           ))}
@@ -165,8 +165,8 @@ export function StructuredBlockedResponse({ data }: StructuredBlockedResponsePro
 
       {/* Diagnosis */}
       {data.diagnosis && (
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-          <div className="text-xs font-medium text-amber-400 uppercase tracking-wider mb-1">{t('whyBlocked')}</div>
+        <div className="bg-brass-500/5 border border-brass-500/20 rounded-lg p-3">
+          <div className="text-xs font-medium text-brass-600 uppercase tracking-wider mb-1">{t('whyBlocked')}</div>
           <div className="prose prose-sepia max-w-none text-sm leading-relaxed">
             <Markdown>{data.diagnosis}</Markdown>
           </div>
@@ -208,7 +208,7 @@ export function StructuredBlockedResponse({ data }: StructuredBlockedResponsePro
 
       {/* Validation warnings */}
       {data.validationWarnings && data.validationWarnings.length > 0 && (
-        <div className="text-xs text-amber-500/80 space-y-0.5 pt-2 border-t border-sepia-300/30">
+        <div className="text-xs text-brass-600/80 space-y-0.5 pt-2 border-t border-sepia-300/30">
           {data.validationWarnings.map((w, i) => (
             <p key={i}>{w}</p>
           ))}

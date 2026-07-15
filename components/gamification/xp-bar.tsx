@@ -37,7 +37,7 @@ export function XPBar({ level, current, needed, progress, compact = false }: XPB
         aria-label={t('levelProgressAria', { level, percent: Math.round(clamped) })}
       >
         <div
-          className="h-full bg-gradient-to-r from-brass-600 to-brass-400 rounded-full transition-all duration-500"
+          className="h-full bg-gradient-to-r from-brass-600 to-brass-400 rounded-full transition-[width] duration-500"
           style={{ width: `${clamped}%` }}
         />
       </div>

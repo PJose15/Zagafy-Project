@@ -19,7 +19,7 @@ export const BrassButton = forwardRef<HTMLButtonElement, BrassButtonProps>(
       <button
         ref={ref}
         className={[
-          'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-150',
+          'inline-flex items-center justify-center font-semibold rounded-lg transition duration-150',
           'bg-gradient-to-b from-brass-500 to-brass-700 text-sepia-900 border border-brass-600',
           'shadow-brass hover:from-brass-400 hover:to-brass-600',
           'active:from-brass-700 active:to-brass-500 active:translate-y-[1px]',

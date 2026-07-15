@@ -269,18 +269,18 @@ export default function BiblePage() {
           {extractError && (
             <div
               role="alert"
-              className="mb-4 flex items-start gap-3 rounded-lg border border-red-900/30 bg-red-900/10 p-4 text-sm text-red-900"
+              className="mb-4 flex items-start gap-3 rounded-lg border border-wax-700/30 bg-wax-500/10 p-4 text-sm text-wax-900"
             >
-              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-red-800" />
+              <AlertTriangle size={18} className="mt-0.5 shrink-0 text-wax-800" />
               <div className="flex-1">
                 <p className="font-semibold">{t('extractionFailed')}</p>
-                <p className="mt-1 whitespace-pre-wrap text-red-900/90">{extractError}</p>
+                <p className="mt-1 whitespace-pre-wrap text-wax-900/90">{extractError}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setExtractError(null)}
                 aria-label={t('dismissError')}
-                className="shrink-0 rounded-full p-1 text-red-800 hover:bg-red-900/10"
+                className="shrink-0 rounded-full p-1 text-wax-800 hover:bg-wax-500/10"
               >
                 <X size={16} />
               </button>
@@ -300,7 +300,7 @@ export default function BiblePage() {
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     className={[
-                      'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-all text-sm',
+                      'w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-colors text-sm',
                       isActive
                         ? 'bg-parchment-200 border border-brass-500/40 text-sepia-900 font-semibold'
                         : 'text-sepia-600 hover:bg-parchment-200/50 border border-transparent',

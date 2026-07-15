@@ -37,7 +37,7 @@ export const ParchmentCard = forwardRef<HTMLDivElement, ParchmentCardProps>(
           variantStyles[variant],
           paddingStyles[padding],
           tornEdge ? 'torn-edge-bottom' : '',
-          hover ? 'transition-all duration-200 hover:translate-y-[-2px] hover:shadow-card-hover cursor-pointer' : '',
+          hover ? 'transition-[transform,box-shadow] duration-200 hover:translate-y-[-2px] hover:shadow-card-hover cursor-pointer' : '',
           className,
         ].filter(Boolean).join(' ')}
         {...props}

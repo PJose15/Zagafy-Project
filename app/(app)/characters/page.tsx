@@ -174,7 +174,7 @@ export default function CharactersPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="bg-parchment-100 border border-sepia-300/50 rounded-xl overflow-hidden texture-parchment shadow-parchment transition-all duration-300"
+                className="bg-parchment-100 border border-sepia-300/50 rounded-xl overflow-hidden texture-parchment shadow-parchment transition-colors duration-300"
               >
                 <AnimatePresence mode="wait" initial={false}>
                 {isEditing ? (

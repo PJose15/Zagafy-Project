@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { Shuffle } from 'lucide-react';
 
 interface SceneChangeBannerProps {
   originalChapterTitle: string;
@@ -27,10 +28,10 @@ export function SceneChangeBanner({
 }: SceneChangeBannerProps) {
   const t = useTranslations('flow.sceneChangeBanner');
   const bgClass = isExpired
-    ? 'bg-red-500/10 border-red-500/20'
-    : 'bg-amber-500/10 border-amber-500/20';
+    ? 'bg-wax-500/10 border-wax-500/20'
+    : 'bg-brass-500/10 border-brass-500/20';
 
-  const textClass = isExpired ? 'text-red-300' : 'text-amber-300';
+  const textClass = isExpired ? 'text-wax-500' : 'text-brass-300';
 
   return (
     <div
@@ -38,7 +39,7 @@ export function SceneChangeBanner({
       role="status"
       aria-label={t('ariaLabel')}
     >
-      <span className="text-sm" aria-hidden="true">&#x1F500;</span>
+      <Shuffle size={14} aria-hidden="true" className={textClass} />
       <span className={`text-xs ${textClass} flex-1`}>
         {isExpired ? (
           t.rich('expired', {
@@ -65,7 +66,7 @@ export function SceneChangeBanner({
         {!isExpired && extensionsLeft > 0 && (
           <button
             onClick={onExtend}
-            className="text-xs text-amber-400/70 hover:text-amber-300 transition-colors px-2 py-0.5 rounded hover:bg-amber-500/10"
+            className="text-xs text-brass-400/70 hover:text-brass-300 transition-colors px-2 py-0.5 rounded hover:bg-brass-500/10"
           >
             {t('extend')}
           </button>
@@ -77,8 +78,8 @@ export function SceneChangeBanner({
           onClick={onReturn}
           className={`text-xs font-medium px-3 py-1 rounded-lg transition-colors ${
             isExpired
-              ? 'bg-wax-700 text-cream-50 hover:bg-red-500'
-              : 'text-amber-300 hover:bg-amber-500/20'
+              ? 'bg-wax-700 text-cream-50 hover:bg-wax-600'
+              : 'text-brass-300 hover:bg-brass-500/20'
           }`}
         >
           {t('returnNow')}

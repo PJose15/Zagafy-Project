@@ -47,14 +47,14 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
           {speech.isRecording && !speech.isPaused && (
             <div className="flex items-center gap-1.5">
               <span
-                className="w-2 h-2 rounded-full bg-red-500"
+                className="w-2 h-2 rounded-full bg-wax-500"
                 style={{ animation: 'braindump-pulse 1.5s ease-in-out infinite' }}
               />
-              <span className="text-xs text-red-400 font-medium">{t('recording')}</span>
+              <span className="text-xs text-wax-500 font-medium">{t('recording')}</span>
             </div>
           )}
           {speech.isPaused && (
-            <span className="text-xs text-amber-400 font-medium">{t('paused')}</span>
+            <span className="text-xs text-brass-400 font-medium">{t('paused')}</span>
           )}
           {isStopped && (
             <span className="text-xs text-sepia-600 font-medium">{t('stopped')}</span>
@@ -136,7 +136,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
         )}
 
         {speech.error && !isStopped && (
-          <p className="text-amber-400/80 text-xs mb-2">{speech.error}</p>
+          <p className="text-brass-400/80 text-xs mb-2">{speech.error}</p>
         )}
 
         <div className="text-sepia-800 text-base leading-relaxed font-serif whitespace-pre-wrap" aria-live="polite">
@@ -158,7 +158,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
       {isStopped && (
         <div className="flex items-center justify-center gap-3 px-4 py-2 border-t border-sepia-300/30">
           {polishError && (
-            <span className="text-red-400 text-xs mr-2">{polishError}</span>
+            <span className="text-wax-500 text-xs mr-2">{polishError}</span>
           )}
 
           {isPolishing ? (

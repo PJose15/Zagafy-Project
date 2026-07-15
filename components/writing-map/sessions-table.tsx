@@ -5,15 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import type { WritingSession, FlowScore } from '@/lib/types/writing-session';
+import { InkRating } from '@/components/antiquarian/ink-rating';
 import { FlowMomentsBadge } from './flow-moments-badge';
-
-const FLOW_EMOJIS: Record<number, string> = {
-  1: '😩',
-  2: '🙁',
-  3: '😐',
-  4: '🙂',
-  5: '🔥',
-};
 
 type SortField = 'date' | 'words' | 'duration' | 'flow' | 'autoFlow';
 type SortDir = 'asc' | 'desc';
@@ -155,7 +148,7 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
                     <span
                       className={`font-medium ${
                         session.autoFlowScore >= 70 ? 'text-forest-700' :
-                        session.autoFlowScore >= 40 ? 'text-amber-600' :
+                        session.autoFlowScore >= 40 ? 'text-brass-600' :
                         'text-sepia-600'
                       }`}
                       title={t('autoFlowTitle', { score: session.autoFlowScore })}
@@ -170,7 +163,9 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
               </td>
               <td className="py-2 px-3 text-center">
                 {session.flowScore ? (
-                  <span title={t('flowTitle', { score: session.flowScore })}>{FLOW_EMOJIS[session.flowScore]}</span>
+                  <span title={t('flowTitle', { score: session.flowScore })} className="inline-flex justify-center">
+                    <InkRating score={session.flowScore} size="sm" />
+                  </span>
                 ) : (
                   <span className="text-sepia-600">—</span>
                 )}

@@ -225,32 +225,13 @@ describe('SessionsTable STRESS', () => {
   });
 
   // ──────────────────────────────────────────────────────
-  // FLOW SCORE EMOJIS
+  // FLOW SCORE INK RATINGS
   // ──────────────────────────────────────────────────────
-  describe('flow score emojis', () => {
-    it('score 1 → 😩', () => {
-      render(<SessionsTable sessions={[makeSession({ flowScore: 1 })]} />);
-      expect(screen.getByText('😩')).toBeTruthy();
-    });
-
-    it('score 2 → 🙁', () => {
-      render(<SessionsTable sessions={[makeSession({ flowScore: 2 })]} />);
-      expect(screen.getByText('🙁')).toBeTruthy();
-    });
-
-    it('score 3 → 😐', () => {
-      render(<SessionsTable sessions={[makeSession({ flowScore: 3 })]} />);
-      expect(screen.getByText('😐')).toBeTruthy();
-    });
-
-    it('score 4 → 🙂', () => {
-      render(<SessionsTable sessions={[makeSession({ flowScore: 4 })]} />);
-      expect(screen.getByText('🙂')).toBeTruthy();
-    });
-
-    it('score 5 → 🔥', () => {
-      render(<SessionsTable sessions={[makeSession({ flowScore: 5 })]} />);
-      expect(screen.getByText('🔥')).toBeTruthy();
+  describe('flow score ink ratings', () => {
+    it.each([1, 2, 3, 4, 5] as const)('score %i renders an ink rating with that score', (score) => {
+      render(<SessionsTable sessions={[makeSession({ flowScore: score })]} />);
+      const rating = screen.getByTestId('ink-rating');
+      expect(rating.getAttribute('data-score')).toBe(String(score));
     });
 
     it('null score → dash', () => {

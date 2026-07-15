@@ -63,12 +63,12 @@ describe('WordsByHour', () => {
     expect(cells).toHaveLength(24);
   });
 
-  it('highlights top hours in green', () => {
+  it('highlights top hours in brass', () => {
     render(<WordsByHour sessions={[makeSession()]} />);
     const cells = screen.getAllByTestId('bar-cell');
-    const greenCells = cells.filter(c => c.getAttribute('data-fill') === '#10b981');
-    expect(greenCells.length).toBeGreaterThan(0);
-    expect(greenCells.length).toBeLessThanOrEqual(3);
+    const topCells = cells.filter(c => c.getAttribute('data-fill') === '#c49b48');
+    expect(topCells.length).toBeGreaterThan(0);
+    expect(topCells.length).toBeLessThanOrEqual(3);
   });
 
   it('handles sessions at various hours', () => {

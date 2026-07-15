@@ -14,7 +14,7 @@ export function NoRetreatToggle({ active, onToggle }: NoRetreatToggleProps) {
     <button
       onClick={onToggle}
       className={[
-        'relative text-sm transition-all p-1.5 rounded-lg hover:bg-parchment-200 group',
+        'relative text-sm transition-colors p-1.5 rounded-lg hover:bg-parchment-200 group',
         active ? 'text-wax-500' : 'text-sepia-600',
       ].join(' ')}
       aria-label={active ? t('disable') : t('enable')}

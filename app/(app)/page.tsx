@@ -82,7 +82,7 @@ function StoryAnatomyBar({ chapters, characters, events, conflicts }: {
           <Link
             key={seg.label}
             href={seg.href}
-            className={`${seg.color} transition-all hover:brightness-110 relative group`}
+            className={`${seg.color} transition-[filter] hover:brightness-110 relative group`}
             style={{ width: `${(seg.count / total) * 100}%` }}
             title={`${seg.label}: ${seg.count}`}
           >

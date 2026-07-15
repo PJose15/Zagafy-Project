@@ -4,16 +4,17 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
+import { InkRating } from '@/components/antiquarian/ink-rating';
 import type { FlowScore } from '@/lib/types/writing-session';
 
 const AUTO_DISMISS_MS = 30_000;
 
-const flowOptions: { score: FlowScore; emoji: string; labelKey: string }[] = [
-  { score: 1, emoji: '😩', labelKey: 'struggled' },
-  { score: 2, emoji: '🙁', labelKey: 'slow' },
-  { score: 3, emoji: '😐', labelKey: 'okay' },
-  { score: 4, emoji: '🙂', labelKey: 'good' },
-  { score: 5, emoji: '🔥', labelKey: 'onFire' },
+const flowOptions: { score: FlowScore; labelKey: string }[] = [
+  { score: 1, labelKey: 'struggled' },
+  { score: 2, labelKey: 'slow' },
+  { score: 3, labelKey: 'okay' },
+  { score: 4, labelKey: 'good' },
+  { score: 5, labelKey: 'onFire' },
 ];
 
 interface FlowScoreModalProps {
@@ -79,19 +80,17 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
         <p className="text-sm font-medium text-sepia-800 mb-3">
           {t('question')}
         </p>
-        <div className="flex gap-2 justify-between" role="radiogroup" aria-label={t('radiogroupAria')}>
-          {flowOptions.map(({ score, emoji, labelKey }) => {
+        <div className="flex gap-1 justify-between" role="radiogroup" aria-label={t('radiogroupAria')}>
+          {flowOptions.map(({ score, labelKey }) => {
             const label = t(labelKey);
             return (
             <button
               key={score}
               onClick={() => onSubmit(sessionId, score)}
               aria-label={t('optionAria', { label, score })}
-              className="flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-parchment-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brass-400 focus:outline-offset-1"
+              className="flex flex-col items-center gap-1.5 px-1 py-1.5 rounded-lg hover:bg-parchment-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brass-400 focus:outline-offset-1"
             >
-              <span className="text-2xl" role="img" aria-hidden="true">
-                {emoji}
-              </span>
+              <InkRating score={score} size="sm" />
               <span className="text-[10px] text-sepia-600">{label}</span>
             </button>
             );

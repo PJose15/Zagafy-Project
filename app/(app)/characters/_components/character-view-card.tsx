@@ -155,7 +155,7 @@ export function CharacterViewCard({
 
               <div>
                 <h3 className="text-[10px] font-bold text-sepia-600 uppercase tracking-widest mb-2">{t('backgroundHeading')}</h3>
-                <p className="text-sm text-sepia-600 leading-relaxed whitespace-pre-wrap line-clamp-4 hover:line-clamp-none transition-all">
+                <p className="text-sm text-sepia-600 leading-relaxed whitespace-pre-wrap line-clamp-4 hover:line-clamp-none">
                   {char.description || <span className="italic text-sepia-600">{t('noDescription')}</span>}
                 </p>
               </div>

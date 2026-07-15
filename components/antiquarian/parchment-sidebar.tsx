@@ -81,7 +81,7 @@ export function ParchmentSidebar() {
       {/* Sidebar — sticky on desktop so the menu follows you down the page;
           the nav list scrolls internally when it outgrows the viewport. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-300 md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-[380ms] ease-[cubic-bezier(0.34,1.25,0.64,1)] md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

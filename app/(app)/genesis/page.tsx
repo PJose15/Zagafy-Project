@@ -223,7 +223,7 @@ export default function GenesisPage() {
             >
               <span
                 className={[
-                  'w-2.5 h-2.5 rounded-full transition-all duration-300',
+                  'w-2.5 h-2.5 rounded-full transition duration-300',
                   i === stepIndex ? 'bg-brass-500 scale-125' : i < stepIndex ? 'bg-forest-600' : 'bg-sepia-300/50',
                   i < stepIndex ? 'group-hover:bg-forest-500' : '',
                 ].join(' ')}
@@ -283,7 +283,7 @@ export default function GenesisPage() {
                             type="button"
                             onClick={() => toggleGenre(g)}
                             className={[
-                              'text-xs px-3 py-1.5 rounded-full border transition-all',
+                              'text-xs px-3 py-1.5 rounded-full border transition',
                               data.genres?.includes(g)
                                 ? 'bg-forest-700 text-cream-50 border-forest-600'
                                 : 'bg-parchment-200 text-sepia-700 border-sepia-300/50 hover:border-sepia-400',
@@ -303,7 +303,7 @@ export default function GenesisPage() {
                             type="button"
                             onClick={() => toggleTone(t)}
                             className={[
-                              'text-xs px-3 py-1.5 rounded-full border transition-all',
+                              'text-xs px-3 py-1.5 rounded-full border transition',
                               data.tones?.includes(t)
                                 ? 'bg-brass-600 text-cream-50 border-brass-500'
                                 : 'bg-parchment-200 text-sepia-700 border-sepia-300/50 hover:border-sepia-400',
@@ -356,7 +356,7 @@ export default function GenesisPage() {
                             type="button"
                             onClick={() => updateField('antagonist', { ...data.antagonist!, type: ty })}
                             className={[
-                              'text-xs px-3 py-1.5 rounded-full border transition-all capitalize',
+                              'text-xs px-3 py-1.5 rounded-full border transition capitalize',
                               data.antagonist?.type === ty
                                 ? 'bg-wax-600 text-cream-50 border-wax-500'
                                 : 'bg-parchment-200 text-sepia-700 border-sepia-300/50 hover:border-sepia-400',

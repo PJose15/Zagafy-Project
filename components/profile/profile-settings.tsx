@@ -51,7 +51,7 @@ export function ProfileSettings() {
               key={emoji}
               type="button"
               onClick={() => save({ avatarEmoji: emoji })}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all ${
+              className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition ${
                 profile.avatarEmoji === emoji
                   ? 'bg-brass-300/40 ring-2 ring-brass-500/60'
                   : 'bg-parchment-200/60 hover:bg-parchment-300/60'

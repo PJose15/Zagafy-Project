@@ -19,8 +19,8 @@ const LENS_COLORS: Record<CoachingLens, string> = {
   sensory: 'text-forest-600',
   motivation: 'text-brass-600',
   pacing: 'text-sepia-600',
-  foreshadowing: 'text-purple-600',
-  dialogue: 'text-blue-600',
+  foreshadowing: 'text-wax-800',
+  dialogue: 'text-mahogany-600',
 };
 
 const PRIORITY_STYLES: Record<string, string> = {

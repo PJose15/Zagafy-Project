@@ -127,7 +127,7 @@ export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMome
           {/* Flow moment fire icons */}
           {flowMomentIcons.map(({ x, key }) => (
             <g key={key} transform={`translate(${x - 6}, 0)`}>
-              <Flame size={12} className="text-amber-400" />
+              <Flame size={12} className="text-brass-400" />
             </g>
           ))}
         </svg>
@@ -143,7 +143,7 @@ export function FlowTimeline({ sessionStart, sessionEnd, autoFlowScore, flowMome
         </span>
         {momentCount > 0 && (
           <span className="flex items-center gap-1">
-            <Flame size={10} className="text-amber-400" /> {t('moments', { count: momentCount })}
+            <Flame size={10} className="text-brass-400" /> {t('moments', { count: momentCount })}
           </span>
         )}
       </div>

@@ -1562,6 +1562,11 @@
       "erratic": "Errático",
       "erraticDesc": "Las longitudes de los capítulos varían mucho. Vale la pena una revisión estructural."
     },
+    "byHour": {
+      "empty": "Aún no hay datos de sesiones. Empieza a escribir para ver tus patrones por hora.",
+      "tooltipSummary": "{count, plural, one {# sesión} other {# sesiones}}, prom. {words, number} palabras",
+      "tooltipLabel": "Sesiones que empiezan a las {hour}"
+    },
     "heatmap": {
       "ariaLabel": "Mapa de calor de actividad de escritura del último año",
       "cellAria": "{date}: {words} palabras",

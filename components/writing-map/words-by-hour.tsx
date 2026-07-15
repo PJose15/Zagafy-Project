@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   BarChart,
   Bar,
@@ -11,6 +12,17 @@ import {
   Cell,
 } from 'recharts';
 import type { WritingSession } from '@/lib/types/writing-session';
+
+// Antiquarian palette (recharts sets SVG attributes, so CSS vars don't
+// resolve — mirror the globals.css tokens as literals).
+const CHART_COLORS = {
+  axis: '#7a5a30',        // sepia-600
+  bar: '#c9a06b',         // sepia-300 — the quiet hours
+  barTop: '#c49b48',      // brass-500 — your golden hours
+  tooltipBg: '#f8edd8',   // parchment-100
+  tooltipBorder: 'rgba(90, 61, 30, 0.3)',
+  tooltipText: '#5a3d1e', // sepia-700
+};
 
 interface WordsByHourProps {
   sessions: WritingSession[];
@@ -33,6 +45,7 @@ function formatHour(h: number): string {
 }
 
 export function WordsByHour({ sessions }: WordsByHourProps) {
+  const t = useTranslations('writingStats.byHour');
   const data = useMemo((): HourData[] => {
     const hourBuckets = new Array(24).fill(0) as number[];
     const hourCounts = new Array(24).fill(0) as number[];
@@ -69,7 +82,7 @@ export function WordsByHour({ sessions }: WordsByHourProps) {
   if (!hasData) {
     return (
       <div className="h-48 flex items-center justify-center text-sepia-600 text-sm" data-testid="words-by-hour-empty">
-        No session data yet. Start writing to see your hourly patterns.
+        {t('empty')}
       </div>
     );
   }
@@ -80,40 +93,42 @@ export function WordsByHour({ sessions }: WordsByHourProps) {
         <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: '#71717a' }}
+            tick={{ fontSize: 10, fill: CHART_COLORS.axis }}
             axisLine={false}
             tickLine={false}
             interval={2}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#71717a' }}
+            tick={{ fontSize: 10, fill: CHART_COLORS.axis }}
             axisLine={false}
             tickLine={false}
             width={40}
           />
           <Tooltip
+            cursor={{ fill: 'rgba(196, 155, 72, 0.08)' }}
             contentStyle={{
-              backgroundColor: '#27272a',
-              border: '1px solid #3f3f46',
+              backgroundColor: CHART_COLORS.tooltipBg,
+              border: `1px solid ${CHART_COLORS.tooltipBorder}`,
               borderRadius: '8px',
               fontSize: '12px',
-              color: '#e4e4e7',
+              color: CHART_COLORS.tooltipText,
+              boxShadow: '0 4px 10px rgba(44, 30, 15, 0.12)',
             }}
             formatter={(value, _name, props) => {
               const numValue = Number(value) || 0;
               const count = (props as { payload?: HourData }).payload?.count ?? 0;
-              return [`${count} session${count === 1 ? '' : 's'}, avg ${numValue.toLocaleString()} words`, ''];
+              return [t('tooltipSummary', { count, words: numValue }), ''];
             }}
             labelFormatter={(_label, payload) => {
               const hourLabel = (payload as readonly { payload?: HourData }[])?.[0]?.payload?.hourLabel ?? _label;
-              return `Sessions starting at ${hourLabel}`;
+              return t('tooltipLabel', { hour: String(hourLabel) });
             }}
           />
           <Bar dataKey="words" radius={[4, 4, 0, 0]}>
             {data.map((entry) => (
               <Cell
                 key={entry.hour}
-                fill={entry.isTop ? '#10b981' : '#3f3f46'}
+                fill={entry.isTop ? CHART_COLORS.barTop : CHART_COLORS.bar}
               />
             ))}
           </Bar>

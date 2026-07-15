@@ -47,9 +47,10 @@ describe('SessionsTable', () => {
     expect(screen.getByText('+150')).toBeTruthy();
   });
 
-  it('shows flow score emoji', () => {
+  it('shows flow score as ink rating', () => {
     render(<SessionsTable sessions={[makeSession({ flowScore: 5 })]} />);
-    expect(screen.getByText('🔥')).toBeTruthy();
+    const rating = screen.getByTestId('ink-rating');
+    expect(rating.getAttribute('data-score')).toBe('5');
   });
 
   it('shows dash for null flow score', () => {
