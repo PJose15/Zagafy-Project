@@ -16,6 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { Character } from '@/lib/store';
+import { normalizePressureLevel, normalizeStateIndicator } from '@/lib/types/character-chat';
 
 // Lazy-load ReactMarkdown — only needed when a user expands a character card
 // AND clicks "Run Audit". Most sessions never render it, so keep it off the
@@ -57,6 +58,11 @@ export function CharacterViewCard({
 }: CharacterViewCardProps) {
   const t = useTranslations('characters');
   const tStatus = useTranslations('canonStatus');
+
+  // AI-written state fields can arrive as free prose (observed in the wild) —
+  // normalize before using them as i18n keys or config-map indexes.
+  const indicator = normalizeStateIndicator(char.currentState?.indicator);
+  const pressureLevel = normalizePressureLevel(char.currentState?.pressureLevel);
   return (
     <div className="flex flex-col h-full">
       <div
@@ -65,12 +71,12 @@ export function CharacterViewCard({
       >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
-            <CharacterAvatar name={char.name} size="lg" indicator={char.currentState?.indicator} />
+            <CharacterAvatar name={char.name} size="lg" indicator={indicator ?? undefined} />
             <div>
               <h2 className="text-xl font-serif font-semibold text-sepia-900 flex items-center gap-2">
                 {char.name}
-                {char.currentState?.indicator && char.currentState.indicator !== 'stable' && (
-                  <AlertCircle size={16} className={indicatorConfig[char.currentState.indicator].color} aria-hidden="true" />
+                {indicator && indicator !== 'stable' && (
+                  <AlertCircle size={16} className={indicatorConfig[indicator].color} aria-hidden="true" />
                 )}
               </h2>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -86,10 +92,10 @@ export function CharacterViewCard({
                     {tStatus(char.canonStatus)}
                   </span>
                 )}
-                {char.currentState?.indicator && (
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${indicatorConfig[char.currentState.indicator].bg} ${indicatorConfig[char.currentState.indicator].color}`}>
+                {indicator && (
+                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${indicatorConfig[indicator].bg} ${indicatorConfig[indicator].color}`}>
                     <Activity size={12} aria-hidden="true" />
-                    {t(`indicator.${char.currentState.indicator}`)}
+                    {t(`indicator.${indicator}`)}
                   </span>
                 )}
               </div>
@@ -164,13 +170,13 @@ export function CharacterViewCard({
                   </h3>
                   <span className="text-xs font-medium px-2 py-1 rounded-md bg-parchment-100 border border-sepia-300/50 text-sepia-700">
                     {t.rich('pressureInline', {
-                      level: t(`pressure.${char.currentState?.pressureLevel || 'Low'}`),
+                      level: t(`pressure.${pressureLevel || 'Low'}`),
                       v: (chunks) => (
                         <strong
                           className={
-                            char.currentState?.pressureLevel === 'Critical' ? 'text-wax-500' :
-                            char.currentState?.pressureLevel === 'High' ? 'text-brass-400' :
-                            char.currentState?.pressureLevel === 'Medium' ? 'text-brass-500' : 'text-forest-400'
+                            pressureLevel === 'Critical' ? 'text-wax-500' :
+                            pressureLevel === 'High' ? 'text-brass-400' :
+                            pressureLevel === 'Medium' ? 'text-brass-500' : 'text-forest-400'
                           }
                         >
                           {chunks}

@@ -55,7 +55,9 @@ export function CharacterAvatar({ name, indicator, size = 'md', className = '' }
   const color = AVATAR_COLORS[hashName(name) % AVATAR_COLORS.length];
   const initials = getInitials(name);
   const s = SIZE_MAP[size];
-  const showDot = indicator && indicator !== 'stable';
+  // Indicator is AI-written and can be non-enum prose; only show the dot for
+  // recognized values so we never index INDICATOR_COLORS with a junk key.
+  const showDot = indicator && indicator !== 'stable' && indicator in INDICATOR_COLORS;
 
   return (
     <div

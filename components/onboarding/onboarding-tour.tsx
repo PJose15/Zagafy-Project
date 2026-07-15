@@ -57,7 +57,9 @@ const tourStyles = {
   dot: (base: Record<string, unknown>, state: { current?: boolean }) => ({
     ...base,
     backgroundColor: state?.current ? '#c49b48' : '#e4cfa0',
-    borderColor: '#c49b48',
+    // Full shorthand (not borderColor): reactour's base style sets `border`,
+    // and React warns when shorthand + longhand target the same property.
+    border: '1px solid #c49b48',
     // WCAG 2.2 (2.5.8): 12px dots with 6px side margin put target centers
     // ~24px apart, satisfying the undersized-target spacing exception.
     width: '12px',

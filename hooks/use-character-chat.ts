@@ -15,15 +15,27 @@ import {
   readInsights,
   addInsight,
   markInsightAsCanon as markCanon,
+  normalizePressureLevel,
+  normalizeStateIndicator,
 } from '@/lib/types/character-chat';
 import { useStory, type CharacterState, type Character, type StoryState, type CanonItem } from '@/lib/store';
 
 export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
 
-/** Narrow a full CharacterState down to the conversation-evolving slice. */
-function toEvolved(s: CharacterState | undefined): EvolvedState | null {
+/**
+ * Narrow a full CharacterState down to the conversation-evolving slice.
+ * pressureLevel/indicator are AI-written and can arrive as free prose —
+ * normalize to the enums (falling back to a sane midpoint when a value is
+ * present but unrecognized) so i18n lookups and config-map indexes never see
+ * junk keys.
+ */
+function toEvolved(s: Pick<CharacterState, 'emotionalState' | 'pressureLevel' | 'indicator'> | undefined | null): EvolvedState | null {
   if (!s || !s.pressureLevel || !s.indicator) return null;
-  return { emotionalState: s.emotionalState ?? '', pressureLevel: s.pressureLevel, indicator: s.indicator };
+  return {
+    emotionalState: s.emotionalState ?? '',
+    pressureLevel: normalizePressureLevel(s.pressureLevel) ?? 'Medium',
+    indicator: normalizeStateIndicator(s.indicator) ?? 'shifting',
+  };
 }
 
 /**
@@ -94,8 +106,11 @@ export function useCharacterChat(characterId: string | null) {
   const [liveState, setLiveStateRaw] = useState<EvolvedState | null>(null);
   const liveStateRef = useRef<EvolvedState | null>(null);
   const setLiveState = useCallback((s: EvolvedState | null) => {
-    liveStateRef.current = s;
-    setLiveStateRaw(s);
+    // Normalize on every write — values arrive from persisted sessions and AI
+    // responses, either of which can carry non-enum prose.
+    const normalized = toEvolved(s);
+    liveStateRef.current = normalized;
+    setLiveStateRaw(normalized);
   }, []);
   // Durable cross-session memory of past conversations (ref for reads inside
   // sendMessage without a dependency; persisted on the session).

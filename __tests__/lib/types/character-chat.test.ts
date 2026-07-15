@@ -11,6 +11,8 @@ import {
   writeInsights,
   addInsight,
   markInsightAsCanon,
+  normalizePressureLevel,
+  normalizeStateIndicator,
   MAX_CHAT_SESSIONS,
   CharacterChatSession,
   CharacterChatMessage,
@@ -191,5 +193,47 @@ describe('insights CRUD', () => {
   it('handles corrupted insights JSON', () => {
     localStorage.setItem('zagafy_character_insights', 'broken');
     expect(readInsights()).toEqual([]);
+  });
+});
+
+describe('normalizePressureLevel', () => {
+  it('passes through exact enum values', () => {
+    expect(normalizePressureLevel('Low')).toBe('Low');
+    expect(normalizePressureLevel('Critical')).toBe('Critical');
+  });
+
+  it('matches case-insensitive and Spanish synonyms', () => {
+    expect(normalizePressureLevel('high')).toBe('High');
+    expect(normalizePressureLevel('alto')).toBe('High');
+    expect(normalizePressureLevel('crítico')).toBe('Critical');
+  });
+
+  it('salvages AI prose by its leading word (the observed production bug)', () => {
+    expect(normalizePressureLevel('Extremo: su vida y la de su padre están en juego.')).toBe('Critical');
+    expect(normalizePressureLevel('High — everything is at stake')).toBe('High');
+  });
+
+  it('returns null for absent or unrecognizable values', () => {
+    expect(normalizePressureLevel(undefined)).toBeNull();
+    expect(normalizePressureLevel('')).toBeNull();
+    expect(normalizePressureLevel('the character feels tension')).toBeNull();
+    expect(normalizePressureLevel(42)).toBeNull();
+  });
+});
+
+describe('normalizeStateIndicator', () => {
+  it('passes through exact enum values', () => {
+    expect(normalizeStateIndicator('stable')).toBe('stable');
+    expect(normalizeStateIndicator('at risk of contradiction')).toBe('at risk of contradiction');
+  });
+
+  it('is case/whitespace tolerant', () => {
+    expect(normalizeStateIndicator(' Under Pressure ')).toBe('under pressure');
+  });
+
+  it('returns null for absent or unrecognizable values', () => {
+    expect(normalizeStateIndicator(undefined)).toBeNull();
+    expect(normalizeStateIndicator('nervioso y en conflicto')).toBeNull();
+    expect(normalizeStateIndicator(7)).toBeNull();
   });
 });

@@ -2,6 +2,46 @@ import type { CharacterState } from '@/lib/store';
 
 export type ChatMode = 'exploration' | 'scene' | 'confrontation';
 
+// ─── Runtime normalization for AI-written state fields ───
+// pressureLevel/indicator are enum-typed, but the values are written by AI
+// analysis and have been observed as free prose (e.g. Spanish "Extremo: su
+// vida está en juego"). The UI uses them as i18n keys and config-map indexes,
+// so unrecognized values crash. Normalize at every read boundary.
+
+export const PRESSURE_LEVELS = ['Low', 'Medium', 'High', 'Critical'] as const;
+export const STATE_INDICATORS = [
+  'stable',
+  'shifting',
+  'under pressure',
+  'emotionally conflicted',
+  'at risk of contradiction',
+] as const;
+
+const PRESSURE_SYNONYMS: Record<string, CharacterState['pressureLevel']> = {
+  low: 'Low', bajo: 'Low', baja: 'Low',
+  medium: 'Medium', medio: 'Medium', media: 'Medium', moderado: 'Medium', moderada: 'Medium',
+  high: 'High', alto: 'High', alta: 'High', elevado: 'High', elevada: 'High',
+  critical: 'Critical', crítico: 'Critical', critico: 'Critical', crítica: 'Critical',
+  critica: 'Critical', extremo: 'Critical', extrema: 'Critical', extreme: 'Critical',
+};
+
+/** Map an AI-written pressure value to the enum; null when absent/unrecognized. */
+export function normalizePressureLevel(value: unknown): CharacterState['pressureLevel'] | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const exact = PRESSURE_LEVELS.find(l => l === value);
+  if (exact) return exact;
+  // Prose like "Extremo: su vida está en juego" — match the leading word.
+  const head = value.trim().toLowerCase().split(/[\s:,.;(]+/)[0];
+  return PRESSURE_SYNONYMS[head] ?? null;
+}
+
+/** Map an AI-written indicator value to the enum; null when absent/unrecognized. */
+export function normalizeStateIndicator(value: unknown): CharacterState['indicator'] | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const v = value.trim().toLowerCase();
+  return STATE_INDICATORS.find(i => i === v) ?? null;
+}
+
 /**
  * The conversation-local, evolving slice of a character's state. Updated after
  * each exchange so the character visibly reacts and escalates *within* a chat,
