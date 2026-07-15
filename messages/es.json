@@ -249,6 +249,11 @@
       "words": "{count} palabras",
       "conflictRatio": "{active}a/{resolved}r"
     },
+    "hero": {
+      "eyebrow": "Donde lo dejaste",
+      "continue": "Seguir escribiendo",
+      "words": "{count, plural, one {# palabra hasta ahora} other {# palabras hasta ahora}}"
+    },
     "gamificationTitle": "Progreso de Escritura",
     "recentChapters": "Capítulos Recientes",
     "emptyChaptersTitle": "Tu historia espera",

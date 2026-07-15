@@ -249,6 +249,11 @@
       "words": "{count} words",
       "conflictRatio": "{active}a/{resolved}r"
     },
+    "hero": {
+      "eyebrow": "Where you left off",
+      "continue": "Continue writing",
+      "words": "{count, plural, one {# word so far} other {# words so far}}"
+    },
     "gamificationTitle": "Writing Progress",
     "recentChapters": "Recent Chapters",
     "emptyChaptersTitle": "Your story awaits",

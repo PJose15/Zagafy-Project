@@ -2,18 +2,19 @@
 
 import React, { Suspense } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useStory } from '@/lib/store';
 import { useSession } from '@/lib/session';
-import { wordCount as countWords } from '@/lib/editor/serialization';
+import { wordCount as countWords, getPlainText } from '@/lib/editor/serialization';
 import { motion } from 'motion/react';
-import { BookOpen, Users, Clock, Swords, AlertCircle, Flame, BrainCircuit } from 'lucide-react';
+import { BookOpen, Feather, AlertCircle, Flame, BrainCircuit } from 'lucide-react';
 import Link from 'next/link';
-import { stagger, hoverLift, physicalDrop, fadeUp } from '@/lib/animations';
+import { physicalDrop, fadeUp, hoverLift } from '@/lib/animations';
 import {
   CarvedHeader,
   ParchmentCard,
   EmptyState,
-  CharacterAvatar,
+  BrassButton,
   DecorativeDivider,
   FeatureErrorBoundary,
   AnimatedNumber,
@@ -192,6 +193,55 @@ function GamificationSkeleton() {
   );
 }
 
+// ─── Continue Writing hero — the writing desk, not a stat grid ───
+function ContinueWritingHero() {
+  const t = useTranslations('dashboard');
+  const { state } = useStory();
+  const { setFlowChapterId } = useSession();
+  const router = useRouter();
+
+  // The chapter you most plausibly left off in: the last one with prose.
+  const lastChapter =
+    [...state.chapters].reverse().find(c => c.content && getPlainText(c.content).trim().length > 0) ??
+    state.chapters[state.chapters.length - 1];
+  if (!lastChapter) return null;
+
+  const plain = lastChapter.content ? getPlainText(lastChapter.content).trim() : '';
+  const teaser = plain.length > 240 ? `…${plain.slice(-240).trimStart()}` : plain;
+  const words = lastChapter.content ? countWords(lastChapter.content) : 0;
+
+  const continueWriting = () => {
+    setFlowChapterId(lastChapter.id);
+    router.push('/flow');
+  };
+
+  return (
+    <motion.div {...fadeUp}>
+      <ParchmentCard variant="aged" padding="lg">
+        <div className="flex flex-col md:flex-row md:items-end gap-6">
+          <div className="flex-1 min-w-0">
+            <p className="label-caps text-[11px] text-brass-700 mb-2">{t('hero.eyebrow')}</p>
+            <h2 className="text-2xl md:text-3xl font-serif font-bold text-sepia-900 leading-tight text-balance">
+              {lastChapter.title}
+            </h2>
+            {teaser && (
+              <p className="mt-3 font-serif italic text-sepia-700 leading-relaxed line-clamp-3 book-prose">
+                {teaser}
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 flex flex-col items-start md:items-end gap-2">
+            <BrassButton size="lg" onClick={continueWriting} icon={<Feather size={18} />}>
+              {t('hero.continue')}
+            </BrassButton>
+            <span className="text-[11px] font-mono text-sepia-600">{t('hero.words', { count: words })}</span>
+          </div>
+        </div>
+      </ParchmentCard>
+    </motion.div>
+  );
+}
+
 // ─── Canon Status Colors ───
 const canonColors: Record<string, string> = {
   confirmed: 'border-l-forest-700',
@@ -248,107 +298,32 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Chapters Card */}
-        <Link href="/manuscript">
-          <motion.div {...stagger.cards(0)} {...hoverLift}>
-            <ParchmentCard padding="lg" hover className="group cursor-pointer">
-              <div className="flex items-center justify-between mb-3">
-                <BookOpen aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <AnimatedNumber value={state.chapters.length} className="text-3xl font-light text-sepia-900" />
-              </div>
-              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.chapters')}</h3>
-              {totalWords > 0 && (
-                <p className="text-[10px] font-mono text-sepia-600 mt-1">{t('stats.words', { count: totalWords.toLocaleString() })}</p>
-              )}
-            </ParchmentCard>
-          </motion.div>
-        </Link>
+      {/* ── The writing desk: continue where you left off ── */}
+      <ContinueWritingHero />
 
-        {/* Characters Card */}
-        <Link href="/characters">
-          <motion.div {...stagger.cards(1)} {...hoverLift}>
-            <ParchmentCard padding="lg" hover className="group cursor-pointer">
-              <div className="flex items-center justify-between mb-3">
-                <Users aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <AnimatedNumber value={state.characters.length} className="text-3xl font-light text-sepia-900" />
-              </div>
-              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.characters')}</h3>
-              {state.characters.length > 0 && (
-                <div className="flex items-center mt-2 -space-x-2">
-                  {state.characters.slice(0, 4).map((c) => (
-                    <CharacterAvatar key={c.id} name={c.name} size="sm" indicator={c.currentState?.indicator} />
-                  ))}
-                  {state.characters.length > 4 && (
-                    <span className="text-[10px] font-mono text-sepia-600 ml-2">+{state.characters.length - 4}</span>
-                  )}
-                </div>
-              )}
-            </ParchmentCard>
-          </motion.div>
-        </Link>
-
-        {/* Timeline Card */}
-        <Link href="/timeline">
-          <motion.div {...stagger.cards(2)} {...hoverLift}>
-            <ParchmentCard padding="lg" hover className="group cursor-pointer">
-              <div className="flex items-center justify-between mb-3">
-                <Clock aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <AnimatedNumber value={state.timeline_events.length} className="text-3xl font-light text-sepia-900" />
-              </div>
-              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.timelineEvents')}</h3>
-              {state.timeline_events.length > 0 && (
-                <div className="flex items-center gap-1 mt-2">
-                  {[0, 1, 2].map((i) => (
-                    <span key={i} className="flex items-center gap-1">
-                      <span className={`w-2 h-2 rounded-full ${i < state.timeline_events.length ? 'bg-brass-500' : 'bg-sepia-300/30'}`} />
-                      {i < 2 && <span className="w-3 h-px bg-sepia-300/40" />}
-                    </span>
-                  ))}
-                  {state.timeline_events.length > 0 && (
-                    <span className="text-[10px] font-mono text-sepia-600 ml-1">
-                      {state.timeline_events[0]?.date || ''}
-                    </span>
-                  )}
-                </div>
-              )}
-            </ParchmentCard>
-          </motion.div>
-        </Link>
-
-        {/* Conflicts Card */}
-        <Link href="/conflicts">
-          <motion.div {...stagger.cards(3)} {...hoverLift}>
-            <ParchmentCard padding="lg" hover className="group cursor-pointer">
-              <div className="flex items-center justify-between mb-3">
-                <Swords aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <AnimatedNumber value={state.active_conflicts.length} className="text-3xl font-light text-sepia-900" />
-              </div>
-              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.conflicts')}</h3>
-              {state.active_conflicts.length > 0 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="flex h-1.5 flex-1 rounded-full overflow-hidden bg-sepia-300/20">
-                    {activeConflicts > 0 && (
-                      <div
-                        className="bg-wax-500 rounded-l-full"
-                        style={{ width: `${(activeConflicts / state.active_conflicts.length) * 100}%` }}
-                      />
-                    )}
-                    {resolvedConflicts > 0 && (
-                      <div
-                        className="bg-forest-600"
-                        style={{ width: `${(resolvedConflicts / state.active_conflicts.length) * 100}%` }}
-                      />
-                    )}
-                  </div>
-                  <span className="text-[10px] font-mono text-sepia-600">{t('stats.conflictRatio', { active: activeConflicts, resolved: resolvedConflicts })}</span>
-                </div>
-              )}
-            </ParchmentCard>
-          </motion.div>
-        </Link>
-      </div>
+      {/* ── Ledger strip: stats demoted to a slim row ── */}
+      <motion.div {...fadeUp}>
+        <ParchmentCard padding="sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 md:divide-x divide-sepia-300/30">
+            {[
+              { href: '/manuscript', value: state.chapters.length, label: t('stats.chapters'), extra: totalWords > 0 ? t('stats.words', { count: totalWords.toLocaleString() }) : null },
+              { href: '/characters', value: state.characters.length, label: t('stats.characters'), extra: null },
+              { href: '/timeline', value: state.timeline_events.length, label: t('stats.timelineEvents'), extra: null },
+              { href: '/conflicts', value: state.active_conflicts.length, label: t('stats.conflicts'), extra: activeConflicts + resolvedConflicts > 0 ? t('stats.conflictRatio', { active: activeConflicts, resolved: resolvedConflicts }) : null },
+            ].map((s) => (
+              <Link
+                key={s.href}
+                href={s.href}
+                className="group flex flex-col items-center gap-0.5 py-2 px-2 rounded-lg hover:bg-parchment-200/50 transition-colors"
+              >
+                <AnimatedNumber value={s.value} className="text-2xl font-light text-sepia-900" />
+                <span className="label-caps text-[10px] text-sepia-600 group-hover:text-sepia-800 transition-colors">{s.label}</span>
+                {s.extra && <span className="text-[10px] font-mono text-sepia-600/80">{s.extra}</span>}
+              </Link>
+            ))}
+          </div>
+        </ParchmentCard>
+      </motion.div>
 
       {/* ── Gamification ── */}
       <FeatureErrorBoundary title={t('gamificationTitle')}>
