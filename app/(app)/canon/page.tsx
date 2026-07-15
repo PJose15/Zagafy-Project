@@ -3,7 +3,7 @@
 import { useStory, CanonStatus, StoryState } from '@/lib/store';
 import { useState, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Lock, ShieldCheck, ShieldAlert, Shield, ShieldOff } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Shield, ShieldOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fadeUp, springs, stagger } from '@/lib/animations';
 import { CarvedHeader, EmptyState, ParchmentCard, ParchmentSelect, WaxSealBadge } from '@/components/antiquarian';
@@ -75,7 +75,6 @@ export default function CanonLockPage() {
         <CarvedHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          icon={<Lock size={24} />}
           actions={
             <div className="flex flex-wrap gap-2">
               <ParchmentSelect

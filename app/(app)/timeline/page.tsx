@@ -81,7 +81,6 @@ export default function TimelinePage() {
       <CarvedHeader
         title={t('title')}
         subtitle={t('subtitle')}
-        icon={<Clock size={24} />}
         actions={
           <BrassButton onClick={handleAddEvent} icon={<Plus size={18} />}>
             {t('addEvent')}

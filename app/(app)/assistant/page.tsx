@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useStory, ChatMessage } from '@/lib/store';
 import { useSession } from '@/lib/session';
-import { Send, Bot, User, Loader2, ShieldAlert, X, AlertTriangle, CheckCircle2, LockKeyhole, Trash2, Feather, BookOpen, ChevronUp } from 'lucide-react';
+import { Send, User, Loader2, ShieldAlert, X, AlertTriangle, CheckCircle2, LockKeyhole, Trash2, Feather, BookOpen, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Lazy-load react-markdown. Only used as a legacy fallback for messages
@@ -342,7 +342,6 @@ export default function AssistantPage() {
         <CarvedHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          icon={<Bot size={24} />}
           actions={
             <button
               onClick={handleClearChat}

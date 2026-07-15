@@ -463,7 +463,6 @@ export default function ImportPage() {
       <CarvedHeader
         title={t('title')}
         subtitle={t('subtitle')}
-        icon={<UploadCloud size={24} />}
       />
 
       {uploadStatus === 'idle' && (

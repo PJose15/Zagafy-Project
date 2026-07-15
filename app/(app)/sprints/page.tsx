@@ -15,7 +15,7 @@ import { SprintResults } from '@/components/gamification/sprint-results';
 import { getSprintStats } from '@/lib/gamification/sprints';
 import type { SprintResult } from '@/lib/gamification/sprints';
 import type { SprintTheme } from '@/lib/types/gamification';
-import { Timer, Trophy, Pen, BarChart3 } from 'lucide-react';
+import { Trophy, Pen, BarChart3 } from 'lucide-react';
 
 export default function SprintsPage() {
   const t = useTranslations('sprints');
@@ -68,7 +68,6 @@ export default function SprintsPage() {
       <CarvedHeader
         title={t('title')}
         subtitle={t('subtitle')}
-        icon={<Timer size={28} />}
       />
 
       {/* Timer / results / launcher — crossfade between the three modes */}

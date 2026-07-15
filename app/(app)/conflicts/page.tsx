@@ -4,7 +4,7 @@ import { useStory, Conflict, CanonStatus } from '@/lib/store';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
-import { Plus, Trash2, Edit3, Save, X, Swords, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Edit3, Save, X, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fadeUp } from '@/lib/animations';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -79,7 +79,6 @@ export default function ConflictsPage() {
         <CarvedHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          icon={<Swords size={24} />}
           actions={
             <BrassButton onClick={handleAddConflict}>
               <Plus size={18} />

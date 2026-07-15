@@ -152,7 +152,6 @@ export default function CharactersPage() {
         <CarvedHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          icon={<Users size={24} />}
           actions={
             <BrassButton onClick={handleAddCharacter}>
               <Plus size={18} />

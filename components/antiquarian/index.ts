@@ -19,3 +19,4 @@ export { AnimatedNumber } from './animated-number';
 export { Reveal } from './reveal';
 export { BackToTop } from './back-to-top';
 export { InkRating, inkRatingText } from './ink-rating';
+export { EngravedFlourish, EngravedSprig } from './engraved-flourish';

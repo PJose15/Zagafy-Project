@@ -115,7 +115,6 @@ export default function OutlinePage() {
         <CarvedHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          icon={<LayoutGrid size={24} />}
           actions={
             <div className="flex items-center gap-1 rounded-lg bg-parchment-200 p-0.5 border border-sepia-300/40">
               <button

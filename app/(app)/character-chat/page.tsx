@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { CarvedHeader, ParchmentCard, ParchmentSelect, FeatureErrorBoundary } from '@/components/antiquarian';
 import { CharacterChatPanel } from '@/components/character-chat/character-chat-panel';
-import { MessageCircle } from 'lucide-react';
 
 function CharacterChatContent() {
   const t = useTranslations('characterChat');
@@ -16,7 +15,7 @@ function CharacterChatContent() {
 
   return (
     <div className="space-y-6">
-      <CarvedHeader title={t('title')} icon={<MessageCircle size={24} />} />
+      <CarvedHeader title={t('title')} />
 
       <ParchmentCard className="p-4">
         <label

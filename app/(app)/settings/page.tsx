@@ -222,7 +222,6 @@ export default function SettingsPage() {
       <CarvedHeader
         title={t('title')}
         subtitle={t('subtitle')}
-        icon={<Settings size={24} />}
       />
 
       <div className="space-y-8">

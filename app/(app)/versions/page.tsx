@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { springs } from '@/lib/animations';
-import { Save, RotateCcw, Trash2, Clock } from 'lucide-react';
+import { Save, RotateCcw, Trash2 } from 'lucide-react';
 import { useStory } from '@/lib/store';
 import {
   createSnapshot,
@@ -138,7 +138,6 @@ export default function VersionsPage() {
         <CarvedHeader
           title={t('title')}
           subtitle={t('subtitle')}
-          icon={<Clock size={24} />}
         />
 
         {/* Save snapshot card */}

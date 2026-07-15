@@ -6,7 +6,7 @@ import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import {
-  Save, Book, Settings2, Plus, Globe, Scroll, Wand2,
+  Save, Settings2, Plus, Globe, Scroll, Wand2,
   Landmark, Church, Coins, Languages, CalendarDays, AlertTriangle, X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -171,7 +171,6 @@ export default function BiblePage() {
       <CarvedHeader
         title={t('title')}
         subtitle={t('subtitle')}
-        icon={<Book size={24} />}
         actions={
           <div className="flex items-center gap-3">
             <WorldBibleExtractButton
