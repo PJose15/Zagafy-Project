@@ -16,6 +16,8 @@ import {
   CharacterAvatar,
   DecorativeDivider,
   FeatureErrorBoundary,
+  AnimatedNumber,
+  Reveal,
 } from '@/components/antiquarian';
 import { GenesisGuard } from '@/components/genesis/genesis-guard';
 import { useGamification } from '@/hooks/use-gamification';
@@ -254,7 +256,7 @@ export default function Dashboard() {
             <ParchmentCard padding="lg" hover className="group cursor-pointer">
               <div className="flex items-center justify-between mb-3">
                 <BookOpen aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <span className="text-3xl font-light text-sepia-900">{state.chapters.length}</span>
+                <AnimatedNumber value={state.chapters.length} className="text-3xl font-light text-sepia-900" />
               </div>
               <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.chapters')}</h3>
               {totalWords > 0 && (
@@ -270,7 +272,7 @@ export default function Dashboard() {
             <ParchmentCard padding="lg" hover className="group cursor-pointer">
               <div className="flex items-center justify-between mb-3">
                 <Users aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <span className="text-3xl font-light text-sepia-900">{state.characters.length}</span>
+                <AnimatedNumber value={state.characters.length} className="text-3xl font-light text-sepia-900" />
               </div>
               <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.characters')}</h3>
               {state.characters.length > 0 && (
@@ -293,7 +295,7 @@ export default function Dashboard() {
             <ParchmentCard padding="lg" hover className="group cursor-pointer">
               <div className="flex items-center justify-between mb-3">
                 <Clock aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <span className="text-3xl font-light text-sepia-900">{state.timeline_events.length}</span>
+                <AnimatedNumber value={state.timeline_events.length} className="text-3xl font-light text-sepia-900" />
               </div>
               <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.timelineEvents')}</h3>
               {state.timeline_events.length > 0 && (
@@ -321,7 +323,7 @@ export default function Dashboard() {
             <ParchmentCard padding="lg" hover className="group cursor-pointer">
               <div className="flex items-center justify-between mb-3">
                 <Swords aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
-                <span className="text-3xl font-light text-sepia-900">{state.active_conflicts.length}</span>
+                <AnimatedNumber value={state.active_conflicts.length} className="text-3xl font-light text-sepia-900" />
               </div>
               <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.conflicts')}</h3>
               {state.active_conflicts.length > 0 && (
@@ -368,8 +370,8 @@ export default function Dashboard() {
         conflicts={state.active_conflicts.length}
       />
 
-      {/* ── Recent Chapters & Open Loops ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* ── Recent Chapters & Open Loops — reveal on scroll (below the fold) ── */}
+      <Reveal className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center gap-3">
             <BookOpen size={18} className="text-brass-600" />
@@ -438,7 +440,7 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </div>
+      </Reveal>
     </div>
     {novelJustCompleted && completionStats && (
       <NovelCompletionRitual stats={completionStats} onDismiss={dismissCompletion} />

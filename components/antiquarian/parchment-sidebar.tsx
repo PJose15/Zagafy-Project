@@ -78,9 +78,10 @@ export function ParchmentSidebar() {
         </button>
       </div>
 
-      {/* Sidebar */}
+      {/* Sidebar — sticky on desktop so the menu follows you down the page;
+          the nav list scrolls internally when it outgrows the viewport. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-300 md:relative md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-300 md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -99,7 +100,14 @@ export function ParchmentSidebar() {
           {navItems.map((item, index) => {
             const isActive = pathname === item.href;
             return (
-              <motion.div key={item.key} {...stagger.navItems(index)}>
+              <motion.div
+                key={item.key}
+                {...stagger.navItems(index)}
+                // Own transitions here — the stagger transition carries a
+                // per-index delay that would otherwise lag hover/tap feedback.
+                whileHover={{ x: 3, transition: { type: 'spring', stiffness: 300, damping: 20, delay: 0 } }}
+                whileTap={{ scale: 0.97, transition: { type: 'spring', stiffness: 400, damping: 25, delay: 0 } }}
+              >
                 <Link
                   href={item.href}
                   onClick={() => setIsOpen(false)}

@@ -219,7 +219,7 @@ export default function VersionsPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={springs.gentle}
             >
-            <ParchmentCard padding="md">
+            <ParchmentCard padding="md" hover>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">
                   <p className="font-serif font-semibold text-sepia-900">{snap.name}</p>

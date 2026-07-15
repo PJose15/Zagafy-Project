@@ -129,7 +129,7 @@ export default function SprintsPage() {
           <div className="space-y-2">
             {recentSprints.map((sprint) => {
               return (
-                <ParchmentCard key={sprint.id} padding="sm">
+                <ParchmentCard key={sprint.id} padding="sm" hover>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {sprint.status === 'completed' ? (

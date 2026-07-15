@@ -86,6 +86,21 @@ Legend: [ ] open · [x] done
   `ink-swirl`, `brushstroke-reveal` all have consumers.
 - `hoverLift` "not used anywhere" — FALSE. Dashboard stat cards use it.
 
+## Round 2 additions (2026-07-14, user-requested)
+
+- [x] R2-1 **Sticky sidebar** — desktop sidebar now `md:sticky md:top-0 md:h-screen`; the menu
+      follows you down long pages instead of scrolling away (user-reported). Nav list scrolls
+      internally.
+- [x] R2-2 **Dashboard stat count-ups** — new shared `AnimatedNumber` (antiquarian barrel):
+      chapters/characters/events/conflicts roll up on mount, DOM-written (no per-frame renders),
+      reduced-motion shows final value instantly.
+- [x] R2-3 **Scroll-reveal** — new shared `Reveal` component (`whileInView`, once); dashboard's
+      below-fold Recent Chapters + Open Loops section unfolds as you scroll to it.
+- [x] R2-4 **Hover lift on list cards** — ParchmentCard `hover` prop wired on outline cards,
+      versions snapshots, sprint history rows.
+- [x] R2-5 **Nav micro-interactions** — sidebar links nudge right on hover + press on tap
+      (own spring transitions; the stagger delay would otherwise lag the gesture feedback).
+
 ## Status: ALL ITEMS CLOSED (2026-07-14)
 
 Every wave is complete. The only intentional skip is the manuscript view↔edit crossfade

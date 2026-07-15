@@ -15,3 +15,5 @@ export { DecorativeDivider } from './decorative-divider';
 export { ProgressRing } from './progress-ring';
 export { StoreSkeleton } from './StoreSkeleton';
 export { FeatureErrorBoundary } from './FeatureErrorBoundary';
+export { AnimatedNumber } from './animated-number';
+export { Reveal } from './reveal';
