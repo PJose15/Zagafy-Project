@@ -72,6 +72,10 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
 
   const [content, setContent] = useState(initialContent);
   const [momentum, setMomentum] = useState(0);
+  // Theater dimming — while typing, the chrome fades to near-zero; on a
+  // pause it whispers back. Purely presentational (opacity only).
+  const [chromeDimmed, setChromeDimmed] = useState(false);
+  const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const momentumTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -430,6 +434,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
   useEffect(() => {
     return () => {
       if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
     };
   }, []);
 
@@ -479,6 +484,11 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
       const now = Date.now();
       metricsCollectorRef.current.recordKeystroke(now);
       lastKeystrokeTimeRef.current = now;
+
+      // Dim the chrome while words are flowing; restore after a beat of quiet
+      setChromeDimmed(true);
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+      chromeTimerRef.current = setTimeout(() => setChromeDimmed(false), 1800);
     }
 
     // Reset pause timer
@@ -502,8 +512,12 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
         </div>
       )}
 
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-6 py-3 border-b border-sepia-300/30">
+      {/* Header — fades to near-zero while typing, whispers back on pause */}
+      <div
+        className={`relative z-10 flex items-center justify-between px-6 py-3 border-b border-sepia-300/30 transition-opacity ease-out ${
+          chromeDimmed ? 'opacity-[0.06] duration-1000 pointer-events-none' : 'opacity-100 duration-500'
+        }`}
+      >
         <div className="flex items-center gap-4">
           {heteronyms.length > 0 && (
             <HeteronymSelector
