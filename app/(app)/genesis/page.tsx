@@ -460,6 +460,22 @@ export default function GenesisPage() {
             {stepIndex === GENESIS_STEPS.length - 1 ? t('review') : t('next')}
           </BrassButton>
         </div>
+
+        {/* Why is Next disabled? Quiet guidance, not an error */}
+        <AnimatePresence initial={false}>
+          {!canAdvance() && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-right text-xs italic text-sepia-600 -mt-4"
+              aria-live="polite"
+            >
+              {t(`requirement.${currentStep}`)}
+            </motion.p>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

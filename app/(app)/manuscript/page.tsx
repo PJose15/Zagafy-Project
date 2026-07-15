@@ -193,9 +193,16 @@ export default function ManuscriptPage() {
           <>
             {t('subtitleBase')}
             {state.chapters.length > 0 && (
-              <span className="ml-2 text-sepia-600 font-mono">
+              // Keyed by count so the stat pulses whenever the total changes
+              <motion.span
+                key={totalWordCount}
+                initial={{ scale: 1.06, opacity: 0.6 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="ml-2 text-sepia-600 font-mono inline-block origin-left"
+              >
                 {t('subtitleStats', { count: totalWordCount, readingTime: readingTime(totalWordCount) })}
-              </span>
+              </motion.span>
             )}
           </>
         }

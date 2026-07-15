@@ -176,30 +176,48 @@ export default function CharactersPage() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="bg-parchment-100 border border-sepia-300/50 rounded-xl overflow-hidden texture-parchment shadow-parchment transition-all duration-300"
               >
+                <AnimatePresence mode="wait" initial={false}>
                 {isEditing ? (
-                  <CharacterEditForm
-                    editForm={editForm}
-                    setEditForm={setEditForm}
-                    activeTab={activeTab}
-                    setActiveTab={setActiveTab}
-                    characters={state.characters}
-                    currentCharId={char.id}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                  />
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                  >
+                    <CharacterEditForm
+                      editForm={editForm}
+                      setEditForm={setEditForm}
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
+                      characters={state.characters}
+                      currentCharId={char.id}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                    />
+                  </motion.div>
                 ) : (
-                  <CharacterViewCard
-                    char={char}
-                    characters={state.characters}
-                    isExpanded={isExpanded}
-                    isAnalyzing={analyzingId === char.id}
-                    analysisResult={analysisResult[char.id]}
-                    onToggleExpand={() => setExpandedId(isExpanded ? null : char.id)}
-                    onEdit={() => handleEditClick(char)}
-                    onDelete={() => handleDelete(char.id)}
-                    onAnalyze={() => handleAnalyzeState(char)}
-                  />
+                  <motion.div
+                    key="view"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                  >
+                    <CharacterViewCard
+                      char={char}
+                      characters={state.characters}
+                      isExpanded={isExpanded}
+                      isAnalyzing={analyzingId === char.id}
+                      analysisResult={analysisResult[char.id]}
+                      onToggleExpand={() => setExpandedId(isExpanded ? null : char.id)}
+                      onEdit={() => handleEditClick(char)}
+                      onDelete={() => handleDelete(char.id)}
+                      onAnalyze={() => handleAnalyzeState(char)}
+                    />
+                  </motion.div>
                 )}
+                </AnimatePresence>
               </motion.div>
             );
           })}

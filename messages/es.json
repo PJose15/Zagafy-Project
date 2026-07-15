@@ -309,6 +309,14 @@
     "toneLabel": "Tono",
     "typeLabel": "Tipo",
     "worldRules": "Reglas del Mundo (opcional)",
+    "requirement": {
+      "name": "Dale un nombre a tu proyecto para continuar",
+      "logline": "Escribe un logline de una frase para continuar",
+      "genre-tone": "Elige al menos un género y un tono",
+      "protagonist": "Nombra a tu protagonista para continuar",
+      "antagonist": "Nombra a tu antagonista para continuar",
+      "world": "Describe el escenario para continuar"
+    },
     "addRule": "+ Añadir regla",
     "removeRule": "Eliminar regla",
     "skip": "Omitir",

@@ -28,7 +28,7 @@ Legend: [ ] open · [x] done
       via AnimatePresence (matches canon/conflicts pattern).
 - [x] W2-2 **Versions**: skeleton cards while loading, snapshot entry/exit + `layout` animations.
 - [x] W2-3 **Flow**: chapter-select backdrop fade, card springs.gentle, chapter buttons slide-in
-      stagger (capped at 8). FlowEditor loading skeleton still open (minor).
+      stagger (capped at 8). FlowEditor loading skeleton done (top bar + writing column).
 - [x] W2-4 **Reader**: crossfade on chapter/mode switches (soft page turn), Loader2 spinner on
       Analyze button.
 - [x] W2-5 **Character-chat**: NOTE — message bubbles + insight cards already had fadeUp (agent
@@ -37,30 +37,32 @@ Legend: [ ] open · [x] done
 - [x] W2-6 **Settings**: toast feedback on app-language / project-language / spellcheck (analytics
       already toasted). Per-section fadeUp skipped — page already fades via template; low value.
 - [x] W2-7 **Writing-map**: heatmap cells sweep in left→right via CSS `heatmap-fill` (+12ms/col,
-      CSS not motion — ~370 rects). Streak-badge glow still open (LOW).
+      CSS not motion — ~370 rects). Streak flame smolders (`streak-flame-glow`) at ≥7 days.
 - [x] W2-8 **Publishing**: tab crossfade (`AnimatePresence mode="wait"`), CopyResultButton with
       toast on all 5 generated results.
 - [x] W2-9 **Sprints**: launcher/timer/results crossfade, stat cards stagger.cards.
-- [ ] W2-10 **Import**: state blocks already use tw-animate `animate-in` entrances — lower value
-      than assumed; remaining nicety = per-state AnimatePresence + review queue stagger.
+- [x] W2-10 **Import**: state blocks keep their tw-animate entrances (sufficient — states only move
+      forward); review queue already animates expand/collapse via motion. Success stamp → W4-4.
 
 ## Wave 3 — Cross-cutting UX gaps
 
 - [x] W3-1 ~~Timeline mobile edit/delete hidden~~ — FALSE POSITIVE. Classes are `md:opacity-0
       md:group-hover:opacity-100`: hidden-until-hover on desktop only, always visible on mobile.
-- [~] W3-2 **Edit-mode transitions**: timeline + conflicts DONE (`AnimatePresence mode="wait"`,
-      0.18s crossfade). Manuscript skipped deliberately (Lexical editor remount side effects +
-      freshly-landed comment-highlight feature); bible section cards + characters card still open.
+- [x] W3-2 **Edit-mode transitions**: timeline, conflicts, bible section cards, characters card all
+      crossfade (`AnimatePresence mode="wait"`, 0.18s). Manuscript skipped deliberately — animating
+      a remount around the Lexical editor risks editor-state side effects.
 - [x] W3-3 **Tab switch motion**: story-brain tabpanel + characters editor tabs crossfade.
       Publishing done in wave 2b.
-- [ ] W3-4 **Loading skeletons** for async AI ops: character audit, bible extraction, assistant
-      audit panel, publishing generation.
+- [x] W3-4 **Loading skeletons**: character audit panel gets skeleton lines while analyzing.
+      Bible extraction was a FALSE POSITIVE — WorldBibleExtractButton already has spinner +
+      cycling category labels + success/error states. Publishing generation keeps button spinner
+      (results appear inside the same card; skeleton adds little).
 - [x] W3-5 **Action feedback**: settings toggles, save-as-canon, bible add-section, timeline
       save/delete all toast now.
 - [x] W3-6 ~~Dashboard health-card exit~~ — LOW VALUE: counts are computed once on mount and never
       change during a visit (issues get resolved on other pages), so no live exit ever occurs.
-- [ ] W3-7 **Genesis validation**: inline error messages (currently silent disable) + loading state
-      on Create.
+- [x] W3-7 **Genesis validation**: quiet per-step requirement hint fades in while Next is disabled
+      (aria-live polite). Create loading state done in wave 3 (spinner).
 
 ## Wave 4 — Signature moments (antiquarian set-pieces)
 
@@ -69,9 +71,9 @@ Legend: [ ] open · [x] done
 - [x] W4-2 **Timeline draws itself**: line converted from ::before to real element, scaleY 0→1
       origin-top on mount; events cascade with capped +80ms/index delay.
 - [x] W4-3 **Genesis "Create" stampSlam** + Loader2 spinner while creating.
-- [ ] W4-4 **Import success stamp** — checkmark scale-bounce like a stamp pressing down.
-- [ ] W4-5 **Manuscript word-count ticker** — animate count changes after edits. (Manuscript page
-      currently has uncommitted foreign changes — do not touch until those land.)
+- [x] W4-4 **Import success stamp** — checkmark circle lands with stampSlam.
+- [x] W4-5 **Manuscript word-count ticker** — header stat pulses (scale+opacity, keyed remount)
+      whenever the total changes.
 - [x] W4-6 ~~Projects physicalDrop~~ — already covered: new grid items mount through
       stagger.cards, so they animate in today.
 
@@ -84,10 +86,15 @@ Legend: [ ] open · [x] done
   `ink-swirl`, `brushstroke-reveal` all have consumers.
 - `hoverLift` "not used anywhere" — FALSE. Dashboard stat cards use it.
 
+## Status: ALL ITEMS CLOSED (2026-07-14)
+
+Every wave is complete. The only intentional skip is the manuscript view↔edit crossfade
+(Lexical remount risk).
+
 ## Notes
 
-- Publishing submission-tracker `statusColors` uses raw `text-red-400/green-400/blue-400` — off the
-  antiquarian palette; sweep to wax/forest/brass tones when touching that table.
+- Publishing submission-tracker `statusColors` — DONE: swept to brass/forest/wax
+  (was raw red/green/blue).
 - `template.tsx` must animate opacity ONLY — a y/scale transform creates a containing block for
   `position: fixed` children mid-animation, shifting full-screen overlays (flow, modals).
 

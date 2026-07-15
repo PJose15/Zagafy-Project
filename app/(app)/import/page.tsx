@@ -21,6 +21,8 @@ import type {
   ExtractedScene,
 } from '@/lib/types/extracted-data';
 import { UploadCloud, FileText, CheckCircle2, Loader2, ArrowRight, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { motion } from 'motion/react';
+import { stampSlam } from '@/lib/animations';
 import { useToast } from '@/components/toast';
 import { CarvedHeader, ParchmentCard, BrassButton, InkStampButton } from '@/components/antiquarian';
 import { ImportReviewQueue, type ReviewItem } from '@/components/import/ImportReviewQueue';
@@ -597,10 +599,11 @@ export default function ImportPage() {
       )}
 
       {uploadStatus === 'success' && (
-        <div className="flex flex-col items-center justify-center py-24 space-y-6 animate-in fade-in zoom-in-95">
-          <div className="w-20 h-20 bg-forest-600/10 rounded-full flex items-center justify-center">
+        <div className="flex flex-col items-center justify-center py-24 space-y-6 animate-in fade-in">
+          {/* The seal of completion — lands with stamp physics */}
+          <motion.div {...stampSlam} className="w-20 h-20 bg-forest-600/10 rounded-full flex items-center justify-center">
             <CheckCircle2 size={40} className="text-forest-600" />
-          </div>
+          </motion.div>
           <div className="text-center">
             <h3 className="text-2xl font-serif font-bold text-sepia-900 mb-2">{t('ingestionComplete')}</h3>
             <p className="text-sepia-600 text-sm max-w-md mx-auto mb-8">

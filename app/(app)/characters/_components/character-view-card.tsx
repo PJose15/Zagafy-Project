@@ -256,7 +256,16 @@ export function CharacterViewCard({
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar text-sm text-sepia-700">
-                  {analysisResult ? (
+                  {isAnalyzing && !analysisResult ? (
+                    <div className="space-y-3 py-2 animate-pulse" aria-label={t('analyzing')}>
+                      <div className="h-2.5 w-1/3 rounded bg-sepia-300/40" />
+                      <div className="h-2 w-full rounded bg-sepia-300/30" />
+                      <div className="h-2 w-5/6 rounded bg-sepia-300/30" />
+                      <div className="h-2.5 w-2/5 rounded bg-sepia-300/40 mt-4" />
+                      <div className="h-2 w-full rounded bg-sepia-300/30" />
+                      <div className="h-2 w-3/4 rounded bg-sepia-300/30" />
+                    </div>
+                  ) : analysisResult ? (
                     <div className="prose prose-sepia prose-sm max-w-none prose-headings:text-sepia-800 prose-headings:font-medium prose-headings:text-[10px] prose-headings:uppercase prose-headings:tracking-widest prose-headings:mt-4 prose-headings:mb-2 prose-p:leading-relaxed prose-p:text-sepia-600 prose-p:text-xs">
                       <ReactMarkdown>{analysisResult}</ReactMarkdown>
                     </div>

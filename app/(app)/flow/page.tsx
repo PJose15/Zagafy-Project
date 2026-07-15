@@ -20,9 +20,25 @@ const FlowEditor = dynamic(
   }
 );
 
+/** Skeleton of the flow editor: top bar + a centered writing column. */
 function FlowLoading() {
   const t = useTranslations('flow');
-  return <div className="text-sepia-600 text-sm animate-pulse">{t('loadingEditor')}</div>;
+  return (
+    <div className="w-full max-w-2xl px-8 animate-pulse" aria-label={t('loadingEditor')}>
+      <div className="flex items-center justify-between mb-12">
+        <div className="h-3 w-24 rounded bg-sepia-300/40" />
+        <div className="h-3 w-16 rounded bg-sepia-300/30" />
+      </div>
+      <div className="space-y-4">
+        <div className="h-4 w-2/5 rounded bg-sepia-300/40" />
+        <div className="h-3 w-full rounded bg-sepia-300/30" />
+        <div className="h-3 w-11/12 rounded bg-sepia-300/30" />
+        <div className="h-3 w-full rounded bg-sepia-300/30" />
+        <div className="h-3 w-3/4 rounded bg-sepia-300/30" />
+      </div>
+      <p className="text-sepia-600 text-sm text-center mt-12">{t('loadingEditor')}</p>
+    </div>
+  );
 }
 
 export default function FlowPage() {

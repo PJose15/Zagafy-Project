@@ -340,9 +340,9 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
 
   const statusColors: Record<string, string> = {
     queried: 'text-brass-400',
-    requested: 'text-blue-400',
-    rejected: 'text-red-400',
-    accepted: 'text-green-400',
+    requested: 'text-forest-500',
+    rejected: 'text-wax-500',
+    accepted: 'text-forest-400',
   };
 
   return (
@@ -606,8 +606,8 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                     </td>
                     <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.notes} onChange={e => setNewRow(r => ({ ...r, notes: e.target.value }))} placeholder={t('tracker.notes')} /></td>
                     <td className="py-2 flex gap-1">
-                      <button onClick={addSubmission} className="text-green-400 hover:text-green-300 p-1"><Check size={16} /></button>
-                      <button onClick={() => setShowAddRow(false)} className="text-red-400 hover:text-red-300 p-1"><X size={16} /></button>
+                      <button onClick={addSubmission} className="text-forest-400 hover:brightness-125 p-1"><Check size={16} /></button>
+                      <button onClick={() => setShowAddRow(false)} className="text-wax-500 hover:brightness-125 p-1"><X size={16} /></button>
                     </td>
                   </tr>
                 )}
@@ -628,8 +628,8 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                         </td>
                         <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.notes} onChange={e => setEditDraft(d => d ? { ...d, notes: e.target.value } : d)} /></td>
                         <td className="py-2 flex gap-1">
-                          <button onClick={saveEdit} className="text-green-400 hover:text-green-300 p-1"><Check size={16} /></button>
-                          <button onClick={cancelEdit} className="text-red-400 hover:text-red-300 p-1"><X size={16} /></button>
+                          <button onClick={saveEdit} className="text-forest-400 hover:brightness-125 p-1"><Check size={16} /></button>
+                          <button onClick={cancelEdit} className="text-wax-500 hover:brightness-125 p-1"><X size={16} /></button>
                         </td>
                       </>
                     ) : (
@@ -641,7 +641,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                         <td className="py-2 pr-3 text-cream-300/60 max-w-[200px] truncate">{sub.notes}</td>
                         <td className="py-2 flex gap-1">
                           <button onClick={() => startEdit(sub)} className="text-brass-400 hover:text-brass-300 p-1"><Edit3 size={16} /></button>
-                          <button onClick={() => deleteSubmission(sub.id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 size={16} /></button>
+                          <button onClick={() => deleteSubmission(sub.id)} className="text-wax-500 hover:brightness-125 p-1"><Trash2 size={16} /></button>
                         </td>
                       </>
                     )}

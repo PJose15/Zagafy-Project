@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { AnimatePresence, motion } from 'motion/react';
 import { Pencil, Check, Trash2, ChevronUp, ChevronDown, Archive } from 'lucide-react';
 import { ParchmentCard, ParchmentInput, ParchmentTextarea, WaxSealBadge, useConfirm } from '@/components/antiquarian';
 import { type WorldBibleSection } from '@/lib/types/world-bible';
@@ -114,8 +115,16 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
         </div>
       </div>
 
+      <AnimatePresence mode="wait" initial={false}>
       {editing ? (
-        <div className="mt-3 space-y-3">
+        <motion.div
+          key="edit"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="mt-3 space-y-3"
+        >
           <ParchmentInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -128,15 +137,23 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
             className="h-40 text-sm"
             placeholder={t('sectionContentPlaceholder')}
           />
-        </div>
+        </motion.div>
       ) : (
-        <div className="mt-2">
+        <motion.div
+          key="view"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="mt-2"
+        >
           <h4 className="font-serif font-semibold text-sepia-900">{section.title}</h4>
           <div className="mt-1 text-sm text-sepia-700 leading-relaxed whitespace-pre-wrap">
             {section.content}
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">

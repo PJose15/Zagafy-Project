@@ -266,6 +266,16 @@
   animation: heatmap-fill 0.3s ease-out forwards;
 }
 
+/* ─── Streak flame glow — the flame smolders once a streak reaches 7 days ─── */
+@keyframes streak-flame-glow {
+  0%, 100% { filter: drop-shadow(0 0 1px var(--color-brass-500)); }
+  50% { filter: drop-shadow(0 0 5px var(--color-brass-500)); }
+}
+
+.streak-flame-glow {
+  animation: streak-flame-glow 2.5s ease-in-out infinite;
+}
+
 /* ─── Scrollbar Styling ─── */
 ::-webkit-scrollbar {
   width: 10px;

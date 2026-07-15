@@ -309,6 +309,14 @@
     "toneLabel": "Tone",
     "typeLabel": "Type",
     "worldRules": "World Rules (optional)",
+    "requirement": {
+      "name": "Give your project a name to continue",
+      "logline": "Write a one-sentence logline to continue",
+      "genre-tone": "Pick at least one genre and one tone",
+      "protagonist": "Name your protagonist to continue",
+      "antagonist": "Name your antagonist to continue",
+      "world": "Describe the setting to continue"
+    },
     "addRule": "+ Add rule",
     "removeRule": "Remove rule",
     "skip": "Skip",
