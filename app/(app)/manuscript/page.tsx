@@ -232,7 +232,7 @@ export default function ManuscriptPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-            <ParchmentCard padding="none" className="overflow-hidden">
+            <ParchmentCard padding="none" className="overflow-hidden page-stack">
               {editingId === chapter.id ? (
                 <div className="p-6 space-y-4">
                   <ParchmentInput

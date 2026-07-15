@@ -161,6 +161,24 @@
   );
 }
 
+/* ─── Paper Depth ─── */
+/* Stacked-sheets shadow — a chapter card sits on its own pile of pages. */
+.page-stack {
+  box-shadow:
+    0 1px 3px rgba(44, 30, 15, 0.15),
+    0 1px 2px rgba(44, 30, 15, 0.10),
+    0 3px 0 -1px #f0dfc0,
+    0 4px 2px -1px rgba(44, 30, 15, 0.14),
+    0 7px 0 -3px #e4cfa0,
+    0 8px 3px -3px rgba(44, 30, 15, 0.10);
+}
+
+/* Viewport vignette for the library desk — the frame dims faintly at the
+   edges, like lamplight falling off. Pointer-events-none overlay only. */
+.desk-vignette {
+  box-shadow: inset 0 0 90px rgba(26, 14, 8, 0.16);
+}
+
 /* ─── Nav Brushstroke Active ─── */
 .nav-brushstroke-active {
   position: relative;

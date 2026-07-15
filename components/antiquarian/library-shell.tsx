@@ -53,6 +53,10 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
         className="flex-1 overflow-y-auto md:rounded-tl-3xl border-t md:border-t-0 md:border-l border-mahogany-700/30 relative"
       >
         <AiStatusBanner />
+        {/* Desk vignette — pinned to the viewport, never intercepts input */}
+        <div aria-hidden="true" className="pointer-events-none sticky top-0 z-30 h-0">
+          <div className="h-screen w-full desk-vignette" />
+        </div>
         <DiagnosticGate>{children}</DiagnosticGate>
       </main>
       {pendingFlowScore && (

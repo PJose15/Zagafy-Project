@@ -286,7 +286,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           data-testid="block-message"
         >
-          <ParchmentCard variant="inset" padding="lg" className="border-l-4 border-l-brass-500">
+          <ParchmentCard variant="inset" padding="lg" tornEdge className="border-l-4 border-l-brass-500">
             <div className="flex items-start gap-4">
               <CandleIcon />
               <div>
