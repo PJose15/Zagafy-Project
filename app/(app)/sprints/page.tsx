@@ -102,7 +102,7 @@ export default function SprintsPage() {
         <section className="space-y-3">
           <div className="flex items-center gap-3">
             <BarChart3 size={16} className="text-brass-600" aria-hidden="true" />
-            <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('statsHeading')}</h2>
+            <h2 className="label-caps text-sm text-sepia-700">{t('statsHeading')}</h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
@@ -114,7 +114,7 @@ export default function SprintsPage() {
               <motion.div key={stat.label} {...stagger.cards(i)}>
                 <ParchmentCard padding="sm">
                   <span className="text-2xl font-mono font-bold text-sepia-800">{stat.value}</span>
-                  <span className="block text-[10px] text-sepia-600 uppercase mt-0.5">{stat.label}</span>
+                  <span className="block label-caps text-[10px] text-sepia-600 mt-0.5">{stat.label}</span>
                 </ParchmentCard>
               </motion.div>
             ))}
@@ -125,7 +125,7 @@ export default function SprintsPage() {
       {/* Sprint history */}
       {gamification.sprints.sprintHistory.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('historyHeading')}</h2>
+          <h2 className="label-caps text-sm text-sepia-700">{t('historyHeading')}</h2>
           <div className="space-y-2">
             {recentSprints.map((sprint) => {
               return (

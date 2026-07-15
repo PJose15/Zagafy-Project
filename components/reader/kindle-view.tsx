@@ -93,7 +93,7 @@ export function KindleView({ title, content, issues }: KindleViewProps) {
       <div ref={articleRef} className="max-w-[600px] mx-auto px-8 py-12">
         <h2 className={`text-2xl font-serif ${t.text} mb-8 text-center`}>{title}</h2>
         <div
-          className={`font-serif ${t.text} whitespace-pre-wrap`}
+          className={`font-serif ${t.text} whitespace-pre-wrap book-prose drop-cap`}
           style={{ fontSize: `${fontSize}px`, lineHeight: lineHeightMap[lineSpacing] }}
         >
           {issues.length > 0 ? (

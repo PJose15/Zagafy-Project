@@ -266,6 +266,36 @@
   animation: heatmap-fill 0.3s ease-out forwards;
 }
 
+/* ─── Editorial typography ─── */
+
+/* Micro-label: hairline tracked caps for section eyebrows and stat labels.
+   One shared voice instead of ad-hoc uppercase tracking everywhere.
+   Size intentionally left to the caller (text-[10px]/text-[11px]/text-sm) —
+   this class is unlayered and would out-cascade Tailwind size utilities. */
+.label-caps {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Book prose: kinder rag for long-form reading. */
+.book-prose {
+  text-wrap: pretty;
+}
+
+/* Illuminated drop cap — first letter of a chapter, set in gold leaf.
+   ::first-letter also pulls in a leading quotation mark, per spec, which is
+   the typographically correct behavior. */
+.drop-cap::first-letter {
+  font-family: var(--font-serif);
+  float: left;
+  font-size: 3.4em;
+  line-height: 0.8;
+  padding: 0.08em 0.1em 0 0;
+  font-weight: 700;
+  color: var(--color-brass-600);
+}
+
 /* ─── Streak flame glow — the flame smolders once a streak reaches 7 days ─── */
 @keyframes streak-flame-glow {
   0%, 100% { filter: drop-shadow(0 0 1px var(--color-brass-500)); }

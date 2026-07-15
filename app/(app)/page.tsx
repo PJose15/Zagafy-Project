@@ -258,7 +258,7 @@ export default function Dashboard() {
                 <BookOpen aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <AnimatedNumber value={state.chapters.length} className="text-3xl font-light text-sepia-900" />
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.chapters')}</h3>
+              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.chapters')}</h3>
               {totalWords > 0 && (
                 <p className="text-[10px] font-mono text-sepia-600 mt-1">{t('stats.words', { count: totalWords.toLocaleString() })}</p>
               )}
@@ -274,7 +274,7 @@ export default function Dashboard() {
                 <Users aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <AnimatedNumber value={state.characters.length} className="text-3xl font-light text-sepia-900" />
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.characters')}</h3>
+              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.characters')}</h3>
               {state.characters.length > 0 && (
                 <div className="flex items-center mt-2 -space-x-2">
                   {state.characters.slice(0, 4).map((c) => (
@@ -297,7 +297,7 @@ export default function Dashboard() {
                 <Clock aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <AnimatedNumber value={state.timeline_events.length} className="text-3xl font-light text-sepia-900" />
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.timelineEvents')}</h3>
+              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.timelineEvents')}</h3>
               {state.timeline_events.length > 0 && (
                 <div className="flex items-center gap-1 mt-2">
                   {[0, 1, 2].map((i) => (
@@ -325,7 +325,7 @@ export default function Dashboard() {
                 <Swords aria-hidden="true" className="text-brass-600 group-hover:text-brass-500 transition-colors" size={22} />
                 <AnimatedNumber value={state.active_conflicts.length} className="text-3xl font-light text-sepia-900" />
               </div>
-              <h3 className="text-xs font-medium text-sepia-600 uppercase tracking-wider">{t('stats.conflicts')}</h3>
+              <h3 className="label-caps text-[11px] text-sepia-600">{t('stats.conflicts')}</h3>
               {state.active_conflicts.length > 0 && (
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex h-1.5 flex-1 rounded-full overflow-hidden bg-sepia-300/20">

@@ -51,19 +51,19 @@ export default function StoryBrainPage() {
       {/* Summary Stats — M2: dim while deferred value is stale */}
       <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 transition-opacity ${isStale ? 'opacity-60' : ''}`}>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">{t('stats.characters')}</span>
+          <span className="label-caps text-[10px] text-sepia-600 block">{t('stats.characters')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.entityCountByType.character}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">{t('stats.locations')}</span>
+          <span className="label-caps text-[10px] text-sepia-600 block">{t('stats.locations')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.entityCountByType.location}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">{t('stats.relationships')}</span>
+          <span className="label-caps text-[10px] text-sepia-600 block">{t('stats.relationships')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.relationships.length}</span>
         </ParchmentCard>
         <ParchmentCard padding="sm">
-          <span className="text-[10px] text-sepia-600 block">{t('stats.totalMentions')}</span>
+          <span className="label-caps text-[10px] text-sepia-600 block">{t('stats.totalMentions')}</span>
           <span className="text-lg font-mono text-sepia-800">{deferredAnalysis.totalMentions}</span>
         </ParchmentCard>
       </div>

@@ -55,7 +55,8 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
           {title}
         </h2>
         <div
-          className="font-serif text-sm text-sepia-900 leading-[1.8] whitespace-pre-wrap"
+          // The chapter's opening page gets an illuminated drop cap
+          className={`font-serif text-sm text-sepia-900 leading-[1.8] whitespace-pre-wrap book-prose ${currentPage === 0 ? 'drop-cap' : ''}`}
           style={{ fontFamily: "'Playfair Display', serif", fontSize: '14px' }}
         >
           {pageIssues.length > 0 ? (
