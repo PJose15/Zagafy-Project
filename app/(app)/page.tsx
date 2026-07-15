@@ -9,7 +9,7 @@ import { wordCount as countWords, getPlainText } from '@/lib/editor/serializatio
 import { motion } from 'motion/react';
 import { BookOpen, Feather, AlertCircle, Flame, BrainCircuit } from 'lucide-react';
 import Link from 'next/link';
-import { physicalDrop, fadeUp, hoverLift } from '@/lib/animations';
+import { fadeUp, hoverLift } from '@/lib/animations';
 import {
   CarvedHeader,
   ParchmentCard,
@@ -366,7 +366,7 @@ export default function Dashboard() {
                 const wordCount = chapter.content ? countWords(chapter.content) : 0;
                 const statusColor = canonColors[chapter.canonStatus || 'draft'] || 'border-l-sepia-500';
                 return (
-                  <motion.div key={chapter.id} {...physicalDrop}>
+                  <motion.div key={chapter.id} {...fadeUp}>
                     <ParchmentCard className={`border-l-4 ${statusColor}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">

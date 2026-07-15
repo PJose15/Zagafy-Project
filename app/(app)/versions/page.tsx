@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
-import { springs } from '@/lib/animations';
+import { springs, inkFade } from '@/lib/animations';
 import { Save, RotateCcw, Trash2 } from 'lucide-react';
 import { useStory } from '@/lib/store';
 import {
@@ -215,7 +215,7 @@ export default function VersionsPage() {
               layout
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              exit={inkFade.exit}
               transition={springs.gentle}
             >
             <ParchmentCard padding="md" hover>

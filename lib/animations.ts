@@ -5,19 +5,36 @@
  */
 
 /**
- * Zagafy Animation Presets
+ * ─── The Motion Doctrine ───
  *
- * Usage:
+ * Every animation in Zagafy answers to one of three verbs. If a motion
+ * doesn't map to a verb, it probably shouldn't exist.
+ *
+ *   COMMIT  = stamp.    Deliberate, springy press (springs.stamp). Saving,
+ *             sealing canon, creating, confirming. Use stampSlam for
+ *             entrances that ARE the commit, stampPress for the button
+ *             gesture itself.
+ *   REVEAL  = paper.    Content arrives like paper settling on a desk —
+ *             gentle rise + fade (fadeUp / stagger.cards / physicalDrop
+ *             for singular arrivals). Never showy; reveals happen on every
+ *             visit and must stay quiet.
+ *   DELETE  = ink fade. Removal dissolves like ink in water (inkFade).
+ *             No scaling, no sliding — the thing simply ceases. Applies to
+ *             deletes, dismissals, and destructive exits.
+ *
+ * Usage map:
  * - springs.gentle → parchment-modal entrance
- * - stagger.cards → dashboard stat cards staggered entrance
+ * - stagger.cards → staggered card entrances
  * - stagger.navItems → sidebar navigation items slide-in
+ * - stagger.stampGrid → canon cards stamp-press entrance
  * - toastSlam → antiquarian toast entrance
- * - fadeUp → page section headers (characters, conflicts, canon)
- * - hoverLift → dashboard stat cards hover effect
- * - physicalDrop → new content items (chapters, open loops)
- * - stampSlam → reserved for canon status animations
+ * - fadeUp → page sections (the default REVEAL)
+ * - hoverLift → card hover elevation
+ * - physicalDrop → singular new arrivals (a fresh chapter)
+ * - stampSlam → canon/status COMMIT moments
+ * - stampPress → whileTap for commit buttons rendered via motion.*
+ * - inkFade → DELETE/dismiss exits inside AnimatePresence
  * - cardFlip → reserved for card flip interactions
- * - stagger.stampGrid → reserved for stamp grid layout
  */
 
 // ─── Spring Physics Presets ───
@@ -79,6 +96,17 @@ export const physicalDrop = {
 /** Hover lift — subtle elevation on hover */
 export const hoverLift = {
   whileHover: { y: -4, transition: { type: 'spring' as const, stiffness: 300, damping: 20 } },
+};
+
+/** Stamp press — the commit gesture on motion buttons (COMMIT verb) */
+export const stampPress = {
+  whileTap: { scale: 0.96 },
+  transition: springs.stamp,
+};
+
+/** Ink fade — removal dissolves like ink in water (DELETE verb) */
+export const inkFade = {
+  exit: { opacity: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
 };
 
 /** Card flip — rotateY entrance */
