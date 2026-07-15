@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { Lock, ShieldCheck, ShieldAlert, Shield, ShieldOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fadeUp } from '@/lib/animations';
+import { fadeUp, springs, stagger } from '@/lib/animations';
 import { CarvedHeader, EmptyState, ParchmentCard, ParchmentSelect, WaxSealBadge } from '@/components/antiquarian';
 
 type ItemType = 'character' | 'timeline' | 'conflict' | 'chapter' | 'scene' | 'world_rule' | 'location' | 'theme' | 'open_loop' | 'foreshadowing';
@@ -112,15 +112,18 @@ export default function CanonLockPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AnimatePresence>
-          {filteredItems.map((item) => {
+          {filteredItems.map((item, index) => {
             const config = statusConfig[item.status];
 
             return (
+              // Stamp-grid entrance: each item presses down like a rubber
+              // stamp (scale 1.3→1 with a slight rotate), staggered.
               <motion.div
                 key={`${item.type}-${item.id}`}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={stagger.stampGrid(0).initial}
+                animate={stagger.stampGrid(0).animate}
                 exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ ...springs.stamp, delay: Math.min(index, 8) * 0.05 }}
                 layout
               >
               <ParchmentCard padding="none" className={`p-5 flex flex-col ${config.border}`}>

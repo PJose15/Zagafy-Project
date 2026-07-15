@@ -7,6 +7,7 @@ import { SessionProvider } from '@/lib/session';
 import { ToastProvider, useToast } from '@/components/antiquarian/antiquarian-toast';
 import { ConfirmProvider } from '@/components/antiquarian/parchment-modal';
 import { ParchmentSidebar } from '@/components/antiquarian/parchment-sidebar';
+import { BackToTop } from '@/components/antiquarian/back-to-top';
 import { DiagnosticGate } from '@/components/diagnostic/diagnostic-gate';
 import { useSessionTracker } from '@/hooks/use-session-tracker';
 import { FlowScoreModal } from '@/components/writing-map/flow-score-modal';
@@ -61,6 +62,7 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
           onDismiss={dismissFlowScore}
         />
       )}
+      <BackToTop />
       <OnboardingTour />
     </>
   );

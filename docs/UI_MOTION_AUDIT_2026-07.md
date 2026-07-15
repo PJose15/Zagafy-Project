@@ -101,6 +101,21 @@ Legend: [ ] open · [x] done
 - [x] R2-5 **Nav micro-interactions** — sidebar links nudge right on hover + press on tap
       (own spring transitions; the stagger delay would otherwise lag the gesture feedback).
 
+## Round 3 additions (2026-07-14, model-suggested)
+
+- [x] R3-1 **Toast ink-drain timer** — thin per-type bar drains over the 5s lifetime so users see
+      how long a toast stays (all toasts app-wide).
+- [x] R3-2 **Sprint timer heartbeat** — final 10 seconds: ring pulses once per tick (scale
+      1→1.06→1 keyed by countdown) and turns wax-red, countdown text follows.
+- [x] R3-3 **Canon stamp-grid entrance** — wired the long-reserved `stagger.stampGrid` preset:
+      canon cards press down like rubber stamps (scale 1.3→1, rotate -3→0, springs.stamp,
+      capped stagger).
+- [x] R3-4 **Reader progress line** — Kindle view: sticky brass line fills with scroll progress
+      through the chapter body (`useScroll` targeted at the reading area).
+- [x] R3-5 **Back-to-top button** — global (LibraryShell), springs in after 600px scroll
+      (springs.seal), smooth-scrolls to top (instant under reduced motion), z-40 under toasts.
+      Verified in-browser: appears on scroll, 1200→0 on click.
+
 ## Status: ALL ITEMS CLOSED (2026-07-14)
 
 Every wave is complete. The only intentional skip is the manuscript view↔edit crossfade

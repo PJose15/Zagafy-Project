@@ -41,6 +41,15 @@ const iconColors: Record<ToastType, string> = {
   info: 'text-sepia-600',
 };
 
+const barColors: Record<ToastType, string> = {
+  success: 'bg-forest-600/50',
+  error: 'bg-wax-500/50',
+  warning: 'bg-brass-500/60',
+  info: 'bg-sepia-400/50',
+};
+
+const TOAST_LIFETIME_MS = 5000;
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const tr = useTranslations('common');
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -58,7 +67,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((message: string, type: ToastType = 'info') => {
     const id = crypto.randomUUID();
     setToasts(prev => [...prev.slice(-4), { id, message, type }]);
-    const timer = setTimeout(() => removeToast(id), 5000);
+    const timer = setTimeout(() => removeToast(id), TOAST_LIFETIME_MS);
     timersRef.current.set(id, timer);
   }, [removeToast]);
 
@@ -68,7 +77,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <motion.div
         key={t.id}
         {...toastSlam}
-        className={`flex items-start gap-3 border rounded-xl px-4 py-3 shadow-parchment texture-parchment ${styles[t.type]}`}
+        className={`relative overflow-hidden flex items-start gap-3 border rounded-xl px-4 py-3 shadow-parchment texture-parchment ${styles[t.type]}`}
       >
         <Icon size={18} aria-hidden="true" className={`shrink-0 mt-0.5 ${iconColors[t.type]}`} />
         <p className="text-sm flex-1 font-medium">{t.message}</p>
@@ -79,6 +88,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         >
           <X size={14} aria-hidden="true" />
         </button>
+        {/* Ink drain — shows how long the toast will stay */}
+        <motion.div
+          aria-hidden="true"
+          initial={{ scaleX: 1 }}
+          animate={{ scaleX: 0 }}
+          transition={{ duration: TOAST_LIFETIME_MS / 1000, ease: 'linear' }}
+          className={`absolute bottom-0 left-0 right-0 h-0.5 origin-left ${barColors[t.type]}`}
+        />
       </motion.div>
     );
   };

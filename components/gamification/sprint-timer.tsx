@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { motion } from 'motion/react';
 import { ProgressRing } from '@/components/antiquarian';
 import { InkStampButton } from '@/components/antiquarian';
 import type { WritingSprint } from '@/lib/types/gamification';
@@ -59,19 +60,28 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
   const seconds = secondsLeft % 60;
   const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
   const isExpired = secondsLeft === 0;
+  // Final stretch — the last ten seconds beat like a heart (one pulse per
+  // tick, keyed by the countdown) and the ring turns wax-red.
+  const isFinalStretch = secondsLeft > 0 && secondsLeft <= 10;
 
   return (
     <div className="flex flex-col items-center gap-6 py-8">
       {/* M5: Accessible timer with live region */}
-      <ProgressRing value={timeProgress} size="lg" color={isExpired ? 'forest' : 'brass'}>
-        <span
-          className="text-xl font-mono font-bold text-sepia-800"
-          aria-atomic="true"
-          role="timer"
-        >
-          {timeDisplay}
-        </span>
-      </ProgressRing>
+      <motion.div
+        key={isFinalStretch ? secondsLeft : 'steady'}
+        animate={isFinalStretch ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
+      >
+        <ProgressRing value={timeProgress} size="lg" color={isExpired ? 'forest' : isFinalStretch ? 'wax' : 'brass'}>
+          <span
+            className={`text-xl font-mono font-bold ${isFinalStretch ? 'text-wax-600' : 'text-sepia-800'}`}
+            aria-atomic="true"
+            role="timer"
+          >
+            {timeDisplay}
+          </span>
+        </ProgressRing>
+      </motion.div>
 
       <div className="text-center space-y-1">
         <h3 className="text-lg font-serif font-semibold text-sepia-800">{tSprints(`theme.${sprint.theme}.name`)}</h3>

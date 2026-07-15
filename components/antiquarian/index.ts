@@ -17,3 +17,4 @@ export { StoreSkeleton } from './StoreSkeleton';
 export { FeatureErrorBoundary } from './FeatureErrorBoundary';
 export { AnimatedNumber } from './animated-number';
 export { Reveal } from './reveal';
+export { BackToTop } from './back-to-top';

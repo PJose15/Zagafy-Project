@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { motion, useScroll } from 'motion/react';
 import { estimateReadingTime } from '@/lib/reader-utils';
 import { ProseAnnotations } from './prose-annotations';
 import type { ProseIssue } from '@/lib/prose-analysis';
@@ -27,6 +28,9 @@ export function KindleView({ title, content, issues }: KindleViewProps) {
   const [lineSpacing, setLineSpacing] = useState<'normal' | 'relaxed' | 'loose'>('relaxed');
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);
   const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+  // Reading progress — how far through the chapter body you've scrolled.
+  const articleRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: articleRef, offset: ['start start', 'end end'] });
   const t = themes[theme];
   const readTimeLabel = readingTime.minutes < 60
     ? tr('readTimeMin', { minutes: readingTime.minutes })
@@ -80,8 +84,13 @@ export function KindleView({ title, content, issues }: KindleViewProps) {
         </div>
       </div>
 
+      {/* Reading progress line */}
+      <div className="sticky top-0 z-10 h-0.5 bg-sepia-300/20" aria-hidden="true">
+        <motion.div style={{ scaleX: scrollYProgress }} className="h-full w-full origin-left bg-brass-500" />
+      </div>
+
       {/* Reading area */}
-      <div className="max-w-[600px] mx-auto px-8 py-12">
+      <div ref={articleRef} className="max-w-[600px] mx-auto px-8 py-12">
         <h2 className={`text-2xl font-serif ${t.text} mb-8 text-center`}>{title}</h2>
         <div
           className={`font-serif ${t.text} whitespace-pre-wrap`}
