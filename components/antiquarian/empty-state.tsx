@@ -298,9 +298,15 @@ export function EmptyState({ variant, title, subtitle, action }: EmptyStateProps
       {...fadeUp}
       className="flex flex-col items-center justify-center py-12 px-4 text-center"
     >
-      <div className="mb-6">
+      {/* Idle breathing — the scene is alive, waiting. MotionConfig
+          reducedMotion="user" zeroes the transform loop automatically. */}
+      <motion.div
+        className="mb-6"
+        animate={{ scale: [1, 1.02, 1], y: [0, -3, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      >
         <Illustration />
-      </div>
+      </motion.div>
       <h3 className="text-lg font-serif font-semibold text-sepia-700">{title}</h3>
       {subtitle && (
         <p className="text-sm text-sepia-600 mt-2 max-w-sm">{subtitle}</p>
