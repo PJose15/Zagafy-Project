@@ -263,7 +263,7 @@ export default function BiblePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <h2 className="text-xl font-serif font-semibold text-sepia-900 mb-4">{t('worldBibleHeading')}</h2>
+          <h2 className="text-xl font-serif font-semibold text-parchment-200 mb-4">{t('worldBibleHeading')}</h2>
 
           {extractError && (
             <div

@@ -23,9 +23,9 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <Compass size={16} className="text-brass-600" aria-hidden="true" />
-        <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('storyProgress')}</h2>
+        <h2 className="text-sm font-serif font-semibold text-sepia-400 uppercase tracking-wider">{t('storyProgress')}</h2>
         <DecorativeDivider variant="section" className="flex-1" />
-        <span className="text-xs font-mono text-sepia-600">{finishing.overallProgress}%</span>
+        <span className="text-xs font-mono text-sepia-400">{finishing.overallProgress}%</span>
       </div>
 
       {/* M2: Accessible segmented progress bar */}

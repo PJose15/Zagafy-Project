@@ -75,7 +75,7 @@ function StoryAnatomyBar({ chapters, characters, events, conflicts }: {
     <motion.div {...fadeUp}>
       <div className="flex items-center gap-3 mb-3">
         <Flame aria-hidden="true" size={16} className="text-brass-600" />
-        <h2 className="text-sm font-serif font-semibold text-sepia-700 uppercase tracking-wider">{t('anatomy.heading')}</h2>
+        <h2 className="text-sm font-serif font-semibold text-sepia-400 uppercase tracking-wider">{t('anatomy.heading')}</h2>
         <DecorativeDivider variant="section" className="flex-1" />
       </div>
       <div className="flex h-3 rounded-full overflow-hidden bg-parchment-200/50 border border-sepia-300/20">
@@ -350,7 +350,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center gap-3">
             <BookOpen size={18} className="text-brass-600" />
-            <h2 className="text-lg font-serif font-semibold text-sepia-900">{t('recentChapters')}</h2>
+            <h2 className="text-lg font-serif font-semibold text-parchment-200">{t('recentChapters')}</h2>
             <DecorativeDivider variant="section" className="flex-1" />
           </div>
           {state.chapters.length === 0 ? (
@@ -395,7 +395,7 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <AlertCircle size={18} className="text-brass-600" />
-            <h2 className="text-lg font-serif font-semibold text-sepia-900">{t('openLoops')}</h2>
+            <h2 className="text-lg font-serif font-semibold text-parchment-200">{t('openLoops')}</h2>
             <DecorativeDivider variant="section" className="flex-1" />
           </div>
           {state.open_loops.filter(l => l.status === 'open').length === 0 ? (

@@ -175,10 +175,10 @@ export default function VersionsPage() {
 
         {/* List */}
         <section aria-label={t('listHeading')} className="space-y-3">
-          <h2 className="text-lg font-serif font-semibold text-sepia-900">
+          <h2 className="text-lg font-serif font-semibold text-parchment-200">
             {t('listHeading')}
             {snapshots && (
-              <span className="ml-2 text-xs font-mono text-sepia-600">
+              <span className="ml-2 text-xs font-mono text-sepia-400">
                 {t('listCount', { count: snapshots.length, cap: DEFAULT_SNAPSHOT_CAP })}
               </span>
             )}

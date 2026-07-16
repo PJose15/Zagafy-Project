@@ -84,7 +84,7 @@ export default function WritingMapPage() {
 
       {/* Section 1: Calendar Heatmap */}
       <section aria-label={t('activityAria')}>
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('activityHeading')}</h2>
+        <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('activityHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <CalendarHeatmap sessions={sessions} />
         </ParchmentCard>
@@ -92,7 +92,7 @@ export default function WritingMapPage() {
 
       {/* Section 2: Words by Hour */}
       <section aria-label={t('wordsByHourAria')}>
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('wordsByHourHeading')}</h2>
+        <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('wordsByHourHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <WordsByHour sessions={sessions} />
         </ParchmentCard>
@@ -101,7 +101,7 @@ export default function WritingMapPage() {
       {/* Section 3: Latest Flow Timeline */}
       {latestFlowSession && (
         <section aria-label={t('latestFlowAria')}>
-          <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('latestFlowHeading')}</h2>
+          <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('latestFlowHeading')}</h2>
           <FlowTimeline
             sessionStart={latestFlowSession.startedAt}
             sessionEnd={latestFlowSession.endedAt}
@@ -119,7 +119,7 @@ export default function WritingMapPage() {
 
       {/* Section 5: Voice Analytics */}
       <section aria-label={t('voiceAnalyticsAria')}>
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('voiceAnalyticsHeading')}</h2>
+        <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('voiceAnalyticsHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <HeteronymAnalytics />
         </ParchmentCard>
@@ -127,7 +127,7 @@ export default function WritingMapPage() {
 
       {/* Section 5b: Pacing Health (MP-08 / Phase 4.6) */}
       <section aria-label={t('pacingAria')}>
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('pacingHeading')}</h2>
+        <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('pacingHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <PacingHealth />
         </ParchmentCard>
@@ -135,7 +135,7 @@ export default function WritingMapPage() {
 
       {/* Section 5c: Writer memory (MP-11 / Phase 4.12) */}
       <section aria-label={t('craftAria')}>
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">
+        <h2 className="text-lg font-medium text-parchment-200 mb-4">
           {t('craftHeading')}
         </h2>
         <ParchmentCard className="p-4 md:p-6">
@@ -145,7 +145,7 @@ export default function WritingMapPage() {
 
       {/* Section 6: Sessions Table */}
       <section aria-label={t('recentSessionsAria')}>
-        <h2 className="text-lg font-medium text-sepia-800 mb-4">{t('recentSessionsHeading')}</h2>
+        <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('recentSessionsHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <SessionsTable sessions={sessions} />
         </ParchmentCard>
