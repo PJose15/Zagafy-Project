@@ -9,9 +9,22 @@ import type { Heteronym } from '@/lib/types/heteronym';
 import type { HeteronymVoice } from '@/lib/heteronym-voice';
 import { VoiceToneEditor } from '@/components/heteronyms/voice-tone-editor';
 
+// Antiquarian inks — twelve muted pigments a 19th-century stationer might
+// stock, replacing the old flat-UI swatches. Existing heteronyms keep
+// whatever color they were saved with.
 const COLOR_SWATCHES = [
-  '#E74C3C', '#E67E22', '#F1C40F', '#2ECC71', '#1ABC9C', '#3498DB',
-  '#9B59B6', '#E91E63', '#00BCD4', '#8BC34A', '#FF5722', '#607D8B',
+  '#991b1b', // wax red
+  '#a8502e', // burnt sienna
+  '#c49b48', // brass ochre
+  '#6b7a2e', // olive ink
+  '#166534', // forest
+  '#3e7a6e', // verdigris
+  '#3a5a7a', // prussian blue
+  '#4a4a7a', // indigo ink
+  '#6e3a5a', // plum
+  '#a04a5a', // madder rose
+  '#7a5a30', // sepia
+  '#5a5a52', // slate ink
 ];
 
 const EMOJI_OPTIONS = [

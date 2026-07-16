@@ -89,7 +89,7 @@ describe('HeteronymModal', () => {
       name: 'Ricardo Reis',
       bio: '',
       styleNote: '',
-      avatarColor: '#E74C3C',
+      avatarColor: '#991b1b',
       avatarEmoji: '✍️',
       voice: undefined,
     });
@@ -132,11 +132,11 @@ describe('HeteronymModal', () => {
     render(<HeteronymModal {...defaultProps} />);
     const nameInput = screen.getByPlaceholderText('e.g. Álvaro de Campos');
     fireEvent.change(nameInput, { target: { value: 'Test' } });
-    const greenSwatch = screen.getByLabelText('Color #2ECC71');
-    fireEvent.click(greenSwatch);
+    const forestSwatch = screen.getByLabelText('Color #166534');
+    fireEvent.click(forestSwatch);
     fireEvent.click(screen.getByText('Create Alter Ego'));
     expect(defaultProps.onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ avatarColor: '#2ECC71' })
+      expect.objectContaining({ avatarColor: '#166534' })
     );
   });
 

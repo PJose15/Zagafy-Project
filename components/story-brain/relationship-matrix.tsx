@@ -76,13 +76,13 @@ export function RelationshipMatrix({ relationships }: RelationshipMatrixProps) {
 }
 
 function trustColor(level: number): string {
-  if (level >= 70) return '#16a34a'; // green-600
-  if (level >= 40) return '#ca8a04'; // yellow-600
-  return '#dc2626'; // red-600
+  if (level >= 70) return '#16a34a'; // forest-600
+  if (level >= 40) return '#a88540'; // brass-600
+  return '#dc2626'; // wax-500
 }
 
 function tensionColor(level: number): string {
-  if (level >= 70) return '#dc2626'; // red-600
-  if (level >= 40) return '#ca8a04'; // yellow-600
-  return '#16a34a'; // green-600
+  if (level >= 70) return '#dc2626'; // wax-500
+  if (level >= 40) return '#a88540'; // brass-600
+  return '#16a34a'; // forest-600
 }
