@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /* ═══════════════════════════════════════════════════════════════
    ZAGAFY — Antiquarian Library Theme
@@ -282,6 +283,29 @@
 .heatmap-cell {
   opacity: 0;
   animation: heatmap-fill 0.3s ease-out forwards;
+}
+
+/* ─── Prose in sepia ink ───
+   Custom color theme for @tailwindcss/typography. The plugin only ships
+   gray-family modifiers, so `prose-sepia` is defined here by hand: every
+   long-form AI/markdown surface reads as ink on parchment. */
+.prose-sepia {
+  --tw-prose-body: var(--color-sepia-800);
+  --tw-prose-headings: var(--color-sepia-900);
+  --tw-prose-lead: var(--color-sepia-700);
+  --tw-prose-links: var(--color-brass-700);
+  --tw-prose-bold: var(--color-sepia-900);
+  --tw-prose-counters: var(--color-brass-600);
+  --tw-prose-bullets: var(--color-brass-500);
+  --tw-prose-hr: var(--color-sepia-300);
+  --tw-prose-quotes: var(--color-sepia-700);
+  --tw-prose-quote-borders: var(--color-brass-500);
+  --tw-prose-captions: var(--color-sepia-600);
+  --tw-prose-code: var(--color-sepia-900);
+  --tw-prose-pre-code: var(--color-cream-100);
+  --tw-prose-pre-bg: var(--color-mahogany-900);
+  --tw-prose-th-borders: var(--color-sepia-300);
+  --tw-prose-td-borders: var(--color-sepia-300);
 }
 
 /* ─── Editorial typography ─── */

@@ -584,7 +584,7 @@ export default function AssistantPage() {
             }}
             placeholder={t('placeholder')}
             maxLength={5000}
-            className="w-full bg-transparent pl-5 pr-24 py-4 text-sepia-900 placeholder-sepia-400/60 focus:outline-none resize-none h-24 text-sm leading-relaxed"
+            className="w-full bg-transparent pl-5 pr-24 py-4 text-sepia-900 placeholder-sepia-500 focus:outline-none resize-none h-24 text-sm leading-relaxed"
           />
           <div className="absolute right-3 bottom-3 flex items-center gap-2">
             <button

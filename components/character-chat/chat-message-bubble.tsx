@@ -32,14 +32,17 @@ export function ChatMessageBubble({ message, characterName }: ChatMessageBubbleP
 
         {/* Bubble */}
         <div
-          className={`px-4 py-2.5 rounded-xl text-sm leading-relaxed ${
+          className={`px-4 py-2.5 rounded-xl leading-relaxed ${
             isUser
               ? 'bg-brass-500/15 text-sepia-900 border border-brass-500/30'
-              : 'bg-parchment-200 text-sepia-800 border border-sepia-300/30'
+              : 'bg-parchment-200 text-sepia-900 border border-sepia-300/30'
           }`}
         >
-          <p className="whitespace-pre-wrap">{message.content}</p>
-          <span className="block mt-1 text-[10px] text-sepia-500 font-mono">
+          {/* The character speaks in serif — their voice on paper; you type in sans */}
+          <p className={`whitespace-pre-wrap ${isUser ? 'text-sm' : 'font-serif text-[15px]'}`}>
+            {message.content}
+          </p>
+          <span className="block mt-1 text-[10px] text-sepia-600 font-mono">
             {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>

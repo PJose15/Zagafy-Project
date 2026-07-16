@@ -33,7 +33,10 @@ export const ParchmentCard = forwardRef<HTMLDivElement, ParchmentCardProps>(
       <div
         ref={ref}
         className={[
-          'relative border rounded-xl shadow-parchment texture-parchment',
+          // text-sepia-800 default: the body is cream-on-mahogany, so any
+          // un-colored text inside a parchment card would inherit near-white
+          // ink on light paper. Cards always read as ink on parchment.
+          'relative border rounded-xl shadow-parchment texture-parchment text-sepia-800',
           variantStyles[variant],
           paddingStyles[padding],
           tornEdge ? 'torn-edge-bottom' : '',
