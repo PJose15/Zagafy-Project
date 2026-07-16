@@ -86,9 +86,9 @@ export function ParchmentSidebar() {
         }`}
       >
         <div className="p-6 hidden md:block">
-          <h1 className="font-serif text-xl font-semibold text-cream-50 tracking-tight letterpress">
+          <p className="font-serif text-xl font-semibold text-cream-50 tracking-tight letterpress">
             {tApp('name')}
-          </h1>
+          </p>
           <div className="mt-1.5 h-0.5 w-10 bg-gradient-to-r from-brass-500 to-brass-500/0 rounded-full" />
           <p className="text-xs text-brass-400/70 mt-2 font-mono">{tApp('version')}</p>
           <div className="mt-4">

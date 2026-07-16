@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Trash2, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { fadeUp } from '@/lib/animations';
-import { CarvedHeader, BrassButton } from '@/components/antiquarian';
+import { BrassButton } from '@/components/antiquarian';
 import { useToast } from '@/components/toast';
 import { useCharacterChat } from '@/hooks/use-character-chat';
 import type { EvolvedState } from '@/lib/types/character-chat';
@@ -78,7 +78,9 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
             <div className="w-10 h-10 rounded-full bg-forest-700/15 flex items-center justify-center text-forest-700 font-serif font-bold text-lg">
               {characterName.charAt(0).toUpperCase()}
             </div>
-            <CarvedHeader title={characterName} />
+            <h2 className="text-2xl font-serif font-bold text-sepia-900 tracking-tight">
+              {characterName}
+            </h2>
           </div>
           <BrassButton onClick={clearSession} className="text-xs">
             <Trash2 size={14} />

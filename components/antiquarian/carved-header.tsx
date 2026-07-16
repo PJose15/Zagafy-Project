@@ -10,12 +10,13 @@ export function CarvedHeader({ title, subtitle, actions }: CarvedHeaderProps) {
   return (
     <header className="flex items-start justify-between gap-4 pb-6 border-b border-sepia-300/30">
       <div>
-        {/* Editorial display scale — the one oversized voice per page */}
-        <h1 className="text-4xl md:text-[2.75rem] leading-[1.05] font-serif font-bold text-sepia-900 tracking-tight text-balance letterpress">
+        {/* Editorial display scale — the one oversized voice per page,
+            set in gold leaf against the dark shelf */}
+        <h1 className="text-4xl md:text-[2.75rem] leading-[1.05] font-serif font-bold tracking-tight text-balance gold-leaf">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-sepia-600 mt-2 text-[15px] leading-relaxed font-serif italic">{subtitle}</p>
+          <p className="text-sepia-400 mt-2 text-[15px] leading-relaxed font-serif italic">{subtitle}</p>
         )}
         {/* Brass rule ending in an engraved sprig — the ornament, not an icon */}
         <div className="mt-3 flex items-center">

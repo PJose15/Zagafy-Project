@@ -197,6 +197,18 @@
 }
 
 /* ─── Text Effects ─── */
+
+/* Gold-leaf lettering — page titles sit on dark mahogany like tooled
+   lettering on a book spine: pale leaf, a carved shadow beneath, and the
+   faintest brass halo. (The old ink-on-parchment title was near-invisible
+   on the dark ground: #2c1e0f on #1a0e08 ≈ 1.07:1.) */
+.gold-leaf {
+  color: var(--color-parchment-100);
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(196, 155, 72, 0.18);
+}
+
 .letterpress {
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.15),
