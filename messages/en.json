@@ -263,6 +263,19 @@
     "emptyLoopsTitle": "No loose threads",
     "emptyLoopsSubtitle": "Your narrative threads are all accounted for."
   },
+  "notFound": {
+    "folio": "Folio 404",
+    "title": "This page was torn from the book",
+    "subtitle": "Whatever was written here has slipped from the binding. The rest of your story is safe and intact.",
+    "back": "Return to the library"
+  },
+  "errorPage": {
+    "eyebrow": "A note in the margin",
+    "title": "The scribe begs your pardon",
+    "subtitle": "Something in the workshop went awry mid-sentence. Your story is unharmed — the ink simply spilled on our side of the desk.",
+    "digest": "Reference",
+    "retry": "Try again"
+  },
   "projects": {
     "title": "Your Stories",
     "subtitle": "Every project keeps its own manuscript, characters, history, and writing stats.",

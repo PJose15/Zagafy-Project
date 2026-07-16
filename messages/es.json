@@ -263,6 +263,19 @@
     "emptyLoopsTitle": "Sin cabos sueltos",
     "emptyLoopsSubtitle": "Todos tus hilos narrativos están controlados."
   },
+  "notFound": {
+    "folio": "Folio 404",
+    "title": "Esta página fue arrancada del libro",
+    "subtitle": "Lo que estaba escrito aquí se escapó de la encuadernación. El resto de tu historia está a salvo e intacto.",
+    "back": "Volver a la biblioteca"
+  },
+  "errorPage": {
+    "eyebrow": "Una nota al margen",
+    "title": "El escriba te pide disculpas",
+    "subtitle": "Algo en el taller salió mal a mitad de frase. Tu historia está intacta: la tinta solo se derramó de nuestro lado del escritorio.",
+    "digest": "Referencia",
+    "retry": "Intentar de nuevo"
+  },
   "projects": {
     "title": "Tus Historias",
     "subtitle": "Cada proyecto conserva su propio manuscrito, personajes, historial y estadísticas de escritura.",
