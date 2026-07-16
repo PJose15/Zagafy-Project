@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
@@ -7,6 +7,17 @@ import type { BlockType, SessionState } from '@/lib/session';
 
 function wrapper({ children }: { children: React.ReactNode }) {
   return <SessionProvider>{children}</SessionProvider>;
+}
+
+// F5: gates persist to storage — isolate each test from stamps written by
+// completeDiagnostic/completeRitual in earlier tests.
+beforeEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+});
+
+function localDayStamp(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 describe('SessionProvider', () => {
@@ -192,5 +203,104 @@ describe('useSession() inside SessionProvider', () => {
     expect(result.current.session.diagnosticCompleted).toBe(false);
     expect(result.current.session.ritualCompleted).toBe(false);
     expect(result.current.session.flowChapterId).toBeNull();
+  });
+});
+
+describe('gate persistence (F5)', () => {
+  it('completeDiagnostic stamps localStorage with today + blockType', () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.setBlockType('fear');
+      result.current.completeDiagnostic(false);
+    });
+
+    const raw = window.localStorage.getItem('zagafy_checkin');
+    expect(raw).not.toBeNull();
+    const saved = JSON.parse(raw!);
+    expect(saved.day).toBe(localDayStamp());
+    expect(saved.blockType).toBe('fear');
+    expect(saved.skipped).toBe(false);
+  });
+
+  it('completeRitual stamps sessionStorage with the mode', () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.completeRitual('mindfulness');
+    });
+
+    expect(window.sessionStorage.getItem('zagafy_ritual')).toBe('mindfulness');
+  });
+
+  it('restores a same-day check-in on mount (gate stays down)', () => {
+    window.localStorage.setItem(
+      'zagafy_checkin',
+      JSON.stringify({ day: localDayStamp(), blockType: 'perfectionism', skipped: false }),
+    );
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.session.diagnosticCompleted).toBe(true);
+    expect(result.current.session.blockType).toBe('perfectionism');
+    // The ritual gate is per-sitting and was not stamped — still armed
+    expect(result.current.session.ritualCompleted).toBe(false);
+  });
+
+  it('ignores and clears a stale (yesterday) check-in stamp', () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    window.localStorage.setItem(
+      'zagafy_checkin',
+      JSON.stringify({ day: localDayStamp(yesterday), blockType: 'fear', skipped: true }),
+    );
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.session.diagnosticCompleted).toBe(false);
+    expect(window.localStorage.getItem('zagafy_checkin')).toBeNull();
+  });
+
+  it('restores the ritual gate from sessionStorage on mount', () => {
+    window.sessionStorage.setItem('zagafy_ritual', 'quote');
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.session.ritualCompleted).toBe(true);
+    expect(result.current.session.ritualMode).toBe('quote');
+  });
+
+  it('ignores a corrupt ritual value', () => {
+    window.sessionStorage.setItem('zagafy_ritual', 'banana');
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.session.ritualCompleted).toBe(false);
+  });
+
+  it('ignores corrupt check-in JSON without crashing', () => {
+    window.localStorage.setItem('zagafy_checkin', '{not json');
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.session.diagnosticCompleted).toBe(false);
+  });
+
+  it('resetSession clears both stamps', () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.completeDiagnostic(false);
+      result.current.completeRitual('quote');
+    });
+    expect(window.localStorage.getItem('zagafy_checkin')).not.toBeNull();
+    expect(window.sessionStorage.getItem('zagafy_ritual')).toBe('quote');
+
+    act(() => {
+      result.current.resetSession();
+    });
+
+    expect(window.localStorage.getItem('zagafy_checkin')).toBeNull();
+    expect(window.sessionStorage.getItem('zagafy_ritual')).toBeNull();
   });
 });

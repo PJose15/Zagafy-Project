@@ -57,6 +57,10 @@ function renderOverlay() {
 describe('DiagnosticOverlay', () => {
   beforeEach(() => {
     cleanup();
+    // F5: completeDiagnostic stamps localStorage — clear it so the mount
+    // effect in SessionProvider can't restore a gate from an earlier test.
+    window.localStorage.clear();
+    window.sessionStorage.clear();
     mockIncrementStreak.mockReturnValue(1);
     mockGetStreak.mockReturnValue(0);
   });
