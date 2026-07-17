@@ -84,7 +84,7 @@ export function ParchmentSidebar() {
   return (
     <>
       {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-mahogany-900 border-b border-mahogany-700/50">
+      <div className="md:hidden print:hidden flex items-center justify-between p-4 bg-mahogany-900 border-b border-mahogany-700/50">
         <span className="font-serif font-semibold text-cream-100 tracking-tight">{tApp('name')}</span>
         <button onClick={() => setIsOpen(!isOpen)} className="text-cream-300 hover:text-cream-50" aria-label={isOpen ? tSide('closeNav') : tSide('openNav')}>
           {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -94,7 +94,7 @@ export function ParchmentSidebar() {
       {/* Sidebar — sticky on desktop so the menu follows you down the page;
           the nav list scrolls internally when it outgrows the viewport. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-[380ms] ease-[cubic-bezier(0.34,1.25,0.64,1)] md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
+        className={`print:hidden fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-[380ms] ease-[cubic-bezier(0.34,1.25,0.64,1)] md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

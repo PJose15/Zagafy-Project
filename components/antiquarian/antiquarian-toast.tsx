@@ -18,6 +18,8 @@ interface Toast {
   message: string;
   type: ToastType;
   action?: ToastAction;
+  /** Auto-dismiss lifetime, driving both the timer and the drain bar. */
+  lifetimeMs: number;
 }
 
 interface ToastContextType {
@@ -61,22 +63,40 @@ const ACTION_TOAST_LIFETIME_MS = 8000;
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const tr = useTranslations('common');
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const timersRef = useRef<Map<string, { timer: ReturnType<typeof setTimeout>; expiresAt: number }>>(new Map());
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
-    const timer = timersRef.current.get(id);
-    if (timer) {
-      clearTimeout(timer);
+    const entry = timersRef.current.get(id);
+    if (entry) {
+      clearTimeout(entry.timer);
       timersRef.current.delete(id);
     }
   }, []);
 
   const toast = useCallback((message: string, type: ToastType = 'info', action?: ToastAction) => {
     const id = crypto.randomUUID();
-    setToasts(prev => [...prev.slice(-4), { id, message, type, action }]);
-    const timer = setTimeout(() => removeToast(id), action ? ACTION_TOAST_LIFETIME_MS : TOAST_LIFETIME_MS);
-    timersRef.current.set(id, timer);
+    const lifetimeMs = action ? ACTION_TOAST_LIFETIME_MS : TOAST_LIFETIME_MS;
+    setToasts(prev => [...prev.slice(-4), { id, message, type, action, lifetimeMs }]);
+    const timer = setTimeout(() => removeToast(id), lifetimeMs);
+    timersRef.current.set(id, { timer, expiresAt: Date.now() + lifetimeMs });
+  }, [removeToast]);
+
+  // P6 — hovering a toast holds it open: the timer pauses (remaining time is
+  // banked) and the drain bar freezes via CSS; leaving resumes both.
+  const pauseToast = useCallback((id: string) => {
+    const entry = timersRef.current.get(id);
+    if (!entry) return;
+    clearTimeout(entry.timer);
+    entry.expiresAt = Math.max(entry.expiresAt - Date.now(), 1200);
+  }, []);
+
+  const resumeToast = useCallback((id: string) => {
+    const entry = timersRef.current.get(id);
+    if (!entry) return;
+    const remaining = entry.expiresAt;
+    entry.timer = setTimeout(() => removeToast(id), remaining);
+    entry.expiresAt = Date.now() + remaining;
   }, [removeToast]);
 
   const renderToast = (t: Toast) => {
@@ -85,7 +105,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <motion.div
         key={t.id}
         {...toastSlam}
-        className={`relative overflow-hidden flex items-start gap-3 border rounded-xl px-4 py-3 shadow-parchment texture-parchment ${styles[t.type]}`}
+        onMouseEnter={() => pauseToast(t.id)}
+        onMouseLeave={() => resumeToast(t.id)}
+        className={`toast-card relative overflow-hidden flex items-start gap-3 border rounded-xl px-4 py-3 shadow-parchment texture-parchment ${styles[t.type]}`}
       >
         <Icon size={18} aria-hidden="true" className={`shrink-0 mt-0.5 ${iconColors[t.type]}`} />
         <p className="text-sm flex-1 font-medium break-words min-w-0">{t.message}</p>
@@ -107,13 +129,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         >
           <X size={14} aria-hidden="true" />
         </button>
-        {/* Ink drain — shows how long the toast will stay */}
-        <motion.div
+        {/* Ink drain — shows how long the toast will stay; CSS-driven so
+            hover can freeze it in place alongside the paused timer (P6). */}
+        <span
           aria-hidden="true"
-          initial={{ scaleX: 1 }}
-          animate={{ scaleX: 0 }}
-          transition={{ duration: TOAST_LIFETIME_MS / 1000, ease: 'linear' }}
-          className={`absolute bottom-0 left-0 right-0 h-0.5 origin-left ${barColors[t.type]}`}
+          style={{ animationDuration: `${t.lifetimeMs}ms` }}
+          className={`toast-drain absolute bottom-0 left-0 right-0 h-0.5 origin-left ${barColors[t.type]}`}
         />
       </motion.div>
     );
@@ -128,7 +149,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+      <div className="print:hidden fixed bottom-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
         <div role="alert" aria-live="assertive" className="flex flex-col gap-2">
           <AnimatePresence>{assertiveToasts.map(renderToast)}</AnimatePresence>
         </div>

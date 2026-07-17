@@ -61,6 +61,7 @@ function DraggableChapter({
         type="button"
         onPointerDown={(e) => controls.start(e)}
         aria-label={dragAria}
+        title={dragAria}
         className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 hidden md:flex items-center justify-center w-6 h-10 rounded-md border border-sepia-300/50 bg-parchment-200 text-sepia-500 shadow-parchment cursor-grab active:cursor-grabbing touch-none opacity-0 group-hover/drag:opacity-100 focus-visible:opacity-100 transition-opacity"
       >
         <GripVertical size={14} aria-hidden="true" />
@@ -396,6 +397,7 @@ export default function ManuscriptPage() {
                         disabled={index === 0}
                         className="p-1.5 text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
                         aria-label={t('moveUpAria', { title: chapter.title })}
+                        title={t('moveUpAria', { title: chapter.title })}
                       >
                         <ChevronUp size={16} />
                       </button>
@@ -404,6 +406,7 @@ export default function ManuscriptPage() {
                         disabled={index === state.chapters.length - 1}
                         className="p-1.5 text-sepia-600 hover:text-sepia-700 hover:bg-sepia-300/20 rounded-lg transition-colors disabled:opacity-30 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
                         aria-label={t('moveDownAria', { title: chapter.title })}
+                        title={t('moveDownAria', { title: chapter.title })}
                       >
                         <ChevronDown size={16} />
                       </button>
@@ -411,6 +414,7 @@ export default function ManuscriptPage() {
                         onClick={() => handleDuplicate(index)}
                         className="p-2 text-sepia-600 hover:text-forest-700 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={t('duplicateAria', { title: chapter.title })}
+                        title={t('duplicateAria', { title: chapter.title })}
                       >
                         <BookCopy size={18} />
                       </button>
@@ -423,6 +427,7 @@ export default function ManuscriptPage() {
                         }}
                         className="p-2 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={t('editAria', { title: chapter.title })}
+                        title={t('editAria', { title: chapter.title })}
                       >
                         <Edit3 size={18} />
                       </button>
@@ -430,6 +435,7 @@ export default function ManuscriptPage() {
                         onClick={() => handleDelete(chapter.id)}
                         className="p-2 text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 rounded-lg transition-colors"
                         aria-label={t('deleteAria', { title: chapter.title })}
+                        title={t('deleteAria', { title: chapter.title })}
                       >
                         <Trash2 size={18} />
                       </button>

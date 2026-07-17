@@ -104,7 +104,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
               {characterName}
             </h2>
           </div>
-          <BrassButton onClick={handleClearSession} className="text-xs" aria-label={t('clearSessionAria')}>
+          <BrassButton onClick={handleClearSession} className="text-xs" aria-label={t('clearSessionAria')} title={t('clearSessionAria')}>
             <Trash2 size={14} aria-hidden="true" />
           </BrassButton>
         </div>

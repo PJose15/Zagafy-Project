@@ -256,6 +256,7 @@ export default function VersionsPage() {
                     onClick={() => handleDelete(snap)}
                     className="p-2 rounded-md text-sepia-600 hover:text-wax-600 hover:bg-wax-500/10 transition-colors"
                     aria-label={t('deleteAria', { name: snap.name })}
+                    title={t('deleteAria', { name: snap.name })}
                   >
                     <Trash2 size={14} />
                   </button>

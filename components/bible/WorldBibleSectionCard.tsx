@@ -101,6 +101,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
               onClick={() => setEditing(true)}
               className="p-1.5 rounded-md hover:bg-sepia-300/30 text-sepia-600 transition-colors"
               aria-label={t('editSection')}
+              title={t('editSection')}
             >
               <Pencil size={16} />
             </button>
@@ -109,6 +110,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
             onClick={handleDelete}
             className="p-1.5 rounded-md hover:bg-wax-500/10 text-sepia-600 hover:text-wax-600 transition-colors"
             aria-label={t('deleteSection')}
+            title={t('deleteSection')}
           >
             <Trash2 size={16} />
           </button>

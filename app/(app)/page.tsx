@@ -280,12 +280,24 @@ export default function Dashboard() {
     ? { headline: t(`block.${blockType}Headline`), nudge: t(`block.${blockType}Nudge`) }
     : null;
 
+  // P8: the library greets by candle-hour. Computed at render; the tag is
+  // marked suppressHydrationWarning since server and client clocks differ.
+  const hour = new Date().getHours();
+  const daypart = hour < 5 ? 'night' : hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : hour < 23 ? 'evening' : 'night';
+
   return (
     <GenesisGuard>
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <CarvedHeader
         title={state.title || t('untitled')}
-        subtitle={state.synopsis || t('noSynopsis')}
+        subtitle={
+          <>
+            {state.synopsis || t('noSynopsis')}
+            <span suppressHydrationWarning className="block mt-1 text-[13px] text-sepia-500">
+              {t(`greeting.${daypart}`)}
+            </span>
+          </>
+        }
       />
 
       {/* Writer's Block Message */}

@@ -264,7 +264,13 @@
     "startWriting": "Empezar a escribir",
     "openLoops": "Tramas Abiertas",
     "emptyLoopsTitle": "Sin cabos sueltos",
-    "emptyLoopsSubtitle": "Todos tus hilos narrativos están controlados."
+    "emptyLoopsSubtitle": "Todos tus hilos narrativos están controlados.",
+    "greeting": {
+      "morning": "La luz de la mañana es buena para la tinta.",
+      "afternoon": "Una buena tarde para un capítulo.",
+      "evening": "Las velas están encendidas; el escritorio es tuyo.",
+      "night": "Las horas pequeñas: donde se escriben las novelas en secreto."
+    }
   },
   "notFound": {
     "folio": "Folio 404",
@@ -2057,7 +2063,8 @@
     "chapters": "Capítulos",
     "noResults": "Nada en este estante. Prueba otra palabra.",
     "hintNavigate": "navegar",
-    "hintOpen": "abrir"
+    "hintOpen": "abrir",
+    "wordsShort": "{count, number} p"
   },
   "milestones": {
     "reached": "{count, number} palabras inscritas en la biblioteca"

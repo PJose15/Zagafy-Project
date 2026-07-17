@@ -62,7 +62,7 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
             </button>
           </div>
 
-          <div className="p-3 space-y-1 max-h-[60vh] overflow-y-auto">
+          <div className="p-3 space-y-1 max-h-[60vh] overflow-y-auto custom-scrollbar">
             {guestId && (
               <button
                 onClick={() => {

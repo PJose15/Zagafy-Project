@@ -618,6 +618,59 @@ html {
   animation: flame-flicker 2.2s ease-in-out infinite;
 }
 
+/* P4 — slim sepia scrollbar for parchment surfaces. The global brass-on-
+   mahogany bar is desk furniture; inside paper panels it reads far too
+   heavy. (.custom-scrollbar was already referenced by components but never
+   defined — this supplies it.) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(122, 90, 48, 0.35);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(122, 90, 48, 0.55);
+  background-clip: content-box;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(122, 90, 48, 0.45) transparent;
+}
+
+/* P6 — the toast's ink drain; hovering the card freezes the drain while
+   the dismiss timer banks its remaining time. */
+@keyframes toast-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.toast-drain {
+  display: block;
+  animation-name: toast-drain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.toast-card:hover .toast-drain {
+  animation-play-state: paused;
+}
+
+/* P7 — print: the library furniture stays home; the words go to paper. */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  main {
+    overflow: visible !important;
+    border: none !important;
+  }
+}
+
 /* ─── Scrollbar Styling ─── */
 ::-webkit-scrollbar {
   width: 10px;

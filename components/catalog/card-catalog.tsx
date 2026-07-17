@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { BookOpen, Library, Search } from 'lucide-react';
 import { springs } from '@/lib/animations';
 import { useStory } from '@/lib/store';
+import { wordCount } from '@/lib/editor/serialization';
 import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import { navItems } from '@/components/antiquarian/parchment-sidebar';
 
@@ -20,6 +21,8 @@ interface CatalogEntry {
   label: string;
   icon: React.ReactNode;
   section: 'pages' | 'chapters';
+  /** P10: right-hand meta on the index card (a chapter's word count). */
+  meta?: string;
 }
 
 /**
@@ -81,10 +84,11 @@ export function CardCatalog() {
         label: `${i + 1}. ${c.title}`,
         icon: <BookOpen size={15} aria-hidden="true" className="text-sepia-500 shrink-0" />,
         section: 'chapters' as const,
+        meta: t('wordsShort', { count: wordCount(c.content) }),
       }))
       .filter(c => !q || c.label.toLowerCase().includes(q));
     return [...pages.slice(0, q ? 12 : 7), ...chapters.slice(0, 8)];
-  }, [query, state.chapters, tNav]);
+  }, [query, state.chapters, tNav, t]);
 
   const clamped = Math.min(active, Math.max(results.length - 1, 0));
 
@@ -151,7 +155,7 @@ export function CardCatalog() {
               <kbd className="shrink-0 rounded border border-sepia-300/50 bg-parchment-200 px-1.5 py-0.5 font-mono text-[10px] text-sepia-600">esc</kbd>
             </div>
 
-            <div id="catalog-results" role="listbox" className="max-h-[46vh] overflow-y-auto py-2">
+            <div id="catalog-results" role="listbox" className="max-h-[46vh] overflow-y-auto py-2 custom-scrollbar">
               {results.length === 0 && (
                 <p className="px-4 py-6 text-center text-sm italic text-sepia-600">{t('noResults')}</p>
               )}
@@ -180,6 +184,9 @@ export function CardCatalog() {
                     >
                       {r.icon}
                       <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                      {r.meta && (
+                        <span className="shrink-0 font-mono text-[10px] text-sepia-500">{r.meta}</span>
+                      )}
                     </button>
                   </div>
                 );

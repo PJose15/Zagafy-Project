@@ -76,7 +76,7 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
             </Link>
           </div>
         ) : (
-          <div className="space-y-2 overflow-y-auto flex-1">
+          <div className="space-y-2 overflow-y-auto flex-1 custom-scrollbar">
             {state.chapters.map((chapter, i) => (
               <motion.button
                 key={chapter.id}

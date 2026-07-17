@@ -264,7 +264,13 @@
     "startWriting": "Start writing",
     "openLoops": "Open Loops",
     "emptyLoopsTitle": "No loose threads",
-    "emptyLoopsSubtitle": "Your narrative threads are all accounted for."
+    "emptyLoopsSubtitle": "Your narrative threads are all accounted for.",
+    "greeting": {
+      "morning": "The morning light is good for ink.",
+      "afternoon": "A fine afternoon for a chapter.",
+      "evening": "The candles are lit; the desk is yours.",
+      "night": "The small hours — where novels are secretly written."
+    }
   },
   "notFound": {
     "folio": "Folio 404",
@@ -2057,7 +2063,8 @@
     "chapters": "Chapters",
     "noResults": "Nothing on this shelf. Try another word.",
     "hintNavigate": "navigate",
-    "hintOpen": "open"
+    "hintOpen": "open",
+    "wordsShort": "{count, number} w"
   },
   "milestones": {
     "reached": "{count, number} words inscribed in the library"

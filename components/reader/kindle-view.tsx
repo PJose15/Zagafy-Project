@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, useScroll } from 'motion/react';
 import { estimateReadingTime } from '@/lib/reader-utils';
@@ -21,11 +21,37 @@ interface KindleViewProps {
   issues: ProseIssue[];
 }
 
+const PREFS_KEY = 'zagafy_reader_prefs';
+
 export function KindleView({ title, content, issues }: KindleViewProps) {
   const tr = useTranslations('readerView');
   const [theme, setTheme] = useState<KindleTheme>('sepia');
   const [fontSize, setFontSize] = useState(18);
   const [lineSpacing, setLineSpacing] = useState<'normal' | 'relaxed' | 'loose'>('relaxed');
+
+  // P9: the reader remembers your comfort — theme, type size and leading
+  // persist across visits. Two-pass hydration-safe restore (house pattern).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (!raw) return;
+      const p = JSON.parse(raw);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- two-pass hydration-safe storage restore
+      if (p.theme === 'light' || p.theme === 'sepia' || p.theme === 'dark') setTheme(p.theme);
+      if (typeof p.fontSize === 'number' && p.fontSize >= 14 && p.fontSize <= 28) setFontSize(p.fontSize);
+      if (p.lineSpacing === 'normal' || p.lineSpacing === 'relaxed' || p.lineSpacing === 'loose') setLineSpacing(p.lineSpacing);
+    } catch {
+      /* unreadable prefs are just defaults */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ theme, fontSize, lineSpacing }));
+    } catch {
+      /* best effort */
+    }
+  }, [theme, fontSize, lineSpacing]);
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);
   const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
   // Reading progress — how far through the chapter body you've scrolled.

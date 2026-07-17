@@ -193,6 +193,7 @@ export default function TimelinePage() {
                           }}
                           className="p-1.5 text-sepia-600 hover:text-brass-500 hover:bg-sepia-300/20 rounded-md transition-colors"
                           aria-label={t('editAria', { date: event.date })}
+                          title={t('editAria', { date: event.date })}
                         >
                           <Edit3 size={16} />
                         </button>
@@ -200,6 +201,7 @@ export default function TimelinePage() {
                           onClick={() => handleDelete(event.id)}
                           className="p-1.5 text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 rounded-md transition-colors"
                           aria-label={t('deleteAria', { date: event.date })}
+                          title={t('deleteAria', { date: event.date })}
                         >
                           <Trash2 size={16} />
                         </button>

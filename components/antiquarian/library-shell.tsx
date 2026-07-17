@@ -9,6 +9,7 @@ import { ConfirmProvider } from '@/components/antiquarian/parchment-modal';
 import { ParchmentSidebar } from '@/components/antiquarian/parchment-sidebar';
 import { BackToTop } from '@/components/antiquarian/back-to-top';
 import { CardCatalog } from '@/components/catalog/card-catalog';
+import { RouteTitle } from '@/components/antiquarian/route-title';
 import { DiagnosticGate } from '@/components/diagnostic/diagnostic-gate';
 import { useSessionTracker } from '@/hooks/use-session-tracker';
 import { useWordMilestones } from '@/hooks/use-word-milestones';
@@ -50,6 +51,7 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <RouteTitle />
       <StreakWarningToast />
       <ParchmentSidebar />
       <main
@@ -58,7 +60,7 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
       >
         <AiStatusBanner />
         {/* Desk vignette — pinned to the viewport, never intercepts input */}
-        <div aria-hidden="true" className="pointer-events-none sticky top-0 z-30 h-0">
+        <div aria-hidden="true" className="print:hidden pointer-events-none sticky top-0 z-30 h-0">
           <div className="h-screen w-full desk-vignette" />
         </div>
         <DiagnosticGate>{children}</DiagnosticGate>

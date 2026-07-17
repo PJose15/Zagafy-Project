@@ -125,11 +125,13 @@ export function RitualOverlay() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-center"
                   >
+                    {/* P3: the threshold button speaks the house language —
+                        serif, letterpressed, bound in a forest border. */}
                     <motion.button
                       onClick={handleEnter}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="px-8 py-3 rounded-xl bg-forest-700 text-cream-50 font-medium hover:bg-forest-600 transition-colors"
+                      className="px-8 py-3 rounded-xl bg-forest-700 text-cream-50 font-serif font-semibold tracking-wide border-2 border-forest-800 shadow-md letterpress hover:bg-forest-600 transition-colors"
                     >
                       {t('enter')}
                     </motion.button>
