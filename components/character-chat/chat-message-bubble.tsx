@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { fadeUp } from '@/lib/animations';
+import { passedNote } from '@/lib/animations';
 import { User } from 'lucide-react';
 import type { CharacterChatMessage } from '@/lib/types/character-chat';
 
@@ -15,7 +15,7 @@ export function ChatMessageBubble({ message, characterName }: ChatMessageBubbleP
 
   return (
     <motion.div
-      {...fadeUp}
+      {...passedNote(isUser ? 1 : -1)}
       className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}
     >
       <div className={`flex gap-2 max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>

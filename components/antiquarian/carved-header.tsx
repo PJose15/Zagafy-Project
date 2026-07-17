@@ -20,8 +20,8 @@ export function CarvedHeader({ title, subtitle, actions }: CarvedHeaderProps) {
         )}
         {/* Brass rule ending in an engraved sprig — the ornament, not an icon */}
         <div className="mt-3 flex items-center">
-          <div className="h-0.5 w-16 bg-gradient-to-r from-brass-500 to-brass-400/60 rounded-full" />
-          <EngravedSprig className="-ml-0.5" />
+          <div className="h-0.5 w-16 bg-gradient-to-r from-brass-500 to-brass-400/60 rounded-full rule-draw" />
+          <EngravedSprig className="-ml-0.5 sprig-arrive" />
         </div>
       </div>
       {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}

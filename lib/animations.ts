@@ -127,6 +127,15 @@ export const fadeUp = {
   transition: springs.gentle,
 };
 
+/** Passed note — a chat message settles like paper slid across a table,
+    with the faint rotation of a real sheet (REVEAL verb). User notes tilt
+    one way, replies the other; the spring straightens both. */
+export const passedNote = (tilt: 1 | -1) => ({
+  initial: { opacity: 0, y: 6, rotate: 0.4 * tilt },
+  animate: { opacity: 1, y: 0, rotate: 0 },
+  transition: springs.gentle,
+});
+
 /** Toast slam — enters from above with stamp physics */
 export const toastSlam = {
   initial: { opacity: 0, y: -40, scale: 0.95 },

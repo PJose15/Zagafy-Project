@@ -50,13 +50,22 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
   return (
     <div className="flex flex-col items-center py-8 px-4" data-testid="print-book-view">
       {/* Book page */}
-      <ParchmentCard className="w-full max-w-[6in] min-h-[9in] p-[1.5in] texture-parchment relative print:shadow-none print:border-none">
+      <ParchmentCard className="w-full max-w-[6in] min-h-[9in] p-[1.5in] texture-parchment relative overflow-hidden print:shadow-none print:border-none">
+        {/* Wax-red ribbon in the margin — tracks how deep into the chapter
+            the reader is; the bound book earns a ribbon (Kindle keeps its
+            brass line). Decorative: progress is already announced by the
+            page-of-total label below. */}
+        <div
+          aria-hidden="true"
+          className="ribbon-bookmark absolute top-0 left-[0.5in] w-3 pointer-events-none print:hidden"
+          style={{ height: `${Math.max(12, ((currentPage + 1) / pages.length) * 88)}%` }}
+        />
         <h2 className="text-2xl font-serif text-sepia-900 mb-8 text-center" style={{ fontFamily: "'Playfair Display', serif" }}>
           {title}
         </h2>
         <div
           // The chapter's opening page gets an illuminated drop cap
-          className={`font-serif text-sm text-sepia-900 leading-[1.8] whitespace-pre-wrap book-prose ${currentPage === 0 ? 'drop-cap' : ''}`}
+          className={`font-serif text-sm text-sepia-900 leading-[1.8] whitespace-pre-wrap book-prose ${currentPage === 0 ? 'drop-cap ink-soak' : ''}`}
           style={{ fontFamily: "'Playfair Display', serif", fontSize: '14px' }}
         >
           {pageIssues.length > 0 ? (

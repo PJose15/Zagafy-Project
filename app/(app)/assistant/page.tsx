@@ -22,7 +22,7 @@ import { buildContext } from '@/lib/ai/context-builder';
 import { isBlockedResponse, isNormalResponse, type ChatResponseNormal, type ChatResponseBlocked } from '@/lib/types/chat-response';
 import { StructuredNormalResponse, StructuredBlockedResponse } from '@/components/assistant/structured-response';
 import { CarvedHeader, ParchmentCard, BrassButton, InkStampButton, DecorativeDivider, FeatureErrorBoundary } from '@/components/antiquarian';
-import { springs, fadeUp } from '@/lib/animations';
+import { springs, fadeUp, passedNote } from '@/lib/animations';
 
 interface Message {
   id: string;
@@ -374,9 +374,7 @@ export default function AssistantPage() {
           {windowedMessages.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={springs.gentle}
+              {...passedNote(msg.role === 'user' ? 1 : -1)}
               className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
             >
               {/* Avatar */}

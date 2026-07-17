@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
+import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
+import { springs } from '@/lib/animations';
 
 interface XPBarProps {
   level: number;
@@ -15,6 +18,16 @@ export function XPBar({ level, current, needed, progress, compact = false }: XPB
   // M8: Guard NaN — Math.max(0, Math.min(100, NaN)) === NaN
   const safeProgress = Number.isFinite(progress) ? progress : 0;
   const clamped = Math.max(0, Math.min(100, safeProgress));
+
+  // Ink-gain: when XP rises, the bar springs forward and a brass pulse
+  // blooms at the leading edge. Adjust-state-during-render (not an effect)
+  // so the pulse keys off actual progress increases only.
+  const [prevClamped, setPrevClamped] = useState(clamped);
+  const [gainKey, setGainKey] = useState(0);
+  if (clamped !== prevClamped) {
+    if (clamped > prevClamped) setGainKey(gainKey + 1);
+    setPrevClamped(clamped);
+  }
 
   return (
     <div className={compact ? 'flex items-center gap-2' : 'space-y-1'}>
@@ -36,10 +49,23 @@ export function XPBar({ level, current, needed, progress, compact = false }: XPB
         aria-valuemax={100}
         aria-label={t('levelProgressAria', { level, percent: Math.round(clamped) })}
       >
-        <div
-          className="h-full bg-gradient-to-r from-brass-600 to-brass-400 rounded-full transition-[width] duration-500"
-          style={{ width: `${clamped}%` }}
-        />
+        <motion.div
+          className="relative h-full bg-gradient-to-r from-brass-600 to-brass-400 rounded-full"
+          initial={false}
+          animate={{ width: `${clamped}%` }}
+          transition={springs.gentle}
+        >
+          {gainKey > 0 && (
+            <motion.span
+              key={gainKey}
+              aria-hidden="true"
+              initial={{ opacity: 0.9, scale: 1 }}
+              animate={{ opacity: 0, scale: 2.6 }}
+              transition={{ duration: 0.7, ease: 'easeOut' }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 -mr-1 w-2 h-2 rounded-full bg-brass-300"
+            />
+          )}
+        </motion.div>
       </div>
       {!compact && (
         <div className="flex justify-between text-[10px] font-mono text-sepia-600">

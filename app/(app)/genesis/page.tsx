@@ -26,6 +26,8 @@ export default function GenesisPage() {
   const stepDescription = (step: GenesisStep) => t(`steps.${step}.description`);
   const { state, saveNow } = useStory();
   const [stepIndex, setStepIndex] = useState(0);
+  // Leaf-turn direction: forward turns the page rightward, Back leftward.
+  const [turnDirection, setTurnDirection] = useState(1);
   const [showSummary, setShowSummary] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [data, setData] = useState(() => createEmptyGenesis());
@@ -56,6 +58,7 @@ export default function GenesisPage() {
   }, [currentStep, data]);
 
   const handleNext = useCallback(() => {
+    setTurnDirection(1);
     if (stepIndex < GENESIS_STEPS.length - 1) {
       setStepIndex(stepIndex + 1);
     } else {
@@ -64,6 +67,7 @@ export default function GenesisPage() {
   }, [stepIndex]);
 
   const handleBack = useCallback(() => {
+    setTurnDirection(-1);
     if (showSummary) {
       setShowSummary(false);
     } else if (stepIndex > 0) {
@@ -72,6 +76,7 @@ export default function GenesisPage() {
   }, [stepIndex, showSummary]);
 
   const handleEditFromSummary = useCallback((step: GenesisStep) => {
+    setTurnDirection(-1);
     setShowSummary(false);
     setStepIndex(GENESIS_STEPS.indexOf(step));
   }, []);
@@ -213,7 +218,7 @@ export default function GenesisPage() {
           {GENESIS_STEPS.map((step, i) => (
             <button
               key={step}
-              onClick={() => { if (i < stepIndex) setStepIndex(i); }}
+              onClick={() => { if (i < stepIndex) { setTurnDirection(-1); setStepIndex(i); } }}
               className={[
                 'flex items-center justify-center w-6 h-6 rounded-full transition-colors',
                 i < stepIndex ? 'cursor-pointer' : 'cursor-default',
@@ -233,12 +238,21 @@ export default function GenesisPage() {
         </div>
 
         {/* Step Content */}
-        <AnimatePresence mode="wait">
+        {/* Leaf-turn: the wizard reads like turning pages in a book — Next
+            sweeps the leaf rightward, Back leftward. `custom` keeps the
+            exiting step's direction in sync when it changes mid-flight. */}
+        <AnimatePresence mode="wait" custom={turnDirection}>
           <motion.div
             key={currentStep}
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
+            custom={turnDirection}
+            variants={{
+              enter: (dir: number) => ({ opacity: 0, x: 20 * dir }),
+              center: { opacity: 1, x: 0 },
+              exit: (dir: number) => ({ opacity: 0, x: -20 * dir }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
             transition={springs.gentle}
           >
             <ParchmentCard padding="lg">

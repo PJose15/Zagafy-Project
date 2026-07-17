@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { AnimatedNumber } from './animated-number';
 import { useStory } from '@/lib/store';
 import { useGamification } from '@/hooks/use-gamification';
 import { StreakBadge } from '@/components/gamification/streak-badge';
@@ -131,7 +132,11 @@ export function ParchmentSidebar() {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <span className="text-cream-300/40 block">{tSide('words')}</span>
-              <span className="text-cream-100 font-mono font-medium">{totalWords.toLocaleString()}</span>
+              {/* M10: the ledger updates itself — the count rolls to its new
+                  value and ticks when a save lands. */}
+              <span className="text-cream-100 font-mono font-medium">
+                <AnimatedNumber value={totalWords} pulseOnChange />
+              </span>
             </div>
             <div>
               <span className="text-cream-300/40 block">{tSide('chapters')}</span>

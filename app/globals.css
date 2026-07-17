@@ -172,6 +172,37 @@
     0 4px 2px -1px rgba(44, 30, 15, 0.14),
     0 7px 0 -3px #e4cfa0,
     0 8px 3px -3px rgba(44, 30, 15, 0.10);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Pile lift — hovering picks the chapter up off its pile: a 2px rise with
+   the faint tilt of a sheet held by one corner, the under-pages falling
+   a little further behind. */
+.page-stack:hover {
+  transform: translateY(-2px) rotate(-0.25deg);
+  box-shadow:
+    0 2px 5px rgba(44, 30, 15, 0.18),
+    0 2px 3px rgba(44, 30, 15, 0.12),
+    0 5px 0 -1px #f0dfc0,
+    0 6px 4px -1px rgba(44, 30, 15, 0.16),
+    0 10px 0 -3px #e4cfa0,
+    0 12px 5px -3px rgba(44, 30, 15, 0.12);
+}
+
+/* Ribbon bookmark — a wax-red ribbon draped from the top of the bound
+   book, growing down the margin as the reader turns pages. Forked tail
+   via clip-path; drop-shadow (not box-shadow) so the shadow follows the
+   fork. Height animates on page turn. */
+.ribbon-bookmark {
+  background: linear-gradient(
+    180deg,
+    var(--color-wax-500),
+    var(--color-wax-600) 30%,
+    var(--color-wax-700)
+  );
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 10px), 0 100%);
+  filter: drop-shadow(1px 2px 2px rgba(44, 30, 15, 0.3));
+  transition: height 0.5s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 /* Viewport vignette for the library desk — the frame dims faintly at the
@@ -350,6 +381,24 @@
   color: var(--color-brass-600);
 }
 
+/* ─── Ink soak — a chapter's opening page resolves from faint blur to
+   crisp ink over ~0.7s, like ink soaking into paper. Applied beside
+   .drop-cap in the reader views; zeroed by the reduced-motion block. */
+@keyframes ink-soak {
+  from {
+    opacity: 0.35;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.ink-soak {
+  animation: ink-soak 0.7s ease-out both;
+}
+
 /* ─── Streak flame glow — the flame smolders once a streak reaches 7 days ─── */
 @keyframes streak-flame-glow {
   0%, 100% { filter: drop-shadow(0 0 1px var(--color-brass-500)); }
@@ -358,6 +407,57 @@
 
 .streak-flame-glow {
   animation: streak-flame-glow 2.5s ease-in-out infinite;
+}
+
+/* ─── The rule draws itself — CarvedHeader's brass line inks in
+   left-to-right on page entry, the sprig arriving just as the line
+   completes. Every page's quiet signature; zeroed by the global
+   reduced-motion block like all CSS animation. */
+@keyframes rule-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes sprig-arrive {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rule-draw {
+  transform-origin: left center;
+  animation: rule-draw 0.5s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+.sprig-arrive {
+  animation: sprig-arrive 0.35s ease-out 0.38s both;
+}
+
+/* ─── Brass specular sweep — a gleam crosses the metal once per hover.
+   Transition-based (not keyframes) so it fires on hover-in and resets
+   silently on hover-out; under reduced motion the 0.01ms transition makes
+   the gleam effectively invisible. */
+.brass-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.brass-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -75%;
+  width: 50%;
+  background: linear-gradient(105deg, transparent, rgba(255, 253, 247, 0.45), transparent);
+  transform: skewX(-20deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brass-sweep:hover::after {
+  opacity: 1;
+  left: 125%;
+  transition: left 0.6s ease-in-out;
 }
 
 /* ─── Scrollbar Styling ─── */
