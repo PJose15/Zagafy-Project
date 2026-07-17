@@ -72,9 +72,21 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     toast(t('canonSavedToast'), 'success');
   }, [saveInsightAsCanon, toast, t]);
 
-  // Auto-scroll to bottom on new messages
+  // Y9: scroll etiquette — follow new messages only while the reader is
+  // near the bottom; someone scrolled up rereading stays where they are.
+  const nearBottomRef = useRef(true);
   useEffect(() => {
-    if (scrollRef.current) {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    if (scrollRef.current && nearBottomRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);

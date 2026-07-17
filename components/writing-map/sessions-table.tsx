@@ -89,9 +89,26 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
   function renderSortIcon(field: SortField) {
     if (sortField !== field) return null;
     return sortDir === 'asc' ? (
-      <ChevronUp size={14} className="inline ml-1" />
+      <ChevronUp size={14} aria-hidden="true" className="shrink-0" />
     ) : (
-      <ChevronDown size={14} className="inline ml-1" />
+      <ChevronDown size={14} aria-hidden="true" className="shrink-0" />
+    );
+  }
+
+  // Sortable headers are real buttons (keyboard operable) and announce the
+  // current order via aria-sort on the th.
+  const ariaSort = (field: SortField): 'ascending' | 'descending' | undefined =>
+    sortField === field ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined;
+
+  function renderSortHeader(field: SortField, label: string) {
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(field)}
+        className="inline-flex items-center gap-1 font-medium hover:text-sepia-800 transition-colors"
+      >
+        {label} {renderSortIcon(field)}
+      </button>
     );
   }
 
@@ -109,21 +126,21 @@ export function SessionsTable({ sessions }: SessionsTableProps) {
         <thead>
           <tr className="border-b border-sepia-300/50 text-sepia-600">
             <th className="text-left py-2 px-3 font-medium">{t('project')}</th>
-            <th className="text-left py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('date')}>
-              {t('date')} {renderSortIcon("date")}
+            <th className="text-left py-2 px-3" aria-sort={ariaSort('date')}>
+              {renderSortHeader('date', t('date'))}
             </th>
             <th className="text-left py-2 px-3 font-medium">{t('time')}</th>
-            <th className="text-right py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('words')}>
-              {t('words')} {renderSortIcon("words")}
+            <th className="text-right py-2 px-3" aria-sort={ariaSort('words')}>
+              {renderSortHeader('words', t('words'))}
             </th>
-            <th className="text-right py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('duration')}>
-              {t('duration')} {renderSortIcon("duration")}
+            <th className="text-right py-2 px-3" aria-sort={ariaSort('duration')}>
+              {renderSortHeader('duration', t('duration'))}
             </th>
-            <th className="text-center py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('autoFlow')}>
-              {t('autoFlow')} {renderSortIcon("autoFlow")}
+            <th className="text-center py-2 px-3" aria-sort={ariaSort('autoFlow')}>
+              {renderSortHeader('autoFlow', t('autoFlow'))}
             </th>
-            <th className="text-center py-2 px-3 font-medium cursor-pointer hover:text-sepia-800" onClick={() => handleSort('flow')}>
-              {t('flow')} {renderSortIcon("flow")}
+            <th className="text-center py-2 px-3" aria-sort={ariaSort('flow')}>
+              {renderSortHeader('flow', t('flow'))}
             </th>
           </tr>
         </thead>

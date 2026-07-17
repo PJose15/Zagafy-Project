@@ -13,6 +13,7 @@ interface ChatInputProps {
 
 export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   const t = useTranslations('characterChat');
+  const tCommon = useTranslations('common');
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -42,7 +43,8 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   }, []);
 
   return (
-    <div className="flex gap-2 items-end p-3 border-t border-sepia-300/30 bg-parchment-200/60">
+    <div className="border-t border-sepia-300/30 bg-parchment-200/60">
+    <div className="flex gap-2 items-end p-3 pb-1.5">
       <textarea
         ref={textareaRef}
         value={value}
@@ -63,6 +65,11 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
           <Send size={16} aria-hidden="true" />
         </BrassButton>
       </motion.div>
+    </div>
+    {/* A5: quiet keyboard hint for the composer */}
+    <p aria-hidden="true" className="px-3 pb-2 text-right font-mono text-[10px] text-sepia-500">
+      ↵ {tCommon('kbdSend')} · ⇧↵ {tCommon('kbdNewline')}
+    </p>
     </div>
   );
 }

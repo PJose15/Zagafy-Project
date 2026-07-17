@@ -39,7 +39,9 @@ export const ParchmentCard = forwardRef<HTMLDivElement, ParchmentCardProps>(
           'relative border rounded-xl shadow-parchment texture-parchment text-sepia-800',
           variantStyles[variant],
           paddingStyles[padding],
-          tornEdge ? 'torn-edge-bottom' : '',
+          // The torn clip-path replaces the bottom edge — rounded corners
+          // there would be clipped into odd notches, so square them off.
+          tornEdge ? 'torn-edge-bottom rounded-b-none' : '',
           hover ? 'transition-[transform,box-shadow] duration-200 hover:translate-y-[-2px] hover:shadow-card-hover cursor-pointer' : '',
           className,
         ].filter(Boolean).join(' ')}

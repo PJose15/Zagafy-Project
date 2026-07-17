@@ -30,6 +30,7 @@ export const InkStampButton = forwardRef<HTMLButtonElement, InkStampButtonProps>
       <button
         ref={ref}
         disabled={disabled || loading}
+        aria-busy={loading || undefined}
         className={[
           'inline-flex items-center justify-center font-semibold rounded-lg transition duration-150',
           'active:translate-y-[1px] active:scale-[0.97]',
@@ -41,7 +42,7 @@ export const InkStampButton = forwardRef<HTMLButtonElement, InkStampButtonProps>
         {...props}
       >
         {loading ? (
-          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full" style={{ animation: 'ink-swirl 1s linear infinite' }} />
+          <span aria-hidden="true" className="w-4 h-4 border-2 border-current border-t-transparent rounded-full" style={{ animation: 'ink-swirl 1s linear infinite' }} />
         ) : icon ? (
           <span className="shrink-0">{icon}</span>
         ) : null}

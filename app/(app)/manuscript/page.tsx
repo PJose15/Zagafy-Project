@@ -4,9 +4,10 @@ import { useStory, Chapter, CanonStatus } from '@/lib/store';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
-import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy, Search } from 'lucide-react';
+import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy, GripVertical, Search } from 'lucide-react';
 import { readVersions } from '@/lib/types/chapter-version';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from 'motion/react';
+import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
 import { AnimatedNumber, BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
 import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
@@ -31,6 +32,44 @@ function VersionCount({ chapterId }: { chapterId: string }) {
   );
 }
 
+// A3: a chapter card is dragged by the spine-tab on its left edge; the tab
+// owns the drag so text selection and buttons inside the card stay untouched.
+function DraggableChapter({
+  chapter,
+  dragAria,
+  children,
+}: {
+  chapter: Chapter;
+  dragAria: string;
+  children: React.ReactNode;
+}) {
+  const controls: DragControls = useDragControls();
+  return (
+    <Reorder.Item
+      value={chapter}
+      as="div"
+      dragListener={false}
+      dragControls={controls}
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileDrag={{ scale: 1.015, zIndex: 30, boxShadow: '0 12px 28px rgba(44, 30, 15, 0.28)' }}
+      className="relative group/drag"
+    >
+      <button
+        type="button"
+        onPointerDown={(e) => controls.start(e)}
+        aria-label={dragAria}
+        className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 hidden md:flex items-center justify-center w-6 h-10 rounded-md border border-sepia-300/50 bg-parchment-200 text-sepia-500 shadow-parchment cursor-grab active:cursor-grabbing touch-none opacity-0 group-hover/drag:opacity-100 focus-visible:opacity-100 transition-opacity"
+      >
+        <GripVertical size={14} aria-hidden="true" />
+      </button>
+      {children}
+    </Reorder.Item>
+  );
+}
+
 export default function ManuscriptPage() {
   const t = useTranslations('manuscript');
   const tStatus = useTranslations('canonStatus');
@@ -38,6 +77,12 @@ export default function ManuscriptPage() {
   const readingTime = useReadingTimeLabel();
   const { state, updateField } = useStory();
   const { confirm } = useConfirm();
+  const { toast } = useToast();
+  // Latest chapters for deferred callbacks (undo restore fires seconds later).
+  const chaptersRef = useRef(state.chapters);
+  useEffect(() => {
+    chaptersRef.current = state.chapters;
+  }, [state.chapters]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Chapter>>({});
   const [isNewItem, setIsNewItem] = useState(false);
@@ -104,11 +149,30 @@ export default function ManuscriptPage() {
       c.id === editingId ? { ...c, ...editForm } : c
     );
     updateField('chapters', updatedChapters as Chapter[]);
+    toast(t('savedToast'), 'success');
     setEditingId(null);
     setIsNewItem(false);
     setPendingSelection(null);
     selectionRef.current = null;
   };
+
+  // A9: Ctrl/Cmd+S saves the open chapter instead of invoking the browser
+  // save dialog. Latest handler lives in a ref so the listener stays stable.
+  const saveRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    saveRef.current = handleSave;
+  });
+  useEffect(() => {
+    if (!editingId) return;
+    const handle = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        saveRef.current();
+      }
+    };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [editingId]);
 
   const handleCancel = () => {
     if (isNewItem && editingId) {
@@ -121,7 +185,8 @@ export default function ManuscriptPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const chapter = state.chapters.find(c => c.id === id);
+    const index = state.chapters.findIndex(c => c.id === id);
+    const chapter = state.chapters[index];
     const confirmed = await confirm({
       title: t('deleteTitle'),
       message: t('deleteMessage', { title: chapter?.title || t('deleteFallback') }),
@@ -130,6 +195,29 @@ export default function ManuscriptPage() {
     });
     if (!confirmed) return;
     updateField('chapters', state.chapters.filter((c) => c.id !== id));
+    // A2: a grace period — the toast can slide the chapter back onto its shelf.
+    toast(t('deletedToast', { title: chapter?.title || t('deleteFallback') }), 'info', {
+      label: tCommon('undo'),
+      onClick: () => {
+        if (!chapter) return;
+        const current = chaptersRef.current;
+        if (current.some(c => c.id === chapter.id)) return;
+        const restored = [...current];
+        restored.splice(Math.min(index, restored.length), 0, chapter);
+        updateField('chapters', restored);
+      },
+    });
+  };
+
+  // A7: duplicate a chapter in place — the copy lands right after the original.
+  const handleDuplicate = (index: number) => {
+    const source = state.chapters[index];
+    if (!source) return;
+    const copy: Chapter = { ...source, id: crypto.randomUUID(), title: t('copyTitle', { title: source.title }) };
+    const arr = [...state.chapters];
+    arr.splice(index + 1, 0, copy);
+    updateField('chapters', arr);
+    toast(t('duplicatedToast', { title: source.title }), 'success');
   };
 
   const handleMoveUp = (index: number) => {
@@ -223,14 +311,20 @@ export default function ManuscriptPage() {
         }
       />
 
-      <div className="space-y-6">
+      {/* A3: the list is a Reorder group — cards drag by their spine tab */}
+      <Reorder.Group
+        axis="y"
+        as="div"
+        values={state.chapters}
+        onReorder={(arr: Chapter[]) => updateField('chapters', arr)}
+        className="space-y-6"
+      >
         <AnimatePresence>
           {state.chapters.map((chapter, index) => (
-            <motion.div
+            <DraggableChapter
               key={chapter.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              chapter={chapter}
+              dragAria={t('dragAria', { title: chapter.title })}
             >
             <ParchmentCard padding="none" className="overflow-hidden page-stack">
               {editingId === chapter.id ? (
@@ -241,6 +335,7 @@ export default function ManuscriptPage() {
                     onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                     className="text-xl font-serif font-semibold"
                     placeholder={t('titlePlaceholder')}
+                    autoFocus
                   />
                   <div className="flex gap-4 items-start">
                     <div className="flex-1 min-w-0">
@@ -313,6 +408,13 @@ export default function ManuscriptPage() {
                         <ChevronDown size={16} />
                       </button>
                       <button
+                        onClick={() => handleDuplicate(index)}
+                        className="p-2 text-sepia-600 hover:text-forest-700 hover:bg-sepia-300/20 rounded-lg transition-colors"
+                        aria-label={t('duplicateAria', { title: chapter.title })}
+                      >
+                        <BookCopy size={18} />
+                      </button>
+                      <button
                         onClick={() => {
                           setEditingId(chapter.id);
                           setEditForm(chapter);
@@ -356,14 +458,14 @@ export default function ManuscriptPage() {
                 </div>
               )}
             </ParchmentCard>
-            </motion.div>
+            </DraggableChapter>
           ))}
         </AnimatePresence>
 
         {state.chapters.length === 0 && (
           <EmptyState variant="manuscript" title={t('emptyTitle')} subtitle={t('emptySubtitle')} action={{ label: t('emptyAction'), onClick: handleAddChapter }} />
         )}
-      </div>
+      </Reorder.Group>
 
       <FindReplaceDialog
         open={findOpen}

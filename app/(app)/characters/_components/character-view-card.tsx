@@ -67,8 +67,20 @@ export function CharacterViewCard({
   return (
     <div className="flex flex-col h-full">
       <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
         className="p-6 cursor-pointer hover:bg-parchment-200/30 transition-colors"
         onClick={onToggleExpand}
+        onKeyDown={(e) => {
+          // Only react to keys on the header itself — Enter on the inner
+          // edit/delete buttons already fires their own click and bubbles here.
+          if (e.target !== e.currentTarget) return;
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggleExpand();
+          }
+        }}
       >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
@@ -123,7 +135,7 @@ export function CharacterViewCard({
             >
               <Trash2 size={18} />
             </button>
-            <div className="p-2 text-sepia-600">
+            <div className="p-2 text-sepia-600" aria-hidden="true">
               {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </div>
           </div>

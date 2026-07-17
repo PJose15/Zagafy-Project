@@ -38,8 +38,14 @@ export function StreakBadge({ streak, warning, compact = false }: StreakBadgePro
         <Flame
           size={compact ? 12 : 14}
           className={[
-            isMilestone ? 'text-brass-500' : 'text-sepia-600',
-            streak >= 7 ? 'streak-flame-glow motion-reduce:animate-none' : '',
+            // A10: with a warning active the flame gutters in wax-red — the
+            // streak is alight but today's page is still unwritten.
+            warning
+              ? 'text-wax-600 flame-at-risk motion-reduce:animate-none'
+              : isMilestone
+                ? 'text-brass-500'
+                : 'text-sepia-600',
+            !warning && streak >= 7 ? 'streak-flame-glow motion-reduce:animate-none' : '',
           ].join(' ')}
           aria-hidden="true"
         />

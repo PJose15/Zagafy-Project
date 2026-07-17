@@ -55,7 +55,10 @@
     "timeJustNow": "justo ahora",
     "timeMinutes": "hace {count}m",
     "timeHours": "hace {count}h",
-    "timeDays": "hace {count}d"
+    "timeDays": "hace {count}d",
+    "undo": "Deshacer",
+    "kbdSend": "enviar",
+    "kbdNewline": "nueva línea"
   },
   "settings": {
     "title": "Ajustes",
@@ -1144,7 +1147,13 @@
     "summaryLabel": "Resumen",
     "emptyTitle": "Tu manuscrito está vacío",
     "emptySubtitle": "Toda gran historia comienza con un solo capítulo.",
-    "emptyAction": "Añade tu primer capítulo"
+    "emptyAction": "Añade tu primer capítulo",
+    "deletedToast": "«{title}» tachado del manuscrito",
+    "duplicatedToast": "«{title}» duplicado",
+    "savedToast": "Capítulo guardado",
+    "copyTitle": "{title} (copia)",
+    "duplicateAria": "Duplicar {title}",
+    "dragAria": "Arrastra para reordenar {title}"
   },
   "outline": {
     "errorTitle": "Esquema",
@@ -2040,5 +2049,17 @@
     "leaveConfirm": "Abandonar",
     "leaveSuccess": "Has abandonado la historia.",
     "genericError": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "catalog": {
+    "title": "Catálogo de fichas",
+    "placeholder": "Busca en la biblioteca…",
+    "pages": "Salas",
+    "chapters": "Capítulos",
+    "noResults": "Nada en este estante. Prueba otra palabra.",
+    "hintNavigate": "navegar",
+    "hintOpen": "abrir"
+  },
+  "milestones": {
+    "reached": "{count, number} palabras inscritas en la biblioteca"
   }
 }

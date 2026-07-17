@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useStory } from '@/lib/store';
 import { useSession } from '@/lib/session';
 import { wordCount as countWords, getPlainText } from '@/lib/editor/serialization';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { BookOpen, Feather, AlertCircle, Flame, BrainCircuit } from 'lucide-react';
 import Link from 'next/link';
 import { fadeUp, hoverLift } from '@/lib/animations';
@@ -30,18 +30,27 @@ const DashboardGamification = React.lazy(() => import('@/components/gamification
 const BLOCK_TYPES = ['fear', 'perfectionism', 'direction', 'exhaustion'] as const;
 
 // ─── Inline SVG: Animated Candle ───
+// Y10: SMIL <animate> is invisible to the CSS reduced-motion block, so the
+// flicker is dropped explicitly and the flame simply holds still.
 function CandleIcon() {
+  const reduceMotion = useReducedMotion();
   return (
     <svg viewBox="0 0 24 40" className="w-6 h-10 shrink-0" fill="none">
       <rect x="8" y="16" width="8" height="20" rx="1.5" fill="#c49b48" opacity="0.6" />
       <rect x="9" y="14" width="6" height="4" rx="1" fill="#a88540" opacity="0.5" />
       <line x1="12" y1="14" x2="12" y2="10" stroke="#5a3d1e" strokeWidth="0.8" />
       <ellipse cx="12" cy="8" rx="3" ry="5" fill="#c49b48" opacity="0.5">
-        <animate attributeName="ry" values="5;4;5.5;4.5;5" dur="2s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.5;0.7;0.4;0.6;0.5" dur="2s" repeatCount="indefinite" />
+        {!reduceMotion && (
+          <>
+            <animate attributeName="ry" values="5;4;5.5;4.5;5" dur="2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.5;0.7;0.4;0.6;0.5" dur="2s" repeatCount="indefinite" />
+          </>
+        )}
       </ellipse>
       <ellipse cx="12" cy="7" rx="1.5" ry="2.5" fill="#f0dfc0" opacity="0.6">
-        <animate attributeName="ry" values="2.5;2;3;2;2.5" dur="1.5s" repeatCount="indefinite" />
+        {!reduceMotion && (
+          <animate attributeName="ry" values="2.5;2;3;2;2.5" dur="1.5s" repeatCount="indefinite" />
+        )}
       </ellipse>
     </svg>
   );

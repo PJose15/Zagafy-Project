@@ -27,7 +27,7 @@ interface EmptyStateProps {
 
 function ManuscriptIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Table surface */}
       <rect x="20" y="110" width="160" height="4" rx="2" fill="#5a3d1e" opacity="0.2" />
       {/* Left page */}
@@ -54,7 +54,7 @@ function ManuscriptIllustration() {
 
 function CharactersIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Spotlight glow */}
       <circle cx="100" cy="70" r="55" fill="url(#charGlow)" />
       {/* Center bust (protagonist) */}
@@ -87,7 +87,7 @@ function CharactersIllustration() {
 
 function TimelineIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Hourglass frame */}
       <path d="M70 25 L130 25" stroke="#a88540" strokeWidth="2" strokeLinecap="round" />
       <path d="M70 115 L130 115" stroke="#a88540" strokeWidth="2" strokeLinecap="round" />
@@ -114,7 +114,7 @@ function TimelineIllustration() {
 
 function ConflictsIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Scroll underneath */}
       <rect x="55" y="85" width="90" height="35" rx="3" fill="#f0dfc0" stroke="#9a7a4a" strokeWidth="1" opacity="0.5" />
       <ellipse cx="55" cy="102" rx="4" ry="17" fill="#f8edd8" stroke="#9a7a4a" strokeWidth="0.5" />
@@ -137,7 +137,7 @@ function ConflictsIllustration() {
 
 function CanonIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Parchment underneath */}
       <rect x="50" y="65" width="100" height="60" rx="4" fill="#f8edd8" stroke="#9a7a4a" strokeWidth="1" opacity="0.5" />
       {/* Press impression circle on parchment */}
@@ -158,7 +158,7 @@ function CanonIllustration() {
 
 function LoopsIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Thread forming loose figure-8 loop */}
       <path
         d="M40 70 Q40 30 80 30 Q120 30 100 60 Q80 90 120 90 Q160 90 160 70 Q160 50 140 50"
@@ -189,7 +189,7 @@ function LoopsIllustration() {
 
 function BibleIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Book body */}
       <rect x="45" y="25" width="110" height="90" rx="4" fill="#6b3e25" />
       <rect x="48" y="28" width="104" height="84" rx="3" fill="#4a2c1a" />
@@ -215,7 +215,7 @@ function BibleIllustration() {
 
 function ImportIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Envelope body */}
       <rect x="40" y="55" width="120" height="70" rx="4" fill="#e4cfa0" stroke="#9a7a4a" strokeWidth="1" />
       {/* Envelope flap (open) */}
@@ -237,7 +237,7 @@ function ImportIllustration() {
 
 function GenericIllustration() {
   return (
-    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85">
+    <svg viewBox="0 0 200 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-40 h-28 opacity-85" aria-hidden="true">
       {/* Quill feather */}
       <path
         d="M150 20 Q130 40 100 80 Q90 95 85 110"

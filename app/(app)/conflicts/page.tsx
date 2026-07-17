@@ -169,7 +169,7 @@ export default function ConflictsPage() {
                       >
                         <CheckCircle2 size={20} />
                       </button>
-                      <h2 className={`text-xl font-serif font-semibold ${conflict.status === 'resolved' ? 'text-sepia-600 line-through decoration-sepia-400' : 'text-sepia-900'}`}>
+                      <h2 className={`text-xl font-serif font-semibold ${conflict.status === 'resolved' ? 'text-sepia-600 line-through decoration-sepia-600' : 'text-sepia-900'}`}>
                         {conflict.title}
                       </h2>
                       {conflict.canonStatus && (

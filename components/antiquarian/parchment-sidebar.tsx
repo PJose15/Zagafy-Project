@@ -36,8 +36,9 @@ import { StreakBadge } from '@/components/gamification/streak-badge';
 import { XPBar } from '@/components/gamification/xp-bar';
 import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { ProfileBadge } from '@/components/profile/profile-badge';
+import { CatalogHint } from '@/components/catalog/card-catalog';
 
-const navItems = [
+export const navItems = [
   { key: 'dashboard', href: '/', icon: LayoutDashboard },
   { key: 'projects', href: '/projects', icon: Library },
   { key: 'manuscript', href: '/manuscript', icon: BookOpen },
@@ -197,6 +198,8 @@ export function ParchmentSidebar() {
         </div>
 
         <div className="p-4 border-t border-mahogany-700/50">
+          {/* A1: card catalog quick-open (Ctrl/Cmd+K) */}
+          <CatalogHint />
           <ProfileBadge onNavigate={() => setIsOpen(false)} />
           <Link
             href="/settings"

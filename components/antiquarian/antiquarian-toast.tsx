@@ -8,14 +8,20 @@ import { toastSlam } from '@/lib/animations';
 
 type ToastType = 'success' | 'error' | 'warning' | 'info';
 
+interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 interface Toast {
   id: string;
   message: string;
   type: ToastType;
+  action?: ToastAction;
 }
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, action?: ToastAction) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -49,6 +55,8 @@ const barColors: Record<ToastType, string> = {
 };
 
 const TOAST_LIFETIME_MS = 5000;
+// Actionable toasts (e.g. Undo) linger longer so the offer can be taken.
+const ACTION_TOAST_LIFETIME_MS = 8000;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const tr = useTranslations('common');
@@ -64,10 +72,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const toast = useCallback((message: string, type: ToastType = 'info') => {
+  const toast = useCallback((message: string, type: ToastType = 'info', action?: ToastAction) => {
     const id = crypto.randomUUID();
-    setToasts(prev => [...prev.slice(-4), { id, message, type }]);
-    const timer = setTimeout(() => removeToast(id), TOAST_LIFETIME_MS);
+    setToasts(prev => [...prev.slice(-4), { id, message, type, action }]);
+    const timer = setTimeout(() => removeToast(id), action ? ACTION_TOAST_LIFETIME_MS : TOAST_LIFETIME_MS);
     timersRef.current.set(id, timer);
   }, [removeToast]);
 
@@ -81,6 +89,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       >
         <Icon size={18} aria-hidden="true" className={`shrink-0 mt-0.5 ${iconColors[t.type]}`} />
         <p className="text-sm flex-1 font-medium break-words min-w-0">{t.message}</p>
+        {t.action && (
+          <button
+            onClick={() => {
+              t.action?.onClick();
+              removeToast(t.id);
+            }}
+            className="shrink-0 text-xs font-semibold text-brass-700 underline underline-offset-2 hover:text-brass-600 transition-colors"
+          >
+            {t.action.label}
+          </button>
+        )}
         <button
           onClick={() => removeToast(t.id)}
           className="shrink-0 p-0.5 rounded hover:bg-sepia-300/30 transition-colors text-sepia-600"

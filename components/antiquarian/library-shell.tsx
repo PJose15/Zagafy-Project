@@ -8,8 +8,10 @@ import { ToastProvider, useToast } from '@/components/antiquarian/antiquarian-to
 import { ConfirmProvider } from '@/components/antiquarian/parchment-modal';
 import { ParchmentSidebar } from '@/components/antiquarian/parchment-sidebar';
 import { BackToTop } from '@/components/antiquarian/back-to-top';
+import { CardCatalog } from '@/components/catalog/card-catalog';
 import { DiagnosticGate } from '@/components/diagnostic/diagnostic-gate';
 import { useSessionTracker } from '@/hooks/use-session-tracker';
+import { useWordMilestones } from '@/hooks/use-word-milestones';
 import { FlowScoreModal } from '@/components/writing-map/flow-score-modal';
 import { updateSessionFlowScore } from '@/lib/types/writing-session';
 import type { FlowScore } from '@/lib/types/writing-session';
@@ -38,6 +40,8 @@ function StreakWarningToast() {
 
 function LibraryShellInner({ children }: { children: React.ReactNode }) {
   const { pendingFlowScore, dismissFlowScore } = useSessionTracker();
+  // A4: gold moments when the manuscript crosses a round word count.
+  useWordMilestones();
 
   const handleFlowSubmit = useCallback((sessionId: string, score: FlowScore) => {
     updateSessionFlowScore(sessionId, score).catch(() => { /* best effort */ });
@@ -67,6 +71,7 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
         />
       )}
       <BackToTop />
+      <CardCatalog />
       <OnboardingTour />
     </>
   );

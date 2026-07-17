@@ -104,6 +104,7 @@ function RiskBadge({ level }: { level: AuditRisk['level'] }) {
 
 export default function AssistantPage() {
   const t = useTranslations('assistant');
+  const tCommon = useTranslations('common');
   const { state, updateField } = useStory();
   const { session } = useSession();
   const { toast } = useToast();
@@ -126,8 +127,23 @@ export default function AssistantPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Y9: scroll etiquette — only follow new messages when the reader is
+  // already near the bottom; never yank someone who scrolled up to reread.
+  const nearBottomRef = useRef(true);
+  useEffect(() => {
+    const main = document.getElementById('main-content');
+    if (!main) return;
+    const onScroll = () => {
+      nearBottomRef.current = main.scrollHeight - main.scrollTop - main.clientHeight < 140;
+    };
+    main.addEventListener('scroll', onScroll, { passive: true });
+    return () => main.removeEventListener('scroll', onScroll);
+  }, []);
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!nearBottomRef.current) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    messagesEndRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
   };
 
   // Load saved messages from store on mount
@@ -606,6 +622,10 @@ export default function AssistantPage() {
             </motion.button>
           </div>
         </ParchmentCard>
+        {/* A5: quiet keyboard hint for the composer */}
+        <p aria-hidden="true" className="mt-1.5 text-right font-mono text-[10px] text-sepia-500">
+          ↵ {tCommon('kbdSend')} · ⇧↵ {tCommon('kbdNewline')}
+        </p>
       </div>
     </div>
     </FeatureErrorBoundary>

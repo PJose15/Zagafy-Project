@@ -55,7 +55,10 @@
     "timeJustNow": "just now",
     "timeMinutes": "{count}m ago",
     "timeHours": "{count}h ago",
-    "timeDays": "{count}d ago"
+    "timeDays": "{count}d ago",
+    "undo": "Undo",
+    "kbdSend": "send",
+    "kbdNewline": "new line"
   },
   "settings": {
     "title": "Settings",
@@ -1144,7 +1147,13 @@
     "summaryLabel": "Summary",
     "emptyTitle": "Your manuscript is empty",
     "emptySubtitle": "Every great story begins with a single chapter.",
-    "emptyAction": "Add your first chapter"
+    "emptyAction": "Add your first chapter",
+    "deletedToast": "“{title}” struck from the manuscript",
+    "duplicatedToast": "“{title}” duplicated",
+    "savedToast": "Chapter saved",
+    "copyTitle": "{title} (copy)",
+    "duplicateAria": "Duplicate {title}",
+    "dragAria": "Drag to reorder {title}"
   },
   "outline": {
     "errorTitle": "Outline",
@@ -2040,5 +2049,17 @@
     "leaveConfirm": "Leave",
     "leaveSuccess": "You left the story.",
     "genericError": "Something went wrong. Please try again."
+  },
+  "catalog": {
+    "title": "Card catalog",
+    "placeholder": "Search the library…",
+    "pages": "Rooms",
+    "chapters": "Chapters",
+    "noResults": "Nothing on this shelf. Try another word.",
+    "hintNavigate": "navigate",
+    "hintOpen": "open"
+  },
+  "milestones": {
+    "reached": "{count, number} words inscribed in the library"
   }
 }

@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { CarvedHeader, ParchmentCard, FeatureErrorBoundary } from '@/components/antiquarian';
+import { CarvedHeader, ParchmentCard, FeatureErrorBoundary, Reveal } from '@/components/antiquarian';
 import { readSessions } from '@/lib/types/writing-session';
 import { CalendarHeatmap } from '@/components/writing-map/calendar-heatmap';
 // Lazy-load WordsByHour (pulls in recharts, ~110 kB). Only needed when the
@@ -117,23 +117,29 @@ export default function WritingMapPage() {
         <InsightCard sessions={sessions} />
       </section>
 
+      {/* A8: below-the-fold sections unfold as the reader scrolls to them */}
       {/* Section 5: Voice Analytics */}
+      <Reveal>
       <section aria-label={t('voiceAnalyticsAria')}>
         <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('voiceAnalyticsHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <HeteronymAnalytics />
         </ParchmentCard>
       </section>
+      </Reveal>
 
       {/* Section 5b: Pacing Health (MP-08 / Phase 4.6) */}
+      <Reveal>
       <section aria-label={t('pacingAria')}>
         <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('pacingHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <PacingHealth />
         </ParchmentCard>
       </section>
+      </Reveal>
 
       {/* Section 5c: Writer memory (MP-11 / Phase 4.12) */}
+      <Reveal>
       <section aria-label={t('craftAria')}>
         <h2 className="text-lg font-medium text-parchment-200 mb-4">
           {t('craftHeading')}
@@ -142,14 +148,17 @@ export default function WritingMapPage() {
           <WriterMemoryCard />
         </ParchmentCard>
       </section>
+      </Reveal>
 
       {/* Section 6: Sessions Table */}
+      <Reveal>
       <section aria-label={t('recentSessionsAria')}>
         <h2 className="text-lg font-medium text-parchment-200 mb-4">{t('recentSessionsHeading')}</h2>
         <ParchmentCard className="p-4 md:p-6">
           <SessionsTable sessions={sessions} />
         </ParchmentCard>
       </section>
+      </Reveal>
     </div>
     </FeatureErrorBoundary>
   );

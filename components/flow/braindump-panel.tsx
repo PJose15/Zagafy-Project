@@ -69,7 +69,7 @@ export function BraindumpPanel({ braindump }: BraindumpPanelProps) {
           <select
             value={speech.language}
             onChange={(e) => speech.setLanguage(e.target.value)}
-            className="text-xs bg-parchment-200/50 border border-sepia-300/30 rounded px-1.5 py-0.5 text-sepia-600 focus:outline-none focus:border-sepia-300/50"
+            className="text-xs bg-parchment-200/50 border border-sepia-300/30 rounded px-1.5 py-0.5 text-sepia-700"
             aria-label={t('recognitionLanguage')}
           >
             {LANGUAGES.map(l => (

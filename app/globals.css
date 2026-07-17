@@ -591,6 +591,33 @@
   animation: triumph-ember 1.6s ease-out var(--ember-delay, 0s) both;
 }
 
+/* A6 — the pen's presence: brass caret in every field, parchment-gold
+   selection, and no grey tap-flash on touch devices. */
+::selection {
+  background: rgba(196, 155, 72, 0.32);
+  color: var(--color-sepia-900);
+}
+input,
+textarea,
+[contenteditable] {
+  caret-color: var(--color-brass-600);
+}
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A10 — a streak at risk: the flame gutters (uneven flicker) instead of
+   holding its steady glow, warning that today's page is still unwritten. */
+@keyframes flame-flicker {
+  0%, 100% { opacity: 1; }
+  42% { opacity: 0.45; }
+  58% { opacity: 0.85; }
+  74% { opacity: 0.5; }
+}
+.flame-at-risk {
+  animation: flame-flicker 2.2s ease-in-out infinite;
+}
+
 /* ─── Scrollbar Styling ─── */
 ::-webkit-scrollbar {
   width: 10px;
