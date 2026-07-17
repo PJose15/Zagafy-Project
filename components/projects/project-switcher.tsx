@@ -17,17 +17,24 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   const { projects, activeId } = useProjects();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const active = projects.find(p => p.id === activeId);
   const activeTitle = active?.title || t('untitled');
 
   useEffect(() => {
     if (!open) return;
+    // WAI-ARIA menu pattern: focus lands on the first item when the menu opens.
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const onDown = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -36,6 +43,28 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate?: () => void }) {
       document.removeEventListener('keydown', onKey);
     };
   }, [open]);
+
+  // Arrow keys walk the menu (wrapping); Home/End jump to the edges.
+  const handleMenuKey = (e: React.KeyboardEvent) => {
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [],
+    );
+    if (items.length === 0) return;
+    const idx = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      items[(idx + 1) % items.length].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      items[(idx - 1 + items.length) % items.length].focus();
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      items[0].focus();
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      items[items.length - 1].focus();
+    }
+  };
 
   const go = (path: string) => {
     setOpen(false);
@@ -56,8 +85,15 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(o => !o)}
+        onKeyDown={e => {
+          if (e.key === 'ArrowDown' && !open) {
+            e.preventDefault();
+            setOpen(true);
+          }
+        }}
         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-mahogany-800/50 border border-mahogany-700/40 text-left hover:bg-mahogany-800/80 transition-colors"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -70,7 +106,9 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate?: () => void }) {
 
       {open && (
         <div
+          ref={menuRef}
           role="menu"
+          onKeyDown={handleMenuKey}
           className="absolute left-0 right-0 mt-1 z-50 rounded-lg bg-mahogany-900 border border-mahogany-700/60 shadow-card-hover py-1 max-h-72 overflow-y-auto"
         >
           <p className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-brass-400/50">{t('projects')}</p>

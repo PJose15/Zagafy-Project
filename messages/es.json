@@ -536,6 +536,7 @@
     "switch": {
       "title": "Cambiar Voz",
       "aria": "Cambiar voz de escritura",
+      "close": "Cerrar",
       "returnVoice": "Volver a tu propia voz",
       "returnDesc": "Dejar de escribir como otra persona",
       "noOthers": "No hay otras voces disponibles. Crea álter egos en Ajustes."
@@ -565,6 +566,9 @@
     "inputWaiting": "Esperando respuesta...",
     "saveAsCanon": "Guardar como canon",
     "canonSavedToast": "Revelación sellada en el canon",
+    "clearSessionAria": "Borrar esta conversación",
+    "clearConfirmTitle": "¿Borrar la conversación?",
+    "clearConfirmMessage": "Se descartará todo el intercambio con {name}. Las revelaciones guardadas como canon permanecen en tu biblia.",
     "savedAsCanon": "Guardado como canon"
   },
   "flow": {
@@ -632,7 +636,9 @@
     "chapterSelect": {
       "title": "Elige un capítulo",
       "close": "Cerrar",
-      "empty": "Aún no hay capítulos. Crea uno primero en la sección Manuscrito."
+      "empty": "Aún no hay capítulos. Crea uno primero en la sección Manuscrito.",
+      "emptyTitle": "El estante está vacío",
+      "emptyCta": "Ir al Manuscrito"
     },
     "closingRitual": {
       "close": "Cerrar ritual",

@@ -80,7 +80,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         className={`relative overflow-hidden flex items-start gap-3 border rounded-xl px-4 py-3 shadow-parchment texture-parchment ${styles[t.type]}`}
       >
         <Icon size={18} aria-hidden="true" className={`shrink-0 mt-0.5 ${iconColors[t.type]}`} />
-        <p className="text-sm flex-1 font-medium">{t.message}</p>
+        <p className="text-sm flex-1 font-medium break-words min-w-0">{t.message}</p>
         <button
           onClick={() => removeToast(t.id)}
           className="shrink-0 p-0.5 rounded hover:bg-sepia-300/30 transition-colors text-sepia-600"

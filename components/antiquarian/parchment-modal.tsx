@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { AlertTriangle, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { springs } from '@/lib/animations';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 
 interface ConfirmOptions {
   title: string;
@@ -34,45 +35,20 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const handleResponse = (value: boolean) => {
+  const handleResponse = useCallback((value: boolean) => {
     resolveRef.current?.(value);
     resolveRef.current = null;
     setOptions(null);
-  };
+  }, []);
+
+  const handleCancel = useCallback(() => handleResponse(false), [handleResponse]);
+  // Scroll lock + Escape + Tab trap live in the shared hygiene hook.
+  useModalHygiene(dialogRef, handleCancel, !!options);
 
   useEffect(() => {
     if (!options) return;
-    setTimeout(() => cancelBtnRef.current?.focus(), 50);
-
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleResponse(false);
-        return;
-      }
-      // Trap Tab within the dialog so focus can't escape to the page behind it.
-      if (e.key === 'Tab') {
-        const root = dialogRef.current;
-        if (!root) return;
-        const focusables = root.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        const active = document.activeElement;
-        if (e.shiftKey) {
-          if (active === first || !root.contains(active)) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else if (active === last || !root.contains(active)) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    const timer = setTimeout(() => cancelBtnRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
   }, [options]);
 
   const isDanger = options?.variant === 'danger';
@@ -87,7 +63,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[110] flex items-center justify-center p-4"
-            role="dialog"
+            role={isDanger ? 'alertdialog' : 'dialog'}
             aria-modal="true"
             aria-labelledby="confirm-title"
             aria-describedby="confirm-message"

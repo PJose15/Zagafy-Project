@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Trash2, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { fadeUp } from '@/lib/animations';
-import { BrassButton } from '@/components/antiquarian';
+import { BrassButton, useConfirm } from '@/components/antiquarian';
 import { useToast } from '@/components/toast';
 import { useCharacterChat } from '@/hooks/use-character-chat';
 import type { EvolvedState } from '@/lib/types/character-chat';
@@ -56,6 +56,16 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { confirm } = useConfirm();
+
+  const handleClearSession = useCallback(async () => {
+    const ok = await confirm({
+      title: t('clearConfirmTitle'),
+      message: t('clearConfirmMessage', { name: characterName }),
+      variant: 'danger',
+    });
+    if (ok) clearSession();
+  }, [confirm, t, characterName, clearSession]);
 
   const handleSaveInsight = useCallback((insightId: string) => {
     saveInsightAsCanon(insightId);
@@ -82,8 +92,8 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
               {characterName}
             </h2>
           </div>
-          <BrassButton onClick={clearSession} className="text-xs">
-            <Trash2 size={14} />
+          <BrassButton onClick={handleClearSession} className="text-xs" aria-label={t('clearSessionAria')}>
+            <Trash2 size={14} aria-hidden="true" />
           </BrassButton>
         </div>
         <ChatModeSelector activeMode={mode} onModeChange={setMode} />

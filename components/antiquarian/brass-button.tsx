@@ -23,7 +23,9 @@ export const BrassButton = forwardRef<HTMLButtonElement, BrassButtonProps>(
           'brass-sweep bg-gradient-to-b from-brass-500 to-brass-700 text-sepia-900 border border-brass-600',
           'shadow-brass hover:from-brass-400 hover:to-brass-600',
           'active:from-brass-700 active:to-brass-500 active:translate-y-[1px] active:scale-[0.97]',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
+          // Disabled buttons must stay inert: no hover brightening, no press
+          // travel, no gleam sweep — otherwise they invite clicks they ignore.
+          'disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-brass-500 disabled:hover:to-brass-700 disabled:active:translate-y-0 disabled:active:scale-100 disabled:[&::after]:hidden',
           sizeStyles[size],
           className,
         ].join(' ')}

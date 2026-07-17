@@ -87,7 +87,7 @@ export function WorldBibleSectionCard({ section, onUpdate, onDelete }: WorldBibl
             <span className="text-[10px] bg-brass-500/10 text-brass-700 px-1.5 py-0.5 rounded-full shrink-0">AI</span>
           )}
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity shrink-0">
           {editing ? (
             <button
               onClick={handleSave}

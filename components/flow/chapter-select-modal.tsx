@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { springs } from '@/lib/animations';
 import { useStory } from '@/lib/store';
-import { BookOpen, X } from 'lucide-react';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
+import { BookOpen, Feather, X } from 'lucide-react';
 
 interface ChapterSelectModalProps {
   onSelect: (chapterId: string) => void;
@@ -14,6 +17,13 @@ interface ChapterSelectModalProps {
 export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProps) {
   const t = useTranslations('flow.chapterSelect');
   const { state } = useStory();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // Scroll lock + Escape + Tab trap.
+  useModalHygiene(panelRef, onClose);
+  useEffect(() => {
+    closeBtnRef.current?.focus();
+  }, []);
 
   return (
     <div
@@ -31,6 +41,7 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
       />
 
       <motion.div
+        ref={panelRef}
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={springs.gentle}
@@ -41,15 +52,27 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
             <BookOpen className="text-brass-500" size={20} />
             {t('title')}
           </h2>
-          <button onClick={onClose} className="text-sepia-600 hover:text-sepia-700 transition-colors" aria-label={t('close')}>
+          <button ref={closeBtnRef} onClick={onClose} className="text-sepia-600 hover:text-sepia-700 transition-colors" aria-label={t('close')}>
             <X size={20} />
           </button>
         </div>
 
         {state.chapters.length === 0 ? (
-          <p className="text-sepia-600 text-sm text-center py-8">
-            {t('empty')}
-          </p>
+          <div className="text-center py-8 px-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-parchment-200 border border-sepia-300/50 flex items-center justify-center mb-3">
+              <Feather size={22} aria-hidden="true" className="text-brass-600" />
+            </div>
+            <p className="font-serif font-semibold text-sepia-900">{t('emptyTitle')}</p>
+            <p className="text-sepia-600 text-sm mt-1 mb-4">{t('empty')}</p>
+            <Link
+              href="/manuscript"
+              onClick={onClose}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-b from-brass-500 to-brass-700 text-sepia-900 border border-brass-600 shadow-brass hover:from-brass-400 hover:to-brass-600 transition"
+            >
+              <BookOpen size={15} aria-hidden="true" />
+              {t('emptyCta')}
+            </Link>
+          </div>
         ) : (
           <div className="space-y-2 overflow-y-auto flex-1">
             {state.chapters.map((chapter, i) => (

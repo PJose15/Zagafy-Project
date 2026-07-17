@@ -536,6 +536,7 @@
     "switch": {
       "title": "Switch Voice",
       "aria": "Switch writing voice",
+      "close": "Close",
       "returnVoice": "Return to own voice",
       "returnDesc": "Stop writing as someone else",
       "noOthers": "No other voices available. Create alter egos in Settings."
@@ -565,6 +566,9 @@
     "inputWaiting": "Waiting for response...",
     "saveAsCanon": "Save as Canon",
     "canonSavedToast": "Insight sealed into canon",
+    "clearSessionAria": "Clear this conversation",
+    "clearConfirmTitle": "Clear conversation?",
+    "clearConfirmMessage": "The full exchange with {name} will be discarded. Saved canon insights remain in your bible.",
     "savedAsCanon": "Saved as Canon"
   },
   "flow": {
@@ -632,7 +636,9 @@
     "chapterSelect": {
       "title": "Choose a chapter",
       "close": "Close",
-      "empty": "No chapters yet. Create one in the Manuscript section first."
+      "empty": "No chapters yet. Create one in the Manuscript section first.",
+      "emptyTitle": "The shelf is bare",
+      "emptyCta": "Go to Manuscript"
     },
     "closingRitual": {
       "close": "Close ritual",

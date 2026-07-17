@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, Theater } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AvatarCircle } from './avatar-circle';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import type { Heteronym } from '@/lib/types/heteronym';
 
 interface VoiceSwitchModalProps {
@@ -18,13 +19,13 @@ interface VoiceSwitchModalProps {
 
 export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onClearGuest, onClose }: VoiceSwitchModalProps) {
   const t = useTranslations('heteronyms.switch');
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // Scroll lock + Escape + Tab trap.
+  useModalHygiene(panelRef, onClose);
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+    closeBtnRef.current?.focus();
+  }, []);
 
   const currentVoiceId = guestId || activeId;
   const otherVoices = heteronyms.filter(h => h.id !== currentVoiceId);
@@ -43,6 +44,7 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
         <motion.div
+          ref={panelRef}
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -53,7 +55,7 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
               <Theater size={18} className="text-brass-500" />
               {t('title')}
             </h2>
-            <button onClick={onClose} className="p-1 text-sepia-600 hover:text-sepia-800 rounded-lg hover:bg-parchment-200">
+            <button ref={closeBtnRef} onClick={onClose} aria-label={t('close')} className="p-1 text-sepia-600 hover:text-sepia-800 rounded-lg hover:bg-parchment-200">
               <X size={18} />
             </button>
           </div>

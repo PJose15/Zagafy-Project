@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
-import { fadeUp } from '@/lib/animations';
+import { fadeUp, springs } from '@/lib/animations';
 import { ParchmentCard, BrassButton, CarvedHeader, ParchmentInput, ParchmentTextarea, ParchmentSelect } from '@/components/antiquarian';
 import { useStory } from '@/lib/store';
 import { useConfirm } from '@/components/confirm-dialog';
@@ -41,7 +41,7 @@ function CopyResultButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="flex items-center gap-1.5 text-xs text-cream-300/60 hover:text-brass-300 transition-colors"
+      className="flex items-center gap-1.5 text-xs text-sepia-600 hover:text-brass-700 transition-colors"
     >
       <Copy size={13} aria-hidden="true" />
       {t('copyResult')}
@@ -64,6 +64,7 @@ function saveSubmissions(subs: Submission[]) {
 export default function PublishingPage() {
   const [tab, setTab] = useState<Tab>('kdp');
   const [exportOpen, setExportOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const { state } = useStory();
   const t = useTranslations('publishing');
   const tCommon = useTranslations('common');
@@ -339,30 +340,49 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
   ];
 
   const statusColors: Record<string, string> = {
-    queried: 'text-brass-400',
-    requested: 'text-forest-500',
-    rejected: 'text-wax-500',
-    accepted: 'text-forest-400',
+    queried: 'text-brass-700',
+    requested: 'text-forest-700',
+    rejected: 'text-wax-600',
+    accepted: 'text-forest-600',
+  };
+
+  // Switching tabs replaces the whole panel; restore the reading position so
+  // the new tab never appears pre-scrolled past its own heading.
+  const selectTab = (key: Tab) => {
+    setTab(key);
+    rootRef.current?.closest('main')?.scrollTo({ top: 0 });
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div ref={rootRef} className="max-w-5xl mx-auto space-y-6">
       <CarvedHeader title={t('title')} subtitle={t('subtitle')} />
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
+      {/* Tabs — the brass pill glides between selections (M14) */}
+      <div role="tablist" className="flex flex-wrap gap-2">
         {tabs.map(tb => (
           <button
             key={tb.key}
-            onClick={() => setTab(tb.key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            role="tab"
+            aria-selected={tab === tb.key}
+            onClick={() => selectTab(tb.key)}
+            className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               tab === tb.key
-                ? 'bg-brass-500/20 text-brass-300 border border-brass-500/40'
-                : 'text-cream-300/60 hover:bg-mahogany-800/50 hover:text-cream-100 border border-transparent'
+                ? 'text-brass-300'
+                : 'text-cream-300/60 hover:bg-mahogany-800/50 hover:text-cream-100'
             }`}
           >
-            {tb.icon}
-            {t(`tabs.${tb.key}`)}
+            {tab === tb.key && (
+              <motion.span
+                layoutId="publishing-tab-pill"
+                transition={springs.stamp}
+                className="absolute inset-0 rounded-lg bg-brass-500/20 border border-brass-500/40"
+                aria-hidden="true"
+              />
+            )}
+            <span className="relative flex items-center gap-2">
+              {tb.icon}
+              {t(`tabs.${tb.key}`)}
+            </span>
           </button>
         ))}
       </div>
@@ -373,8 +393,8 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* KDP Export Tab */}
       {tab === 'kdp' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('kdp.heading')}</h3>
-          <pre className="whitespace-pre-wrap text-sm text-cream-300/80 font-mono bg-mahogany-900/50 p-4 rounded-lg border border-mahogany-700/30 leading-relaxed">
+          <h3 className="font-serif text-lg text-sepia-900 mb-4">{t('kdp.heading')}</h3>
+          <pre className="whitespace-pre-wrap text-sm text-sepia-800 font-mono bg-parchment-200 p-4 rounded-lg border border-sepia-300/50 leading-relaxed">
             {kdpPreview}
           </pre>
           <div className="mt-4">
@@ -383,7 +403,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
               {t('kdp.exportButton')}
             </BrassButton>
             {state.chapters.length === 0 && (
-              <p className="text-xs text-cream-300/60 mt-2">{t('kdp.noChapters')}</p>
+              <p className="text-xs text-sepia-600 mt-2">{t('kdp.noChapters')}</p>
             )}
           </div>
         </ParchmentCard>
@@ -392,7 +412,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Query Letter Tab */}
       {tab === 'query' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('query.heading')}</h3>
+          <h3 className="font-serif text-lg text-sepia-900 mb-4">{t('query.heading')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <ParchmentInput
               label={t('query.targetAgent')}
@@ -434,7 +454,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Synopsis Tab */}
       {tab === 'synopsis' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('synopsis.heading')}</h3>
+          <h3 className="font-serif text-lg text-sepia-900 mb-4">{t('synopsis.heading')}</h3>
           <div className="flex gap-3 mb-4">
             <BrassButton onClick={() => generateSynopsis('1-page')} disabled={synopsisLoading}>
               <FileText size={16} className="mr-2" />
@@ -462,7 +482,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Comp Titles Tab */}
       {tab === 'comp' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-4">{t('comp.heading')}</h3>
+          <h3 className="font-serif text-lg text-sepia-900 mb-4">{t('comp.heading')}</h3>
           <BrassButton onClick={findCompTitles} disabled={compLoading}>
             <Search size={16} className="mr-2" />
             {compLoading ? t('comp.searching') : t('comp.find')}
@@ -470,12 +490,12 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
           {compTitles.length > 0 && (
             <div className="mt-4 space-y-4">
               {compTitles.map((ct, i) => (
-                <div key={i} className="p-4 bg-mahogany-900/50 rounded-lg border border-mahogany-700/30">
-                  <h4 className="font-serif text-cream-100 font-semibold">
-                    {ct.title} <span className="text-brass-400 font-normal">{t('comp.by')} {ct.author}</span>
-                    {ct.year > 0 && <span className="text-cream-300/50 text-sm ml-2">({ct.year})</span>}
+                <div key={i} className="p-4 bg-parchment-200 rounded-lg border border-sepia-300/50">
+                  <h4 className="font-serif text-sepia-900 font-semibold">
+                    {ct.title} <span className="text-brass-700 font-normal">{t('comp.by')} {ct.author}</span>
+                    {ct.year > 0 && <span className="text-sepia-500 text-sm ml-2">({ct.year})</span>}
                   </h4>
-                  <p className="text-cream-300/70 text-sm mt-2">{ct.rationale}</p>
+                  <p className="text-sepia-700 text-sm mt-2">{ct.rationale}</p>
                 </div>
               ))}
             </div>
@@ -486,8 +506,8 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Back-Cover Blurb Tab */}
       {tab === 'blurb' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-2">{t('blurb.heading')}</h3>
-          <p className="text-sm text-cream-300/60 mb-4">
+          <h3 className="font-serif text-lg text-sepia-900 mb-2">{t('blurb.heading')}</h3>
+          <p className="text-sm text-sepia-600 mb-4">
             {t('blurb.description')}
           </p>
           <BrassButton onClick={generateBlurb} disabled={blurbLoading || !state.title}>
@@ -495,7 +515,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             {blurbLoading ? tCommon('generating') : t('blurb.generate')}
           </BrassButton>
           {!state.title && (
-            <p className="text-xs text-cream-300/60 mt-2">{t('blurb.needTitle')}</p>
+            <p className="text-xs text-sepia-600 mt-2">{t('blurb.needTitle')}</p>
           )}
           {blurb && (
             <div className="mt-4 space-y-2">
@@ -514,8 +534,8 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Marketing Copy Tab */}
       {tab === 'marketing' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-2">{t('marketing.heading')}</h3>
-          <p className="text-sm text-cream-300/60 mb-4">
+          <h3 className="font-serif text-lg text-sepia-900 mb-2">{t('marketing.heading')}</h3>
+          <p className="text-sm text-sepia-600 mb-4">
             {t('marketing.description')}
           </p>
           <BrassButton onClick={generateMarketing} disabled={marketingLoading || !state.title}>
@@ -523,7 +543,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             {marketingLoading ? tCommon('generating') : t('marketing.generate')}
           </BrassButton>
           {!state.title && (
-            <p className="text-xs text-cream-300/60 mt-2">{t('marketing.needTitle')}</p>
+            <p className="text-xs text-sepia-600 mt-2">{t('marketing.needTitle')}</p>
           )}
           {marketing && (
             <div className="mt-4 space-y-2">
@@ -542,8 +562,8 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {/* Logline Tab */}
       {tab === 'logline' && (
         <ParchmentCard>
-          <h3 className="font-serif text-lg text-cream-100 mb-2">{t('logline.heading')}</h3>
-          <p className="text-sm text-cream-300/60 mb-4">
+          <h3 className="font-serif text-lg text-sepia-900 mb-2">{t('logline.heading')}</h3>
+          <p className="text-sm text-sepia-600 mb-4">
             {t('logline.description')}
           </p>
           <BrassButton onClick={generateLogline} disabled={loglineLoading || !state.title}>
@@ -551,7 +571,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             {loglineLoading ? tCommon('generating') : t('logline.generate')}
           </BrassButton>
           {!state.title && (
-            <p className="text-xs text-cream-300/60 mt-2">{t('logline.needTitle')}</p>
+            <p className="text-xs text-sepia-600 mt-2">{t('logline.needTitle')}</p>
           )}
           {logline && (
             <div className="mt-4 space-y-2">
@@ -571,7 +591,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       {tab === 'tracker' && (
         <ParchmentCard>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-lg text-cream-100">{t('tracker.heading')}</h3>
+            <h3 className="font-serif text-lg text-sepia-900">{t('tracker.heading')}</h3>
             <BrassButton onClick={() => setShowAddRow(true)}>
               <Plus size={16} className="mr-2" />
               {t('tracker.add')}
@@ -581,7 +601,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-mahogany-700/40 text-cream-300/60 text-left">
+                <tr className="border-b border-sepia-300/60 text-sepia-600 text-left">
                   <th className="py-2 pr-3">{t('tracker.agent')}</th>
                   <th className="py-2 pr-3">{t('tracker.agency')}</th>
                   <th className="py-2 pr-3">{t('tracker.dateSent')}</th>
@@ -592,56 +612,56 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
               </thead>
               <tbody>
                 {showAddRow && (
-                  <tr className="border-b border-mahogany-700/20">
-                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.agentName} onChange={e => setNewRow(r => ({ ...r, agentName: e.target.value }))} placeholder={t('query.agentPlaceholder')} /></td>
-                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.agency} onChange={e => setNewRow(r => ({ ...r, agency: e.target.value }))} placeholder={t('tracker.agency')} /></td>
-                    <td className="py-2 pr-2"><input type="date" className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.dateSent} onChange={e => setNewRow(r => ({ ...r, dateSent: e.target.value }))} /></td>
+                  <tr className="border-b border-sepia-300/40">
+                    <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={newRow.agentName} onChange={e => setNewRow(r => ({ ...r, agentName: e.target.value }))} placeholder={t('query.agentPlaceholder')} /></td>
+                    <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={newRow.agency} onChange={e => setNewRow(r => ({ ...r, agency: e.target.value }))} placeholder={t('tracker.agency')} /></td>
+                    <td className="py-2 pr-2"><input type="date" className="bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={newRow.dateSent} onChange={e => setNewRow(r => ({ ...r, dateSent: e.target.value }))} /></td>
                     <td className="py-2 pr-2">
-                      <select className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.status} onChange={e => setNewRow(r => ({ ...r, status: e.target.value as Submission['status'] }))}>
+                      <select className="bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={newRow.status} onChange={e => setNewRow(r => ({ ...r, status: e.target.value as Submission['status'] }))}>
                         <option value="queried">{t('tracker.statusQueried')}</option>
                         <option value="requested">{t('tracker.statusRequested')}</option>
                         <option value="rejected">{t('tracker.statusRejected')}</option>
                         <option value="accepted">{t('tracker.statusAccepted')}</option>
                       </select>
                     </td>
-                    <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={newRow.notes} onChange={e => setNewRow(r => ({ ...r, notes: e.target.value }))} placeholder={t('tracker.notes')} /></td>
+                    <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={newRow.notes} onChange={e => setNewRow(r => ({ ...r, notes: e.target.value }))} placeholder={t('tracker.notes')} /></td>
                     <td className="py-2 flex gap-1">
-                      <button onClick={addSubmission} className="text-forest-400 hover:brightness-125 p-1"><Check size={16} /></button>
-                      <button onClick={() => setShowAddRow(false)} className="text-wax-500 hover:brightness-125 p-1"><X size={16} /></button>
+                      <button onClick={addSubmission} className="text-forest-700 hover:text-forest-600 p-1"><Check size={16} /></button>
+                      <button onClick={() => setShowAddRow(false)} className="text-wax-600 hover:text-wax-500 p-1"><X size={16} /></button>
                     </td>
                   </tr>
                 )}
                 {submissions.map(sub => (
-                  <tr key={sub.id} className="border-b border-mahogany-700/20">
+                  <tr key={sub.id} className="border-b border-sepia-300/40">
                     {editingId === sub.id && editDraft ? (
                       <>
-                        <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.agentName} onChange={e => setEditDraft(d => d ? { ...d, agentName: e.target.value } : d)} /></td>
-                        <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.agency} onChange={e => setEditDraft(d => d ? { ...d, agency: e.target.value } : d)} /></td>
-                        <td className="py-2 pr-2"><input type="date" className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.dateSent} onChange={e => setEditDraft(d => d ? { ...d, dateSent: e.target.value } : d)} /></td>
+                        <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={editDraft.agentName} onChange={e => setEditDraft(d => d ? { ...d, agentName: e.target.value } : d)} /></td>
+                        <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={editDraft.agency} onChange={e => setEditDraft(d => d ? { ...d, agency: e.target.value } : d)} /></td>
+                        <td className="py-2 pr-2"><input type="date" className="bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={editDraft.dateSent} onChange={e => setEditDraft(d => d ? { ...d, dateSent: e.target.value } : d)} /></td>
                         <td className="py-2 pr-2">
-                          <select className="bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.status} onChange={e => setEditDraft(d => d ? { ...d, status: e.target.value as Submission['status'] } : d)}>
+                          <select className="bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={editDraft.status} onChange={e => setEditDraft(d => d ? { ...d, status: e.target.value as Submission['status'] } : d)}>
                             <option value="queried">{t('tracker.statusQueried')}</option>
                             <option value="requested">{t('tracker.statusRequested')}</option>
                             <option value="rejected">{t('tracker.statusRejected')}</option>
                             <option value="accepted">{t('tracker.statusAccepted')}</option>
                           </select>
                         </td>
-                        <td className="py-2 pr-2"><input className="w-full bg-mahogany-900/50 border border-mahogany-700/30 rounded px-2 py-1 text-cream-100 text-sm" value={editDraft.notes} onChange={e => setEditDraft(d => d ? { ...d, notes: e.target.value } : d)} /></td>
+                        <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={editDraft.notes} onChange={e => setEditDraft(d => d ? { ...d, notes: e.target.value } : d)} /></td>
                         <td className="py-2 flex gap-1">
-                          <button onClick={saveEdit} className="text-forest-400 hover:brightness-125 p-1"><Check size={16} /></button>
-                          <button onClick={cancelEdit} className="text-wax-500 hover:brightness-125 p-1"><X size={16} /></button>
+                          <button onClick={saveEdit} className="text-forest-700 hover:text-forest-600 p-1"><Check size={16} /></button>
+                          <button onClick={cancelEdit} className="text-wax-600 hover:text-wax-500 p-1"><X size={16} /></button>
                         </td>
                       </>
                     ) : (
                       <>
-                        <td className="py-2 pr-3 text-cream-100">{sub.agentName}</td>
-                        <td className="py-2 pr-3 text-cream-300/70">{sub.agency}</td>
-                        <td className="py-2 pr-3 text-cream-300/70">{sub.dateSent}</td>
-                        <td className={`py-2 pr-3 font-medium ${statusColors[sub.status] || 'text-cream-300'}`}>{statusLabel(sub.status)}</td>
-                        <td className="py-2 pr-3 text-cream-300/60 max-w-[200px] truncate">{sub.notes}</td>
+                        <td className="py-2 pr-3 text-sepia-900">{sub.agentName}</td>
+                        <td className="py-2 pr-3 text-sepia-700">{sub.agency}</td>
+                        <td className="py-2 pr-3 text-sepia-700">{sub.dateSent}</td>
+                        <td className={`py-2 pr-3 font-medium ${statusColors[sub.status] || 'text-sepia-700'}`}>{statusLabel(sub.status)}</td>
+                        <td className="py-2 pr-3 text-sepia-600 max-w-[200px] truncate">{sub.notes}</td>
                         <td className="py-2 flex gap-1">
-                          <button onClick={() => startEdit(sub)} className="text-brass-400 hover:text-brass-300 p-1"><Edit3 size={16} /></button>
-                          <button onClick={() => deleteSubmission(sub.id)} className="text-wax-500 hover:brightness-125 p-1"><Trash2 size={16} /></button>
+                          <button onClick={() => startEdit(sub)} className="text-brass-700 hover:text-brass-600 p-1"><Edit3 size={16} /></button>
+                          <button onClick={() => deleteSubmission(sub.id)} className="text-wax-600 hover:text-wax-500 p-1"><Trash2 size={16} /></button>
                         </td>
                       </>
                     )}
@@ -649,7 +669,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                 ))}
                 {submissions.length === 0 && !showAddRow && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-cream-300/40">
+                    <td colSpan={6} className="py-8 text-center text-sepia-500">
                       {t('tracker.empty')}
                     </td>
                   </tr>
