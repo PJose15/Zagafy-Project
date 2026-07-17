@@ -8,7 +8,7 @@ import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCop
 import { readVersions } from '@/lib/types/chapter-version';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '@/components/confirm-dialog';
-import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
+import { AnimatedNumber, BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
 import { useReadingTimeLabel } from '@/lib/i18n/useReadingTimeLabel';
 import { FindReplaceDialog } from '@/components/manuscript/FindReplaceDialog';
 import { ManuscriptEditor } from '@/components/editor/ManuscriptEditor';
@@ -337,7 +337,13 @@ export default function ManuscriptPage() {
                     {getPlainText(chapter.content) || <span className="text-sepia-600 italic">{t('emptyChapter')}</span>}
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-xs text-sepia-600 font-mono">
-                    <span>{t('words', { count: wordCount(chapter.content) })}</span>
+                    {/* M18: the ledger rolls to its new count when a save lands */}
+                    <span>
+                      {t.rich('words', {
+                        count: wordCount(chapter.content),
+                        n: () => <AnimatedNumber value={wordCount(chapter.content)} pulseOnChange />,
+                      })}
+                    </span>
                     <span>{readingTime(wordCount(chapter.content))}</span>
                     <VersionCount chapterId={chapter.id} />
                   </div>

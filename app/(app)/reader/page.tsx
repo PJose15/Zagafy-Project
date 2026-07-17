@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { fadeUp } from '@/lib/animations';
 import { useStory } from '@/lib/store';
 import { ReaderLayout } from '@/components/reader/reader-layout';
+import { ReadingRibbon } from '@/components/reader/reading-ribbon';
 import { PrintBookView } from '@/components/reader/print-book-view';
 import { KindleView } from '@/components/reader/kindle-view';
 import { AudiobookView } from '@/components/reader/audiobook-view';
@@ -90,6 +91,8 @@ export default function ReaderPage() {
 
   return (
     <FeatureErrorBoundary title={t('errorTitle')}>
+    {/* M22: the reading ribbon lengthens as you make your way down the page */}
+    <ReadingRibbon />
     <ReaderLayout
       chapters={chapters.map(ch => ({ id: ch.id, title: ch.title }))}
       currentChapterIndex={chapterIndex}

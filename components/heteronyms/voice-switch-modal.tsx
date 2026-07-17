@@ -45,9 +45,11 @@ export function VoiceSwitchModal({ heteronyms, activeId, guestId, onSelect, onCl
 
         <motion.div
           ref={panelRef}
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          // M15: the panel lifts open like a book cover hinged at the top.
+          initial={{ opacity: 0, scale: 0.96, y: 12, rotateX: -8 }}
+          animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 10, rotateX: -5 }}
+          style={{ transformPerspective: 800, transformOrigin: 'top center' }}
           className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-sm w-full texture-parchment"
         >
           <div className="flex items-center justify-between p-4 border-b border-sepia-300/50">

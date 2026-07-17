@@ -213,23 +213,42 @@ export default function GenesisPage() {
           </button>
         </motion.div>
 
-        {/* Step Dots — 24px hit targets (WCAG 2.2 target-size) wrap a small dot */}
-        <div className="flex items-center justify-center gap-1">
+        {/* Step Dots — 24px hit targets (WCAG 2.2 target-size) wrap a small dot.
+            M29: the journey line inks itself forward as steps complete, and the
+            active dot lands like a drop of ink from the pen. */}
+        <div className="relative flex items-center justify-center gap-1 mx-auto w-fit">
+          <div
+            aria-hidden="true"
+            className="absolute left-3 right-3 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-sepia-300/40"
+          />
+          <motion.div
+            aria-hidden="true"
+            initial={false}
+            animate={{ width: `calc((100% - 1.5rem) * ${stepIndex / Math.max(GENESIS_STEPS.length - 1, 1)})` }}
+            transition={springs.gentle}
+            className="absolute left-3 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-forest-600/70"
+          />
           {GENESIS_STEPS.map((step, i) => (
             <button
               key={step}
               onClick={() => { if (i < stepIndex) { setTurnDirection(-1); setStepIndex(i); } }}
               className={[
-                'flex items-center justify-center w-6 h-6 rounded-full transition-colors',
+                'relative flex items-center justify-center w-6 h-6 rounded-full transition-colors',
                 i < stepIndex ? 'cursor-pointer' : 'cursor-default',
               ].join(' ')}
               aria-label={t('stepAria', { num: i + 1, label: stepLabel(step) })}
               aria-current={i === stepIndex ? 'step' : undefined}
             >
-              <span
+              <motion.span
+                animate={
+                  i === stepIndex
+                    ? { scale: [0.5, 1.45, 1.25] }
+                    : { scale: 1 }
+                }
+                transition={i === stepIndex ? { duration: 0.4, times: [0, 0.6, 1], ease: 'easeOut' } : { duration: 0.2 }}
                 className={[
-                  'w-2.5 h-2.5 rounded-full transition duration-300',
-                  i === stepIndex ? 'bg-brass-500 scale-125' : i < stepIndex ? 'bg-forest-600' : 'bg-sepia-300/50',
+                  'w-2.5 h-2.5 rounded-full transition-colors duration-300',
+                  i === stepIndex ? 'bg-brass-500' : i < stepIndex ? 'bg-forest-600' : 'bg-sepia-300/50',
                   i < stepIndex ? 'group-hover:bg-forest-500' : '',
                 ].join(' ')}
               />

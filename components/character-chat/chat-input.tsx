@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, KeyboardEvent } from 'react';
+import { motion } from 'motion/react';
 import { Send } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { BrassButton } from '@/components/antiquarian';
@@ -52,13 +53,16 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
         rows={1}
         className="flex-1 resize-none bg-parchment-50 border border-sepia-300/60 rounded-lg px-3 py-2 text-sm text-sepia-900 placeholder:text-sepia-500 focus:outline-none focus:ring-2 focus:ring-brass-400/40 focus:border-brass-500/60 disabled:opacity-50"
       />
-      <BrassButton
-        onClick={handleSend}
-        disabled={isLoading || !value.trim()}
-        className="flex-shrink-0"
-      >
-        <Send size={16} />
-      </BrassButton>
+      {/* M23: the send button dips like a quill into the inkwell */}
+      <motion.div whileTap={{ y: 3, rotate: 6 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }} className="flex-shrink-0">
+        <BrassButton
+          onClick={handleSend}
+          disabled={isLoading || !value.trim()}
+          aria-label={t('sendAria')}
+        >
+          <Send size={16} aria-hidden="true" />
+        </BrassButton>
+      </motion.div>
     </div>
   );
 }

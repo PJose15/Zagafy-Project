@@ -29,15 +29,19 @@ export const ParchmentInput = forwardRef<HTMLInputElement, ParchmentInputProps>(
             {label}
           </label>
         )}
-        <input
-          ref={ref}
-          id={inputId}
-          className={`${baseClasses} ${error ? errorClasses : ''} ${className}`}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={errorId}
-          {...props}
-        />
-        {error && <p id={errorId} className="text-xs text-wax-700">{error}</p>}
+        {/* M11/M12: ink underline draws on focus; the wrapper trembles once
+            when validation rejects the entry. */}
+        <div className={`ink-underline ${error ? 'ink-tremor' : ''}`}>
+          <input
+            ref={ref}
+            id={inputId}
+            className={`${baseClasses} ${error ? errorClasses : ''} ${className}`}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={errorId}
+            {...props}
+          />
+        </div>
+        {error && <p id={errorId} className="text-xs text-wax-700 wax-blot">{error}</p>}
       </div>
     );
   },
@@ -58,16 +62,18 @@ export const ParchmentTextarea = forwardRef<HTMLTextAreaElement, ParchmentTextar
             {label}
           </label>
         )}
-        <textarea
-          ref={ref}
-          id={textareaId}
-          spellCheck={effectiveSpellCheck}
-          className={`${baseClasses} min-h-[80px] ${error ? errorClasses : ''} ${className}`}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={errorId}
-          {...props}
-        />
-        {error && <p id={errorId} className="text-xs text-wax-700">{error}</p>}
+        <div className={`ink-underline ${error ? 'ink-tremor' : ''}`}>
+          <textarea
+            ref={ref}
+            id={textareaId}
+            spellCheck={effectiveSpellCheck}
+            className={`${baseClasses} min-h-[80px] ${error ? errorClasses : ''} ${className}`}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={errorId}
+            {...props}
+          />
+        </div>
+        {error && <p id={errorId} className="text-xs text-wax-700 wax-blot">{error}</p>}
       </div>
     );
   },

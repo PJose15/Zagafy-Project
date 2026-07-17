@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { AnimatePresence, motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import {
   Activity,
@@ -129,8 +130,19 @@ export function CharacterViewCard({
         </div>
       </div>
 
+      <AnimatePresence initial={false}>
       {isExpanded && (
-        <div className="px-6 pb-6 pt-2 bg-parchment-200/30 animate-in fade-in slide-in-from-top-2">
+        <motion.div
+          key="dossier"
+          // M27: the dossier unfolds like a sheet opening, ink resolving as
+          // it settles; folding back up is quicker and quieter.
+          initial={{ height: 0, opacity: 0, filter: 'blur(2px)' }}
+          animate={{ height: 'auto', opacity: 1, filter: 'blur(0px)' }}
+          exit={{ height: 0, opacity: 0, transition: { duration: 0.25, ease: 'easeIn' } }}
+          transition={{ duration: 0.38, ease: [0.25, 1, 0.5, 1] }}
+          className="overflow-hidden"
+        >
+        <div className="px-6 pb-6 pt-2 bg-parchment-200/30">
           <DecorativeDivider variant="brass-rule" className="my-4" />
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
             {/* Left Sidebar: Static Profile & Knowledge */}
@@ -303,7 +315,9 @@ export function CharacterViewCard({
             </div>
           </div>
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

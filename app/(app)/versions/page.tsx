@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
-import { springs, inkFade } from '@/lib/animations';
+import { springs, strikeFade, strikeLine } from '@/lib/animations';
 import { Save, RotateCcw, Trash2 } from 'lucide-react';
 import { useStory } from '@/lib/store';
 import {
@@ -215,9 +215,16 @@ export default function VersionsPage() {
               layout
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={inkFade.exit}
+              exit={strikeFade.exit}
               transition={springs.gentle}
+              className="relative"
             >
+            {/* M16: the record is struck through in ink before it fades */}
+            <motion.div
+              aria-hidden="true"
+              {...strikeLine}
+              className="pointer-events-none absolute left-5 right-5 top-1/2 z-10 h-[2px] origin-left rounded-full bg-sepia-700/80"
+            />
             <ParchmentCard padding="md" hover>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="min-w-0">

@@ -460,6 +460,137 @@
   transition: left 0.6s ease-in-out;
 }
 
+/* ═══ Motion round M11–M30 ═══ */
+
+/* M11 — inked focus underline: a thin ink line draws beneath the focused
+   field, left to right, like a pen underscoring the active entry. Sits on
+   the field's wrapper so inputs, textareas and selects all share it. */
+.ink-underline {
+  position: relative;
+}
+.ink-underline::after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -2.5px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-brass-600) 15%,
+    var(--color-sepia-700) 50%,
+    var(--color-brass-600) 85%,
+    transparent
+  );
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  pointer-events: none;
+}
+.ink-underline:focus-within::after {
+  transform: scaleX(1);
+}
+
+/* M12 — error tremor: the field jolts once, like a pen catching on the
+   paper, when validation rejects it… */
+@keyframes ink-tremor {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px) rotate(-0.25deg); }
+  45% { transform: translateX(3px) rotate(0.25deg); }
+  70% { transform: translateX(-2px); }
+  85% { transform: translateX(1px); }
+}
+.ink-tremor {
+  animation: ink-tremor 0.35s ease-out;
+}
+
+/* …and the message arrives behind a small wax blot that soaks in. */
+@keyframes blot-soak {
+  from { transform: scale(0); filter: blur(2px); }
+  to { transform: scale(1); filter: blur(0); }
+}
+.wax-blot::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 999px 999px 999px 2px;
+  background: var(--color-wax-600);
+  animation: blot-soak 0.3s ease-out both;
+}
+
+/* M17 — candlelight hover: the card lifts toward the reader and catches a
+   warm brass glow, as if a candle passed over the desk. */
+.candle-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.candle-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 2px 6px rgba(44, 30, 15, 0.16),
+    0 6px 20px rgba(196, 155, 72, 0.30),
+    0 0 0 1px rgba(196, 155, 72, 0.22);
+}
+
+/* M26 — heatmap cells warm under the pointer like a coal breathed on;
+   transform-box makes scale work on the SVG rects. */
+.heatmap-cell {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.heatmap-cell:hover {
+  transform: scale(1.22);
+  filter: brightness(1.15) saturate(1.15);
+}
+
+/* …and its tooltip soaks in rather than popping. Opacity/filter only —
+   the element's transform is owned by the positioning utilities. */
+@keyframes tooltip-soak {
+  from { opacity: 0; filter: blur(1.5px); }
+  to { opacity: 1; filter: blur(0); }
+}
+.tooltip-soak {
+  animation: tooltip-soak 0.18s ease-out both;
+}
+
+/* M28 — nav brushstroke whisper: hovering an inactive shelf label sweeps a
+   faint stroke of the same forest pigment the active state uses — a
+   foreshadowing, not a commitment. */
+.nav-brushstroke-hover {
+  position: relative;
+  z-index: 0;
+}
+.nav-brushstroke-hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, var(--color-forest-800), var(--color-forest-700));
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.3s ease-out, opacity 0.25s ease-out;
+}
+.nav-brushstroke-hover:hover::before {
+  opacity: 0.3;
+  clip-path: inset(0 0 0 0);
+}
+
+/* M20 — triumph embers: sparks rise off a finished sprint like embers from
+   a stirred fire; each ember's drift and delay come in via CSS vars. */
+@keyframes triumph-ember {
+  0% { transform: translate(0, 0) scale(1); opacity: 0; }
+  12% { opacity: 0.9; }
+  100% { transform: translate(var(--ember-drift, 0px), -90px) scale(0.35); opacity: 0; }
+}
+.triumph-ember {
+  animation: triumph-ember 1.6s ease-out var(--ember-delay, 0s) both;
+}
+
 /* ─── Scrollbar Styling ─── */
 ::-webkit-scrollbar {
   width: 10px;

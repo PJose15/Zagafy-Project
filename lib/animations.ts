@@ -109,6 +109,20 @@ export const inkFade = {
   exit: { opacity: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
 };
 
+/** Strike-then-fade — the ceremonial form of DELETE (M16): an ink line is
+    drawn through the record first, then the row dissolves. Put strikeFade on
+    the exiting row and strikeLine on an absolutely-positioned rule inside
+    it; AnimatePresence runs both exits together and the delay sequences
+    them (line 0–0.18s, fade 0.18–0.43s). */
+export const strikeFade = {
+  exit: { opacity: 0, transition: { duration: 0.25, delay: 0.18, ease: 'easeOut' as const } },
+};
+
+export const strikeLine = {
+  initial: { scaleX: 0 },
+  exit: { scaleX: 1, transition: { duration: 0.18, ease: 'easeIn' as const } },
+};
+
 /** Card flip — rotateY entrance */
 export const cardFlip = {
   initial: { rotateY: -90, opacity: 0 },
@@ -129,10 +143,11 @@ export const fadeUp = {
 
 /** Passed note — a chat message settles like paper slid across a table,
     with the faint rotation of a real sheet (REVEAL verb). User notes tilt
-    one way, replies the other; the spring straightens both. */
+    one way, replies the other; the spring straightens both. M24: the ink is
+    still wet — each note resolves from a faint blur as it settles. */
 export const passedNote = (tilt: 1 | -1) => ({
-  initial: { opacity: 0, y: 6, rotate: 0.4 * tilt },
-  animate: { opacity: 1, y: 0, rotate: 0 },
+  initial: { opacity: 0, y: 6, rotate: 0.4 * tilt, filter: 'blur(1.5px)' },
+  animate: { opacity: 1, y: 0, rotate: 0, filter: 'blur(0px)' },
   transition: springs.gentle,
 });
 

@@ -67,6 +67,17 @@ export function ParchmentSidebar() {
   const tApp = useTranslations('app');
   const { state } = useStory();
   const { gamification, xpProgress, streak } = useGamification();
+
+  // M19: catch the level crossing without an effect (adjust-state-during-
+  // render, same pattern as XPBar). A positive burstId keys the gold-leaf
+  // rays + numeral stamp; it never fires on plain mount.
+  const level = gamification.xp.level;
+  const [prevLevel, setPrevLevel] = useState(level);
+  const [burstId, setBurstId] = useState(0);
+  if (level !== prevLevel) {
+    setPrevLevel(level);
+    if (level > prevLevel) setBurstId(burstId + 1);
+  }
   const totalWords = state.chapters.reduce((s, c) => s + (c.content ? c.content.split(/\s+/).filter(Boolean).length : 0), 0);
 
   return (
@@ -116,7 +127,7 @@ export function ParchmentSidebar() {
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                     isActive
                       ? 'nav-brushstroke-active text-cream-50'
-                      : 'text-cream-300/70 hover:bg-mahogany-800/50 hover:text-cream-100'
+                      : 'nav-brushstroke-hover text-cream-300/70 hover:text-cream-100'
                   }`}
                 >
                   <item.icon size={18} aria-hidden="true" className={isActive ? 'text-cream-50' : 'text-cream-400/50'} />
@@ -151,7 +162,36 @@ export function ParchmentSidebar() {
             </div>
             <div>
               <span className="text-cream-300/40 block">{tSide('level')}</span>
-              <span className="text-cream-100 font-mono font-medium">{gamification.xp.level}</span>
+              <span className="relative inline-block text-cream-100 font-mono font-medium">
+                {/* M19: on level-up the numeral stamps in under a burst of
+                    gold-leaf rays; before the first level-up it's static. */}
+                {burstId > 0 ? (
+                  <motion.span
+                    key={burstId}
+                    initial={{ scale: 1.7, rotate: -8, opacity: 0 }}
+                    animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    className="inline-block gold-leaf"
+                  >
+                    {level}
+                  </motion.span>
+                ) : (
+                  <span>{level}</span>
+                )}
+                {burstId > 0 && (
+                  <span key={`rays-${burstId}`} aria-hidden="true" className="pointer-events-none absolute inset-0">
+                    {Array.from({ length: 8 }, (_, i) => (
+                      <motion.span
+                        key={i}
+                        initial={{ opacity: 0.9, rotate: i * 45, scaleX: 0.15 }}
+                        animate={{ opacity: 0, rotate: i * 45, scaleX: 1.6 }}
+                        transition={{ duration: 0.8, ease: 'easeOut', delay: 0.08 }}
+                        className="absolute left-1/2 top-1/2 h-[2px] w-4 origin-left rounded-full bg-brass-400"
+                      />
+                    ))}
+                  </span>
+                )}
+              </span>
             </div>
           </div>
         </div>
@@ -165,7 +205,7 @@ export function ParchmentSidebar() {
             className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
               pathname === '/settings'
                 ? 'nav-brushstroke-active text-cream-50'
-                : 'text-cream-300/70 hover:bg-mahogany-800/50 hover:text-cream-100'
+                : 'nav-brushstroke-hover text-cream-300/70 hover:text-cream-100'
             }`}
           >
             <Settings size={18} aria-hidden="true" className={pathname === '/settings' ? 'text-cream-50' : 'text-cream-400/50'} />

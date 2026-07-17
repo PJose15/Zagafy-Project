@@ -36,6 +36,7 @@ vi.mock('motion/react', () => {
 
 vi.mock('lucide-react', () => ({
   BookOpen: () => <span data-testid="icon-book-open" />,
+  Feather: () => <span data-testid="icon-feather" />,
   X: () => <span data-testid="icon-x" />,
 }));
 

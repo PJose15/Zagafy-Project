@@ -73,10 +73,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
             <motion.div
               ref={dialogRef}
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              // M15: the panel lifts open like a book cover hinged at the top.
+              initial={{ opacity: 0, scale: 0.96, y: 12, rotateX: -8 }}
+              animate={{ opacity: 1, scale: 1, y: 0, rotateX: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10, rotateX: -5 }}
               transition={springs.gentle}
+              style={{ transformPerspective: 800, transformOrigin: 'top center' }}
               className="relative bg-parchment-100 border border-sepia-300/50 rounded-xl shadow-card-hover max-w-md w-full p-6 texture-parchment"
             >
               {/* Close button */}

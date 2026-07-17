@@ -3,7 +3,7 @@
 import { Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslations, useLocale } from 'next-intl';
-import { fadeUp } from '@/lib/animations';
+import { springs } from '@/lib/animations';
 import { ParchmentCard, BrassButton } from '@/components/antiquarian';
 import type { CharacterInsight } from '@/lib/types/character-chat';
 
@@ -16,7 +16,23 @@ export function InsightCard({ insight, onSaveAsCanon }: InsightCardProps) {
   const t = useTranslations('characterChat');
   const locale = useLocale();
   return (
-    <motion.div {...fadeUp}>
+    // M25: an insight slides in from the margin like a note tucked into the
+    // page edge, settling straight with one brass glow to catch the eye.
+    <motion.div
+      initial={{ opacity: 0, x: 24, rotate: 1.2 }}
+      animate={{
+        opacity: 1,
+        x: 0,
+        rotate: 0,
+        boxShadow: [
+          '0 0 0px 0px rgba(196, 155, 72, 0)',
+          '0 0 16px 2px rgba(196, 155, 72, 0.4)',
+          '0 0 0px 0px rgba(196, 155, 72, 0)',
+        ],
+      }}
+      transition={{ ...springs.gentle, boxShadow: { duration: 1.2, times: [0, 0.35, 1], delay: 0.2 } }}
+      className="rounded-xl"
+    >
       <ParchmentCard variant="aged" className="p-3">
         <div className="flex items-start gap-2">
           <Sparkles size={16} className="text-brass-500 flex-shrink-0 mt-0.5" />

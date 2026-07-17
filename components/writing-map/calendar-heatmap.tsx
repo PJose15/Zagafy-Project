@@ -238,7 +238,7 @@ export function CalendarHeatmap({ sessions }: CalendarHeatmapProps) {
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 px-3 py-2 text-xs bg-parchment-200 text-sepia-800 rounded shadow-lg pointer-events-none -translate-x-1/2 -translate-y-full"
+          className="tooltip-soak fixed z-50 px-3 py-2 text-xs bg-parchment-200 text-sepia-800 rounded shadow-lg pointer-events-none -translate-x-1/2 -translate-y-full"
           style={{ left: tooltip.x, top: tooltip.y }}
           data-testid="heatmap-tooltip"
         >

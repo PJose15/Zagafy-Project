@@ -593,14 +593,17 @@ export default function AssistantPage() {
             >
               {isAuditing ? <Loader2 size={18} className="animate-spin" /> : <ShieldAlert size={18} />}
             </button>
-            <button
+            {/* M23: the send button dips like a quill into the inkwell */}
+            <motion.button
+              whileTap={{ y: 3, rotate: 6, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 20 }}
               onClick={() => handleSend()}
               disabled={!input.trim() || isLoading || isAuditing || pendingAudit !== null}
-              className="p-2.5 rounded-lg bg-forest-700 text-cream-50 border-2 border-forest-800 hover:bg-forest-600 disabled:opacity-40 disabled:hover:bg-forest-700 transition active:scale-95 shadow-sm"
+              className="p-2.5 rounded-lg bg-forest-700 text-cream-50 border-2 border-forest-800 hover:bg-forest-600 disabled:opacity-40 disabled:hover:bg-forest-700 transition shadow-sm"
               aria-label={t('sendAria')}
             >
               <Send size={18} />
-            </button>
+            </motion.button>
           </div>
         </ParchmentCard>
       </div>

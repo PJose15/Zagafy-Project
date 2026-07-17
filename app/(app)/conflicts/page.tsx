@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { Plus, Trash2, Edit3, Save, X, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { fadeUp } from '@/lib/animations';
+import { fadeUp, stagger } from '@/lib/animations';
 import { useConfirm } from '@/components/confirm-dialog';
 import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentInput, ParchmentTextarea, ParchmentSelect, InkStampButton, WaxSealBadge } from '@/components/antiquarian';
 
@@ -90,11 +90,11 @@ export default function ConflictsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AnimatePresence>
-          {state.active_conflicts.map((conflict) => (
+          {state.active_conflicts.map((conflict, index) => (
             <motion.div
               key={conflict.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
+              // M13: conflict ledgers are dealt onto the desk in order.
+              {...stagger.cards(Math.min(index, 8))}
               exit={{ opacity: 0, scale: 0.9 }}
             >
             <ParchmentCard padding="none" className={`overflow-hidden ${conflict.status === 'resolved' ? 'border-l-4 border-l-forest-600 opacity-75' : 'border-l-4 border-l-wax-500'}`}>

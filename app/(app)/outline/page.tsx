@@ -216,7 +216,7 @@ export default function OutlinePage() {
               transition={springs.gentle}
               className="min-w-0"
             >
-            <ParchmentCard variant="aged" padding="md" hover className="flex flex-col gap-2 h-full">
+            <ParchmentCard variant="aged" padding="md" className="candle-hover flex flex-col gap-2 h-full">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-serif font-semibold text-sepia-900 leading-tight min-w-0 break-words">
                   {chapter.title}

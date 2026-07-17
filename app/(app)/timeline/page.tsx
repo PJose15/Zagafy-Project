@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { Plus, Trash2, Edit3, Save, X, Clock } from 'lucide-react';
-import { inkFade } from '@/lib/animations';
+import { strikeFade, strikeLine } from '@/lib/animations';
 import { motion, AnimatePresence } from 'motion/react';
 import { useConfirm } from '@/components/confirm-dialog';
 import { useToast } from '@/components/toast';
@@ -107,10 +107,16 @@ export default function TimelinePage() {
               key={event.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={inkFade.exit}
+              exit={strikeFade.exit}
               transition={{ delay: Math.min(index, 6) * 0.08 }}
               className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
             >
+              {/* M16: the event is struck through in ink before it fades */}
+              <motion.div
+                aria-hidden="true"
+                {...strikeLine}
+                className="pointer-events-none absolute left-0 right-0 top-1/2 z-20 h-[2px] origin-left rounded-full bg-sepia-700/80"
+              />
               <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-parchment-50 ${markerColorByCanon[event.canonStatus || ''] || 'bg-brass-600'} text-sepia-600 group-hover:text-brass-500 group-hover:bg-brass-700 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-colors`}>
                 <Clock size={16} />
               </div>

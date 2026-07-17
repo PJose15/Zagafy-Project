@@ -10,6 +10,7 @@ import {
   Landmark, Church, Coins, Languages, CalendarDays, AlertTriangle, X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { stagger } from '@/lib/animations';
 import { useToast } from '@/components/toast';
 import {
   InkStampButton, CarvedHeader, DecorativeDivider,
@@ -331,13 +332,15 @@ export default function BiblePage() {
                   />
                 </ParchmentCard>
               ) : (
-                categorySections.map((section) => (
-                  <WorldBibleSectionCard
-                    key={section.id}
-                    section={section}
-                    onUpdate={handleUpdateSection}
-                    onDelete={handleDeleteSection}
-                  />
+                categorySections.map((section, index) => (
+                  // M13: bible entries are dealt onto the desk in order.
+                  <motion.div key={section.id} {...stagger.cards(Math.min(index, 8))}>
+                    <WorldBibleSectionCard
+                      section={section}
+                      onUpdate={handleUpdateSection}
+                      onDelete={handleDeleteSection}
+                    />
+                  </motion.div>
                 ))
               )}
 

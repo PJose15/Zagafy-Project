@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Users } from 'lucide-react';
 import { useStory, Character } from '@/lib/store';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
-import { fadeUp } from '@/lib/animations';
+import { fadeUp, stagger } from '@/lib/animations';
 import { useConfirm } from '@/components/confirm-dialog';
 import { CarvedHeader, BrassButton } from '@/components/antiquarian';
 import { CharacterEditForm, EditTab } from './_components/character-edit-form';
@@ -163,15 +163,15 @@ export default function CharactersPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <AnimatePresence>
-          {state.characters.map((char) => {
+          {state.characters.map((char, index) => {
             const isExpanded = expandedId === char.id;
             const isEditing = editingId === char.id;
 
             return (
               <motion.div
                 key={char.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                // M13: dossiers are dealt onto the desk one after another.
+                {...stagger.cards(Math.min(index, 8))}
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="bg-parchment-100 border border-sepia-300/50 rounded-xl overflow-hidden texture-parchment shadow-parchment transition-colors duration-300"
               >
