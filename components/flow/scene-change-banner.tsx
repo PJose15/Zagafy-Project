@@ -52,7 +52,10 @@ export function SceneChangeBanner({
             seconds: formatTime(remainingSeconds),
             b: (chunks) => <strong className="font-medium">{chunks}</strong>,
             clock: (chunks) => (
+              // Z12: the countdown announces itself as a timer to AT.
               <span
+                role="timer"
+                aria-atomic="true"
                 className="font-mono font-medium"
                 style={{ animation: 'scene-change-pulse 2s ease-in-out infinite' }}
               >

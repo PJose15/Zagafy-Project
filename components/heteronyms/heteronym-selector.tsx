@@ -16,6 +16,7 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
   const t = useTranslations('heteronyms');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const active = heteronyms.find(h => h.id === activeId) || heteronyms[0];
 
@@ -33,7 +34,11 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        // Z19: hand focus back to the trigger so keyboard users aren't lost.
+        triggerRef.current?.focus();
+      }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -44,6 +49,7 @@ export function HeteronymSelector({ heteronyms, activeId, onSelect }: HeteronymS
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-parchment-200 transition-colors"
         aria-haspopup="listbox"

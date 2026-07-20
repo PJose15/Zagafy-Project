@@ -1,6 +1,8 @@
 'use client';
 
+import { useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 
 interface SceneChangeRecoveryModalProps {
   originalChapterTitle: string;
@@ -14,6 +16,9 @@ export function SceneChangeRecoveryModal({
   onStayHere,
 }: SceneChangeRecoveryModalProps) {
   const t = useTranslations('flow.sceneChangeRecovery');
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Z1: scroll lock + Tab trap; Escape takes the non-destructive path.
+  useModalHygiene(panelRef, onStayHere);
   return (
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center p-4"
@@ -23,7 +28,7 @@ export function SceneChangeRecoveryModal({
       aria-describedby="recovery-message"
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-md w-full p-6 texture-parchment">
+      <div ref={panelRef} className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-md w-full p-6 texture-parchment">
         <div className="space-y-4">
           <div className="text-center">
             <span className="text-3xl" aria-hidden="true">&#x1F500;</span>

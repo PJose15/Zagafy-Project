@@ -9,6 +9,8 @@ import { ConfirmProvider } from '@/components/antiquarian/parchment-modal';
 import { ParchmentSidebar } from '@/components/antiquarian/parchment-sidebar';
 import { BackToTop } from '@/components/antiquarian/back-to-top';
 import { CardCatalog } from '@/components/catalog/card-catalog';
+import { ShortcutsSheet } from '@/components/catalog/shortcuts-sheet';
+import { LevelUpCeremony } from '@/components/gamification/level-up-ceremony';
 import { RouteTitle } from '@/components/antiquarian/route-title';
 import { DiagnosticGate } from '@/components/diagnostic/diagnostic-gate';
 import { useSessionTracker } from '@/hooks/use-session-tracker';
@@ -74,6 +76,8 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
       )}
       <BackToTop />
       <CardCatalog />
+      <ShortcutsSheet />
+      <LevelUpCeremony />
       <OnboardingTour />
     </>
   );

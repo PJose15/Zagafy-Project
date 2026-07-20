@@ -669,7 +669,24 @@ html {
     overflow: visible !important;
     border: none !important;
   }
+  /* G10 — every chapter card opens on its own printed page and never
+     splits across a page boundary. */
+  .page-stack {
+    break-before: page;
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
 }
+
+/* G11 — a character under pressure breathes: the state chip pulses at a
+   rate matched to the pressure level (calm characters hold still). */
+@keyframes pressure-breath {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.breath-medium { animation: pressure-breath 4s ease-in-out infinite; }
+.breath-high { animation: pressure-breath 2.2s ease-in-out infinite; }
+.breath-critical { animation: pressure-breath 1.1s ease-in-out infinite; }
 
 /* ─── Scrollbar Styling ─── */
 ::-webkit-scrollbar {

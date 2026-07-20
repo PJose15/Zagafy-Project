@@ -27,6 +27,7 @@ export function StreakBadge({ streak, warning, compact = false }: StreakBadgePro
     <div className="flex items-center gap-2">
       {/* M3: Accessible streak badge */}
       <div
+        title={t('streakRuleHint')}
         className={[
           'flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-mono font-medium',
           isMilestone
@@ -55,6 +56,10 @@ export function StreakBadge({ streak, warning, compact = false }: StreakBadgePro
       {warning && (
         <div className="flex items-center gap-1 text-[10px] text-wax-600" role="alert">
           <Bell size={10} className="text-wax-500" aria-hidden="true" />
+          {/* G7: how long the ember has before midnight takes it */}
+          <span suppressHydrationWarning className="font-mono shrink-0">
+            {Math.max(1, 24 - new Date().getHours())}h
+          </span>
           {/* M3: sr-only fallback so warning is always announced */}
           <span className="hidden sm:inline">{warning}</span>
           <span className="sm:hidden sr-only">{warning}</span>

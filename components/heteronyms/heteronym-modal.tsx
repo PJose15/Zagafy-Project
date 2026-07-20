@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import { X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AvatarCircle } from './avatar-circle';
@@ -49,18 +50,14 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
   const [voice, setVoice] = useState<HeteronymVoice | undefined>(heteronym?.voice);
   const [customEmoji, setCustomEmoji] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     nameInputRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+  // Z5: scroll lock + Escape + Tab trap (replaces the bare Escape listener).
+  useModalHygiene(panelRef, onClose);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,10 +100,11 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
         <motion.div
+          ref={panelRef}
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto texture-parchment"
+          className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar texture-parchment"
         >
           <div className="flex items-center justify-between p-6 border-b border-sepia-300/50">
             <h2 className="text-lg font-serif font-semibold text-sepia-900">

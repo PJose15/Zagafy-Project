@@ -24,6 +24,18 @@ export function RouteTitle() {
       key = navItems.find(n => n.href !== '/' && pathname.startsWith(n.href))?.key;
     }
     document.title = key ? `${t(key)} · Zagafy` : 'Zagafy';
+
+    // G3: keep a small most-recently-visited ledger for the Card Catalog.
+    if (key && key !== 'settings') {
+      try {
+        const raw = localStorage.getItem('zagafy_recent_rooms');
+        const list: string[] = raw ? JSON.parse(raw) : [];
+        const next = [key, ...list.filter(k => k !== key)].slice(0, 5);
+        localStorage.setItem('zagafy_recent_rooms', JSON.stringify(next));
+      } catch {
+        /* the catalog simply shows no recents */
+      }
+    }
   }, [pathname, t]);
 
   return null;

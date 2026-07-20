@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import { AnimatePresence, motion } from 'motion/react';
 import { Search, Replace, X, AlertTriangle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -102,15 +103,9 @@ export function FindReplaceDialog({
     setPrevOpen(false);
   }
 
-  // Allow Esc to close.
-  useEffect(() => {
-    if (!open) return;
-    const handle = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handle);
-    return () => window.removeEventListener('keydown', handle);
-  }, [open, onClose]);
+  // Z3: scroll lock + Escape + Tab trap via the shared hygiene hook.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useModalHygiene(panelRef, onClose, open);
 
   const replaceInChapters = async (
     targetIds: string[],
@@ -198,6 +193,7 @@ export function FindReplaceDialog({
           <div className="absolute inset-0 bg-sepia-900/60 backdrop-blur-sm" onClick={onClose} />
 
           <motion.div
+            ref={panelRef}
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}

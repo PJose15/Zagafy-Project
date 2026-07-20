@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
-import { BookOpen, Library, Search } from 'lucide-react';
+import { BookOpen, Download, Feather, History, Library, PenLine, Replace, Search, Timer } from 'lucide-react';
 import { springs } from '@/lib/animations';
 import { useStory } from '@/lib/store';
+import { useSession } from '@/lib/session';
 import { wordCount } from '@/lib/editor/serialization';
 import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import { navItems } from '@/components/antiquarian/parchment-sidebar';
@@ -15,14 +16,21 @@ import { navItems } from '@/components/antiquarian/parchment-sidebar';
     dispatching this event — avoids threading state through the shell. */
 export const OPEN_CATALOG_EVENT = 'zagafy:open-catalog';
 
+/** G1: cross-page action handshake — the catalog stamps an intent here and
+    the destination page performs it on mount (post-hydration, so it's safe). */
+export const PENDING_ACTION_KEY = 'zagafy_pending_action';
+const RECENT_ROOMS_KEY = 'zagafy_recent_rooms';
+
 interface CatalogEntry {
   id: string;
   href: string;
   label: string;
   icon: React.ReactNode;
-  section: 'pages' | 'chapters';
+  section: 'recent' | 'actions' | 'pages' | 'chapters';
   /** P10: right-hand meta on the index card (a chapter's word count). */
   meta?: string;
+  /** G1: verbs run instead of merely navigating. */
+  run?: () => void;
 }
 
 /**
@@ -35,17 +43,40 @@ export function CardCatalog() {
   const tNav = useTranslations('nav');
   const router = useRouter();
   const { state } = useStory();
+  const { setFlowChapterId } = useSession();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
+  const [recentKeys, setRecentKeys] = useState<string[]>([]);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => setOpen(false), []);
-  useModalHygiene(panelRef, close, open);
+
+  // G20: Escape clears the query first; a second Escape closes the drawer.
+  const queryRef = useRef(query);
+  useEffect(() => {
+    queryRef.current = query;
+  });
+  const handleEscape = useCallback(() => {
+    if (queryRef.current) {
+      setQuery('');
+      setActive(0);
+      return;
+    }
+    setOpen(false);
+  }, []);
+  useModalHygiene(panelRef, handleEscape, open);
 
   const openCatalog = useCallback(() => {
     setQuery('');
     setActive(0);
+    // G3: pull the recent-rooms ledger fresh each time the drawer opens.
+    try {
+      const raw = localStorage.getItem(RECENT_ROOMS_KEY);
+      setRecentKeys(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      setRecentKeys([]);
+    }
     setOpen(true);
   }, []);
 
@@ -87,14 +118,101 @@ export function CardCatalog() {
         meta: t('wordsShort', { count: wordCount(c.content) }),
       }))
       .filter(c => !q || c.label.toLowerCase().includes(q));
-    return [...pages.slice(0, q ? 12 : 7), ...chapters.slice(0, 8)];
-  }, [query, state.chapters, tNav, t]);
+
+    // G1: verbs — the catalog can do things, not just go places.
+    const stampIntent = (intent: string) => {
+      try {
+        sessionStorage.setItem(PENDING_ACTION_KEY, intent);
+      } catch {
+        /* the navigation still lands on the right page */
+      }
+    };
+    const lastWritten = [...state.chapters].reverse().find(c => c.content.trim());
+    const allActions: CatalogEntry[] = [
+      ...(lastWritten
+        ? [{
+            id: 'action-continue',
+            href: '/flow',
+            label: t('actionContinue', { title: lastWritten.title }),
+            icon: <PenLine size={15} aria-hidden="true" className="text-forest-700 shrink-0" />,
+            section: 'actions' as const,
+            run: () => {
+              setFlowChapterId(lastWritten.id);
+              router.push('/flow');
+            },
+          }]
+        : []),
+      {
+        id: 'action-new-chapter',
+        href: '/manuscript',
+        label: t('actionNewChapter'),
+        icon: <Feather size={15} aria-hidden="true" className="text-forest-700 shrink-0" />,
+        section: 'actions',
+        run: () => {
+          stampIntent('new-chapter');
+          router.push('/manuscript');
+        },
+      },
+      {
+        id: 'action-find-replace',
+        href: '/manuscript',
+        label: t('actionFindReplace'),
+        icon: <Replace size={15} aria-hidden="true" className="text-forest-700 shrink-0" />,
+        section: 'actions',
+        run: () => {
+          stampIntent('find-replace');
+          router.push('/manuscript');
+        },
+      },
+      {
+        id: 'action-sprint',
+        href: '/sprints',
+        label: t('actionSprint'),
+        icon: <Timer size={15} aria-hidden="true" className="text-forest-700 shrink-0" />,
+        section: 'actions',
+      },
+      {
+        id: 'action-export',
+        href: '/publishing',
+        label: t('actionExport'),
+        icon: <Download size={15} aria-hidden="true" className="text-forest-700 shrink-0" />,
+        section: 'actions',
+      },
+      {
+        // G23: back up the library — settings hosts export/import.
+        id: 'action-backup',
+        href: '/settings',
+        label: t('actionBackup'),
+        icon: <Library size={15} aria-hidden="true" className="text-forest-700 shrink-0" />,
+        section: 'actions',
+      },
+    ];
+    const actions = allActions.filter(a => !q || a.label.toLowerCase().includes(q));
+
+    // G3: recently visited rooms lead the drawer when it opens un-queried.
+    const recent: CatalogEntry[] = q
+      ? []
+      : recentKeys
+          .map(key => navItems.find(n => n.key === key))
+          .filter((n): n is (typeof navItems)[number] => !!n)
+          .slice(0, 4)
+          .map(n => ({
+            id: `recent-${n.key}`,
+            href: n.href,
+            label: tNav(n.key),
+            icon: <History size={15} aria-hidden="true" className="text-sepia-500 shrink-0" />,
+            section: 'recent' as const,
+          }));
+
+    return [...recent, ...actions.slice(0, q ? 8 : 5), ...pages.slice(0, q ? 12 : 7), ...chapters.slice(0, 8)];
+  }, [query, state.chapters, recentKeys, tNav, t, router, setFlowChapterId]);
 
   const clamped = Math.min(active, Math.max(results.length - 1, 0));
 
-  const go = (href: string) => {
+  const go = (entry: CatalogEntry) => {
     close();
-    router.push(href);
+    if (entry.run) entry.run();
+    else router.push(entry.href);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -107,7 +225,7 @@ export function CardCatalog() {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       const r = results[clamped];
-      if (r) go(r.href);
+      if (r) go(r);
     }
   };
 
@@ -174,7 +292,7 @@ export function CardCatalog() {
                       id={r.id}
                       role="option"
                       aria-selected={i === clamped}
-                      onClick={() => go(r.href)}
+                      onClick={() => go(r)}
                       onMouseMove={() => setActive(i)}
                       className={`flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors ${
                         i === clamped
@@ -194,6 +312,8 @@ export function CardCatalog() {
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-sepia-300/40 bg-parchment-200/50 px-4 py-2 font-mono text-[10px] text-sepia-600">
+              {/* G22: the sheet of customs is one keystroke away */}
+              <span className="mr-auto">? {t('hintShortcuts')}</span>
               <span>↑↓ {t('hintNavigate')}</span>
               <span>↵ {t('hintOpen')}</span>
             </div>

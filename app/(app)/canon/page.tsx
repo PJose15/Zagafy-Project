@@ -1,12 +1,12 @@
 'use client';
 
 import { useStory, CanonStatus, StoryState } from '@/lib/store';
-import { useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { ShieldCheck, ShieldAlert, Shield, ShieldOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { fadeUp, springs, stagger } from '@/lib/animations';
-import { CarvedHeader, EmptyState, ParchmentCard, ParchmentSelect, WaxSealBadge } from '@/components/antiquarian';
+import { BrassButton, CarvedHeader, EmptyState, ParchmentCard, ParchmentSelect, WaxSealBadge, useConfirm } from '@/components/antiquarian';
 
 type ItemType = 'character' | 'timeline' | 'conflict' | 'chapter' | 'scene' | 'world_rule' | 'location' | 'theme' | 'open_loop' | 'foreshadowing';
 
@@ -29,8 +29,32 @@ export default function CanonLockPage() {
   const t = useTranslations('canon');
   const tStatus = useTranslations('canonStatus');
   const { state, updateField } = useStory();
+  const { confirm } = useConfirm();
   const [filterStatus, setFilterStatus] = useState<CanonStatus | 'all'>('all');
   const [filterType, setFilterType] = useState<ItemType | 'all'>('all');
+
+  // Z11: filters survive navigation within the session (two-pass
+  // hydration-safe restore — the house pattern for storage-backed state).
+  useEffect(() => {
+    try {
+      const s = sessionStorage.getItem('zagafy_canon_filter_status');
+      const ty = sessionStorage.getItem('zagafy_canon_filter_type');
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- two-pass hydration-safe storage restore
+      if (s) setFilterStatus(s as CanonStatus | 'all');
+      if (ty) setFilterType(ty as ItemType | 'all');
+    } catch {
+      /* defaults are fine */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('zagafy_canon_filter_status', filterStatus);
+      sessionStorage.setItem('zagafy_canon_filter_type', filterType);
+    } catch {
+      /* best effort */
+    }
+  }, [filterStatus, filterType]);
 
   const allItems = useMemo<CanonItem[]>(() => [
     ...state.characters.map(c => ({ id: c.id, type: 'character' as ItemType, title: c.name, description: c.description, status: c.canonStatus || 'draft' })),
@@ -50,6 +74,30 @@ export default function CanonLockPage() {
     if (filterType !== 'all' && item.type !== filterType) return false;
     return true;
   }), [allItems, filterStatus, filterType]);
+
+  // G8: fast-track — after a revision pass settles, promote every
+  // "flexible" item to "confirmed" in one deliberate, confirmed stroke.
+  const flexibleCount = useMemo(() => allItems.filter(i => i.status === 'flexible').length, [allItems]);
+  const handleFastTrack = useCallback(async () => {
+    const ok = await confirm({
+      title: t('fastTrackTitle'),
+      message: t('fastTrackMessage', { count: flexibleCount }),
+      confirmLabel: t('fastTrackConfirm'),
+    });
+    if (!ok) return;
+    const fields = [
+      'characters', 'timeline_events', 'active_conflicts', 'chapters', 'scenes',
+      'world_rules', 'locations', 'themes', 'open_loops', 'foreshadowing_elements',
+    ] as const;
+    for (const field of fields) {
+      const items = state[field] as { canonStatus?: CanonStatus }[];
+      if (!items.some(i => i.canonStatus === 'flexible')) continue;
+      updateField(
+        field,
+        items.map(i => (i.canonStatus === 'flexible' ? { ...i, canonStatus: 'confirmed' as CanonStatus } : i)) as StoryState[typeof field],
+      );
+    }
+  }, [confirm, t, flexibleCount, state, updateField]);
 
   const updateItemStatus = useCallback((id: string, type: ItemType, newStatus: CanonStatus) => {
     const typeToField: Record<ItemType, keyof typeof state> = {
@@ -77,6 +125,11 @@ export default function CanonLockPage() {
           subtitle={t('subtitle')}
           actions={
             <div className="flex flex-wrap gap-2">
+              {flexibleCount > 0 && (
+                <BrassButton size="sm" onClick={handleFastTrack}>
+                  {t('fastTrack', { count: flexibleCount })}
+                </BrassButton>
+              )}
               <ParchmentSelect
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as ItemType | 'all')}

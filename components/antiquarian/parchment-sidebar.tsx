@@ -27,7 +27,7 @@ import {
   Send,
   Library,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatedNumber } from './animated-number';
 import { useStory } from '@/lib/store';
@@ -77,8 +77,34 @@ export function ParchmentSidebar() {
   const [burstId, setBurstId] = useState(0);
   if (level !== prevLevel) {
     setPrevLevel(level);
-    if (level > prevLevel) setBurstId(burstId + 1);
+    if (level > prevLevel) {
+      setBurstId(burstId + 1);
+      // G5: let the shell stage the full ceremony as well.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('zagafy:level-up', { detail: { level } }));
+      }
+    }
   }
+
+  // G9: words written today, from the session ledger (async read, best effort).
+  const [todayWords, setTodayWords] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    import('@/lib/types/writing-session')
+      .then(m => m.readSessions())
+      .then(sessions => {
+        if (cancelled) return;
+        const today = new Date().toDateString();
+        const sum = sessions
+          .filter(s => new Date(s.startedAt).toDateString() === today)
+          .reduce((acc, s) => acc + Math.max(0, s.wordsAdded), 0);
+        setTodayWords(sum);
+      })
+      .catch(() => { /* stat stays 0 */ });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.chapters]);
   const totalWords = state.chapters.reduce((s, c) => s + (c.content ? c.content.split(/\s+/).filter(Boolean).length : 0), 0);
 
   return (
@@ -149,6 +175,12 @@ export function ParchmentSidebar() {
               <span className="text-cream-100 font-mono font-medium">
                 <AnimatedNumber value={totalWords} pulseOnChange />
               </span>
+              {/* G9: today's contribution, when there is one */}
+              {todayWords > 0 && (
+                <span suppressHydrationWarning className="block text-[10px] font-mono text-forest-400/90">
+                  +{todayWords.toLocaleString()} {tSide('today')}
+                </span>
+              )}
             </div>
             <div>
               <span className="text-cream-300/40 block">{tSide('chapters')}</span>
@@ -161,7 +193,7 @@ export function ParchmentSidebar() {
               <span className="text-cream-300/40 block">{tSide('streak')}</span>
               <span className="text-cream-100 font-mono font-medium">{tSide('streakDays', { count: streak.currentStreak })}</span>
             </div>
-            <div>
+            <div title={tSide('xpToNext', { current: xpProgress.current, needed: xpProgress.needed })}>
               <span className="text-cream-300/40 block">{tSide('level')}</span>
               <span className="relative inline-block text-cream-100 font-mono font-medium">
                 {/* M19: on level-up the numeral stamps in under a burst of

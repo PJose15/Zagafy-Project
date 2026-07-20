@@ -67,10 +67,12 @@ describe('NoRetreatEndModal', () => {
     expect(onSave).toHaveBeenCalledOnce();
   });
 
-  it('calls onBurn when Burn is clicked', () => {
+  it('arms on the first Burn click and only burns on the second', () => {
     const onBurn = vi.fn();
     render(<NoRetreatEndModal {...defaultProps} onBurn={onBurn} />);
     fireEvent.click(screen.getByText('Burn'));
+    expect(onBurn).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Burn it — I’m sure'));
     expect(onBurn).toHaveBeenCalledOnce();
   });
 

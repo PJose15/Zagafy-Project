@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { BrassButton } from '@/components/antiquarian';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import { Flame, Save } from 'lucide-react';
 
 interface SessionStats {
@@ -26,6 +28,21 @@ function formatDuration(ms: number): string {
 
 export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndModalProps) {
   const t = useTranslations('flow.noRetreatEnd');
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Z2: scroll lock + Tab trap; Escape takes the safe path (save the words).
+  useModalHygiene(panelRef, onSave, open);
+
+  // Z7: burning a session's words is irreversible — the button arms on the
+  // first press and only burns on the second; it stands down after 3s.
+  // (A nested confirm dialog can't be used: this modal sits above the
+  // ConfirmProvider's z-index.)
+  const [burnArmed, setBurnArmed] = useState(false);
+  useEffect(() => {
+    if (!burnArmed) return;
+    const timer = setTimeout(() => setBurnArmed(false), 3000);
+    return () => clearTimeout(timer);
+  }, [burnArmed]);
+
   return (
     <AnimatePresence>
       {open && (
@@ -39,6 +56,7 @@ export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndM
           aria-labelledby="no-retreat-end-title"
         >
           <motion.div
+            ref={panelRef}
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
@@ -69,11 +87,16 @@ export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndM
                 {t('save')}
               </BrassButton>
               <button
-                onClick={onBurn}
-                className="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-wax-600 text-cream-50 hover:bg-wax-500 transition-colors burn-consume-trigger"
+                onClick={() => {
+                  if (burnArmed) onBurn();
+                  else setBurnArmed(true);
+                }}
+                className={`inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg text-cream-50 transition-colors burn-consume-trigger ${
+                  burnArmed ? 'bg-wax-700 ring-2 ring-wax-500/60 hover:bg-wax-600' : 'bg-wax-600 hover:bg-wax-500'
+                }`}
               >
                 <Flame size={16} className="ember-rise-trigger" />
-                {t('burn')}
+                {burnArmed ? t('burnConfirm') : t('burn')}
               </button>
             </div>
           </motion.div>

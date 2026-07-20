@@ -162,7 +162,13 @@ export default function BiblePage() {
     toast(t('sectionAddedToast'), 'success');
   }, [selectedCategory, state.world_bible, updateField, t, toast]);
 
-  const categorySections = state.world_bible.filter((s) => s.category === selectedCategory);
+  // G14: a quiet text filter over the open category.
+  const [sectionQuery, setSectionQuery] = useState('');
+  const categorySections = state.world_bible.filter((s) => {
+    if (s.category !== selectedCategory) return false;
+    const q = sectionQuery.trim().toLowerCase();
+    return !q || s.title.toLowerCase().includes(q) || s.content.toLowerCase().includes(q);
+  });
 
   const categoryCount = (cat: WorldBibleCategory) =>
     state.world_bible.filter((s) => s.category === cat).length;
@@ -323,6 +329,13 @@ export default function BiblePage() {
 
             {/* Category content */}
             <div className="space-y-4">
+              {/* G14: filter the open category by title or content */}
+              <ParchmentInput
+                value={sectionQuery}
+                onChange={(e) => setSectionQuery(e.target.value)}
+                placeholder={t('filterPlaceholder')}
+                aria-label={t('filterPlaceholder')}
+              />
               {categorySections.length === 0 ? (
                 <ParchmentCard padding="lg">
                   <EmptyState

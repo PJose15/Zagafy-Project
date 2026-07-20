@@ -23,10 +23,12 @@ const LENS_COLORS: Record<CoachingLens, string> = {
   dialogue: 'text-mahogany-600',
 };
 
+// Z20: darker ink on the tinted chips — brass-600 on parchment fell below
+// AA contrast at this size.
 const PRIORITY_STYLES: Record<string, string> = {
-  high: 'bg-wax-500/10 text-wax-600 border-wax-500/20',
-  medium: 'bg-brass-500/10 text-brass-600 border-brass-500/20',
-  low: 'bg-sepia-300/10 text-sepia-600 border-sepia-300/20',
+  high: 'bg-wax-500/10 text-wax-700 border-wax-500/20',
+  medium: 'bg-brass-500/10 text-brass-800 border-brass-500/20',
+  low: 'bg-sepia-300/10 text-sepia-700 border-sepia-300/20',
 };
 
 interface CoachingInsightCardProps {
@@ -41,9 +43,10 @@ export function CoachingInsightCard({ insight, onDismiss }: CoachingInsightCardP
 
   return (
     <ParchmentCard padding="sm" className="relative group">
+      {/* Z14: always visible on touch (no hover there); hover-revealed on md+ */}
       <button
         onClick={onDismiss}
-        className="absolute top-2 right-2 p-0.5 text-sepia-600 hover:text-sepia-800 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-2 right-2 p-0.5 text-sepia-600 hover:text-sepia-800 rounded md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 transition-opacity"
         aria-label={t('dismissAria')}
       >
         <X size={12} />

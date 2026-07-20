@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import { X, Download, Loader2, FileText, FileType2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { springs } from '@/lib/animations';
@@ -50,6 +51,14 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     () => new Set(exportableChapters.map(c => c.id)),
   );
   const [busy, setBusy] = useState(false);
+
+  // Z4: scroll lock + Escape + Tab trap; Escape is ignored mid-export so a
+  // stray key can't orphan a running request.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const safeClose = useCallback(() => {
+    if (!busy) onClose();
+  }, [busy, onClose]);
+  useModalHygiene(panelRef, safeClose, open);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
@@ -123,6 +132,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           <div className="absolute inset-0 bg-sepia-900/60 backdrop-blur-sm" onClick={busy ? undefined : onClose} />
 
           <motion.div
+            ref={panelRef}
             initial={{ opacity: 0, scale: 0.95, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}

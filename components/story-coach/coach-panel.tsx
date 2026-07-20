@@ -82,7 +82,8 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {isLoading && sorted.length === 0 && (
-            <div className="space-y-3" aria-label={t('loadingAria')}>
+            // Z18: a live status region — aria-label on a bare div is ignored.
+            <div className="space-y-3" role="status" aria-live="polite" aria-label={t('loadingAria')}>
               {[0, 1, 2].map(i => (
                 <div key={i} className="rounded-lg border border-sepia-300/20 p-3 space-y-2">
                   <div className="h-3 w-24 rounded bg-sepia-200/60 animate-pulse" />

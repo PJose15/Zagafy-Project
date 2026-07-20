@@ -85,7 +85,7 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
         <button
           onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
           disabled={currentPage === 0}
-          className={`p-2 rounded ${currentPage === 0 ? 'text-sepia-300' : 'text-sepia-600 hover:text-sepia-800'}`}
+          className={`p-2 rounded ${currentPage === 0 ? 'text-sepia-500 opacity-60 cursor-not-allowed' : 'text-sepia-600 hover:text-sepia-800'}`}
           aria-label={t('prevPageAria')}
         >
           <ChevronLeft size={20} />
@@ -96,7 +96,7 @@ export function PrintBookView({ title, content, issues }: PrintBookViewProps) {
         <button
           onClick={() => setCurrentPage(p => Math.min(pages.length - 1, p + 1))}
           disabled={currentPage >= pages.length - 1}
-          className={`p-2 rounded ${currentPage >= pages.length - 1 ? 'text-sepia-300' : 'text-sepia-600 hover:text-sepia-800'}`}
+          className={`p-2 rounded ${currentPage >= pages.length - 1 ? 'text-sepia-500 opacity-60 cursor-not-allowed' : 'text-sepia-600 hover:text-sepia-800'}`}
           aria-label={t('nextPageAria')}
         >
           <ChevronRight size={20} />

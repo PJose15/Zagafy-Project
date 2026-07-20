@@ -33,7 +33,9 @@
     "chapters": "Capítulos",
     "streak": "Racha",
     "streakDays": "{count}d",
-    "level": "Nivel"
+    "level": "Nivel",
+    "today": "hoy",
+    "xpToNext": "{current, number} / {needed, number} XP para el siguiente nivel"
   },
   "common": {
     "on": "activado",
@@ -270,6 +272,14 @@
       "afternoon": "Una buena tarde para un capítulo.",
       "evening": "Las velas están encendidas; el escritorio es tuyo.",
       "night": "Las horas pequeñas: donde se escriben las novelas en secreto."
+    },
+    "goal": {
+      "progress": "{total, number} de {goal, number} palabras — {pct}%",
+      "unset": "Fija una meta de palabras para este manuscrito",
+      "set": "Fijar meta",
+      "edit": "Editar meta",
+      "editAria": "Fijar la meta de palabras del manuscrito",
+      "inputAria": "Meta de palabras"
     }
   },
   "notFound": {
@@ -680,7 +690,8 @@
       "wordsWritten": "Palabras escritas",
       "duration": "Duración",
       "save": "Guardar",
-      "burn": "Quemar"
+      "burn": "Quemar",
+      "burnConfirm": "Quémalo — estoy seguro"
     },
     "noRetreatToggle": {
       "enable": "Activar modo Sin Retroceso",
@@ -944,7 +955,11 @@
     "changeStatus": "Cambiar estado:",
     "noDescription": "Sin descripción...",
     "emptyTitle": "Ningún elemento coincide con tus filtros",
-    "emptySubtitle": "Prueba a ajustar tus criterios de búsqueda."
+    "emptySubtitle": "Prueba a ajustar tus criterios de búsqueda.",
+    "fastTrack": "Confirmar todo lo flexible ({count})",
+    "fastTrackTitle": "¿Acelerar el canon flexible?",
+    "fastTrackMessage": "{count, plural, one {# elemento flexible} other {# elementos flexibles}} se sellarán como canon confirmado.",
+    "fastTrackConfirm": "Sellarlos"
   },
   "conflicts": {
     "title": "Conflictos",
@@ -1159,7 +1174,9 @@
     "savedToast": "Capítulo guardado",
     "copyTitle": "{title} (copia)",
     "duplicateAria": "Duplicar {title}",
-    "dragAria": "Arrastra para reordenar {title}"
+    "dragAria": "Arrastra para reordenar {title}",
+    "compactOn": "Compacto",
+    "compactOff": "Expandido"
   },
   "outline": {
     "errorTitle": "Esquema",
@@ -1291,7 +1308,8 @@
     "toFlexible": "A Flexible",
     "toConfirmed": "A Confirmado",
     "newSection": "Nueva Sección",
-    "sectionAddedToast": "Sección añadida a la biblia"
+    "sectionAddedToast": "Sección añadida a la biblia",
+    "filterPlaceholder": "Filtrar este estante…"
   },
   "importPage": {
     "title": "Ingesta de Documentos",
@@ -1457,7 +1475,12 @@
     "whyBlocked": "Por Qué Podrías Estar Bloqueado",
     "nextMoves": "Posibles Próximos Pasos",
     "bestMove": "Mejor Movimiento Recomendado",
-    "sceneStarter": "Inicio de Escena"
+    "sceneStarter": "Inicio de Escena",
+    "copyAll": "Copiar todo",
+    "copiedAllToast": "Conversación copiada como markdown",
+    "copyFailedToast": "No se pudo copiar",
+    "youLabel": "Tú",
+    "assistantLabel": "Asistente"
   },
   "gamification": {
     "durationTarget": "{duration} min · meta de {target} palabras",
@@ -1510,7 +1533,10 @@
       "climax": "Clímax",
       "falling-action": "Descenso",
       "resolution": "Resolución"
-    }
+    },
+    "levelUpEyebrow": "La biblioteca toma nota",
+    "levelUpTitle": "Nivel {level}",
+    "streakRuleHint": "Escribe 10+ minutos hoy para mantener viva la racha."
   },
   "writingStats": {
     "insight": {
@@ -2064,9 +2090,27 @@
     "noResults": "Nada en este estante. Prueba otra palabra.",
     "hintNavigate": "navegar",
     "hintOpen": "abrir",
-    "wordsShort": "{count, number} p"
+    "wordsShort": "{count, number} p",
+    "recent": "Recientes",
+    "actions": "Acciones",
+    "actionContinue": "Seguir escribiendo — {title}",
+    "actionNewChapter": "Nuevo capítulo",
+    "actionFindReplace": "Buscar y reemplazar",
+    "actionSprint": "Iniciar un sprint",
+    "actionExport": "Exportar el manuscrito",
+    "actionBackup": "Respaldar el proyecto",
+    "hintShortcuts": "atajos"
   },
   "milestones": {
     "reached": "{count, number} palabras inscritas en la biblioteca"
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "catalog": "Abrir el catálogo de fichas",
+    "save": "Guardar el capítulo abierto",
+    "find": "Buscar y reemplazar entre capítulos",
+    "composer": "Enviar · nueva línea (en el chat)",
+    "escape": "Cerrar diálogos y paneles",
+    "sheet": "Mostrar esta hoja"
   }
 }

@@ -114,6 +114,7 @@ export default function ManuscriptPage() {
     [editForm.content],
   );
 
+  const addChapterRef = useRef<() => void>(() => {});
   const handleAddChapter = () => {
     const newChapter: Chapter = {
       id: crypto.randomUUID(),
@@ -158,10 +159,11 @@ export default function ManuscriptPage() {
   };
 
   // A9: Ctrl/Cmd+S saves the open chapter instead of invoking the browser
-  // save dialog. Latest handler lives in a ref so the listener stays stable.
+  // save dialog. Latest handlers live in refs so the listeners stay stable.
   const saveRef = useRef<() => void>(() => {});
   useEffect(() => {
     saveRef.current = handleSave;
+    addChapterRef.current = handleAddChapter;
   });
   useEffect(() => {
     if (!editingId) return;
@@ -244,6 +246,44 @@ export default function ManuscriptPage() {
   // Phase 4.2 / MP-06 — find-and-replace dialog
   const [findOpen, setFindOpen] = useState(false);
 
+  // G15: compact shelf mode — previews and summaries fold away, persisted.
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- two-pass hydration-safe storage restore
+      if (localStorage.getItem('zagafy_manuscript_compact') === '1') setCompact(true);
+    } catch { /* default expanded */ }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem('zagafy_manuscript_compact', compact ? '1' : '0');
+    } catch { /* best effort */ }
+  }, [compact]);
+
+  // G1: perform a Card Catalog verb stamped before navigation. This mounts
+  // post-hydration (the store renders a skeleton until loaded), so adding a
+  // chapter here can't clobber unhydrated data.
+  const pendingHandledRef = useRef(false);
+  useEffect(() => {
+    if (pendingHandledRef.current) return;
+    pendingHandledRef.current = true;
+    let action: string | null = null;
+    try {
+      action = sessionStorage.getItem('zagafy_pending_action');
+      if (action) sessionStorage.removeItem('zagafy_pending_action');
+    } catch {
+      return;
+    }
+    if (!action) return;
+    // Deferred a tick: the ref-sync effect below runs after this one, so the
+    // handlers must be picked up on the next macrotask.
+    const timer = setTimeout(() => {
+      if (action === 'find-replace') setFindOpen(true);
+      else if (action === 'new-chapter') addChapterRef.current();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f' && !e.shiftKey) {
@@ -297,6 +337,16 @@ export default function ManuscriptPage() {
         }
         actions={
           <div className="flex items-center gap-2">
+            {/* G15: compact shelf — titles and stats only */}
+            <InkStampButton
+              variant="ghost"
+              size="sm"
+              onClick={() => setCompact(c => !c)}
+              aria-pressed={compact}
+              title={compact ? t('compactOff') : t('compactOn')}
+            >
+              {compact ? t('compactOff') : t('compactOn')}
+            </InkStampButton>
             <BrassButton
               onClick={() => setFindOpen(true)}
               icon={<Search size={16} />}
@@ -441,9 +491,11 @@ export default function ManuscriptPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="prose prose-sepia max-w-none font-serif text-sepia-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                    {getPlainText(chapter.content) || <span className="text-sepia-600 italic">{t('emptyChapter')}</span>}
-                  </div>
+                  {!compact && (
+                    <div className="prose prose-sepia max-w-none font-serif text-sepia-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                      {getPlainText(chapter.content) || <span className="text-sepia-600 italic">{t('emptyChapter')}</span>}
+                    </div>
+                  )}
                   <div className="mt-2 flex items-center gap-3 text-xs text-sepia-600 font-mono">
                     {/* M18: the ledger rolls to its new count when a save lands */}
                     <span>
@@ -455,7 +507,7 @@ export default function ManuscriptPage() {
                     <span>{readingTime(wordCount(chapter.content))}</span>
                     <VersionCount chapterId={chapter.id} />
                   </div>
-                  {chapter.summary && (
+                  {!compact && chapter.summary && (
                     <div className="mt-6 pt-4 border-t border-sepia-300/50">
                       <p className="text-sm font-medium text-sepia-600 uppercase tracking-wider mb-2">{t('summaryLabel')}</p>
                       <p className="text-sm text-sepia-600">{chapter.summary}</p>

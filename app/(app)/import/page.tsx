@@ -33,6 +33,8 @@ export default function ImportPage() {
   const { state, updateField } = useStory();
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
+  // G17: the dropzone glows brass while a file hovers over it.
+  const [dragOver, setDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'analyzing' | 'review' | 'success'>('idle');
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
@@ -468,9 +470,20 @@ export default function ImportPage() {
       {uploadStatus === 'idle' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
           <div
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleDrop}
-            className="border-2 border-dashed border-sepia-300/60 hover:border-brass-500 bg-parchment-100/50 rounded-xl p-12 text-center transition-colors cursor-pointer"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              setDragOver(false);
+              handleDrop(e);
+            }}
+            className={`border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer ${
+              dragOver
+                ? 'border-brass-500 bg-brass-500/10 shadow-[0_0_24px_rgba(196,155,72,0.25)]'
+                : 'border-sepia-300/60 hover:border-brass-500 bg-parchment-100/50'
+            }`}
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -506,8 +519,8 @@ export default function ImportPage() {
                     <div className="flex items-center gap-4">
                       <span className="text-xs text-sepia-600">{t('fileSize', { size: (file.size / 1024 / 1024).toFixed(2) })}</span>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => moveFile(idx, 'up')} disabled={idx === 0} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={t('moveUpAria', { name: file.name })}><ChevronUp size={16} /></button>
-                        <button onClick={() => moveFile(idx, 'down')} disabled={idx === files.length - 1} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-30" aria-label={t('moveDownAria', { name: file.name })}><ChevronDown size={16} /></button>
+                        <button onClick={() => moveFile(idx, 'up')} disabled={idx === 0} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-50 disabled:text-sepia-500" aria-label={t('moveUpAria', { name: file.name })}><ChevronUp size={16} /></button>
+                        <button onClick={() => moveFile(idx, 'down')} disabled={idx === files.length - 1} className="p-1 text-sepia-600 hover:text-sepia-700 disabled:opacity-50 disabled:text-sepia-500" aria-label={t('moveDownAria', { name: file.name })}><ChevronDown size={16} /></button>
                         <button onClick={() => setFiles(files.filter((_, i) => i !== idx))} className="p-1 text-wax-600 hover:text-wax-500 ml-2" aria-label={t('removeAria', { name: file.name })}><X size={16} /></button>
                       </div>
                     </div>

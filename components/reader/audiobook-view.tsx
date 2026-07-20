@@ -81,7 +81,7 @@ export function AudiobookView({ title, content }: AudiobookViewProps) {
               const v = tts.voices.find(v => v.name === e.target.value);
               if (v) tts.setVoice(v);
             }}
-            className="text-xs bg-parchment-50 border border-sepia-300 rounded px-1 py-0.5 max-w-[140px]"
+            className="text-xs bg-parchment-50 border border-sepia-300 rounded px-1 py-0.5 w-full min-w-0 sm:w-auto sm:max-w-[140px]"
             aria-label={t('voiceAria')}
           >
             {tts.voices.map(v => (

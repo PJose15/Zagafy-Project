@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import type { NovelCompletionStats } from '@/lib/gamification/finishing-engine';
 import { springs, stampSlam, fadeUp } from '@/lib/animations';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import NovelShareCard, { generateShareCardPNG } from './NovelShareCard';
 
 // ─── CountUp Component ───
@@ -15,9 +16,12 @@ function CountUp({ end, duration = 2000 }: { end: number; duration?: number }) {
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    if (end === 0) {
+    // Z17: rAF loops are invisible to the CSS reduced-motion block — land on
+    // the final number immediately when the user prefers reduced motion.
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (end === 0 || reduce) {
       // Use rAF to avoid synchronous setState in effect body
-      rafRef.current = requestAnimationFrame(() => setValue(0));
+      rafRef.current = requestAnimationFrame(() => setValue(end));
       return () => cancelAnimationFrame(rafRef.current);
     }
 
@@ -70,14 +74,10 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
     return () => clearTimeout(timer);
   }, [act]);
 
-  // Block Escape key
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') e.preventDefault();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  // Z6: the ritual is a celebration, not a cage — Escape dismisses at any
+  // act, and the shared hook also locks scroll + traps Tab while it plays.
+  const overlayRef = useRef<HTMLDivElement>(null);
+  useModalHygiene(overlayRef, onDismiss);
 
   // Random quote index (stable per mount); resolve against the localized list
   const [quoteIndex] = useState(() => Math.floor(Math.random() * 5));
@@ -127,6 +127,7 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
 
   return (
     <div
+      ref={overlayRef}
       role="dialog"
       aria-modal="true"
       aria-label={t('aria')}

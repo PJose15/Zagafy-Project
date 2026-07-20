@@ -359,15 +359,36 @@ export default function AssistantPage() {
           title={t('title')}
           subtitle={t('subtitle')}
           actions={
-            <button
-              onClick={handleClearChat}
-              disabled={messages.length <= 1 || isLoading || isAuditing}
-              className="flex items-center gap-2 text-sm text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
-              aria-label={t('clearAria')}
-            >
-              <Trash2 size={16} />
-              {t('clear')}
-            </button>
+            <>
+              {/* G13: carry the whole exchange out as markdown */}
+              <button
+                onClick={async () => {
+                  const md = messages
+                    .map(m => `**${m.role === 'user' ? t('youLabel') : t('assistantLabel')}:** ${m.content}`)
+                    .join('\n\n');
+                  try {
+                    await navigator.clipboard.writeText(md);
+                    toast(t('copiedAllToast'), 'success');
+                  } catch {
+                    toast(t('copyFailedToast'), 'error');
+                  }
+                }}
+                disabled={messages.length <= 1}
+                className="flex items-center gap-2 text-sm text-sepia-600 hover:text-brass-700 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
+              >
+                <BookOpen size={16} aria-hidden="true" />
+                {t('copyAll')}
+              </button>
+              <button
+                onClick={handleClearChat}
+                disabled={messages.length <= 1 || isLoading || isAuditing}
+                className="flex items-center gap-2 text-sm text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
+                aria-label={t('clearAria')}
+              >
+                <Trash2 size={16} />
+                {t('clear')}
+              </button>
+            </>
           }
         />
       </div>

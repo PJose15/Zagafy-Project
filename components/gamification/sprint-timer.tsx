@@ -56,6 +56,16 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
     }
   }, [secondsLeft, onEnd]);
 
+  // Z9: Finish Early shares the auto-end guard so a click racing the final
+  // tick can't fire onEnd twice; after expiry "See Results" always works.
+  const handleEnd = () => {
+    if (secondsLeft > 0) {
+      if (autoEndedRef.current) return;
+      autoEndedRef.current = true;
+    }
+    onEnd();
+  };
+
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
   const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -102,7 +112,7 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
       </div>
 
       <div className="flex gap-3">
-        <InkStampButton variant="primary" onClick={onEnd}>
+        <InkStampButton variant="primary" onClick={handleEnd}>
           {isExpired ? t('seeResults') : t('finishEarly')}
         </InkStampButton>
         {!isExpired && (

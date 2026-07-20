@@ -33,7 +33,9 @@
     "chapters": "Chapters",
     "streak": "Streak",
     "streakDays": "{count}d",
-    "level": "Level"
+    "level": "Level",
+    "today": "today",
+    "xpToNext": "{current, number} / {needed, number} XP to the next level"
   },
   "common": {
     "on": "on",
@@ -270,6 +272,14 @@
       "afternoon": "A fine afternoon for a chapter.",
       "evening": "The candles are lit; the desk is yours.",
       "night": "The small hours — where novels are secretly written."
+    },
+    "goal": {
+      "progress": "{total, number} of {goal, number} words — {pct}%",
+      "unset": "Set a word goal for this manuscript",
+      "set": "Set goal",
+      "edit": "Edit goal",
+      "editAria": "Set the manuscript word goal",
+      "inputAria": "Word goal"
     }
   },
   "notFound": {
@@ -680,7 +690,8 @@
       "wordsWritten": "Words Written",
       "duration": "Duration",
       "save": "Save",
-      "burn": "Burn"
+      "burn": "Burn",
+      "burnConfirm": "Burn it — I’m sure"
     },
     "noRetreatToggle": {
       "enable": "Enable No-Retreat Mode",
@@ -944,7 +955,11 @@
     "changeStatus": "Change status:",
     "noDescription": "No description...",
     "emptyTitle": "No items match your filters",
-    "emptySubtitle": "Try adjusting your search criteria."
+    "emptySubtitle": "Try adjusting your search criteria.",
+    "fastTrack": "Confirm all flexible ({count})",
+    "fastTrackTitle": "Fast-track flexible canon?",
+    "fastTrackMessage": "{count, plural, one {# flexible item} other {# flexible items}} will be sealed as confirmed canon.",
+    "fastTrackConfirm": "Seal them"
   },
   "conflicts": {
     "title": "Conflicts",
@@ -1159,7 +1174,9 @@
     "savedToast": "Chapter saved",
     "copyTitle": "{title} (copy)",
     "duplicateAria": "Duplicate {title}",
-    "dragAria": "Drag to reorder {title}"
+    "dragAria": "Drag to reorder {title}",
+    "compactOn": "Compact",
+    "compactOff": "Expanded"
   },
   "outline": {
     "errorTitle": "Outline",
@@ -1291,7 +1308,8 @@
     "toFlexible": "To Flexible",
     "toConfirmed": "To Confirmed",
     "newSection": "New Section",
-    "sectionAddedToast": "Section added to the bible"
+    "sectionAddedToast": "Section added to the bible",
+    "filterPlaceholder": "Filter this shelf…"
   },
   "importPage": {
     "title": "Document Ingestion",
@@ -1457,7 +1475,12 @@
     "whyBlocked": "Why You Might Be Blocked",
     "nextMoves": "Possible Next Moves",
     "bestMove": "Best Recommended Move",
-    "sceneStarter": "Scene Starter"
+    "sceneStarter": "Scene Starter",
+    "copyAll": "Copy all",
+    "copiedAllToast": "Conversation copied as markdown",
+    "copyFailedToast": "Copy failed",
+    "youLabel": "You",
+    "assistantLabel": "Assistant"
   },
   "gamification": {
     "durationTarget": "{duration}m · {target}w target",
@@ -1510,7 +1533,10 @@
       "climax": "Climax",
       "falling-action": "Falling",
       "resolution": "Resolution"
-    }
+    },
+    "levelUpEyebrow": "The library takes note",
+    "levelUpTitle": "Level {level}",
+    "streakRuleHint": "Write for 10+ minutes today to keep the streak alive."
   },
   "writingStats": {
     "insight": {
@@ -2064,9 +2090,27 @@
     "noResults": "Nothing on this shelf. Try another word.",
     "hintNavigate": "navigate",
     "hintOpen": "open",
-    "wordsShort": "{count, number} w"
+    "wordsShort": "{count, number} w",
+    "recent": "Recent",
+    "actions": "Actions",
+    "actionContinue": "Continue writing — {title}",
+    "actionNewChapter": "New chapter",
+    "actionFindReplace": "Find & replace",
+    "actionSprint": "Start a sprint",
+    "actionExport": "Export the manuscript",
+    "actionBackup": "Back up the project",
+    "hintShortcuts": "shortcuts"
   },
   "milestones": {
     "reached": "{count, number} words inscribed in the library"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "catalog": "Open the card catalog",
+    "save": "Save the open chapter",
+    "find": "Find & replace across chapters",
+    "composer": "Send · new line (in chat)",
+    "escape": "Close dialogs and drawers",
+    "sheet": "Show this sheet"
   }
 }

@@ -21,6 +21,7 @@ import {
   Reveal,
 } from '@/components/antiquarian';
 import { GenesisGuard } from '@/components/genesis/genesis-guard';
+import { WordGoalBar } from '@/components/dashboard/word-goal-bar';
 import { useGamification } from '@/hooks/use-gamification';
 import { useNovelCompletion } from '@/hooks/use-novel-completion';
 import NovelCompletionRitual from '@/components/completion/NovelCompletionRitual';
@@ -344,6 +345,11 @@ export default function Dashboard() {
             ))}
           </div>
         </ParchmentCard>
+      </motion.div>
+
+      {/* G16: the project's word goal */}
+      <motion.div {...fadeUp}>
+        <WordGoalBar totalWords={state.chapters.reduce((s, c) => s + countWords(c.content), 0)} />
       </motion.div>
 
       {/* ── Gamification ── */}

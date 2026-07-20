@@ -107,7 +107,7 @@ describe('CoachingInsightCard', () => {
     const insight = makeInsight({ priority: 'medium' });
     render(<CoachingInsightCard {...defaultProps} insight={insight} />);
     const badge = screen.getByText('medium');
-    expect(badge.className).toContain('text-brass-600');
+    expect(badge.className).toContain('text-brass-800');
   });
 
   it('renders X icon for dismiss button', () => {

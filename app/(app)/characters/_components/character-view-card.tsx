@@ -106,7 +106,18 @@ export function CharacterViewCard({
                   </span>
                 )}
                 {indicator && (
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${indicatorConfig[indicator].bg} ${indicatorConfig[indicator].color}`}>
+                  // G11: the chip breathes at the character's pressure rate
+                  <span
+                    className={[
+                      'flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium',
+                      indicatorConfig[indicator].bg,
+                      indicatorConfig[indicator].color,
+                      pressureLevel === 'Medium' ? 'breath-medium motion-reduce:animate-none'
+                        : pressureLevel === 'High' ? 'breath-high motion-reduce:animate-none'
+                        : pressureLevel === 'Critical' ? 'breath-critical motion-reduce:animate-none'
+                        : '',
+                    ].join(' ')}
+                  >
                     <Activity size={12} aria-hidden="true" />
                     {t(`indicator.${indicator}`)}
                   </span>
