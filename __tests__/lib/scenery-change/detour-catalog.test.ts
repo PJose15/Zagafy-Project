@@ -112,6 +112,20 @@ describe('getDetourSuggestions', () => {
     expect(altPov!.prompt).toContain('Bob');
   });
 
+  it('exposes the raw promptParam for i18n rendering (value or null)', () => {
+    const withData = getDetourSuggestions(makeSignal(['low_wpm']), {
+      characterNames: ['Alice'],
+    });
+    const dialogueSprint = withData.find(s => s.type === 'dialogue_sprint');
+    expect(dialogueSprint!.promptParam).toBe('Alice');
+
+    const withoutData = getDetourSuggestions(makeSignal(['low_wpm']), {});
+    for (const s of withoutData) {
+      // No story data → null so the renderer substitutes a translated default
+      expect(s.promptParam).toBeNull();
+    }
+  });
+
   it('returns unique detour types (no duplicates)', () => {
     const suggestions = getDetourSuggestions(makeSignal(['low_wpm', 'high_deletion', 'idle']), {});
     const types = suggestions.map(s => s.type);

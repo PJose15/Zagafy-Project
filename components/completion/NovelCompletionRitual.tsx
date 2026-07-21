@@ -66,6 +66,8 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
   const [act, setAct] = useState(1);
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
+  // i18n: an untitled novel gets a localized default at render time.
+  const displayTitle = stats.title || t('defaultTitle');
 
   // Auto-advance acts
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${stats.title.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '')}_zagafy.png`;
+      a.download = `${displayTitle.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '')}_zagafy.png`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -99,7 +101,7 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
     } finally {
       setDownloading(false);
     }
-  }, [stats.title, downloading]);
+  }, [displayTitle, downloading]);
 
   const handleShare = useCallback(async () => {
     if (!cardRef.current) return;
@@ -107,7 +109,7 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
       const blob = await generateShareCardPNG(cardRef.current);
       const file = new File([blob], 'zagafy_novel.png', { type: 'image/png' });
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: stats.title, text: t('shareText') });
+        await navigator.share({ files: [file], title: displayTitle, text: t('shareText') });
       } else {
         // Fallback to download
         await handleDownload();
@@ -115,7 +117,7 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
     } catch {
       // User cancelled share or unsupported
     }
-  }, [stats.title, handleDownload, t]);
+  }, [displayTitle, handleDownload, t]);
 
   const statItems = [
     { label: t('statWords'), value: stats.totalWords },
@@ -145,7 +147,7 @@ export default function NovelCompletionRitual({ stats, onDismiss }: NovelComplet
             className="text-center px-8"
           >
             <h1 className="font-serif text-4xl md:text-6xl text-[#c49b48] leading-tight max-w-2xl">
-              {stats.title}
+              {displayTitle}
             </h1>
           </motion.div>
         )}

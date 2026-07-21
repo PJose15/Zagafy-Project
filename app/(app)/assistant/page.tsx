@@ -234,8 +234,14 @@ export default function AssistantPage() {
       const result = await res.json();
       setPendingAudit({ request: input, result });
 
-    } catch {
-      toast(t('auditError'), 'error');
+    } catch (error: unknown) {
+      // Mirror handleSend: surface the server's error detail when available
+      // instead of only the generic catalog message.
+      const isAbort = error instanceof DOMException && error.name === 'AbortError';
+      if (!isAbort) {
+        const errorMsg = error instanceof Error && error.message ? error.message : t('auditError');
+        toast(errorMsg, 'error');
+      }
     } finally {
       setIsAuditing(false);
     }

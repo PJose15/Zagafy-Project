@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { BlogContent } from '../_components/blog-content';
 
 export const metadata: Metadata = {
-  title: 'Blog -- Zagafy',
+  title: 'Blog — Zagafy',
   description: 'Writing craft insights, product updates, and storytelling wisdom.',
 };
 

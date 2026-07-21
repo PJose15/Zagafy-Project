@@ -58,6 +58,8 @@ export default function DocsPage() {
             >
               <button
                 onClick={() => setOpenIndex(isOpen ? null : idx)}
+                aria-expanded={isOpen}
+                aria-controls={`docs-section-${idx}`}
                 className="w-full flex items-center justify-between px-6 py-4 text-left font-serif text-lg font-bold hover:bg-parchment-200/50 transition-colors"
               >
                 {section.title}
@@ -67,7 +69,7 @@ export default function DocsPage() {
                 />
               </button>
               {isOpen && (
-                <div className="px-6 pb-6 text-sepia-700 leading-relaxed whitespace-pre-line">
+                <div id={`docs-section-${idx}`} className="px-6 pb-6 text-sepia-700 leading-relaxed whitespace-pre-line">
                   {section.content}
                 </div>
               )}

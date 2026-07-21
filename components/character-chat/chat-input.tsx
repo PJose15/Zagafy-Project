@@ -57,7 +57,7 @@ export function ChatInput({ onSend, isLoading, isStreaming = false }: ChatInputP
         disabled={busy}
         placeholder={busy ? t('inputWaiting') : t('inputPlaceholder')}
         rows={1}
-        className="flex-1 resize-none bg-parchment-50 border border-sepia-300/60 rounded-lg px-3 py-2 text-sm text-sepia-900 placeholder:text-sepia-500 focus:outline-none focus:ring-2 focus:ring-brass-400/40 focus:border-brass-500/60 disabled:opacity-50"
+        className="flex-1 resize-none bg-parchment-50 border border-sepia-300/60 rounded-lg px-3 py-2 text-sm text-sepia-900 placeholder:text-sepia-600 focus:outline-none focus:ring-2 focus:ring-brass-400/40 focus:border-brass-500/60 disabled:opacity-50"
       />
       {/* M23: the send button dips like a quill into the inkwell */}
       <motion.div whileTap={{ y: 3, rotate: 6 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }} className="flex-shrink-0">
@@ -71,7 +71,7 @@ export function ChatInput({ onSend, isLoading, isStreaming = false }: ChatInputP
       </motion.div>
     </div>
     {/* A5: quiet keyboard hint for the composer */}
-    <p aria-hidden="true" className="px-3 pb-2 text-right font-mono text-[10px] text-sepia-500">
+    <p aria-hidden="true" className="px-3 pb-2 text-right font-mono text-[10px] text-sepia-600">
       ↵ {tCommon('kbdSend')} · ⇧↵ {tCommon('kbdNewline')}
     </p>
     </div>

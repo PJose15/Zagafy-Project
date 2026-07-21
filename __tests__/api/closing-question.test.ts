@@ -171,4 +171,30 @@ describe('POST /api/closing-question', () => {
     expect(body.degraded).toBeUndefined();
     expect(body.question).toBe('What moved you?');
   });
+
+  // ── i18n — language pinning + client-translatable fallbacks ──
+
+  it('includes a fallbackIndex on degraded responses so clients can translate', async () => {
+    mockGenerateContent.mockRejectedValue(new Error('AI failed'));
+    const res = await POST(makeRequest({ wordsWritten: 100 }));
+    const body = await res.json();
+    expect(body.degraded).toBe(true);
+    expect(typeof body.fallbackIndex).toBe('number');
+    expect(body.fallbackIndex).toBeGreaterThanOrEqual(0);
+    expect(body.fallbackIndex).toBeLessThan(5);
+  });
+
+  it('pins the answer language to Spanish when language="es"', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: '¿Qué te sorprendió hoy?' });
+    await POST(makeRequest({ wordsWritten: 100, language: 'es' }));
+    const call = mockGenerateContent.mock.calls[0][0];
+    expect(call.config.systemInstruction).toContain('español');
+  });
+
+  it('defaults to English when language is absent or unknown', async () => {
+    mockGenerateContent.mockResolvedValueOnce({ text: 'What surprised you?' });
+    await POST(makeRequest({ wordsWritten: 100, language: 'fr' }));
+    const call = mockGenerateContent.mock.calls[0][0];
+    expect(call.config.systemInstruction).toContain('Respond entirely in English');
+  });
 });

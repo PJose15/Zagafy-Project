@@ -329,19 +329,45 @@ function TabPlugin() {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    return editor.registerCommand(
-      KEY_TAB_COMMAND,
-      (event: KeyboardEvent) => {
-        event.preventDefault();
-        editor.update(() => {
-          const selection = $getSelection();
-          if ($isRangeSelection(selection)) {
-            selection.insertRawText('\t');
+    // WCAG 2.1.2 (no keyboard trap): Tab normally inserts \t, so Escape arms
+    // a one-shot exit — the NEXT Tab is left to the browser and moves focus
+    // out of the editor. Any other typing re-arms the trap.
+    let escapeArmed = false;
+
+    return mergeRegister(
+      editor.registerCommand(
+        KEY_DOWN_COMMAND,
+        (event: KeyboardEvent) => {
+          if (event.key === 'Escape') {
+            escapeArmed = true;
+          } else if (
+            event.key !== 'Tab' &&
+            !['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)
+          ) {
+            escapeArmed = false;
           }
-        });
-        return true;
-      },
-      COMMAND_PRIORITY_LOW,
+          return false;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+      editor.registerCommand(
+        KEY_TAB_COMMAND,
+        (event: KeyboardEvent) => {
+          if (escapeArmed) {
+            escapeArmed = false;
+            return false; // browser default: focus moves out of the editor
+          }
+          event.preventDefault();
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              selection.insertRawText('\t');
+            }
+          });
+          return true;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
     );
   }, [editor]);
 

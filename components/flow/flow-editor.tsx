@@ -706,7 +706,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           onKeyDown={handleKeyDown}
           autoFocus
           placeholder={t('placeholder')}
-          className="w-full max-w-3xl flex-1 bg-transparent text-sepia-900 text-lg leading-relaxed font-serif placeholder-sepia-400 focus:outline-none resize-none"
+          className="w-full max-w-3xl flex-1 bg-transparent text-sepia-900 text-lg leading-relaxed font-serif placeholder-sepia-600 focus:outline-none resize-none"
           spellCheck={false}
         />
 

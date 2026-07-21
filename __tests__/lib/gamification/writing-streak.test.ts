@@ -3,6 +3,7 @@ import {
   isQualifyingSession,
   updateStreak,
   getStreakWarning,
+  getStreakWarningInfo,
   isStreakMilestone,
   STREAK_MILESTONES,
 } from '@/lib/gamification/writing-streak';
@@ -205,6 +206,30 @@ describe('getStreakWarning', () => {
   it('returns null before 6pm', () => {
     const state: WritingStreakState = { ...emptyStreak, currentStreak: 5, todayQualified: false };
     expect(getStreakWarning(state, 17)).toBeNull();
+  });
+});
+
+describe('getStreakWarningInfo (i18n codes)', () => {
+  it('returns atRisk code with days after 8pm', () => {
+    const state: WritingStreakState = { ...emptyStreak, currentStreak: 5, todayQualified: false };
+    expect(getStreakWarningInfo(state, 20)).toEqual({
+      key: 'streakWarning.atRisk',
+      params: { days: 5 },
+    });
+  });
+
+  it('returns reminder code with days after 6pm', () => {
+    const state: WritingStreakState = { ...emptyStreak, currentStreak: 3, todayQualified: false };
+    expect(getStreakWarningInfo(state, 18)).toEqual({
+      key: 'streakWarning.reminder',
+      params: { days: 3 },
+    });
+  });
+
+  it('returns null when qualified, streak-less, or too early', () => {
+    expect(getStreakWarningInfo({ ...emptyStreak, currentStreak: 5, todayQualified: true }, 21)).toBeNull();
+    expect(getStreakWarningInfo({ ...emptyStreak, currentStreak: 0, todayQualified: false }, 21)).toBeNull();
+    expect(getStreakWarningInfo({ ...emptyStreak, currentStreak: 5, todayQualified: false }, 17)).toBeNull();
   });
 });
 

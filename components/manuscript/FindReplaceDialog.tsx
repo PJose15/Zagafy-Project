@@ -50,6 +50,7 @@ export function FindReplaceDialog({
   onApplyEdits,
 }: FindReplaceDialogProps) {
   const t = useTranslations('findReplace');
+  const tVersionLabels = useTranslations('versionLabels');
   const [query, setQuery] = useState('');
   const [replacement, setReplacement] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -160,7 +161,7 @@ export function FindReplaceDialog({
         await addVersion(
           ch.id,
           ch.content,
-          `Pre-replace "${query.slice(0, 40)}"`,
+          tVersionLabels('preReplace', { query: query.slice(0, 40) }),
           'auto-snapshot',
           false,
         );

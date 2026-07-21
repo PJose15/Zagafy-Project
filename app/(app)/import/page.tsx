@@ -53,16 +53,34 @@ export default function ImportPage() {
     themes: (state.themes || []).map(t => t.theme),
   }), [state.characters, state.active_conflicts, state.locations, state.chapters, state.world_rules, state.themes]);
 
+  // The file picker enforces this via `accept`; drag-and-drop does not, so
+  // dropped files are filtered to the same set with a visible rejection.
+  const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md'];
+  const isAllowedFile = (file: File) => {
+    const dot = file.name.lastIndexOf('.');
+    const ext = dot === -1 ? '' : file.name.slice(dot).toLowerCase();
+    return ALLOWED_EXTENSIONS.includes(ext);
+  };
+
+  const acceptFiles = (incoming: File[]) => {
+    const allowed = incoming.filter(isAllowedFile);
+    const rejected = incoming.filter(f => !isAllowedFile(f));
+    if (rejected.length > 0) {
+      toast(t('unsupportedFiles', { names: rejected.map(f => f.name).join(', ') }), 'warning');
+    }
+    if (allowed.length > 0) setFiles(allowed);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      acceptFiles(Array.from(e.target.files));
     }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files) {
-      setFiles(Array.from(e.dataTransfer.files));
+      acceptFiles(Array.from(e.dataTransfer.files));
     }
   };
 

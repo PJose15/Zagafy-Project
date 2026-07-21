@@ -63,10 +63,16 @@ export default function OutlinePage() {
     });
   }, [enrichedChapters, canonFilter, lengthFilter]);
 
+  // Move relative to the VISIBLE neighbor: with a filter active, the nearest
+  // visible card is swapped with (not the hidden full-list neighbor, which
+  // would look like the button did nothing).
   const handleReorder = (originalIndex: number, direction: -1 | 1) => {
+    const visiblePos = filtered.findIndex(f => f.originalIndex === originalIndex);
+    if (visiblePos === -1) return;
+    const neighbor = filtered[visiblePos + direction];
+    if (!neighbor) return;
+    const target = neighbor.originalIndex;
     const next = [...state.chapters];
-    const target = originalIndex + direction;
-    if (target < 0 || target >= next.length) return;
     [next[originalIndex], next[target]] = [next[target], next[originalIndex]];
     updateField('chapters', next);
   };
@@ -206,7 +212,7 @@ export default function OutlinePage() {
 
         <div className={cardLayoutClass}>
           <AnimatePresence initial={false}>
-          {filtered.map(({ chapter, originalIndex, wordCount }) => (
+          {filtered.map(({ chapter, originalIndex, wordCount }, visibleIndex) => (
             <motion.div
               key={chapter.id}
               layout
@@ -266,7 +272,7 @@ export default function OutlinePage() {
                   <button
                     type="button"
                     onClick={() => handleReorder(originalIndex, -1)}
-                    disabled={originalIndex === 0}
+                    disabled={visibleIndex === 0}
                     className="p-1 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
                     aria-label={t('moveUpAria', { title: chapter.title })}
                   >
@@ -275,7 +281,7 @@ export default function OutlinePage() {
                   <button
                     type="button"
                     onClick={() => handleReorder(originalIndex, 1)}
-                    disabled={originalIndex === state.chapters.length - 1}
+                    disabled={visibleIndex === filtered.length - 1}
                     className="p-1 rounded text-sepia-600 hover:text-sepia-800 hover:bg-sepia-300/30 disabled:opacity-30"
                     aria-label={t('moveDownAria', { title: chapter.title })}
                   >

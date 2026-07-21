@@ -15,6 +15,7 @@ interface SceneryChangePromptProps {
 
 export function SceneryChangePrompt({ signal, suggestions, onSelect, onDismiss }: SceneryChangePromptProps) {
   const t = useTranslations('flow.sceneryPrompt');
+  const tCatalog = useTranslations('flow.detourCatalog');
   return (
     <AnimatePresence>
       <motion.div {...fadeUp} className="w-full max-w-3xl mx-auto mt-4">
@@ -47,7 +48,7 @@ export function SceneryChangePrompt({ signal, suggestions, onSelect, onDismiss }
                 className="text-left p-3 rounded-lg border border-sepia-300/30 hover:border-brass-500/40 hover:bg-parchment-200/50 transition-colors group"
               >
                 <h4 className="text-sm font-medium text-sepia-800 group-hover:text-brass-600 transition-colors">
-                  {s.title}
+                  {tCatalog(`${s.type}.title`)}
                 </h4>
                 <p className="text-[10px] text-sepia-600 mt-1">{t('minutes', { count: s.durationMinutes })}</p>
               </button>

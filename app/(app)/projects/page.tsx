@@ -87,7 +87,7 @@ export default function ProjectsPage() {
     if (busy) return;
     setBusy(true);
     try {
-      await createProject('Imported Manuscript');
+      await createProject(t('importedProjectTitle'));
       router.push('/import');
     } catch {
       toast(t('toastImportError'), 'error');

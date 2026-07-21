@@ -206,6 +206,8 @@ describe('analyzeStory', () => {
   it('suggests next action for incomplete milestone', () => {
     const result = analyzeStory(makeStory());
     expect(result.nextSuggestion).toBe('Write a synopsis for your story');
+    // i18n: the stable milestone id travels alongside the English fallback
+    expect(result.nextSuggestionId).toBe('synopsis-written');
   });
 
   it('suggests completion when all milestones done', () => {
@@ -231,6 +233,8 @@ describe('analyzeStory', () => {
     const result = analyzeStory(story);
     expect(result.overallProgress).toBe(100);
     expect(result.nextSuggestion).toContain('complete');
+    // i18n: null id = story complete (renderer shows milestoneDesc.complete)
+    expect(result.nextSuggestionId).toBeNull();
   });
 });
 

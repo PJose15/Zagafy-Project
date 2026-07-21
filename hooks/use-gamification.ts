@@ -13,7 +13,8 @@ import type { GamificationState, SprintTheme } from '@/lib/types/gamification';
 import { isGamificationState } from '@/lib/types/gamification';
 import { awardXP, xpToNextLevel, XP_RATES } from '@/lib/gamification/xp';
 import { evaluateChapterAward, evaluateStreakMilestone } from '@/lib/gamification/awards';
-import { updateStreak, getStreakWarning } from '@/lib/gamification/writing-streak';
+import { updateStreak, getStreakWarningInfo } from '@/lib/gamification/writing-streak';
+import type { StreakWarning } from '@/lib/gamification/writing-streak';
 import { refreshQuests, completeQuest as completeQuestFn, regeneratePlaceholderQuests } from '@/lib/gamification/daily-quests';
 import { formatDateKey } from '@/lib/gamification/date-utils';
 import { startSprint as startSprintFn, endSprint as endSprintFn, abandonSprint as abandonSprintFn } from '@/lib/gamification/sprints';
@@ -29,7 +30,7 @@ interface GamificationAPI {
   xpProgress: { current: number; needed: number; progress: number };
   awardXP: (type: string, amount: number, metadata?: string) => void;
   streak: GamificationState['streak'];
-  streakWarning: string | null;
+  streakWarning: StreakWarning | null;
   quests: GamificationState['quests']['quests'];
   completeQuest: (questId: string) => void;
   activeSprint: GamificationState['sprints']['activeSprint'];
@@ -171,7 +172,7 @@ function useGamificationInternal(): GamificationAPI {
 
   // ─── Streak ───
   const streak = gamification.streak;
-  const streakWarning = getStreakWarning(streak, new Date().getHours());
+  const streakWarning = getStreakWarningInfo(streak, new Date().getHours());
 
   // ─── Quests ───
   const quests = gamification.quests.quests;

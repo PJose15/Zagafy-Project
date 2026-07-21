@@ -8,11 +8,15 @@ import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { withRetry } from '@/lib/ai/retry';
 import { createRouteLogger } from '@/lib/logger';
+import { buildLocaleBlock } from '@/lib/prompts/locale';
 
 // Pin the serverless budget like the other AI routes so a slow Gemini call is
 // bounded (and the graceful canned-question fallback still runs in time).
 export const maxDuration = 15;
 
+// English fallbacks kept for backward compatibility (older clients read
+// `question` directly). New clients ignore this on degraded responses and
+// translate their own catalog fallback via `fallbackIndex`.
 const FALLBACK_QUESTIONS = [
   'What surprised you about what you wrote today?',
   'Which character felt most alive in this session?',
@@ -21,8 +25,15 @@ const FALLBACK_QUESTIONS = [
   'What scene are you most curious to write next?',
 ];
 
-function getRandomFallback(): string {
-  return FALLBACK_QUESTIONS[Math.floor(Math.random() * FALLBACK_QUESTIONS.length)];
+function getRandomFallback(): { question: string; fallbackIndex: number } {
+  const fallbackIndex = Math.floor(Math.random() * FALLBACK_QUESTIONS.length);
+  return { question: FALLBACK_QUESTIONS[fallbackIndex], fallbackIndex };
+}
+
+/** Map the client UI locale ('en' | 'es') to a buildLocaleBlock language. */
+function languageFromParam(language: unknown): string {
+  if (language === 'es') return 'Spanish';
+  return 'English';
 }
 
 export async function POST(req: NextRequest) {
@@ -39,21 +50,25 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { storyContext, wordsWritten } = body;
+    const { storyContext, wordsWritten, language } = body;
 
     if (typeof wordsWritten !== 'number') {
       return err('validation_failed', 'wordsWritten is required and must be a number', 400);
     }
 
+    const answerLanguage = languageFromParam(language);
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       log.warn('degraded', { degradationReason: 'gemini_key_missing' });
-      return ok({ question: getRandomFallback(), degraded: true, degradationReason: 'gemini_key_missing' });
+      return ok({ ...getRandomFallback(), degraded: true, degradationReason: 'gemini_key_missing' });
     }
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const systemPrompt = 'You are a writing mentor. Generate ONE reflective question (max 20 words) about the writer\'s session. Be warm, specific, and thought-provoking. Output ONLY the question.';
+    // Pin the answer language the same way the character-chat insight/memory
+    // routes do (buildLocaleBlock).
+    const systemPrompt = `You are a writing mentor. Generate ONE reflective question (max 20 words) about the writer's session. Be warm, specific, and thought-provoking. Output ONLY the question.\n\n${buildLocaleBlock(answerLanguage)}`;
 
     const userMessage = `The writer wrote ${wordsWritten} words this session.${
       storyContext && typeof storyContext === 'string'
@@ -78,7 +93,7 @@ export async function POST(req: NextRequest) {
 
     if (!question) {
       log.warn('degraded', { degradationReason: 'empty_response' });
-      return ok({ question: getRandomFallback(), degraded: true, degradationReason: 'empty_response' });
+      return ok({ ...getRandomFallback(), degraded: true, degradationReason: 'empty_response' });
     }
 
     return ok({ question });
@@ -92,6 +107,6 @@ export async function POST(req: NextRequest) {
     const message = error instanceof Error ? error.message : String(error);
     const reason = /timeout|timed out|ETIMEDOUT/i.test(message) ? 'gemini_timeout' : 'gemini_error';
     log.warn('degraded', { degradationReason: reason, upstreamMessage: message });
-    return ok({ question: getRandomFallback(), degraded: true, degradationReason: reason });
+    return ok({ ...getRandomFallback(), degraded: true, degradationReason: reason });
   }
 }

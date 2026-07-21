@@ -124,7 +124,22 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       if (result.ok) {
         setDone(true);
       } else {
-        setError(result.message);
+        // i18n: the export client returns stable codes; translate here.
+        switch (result.code) {
+          case 'network':
+            setError(t('errorNetwork'));
+            break;
+          case 'rate_limited':
+            setError(t('errorRateLimited'));
+            break;
+          case 'interrupted':
+            setError(t('errorInterrupted'));
+            break;
+          default:
+            setError(
+              result.serverMessage || t('errorHttp', { status: result.status ?? 0 }),
+            );
+        }
       }
     } catch {
       setError(t('exportError'));

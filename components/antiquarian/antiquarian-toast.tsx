@@ -20,6 +20,8 @@ interface Toast {
   action?: ToastAction;
   /** Auto-dismiss lifetime, driving both the timer and the drain bar. */
   lifetimeMs: number;
+  /** Bumped on hover-resume to restart the drain bar over the banked remainder. */
+  drainKey?: number;
 }
 
 interface ToastContextType {
@@ -97,6 +99,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const remaining = entry.expiresAt;
     entry.timer = setTimeout(() => removeToast(id), remaining);
     entry.expiresAt = Date.now() + remaining;
+    // Keep the drain bar honest: the pause banks a clamped (≥1200ms)
+    // remainder, so restart the CSS drain over exactly that span instead of
+    // letting the bar finish before the timer does.
+    setToasts(prev =>
+      prev.map(x => (x.id === id ? { ...x, lifetimeMs: remaining, drainKey: (x.drainKey ?? 0) + 1 } : x)),
+    );
   }, [removeToast]);
 
   const renderToast = (t: Toast) => {
@@ -132,6 +140,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {/* Ink drain — shows how long the toast will stay; CSS-driven so
             hover can freeze it in place alongside the paused timer (P6). */}
         <span
+          key={t.drainKey ?? 0}
           aria-hidden="true"
           style={{ animationDuration: `${t.lifetimeMs}ms` }}
           className={`toast-drain absolute bottom-0 left-0 right-0 h-0.5 origin-left ${barColors[t.type]}`}

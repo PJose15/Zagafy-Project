@@ -117,6 +117,7 @@ export default function ReaderPage() {
           <button
             key={m}
             onClick={() => setMode(m)}
+            aria-pressed={mode === m}
             className={`px-4 py-1.5 text-sm rounded-lg transition-colors ${
               mode === m ? 'bg-sepia-300/40 text-sepia-900 font-medium' : 'text-sepia-600 hover:text-sepia-700'
             }`}

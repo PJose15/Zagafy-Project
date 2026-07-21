@@ -75,6 +75,7 @@ export default function ManuscriptPage() {
   const t = useTranslations('manuscript');
   const tStatus = useTranslations('canonStatus');
   const tCommon = useTranslations('common');
+  const tVersionLabels = useTranslations('versionLabels');
   const readingTime = useReadingTimeLabel();
   const { state, updateField } = useStory();
   const { confirm } = useConfirm();
@@ -142,7 +143,7 @@ export default function ManuscriptPage() {
       !isLexicalJson(original.content) &&
       isLexicalJson(editForm.content ?? '')
     ) {
-      await addVersion(editingId, original.content, 'Before rich text', 'auto-snapshot').catch(() => {
+      await addVersion(editingId, original.content, tVersionLabels('beforeRichText'), 'auto-snapshot').catch(() => {
         // Snapshot is best-effort — never block the save.
       });
     }

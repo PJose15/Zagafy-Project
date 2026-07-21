@@ -19,13 +19,24 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
   const rawIndex = PHASE_KEYS.findIndex((k) => k === finishing.currentPhase);
   const phaseIndex = rawIndex >= 0 ? rawIndex : 0;
 
+  // i18n: translate the stable milestone id; legacy blobs without the id fall
+  // back to their persisted English suggestion string.
+  let suggestionText: string = finishing.nextSuggestion;
+  if (finishing.nextSuggestionId !== undefined) {
+    try {
+      suggestionText = t(`milestoneDesc.${finishing.nextSuggestionId ?? 'complete'}`);
+    } catch {
+      // Unknown milestone id — keep the stored fallback.
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <Compass size={16} className="text-brass-600" aria-hidden="true" />
-        <h2 className="text-sm font-serif font-semibold text-sepia-400 uppercase tracking-wider">{t('storyProgress')}</h2>
+        <h2 className="text-sm font-serif font-semibold text-sepia-300 uppercase tracking-wider">{t('storyProgress')}</h2>
         <DecorativeDivider variant="section" className="flex-1" />
-        <span className="text-xs font-mono text-sepia-400">{finishing.overallProgress}%</span>
+        <span className="text-xs font-mono text-sepia-300">{finishing.overallProgress}%</span>
       </div>
 
       {/* M2: Accessible segmented progress bar */}
@@ -65,9 +76,9 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
       </div>
 
       {/* Next suggestion */}
-      {finishing.nextSuggestion && (
+      {suggestionText && (
         <p className="text-xs text-sepia-600 italic mt-1">
-          {t('next', { suggestion: finishing.nextSuggestion })}
+          {t('next', { suggestion: suggestionText })}
         </p>
       )}
     </div>

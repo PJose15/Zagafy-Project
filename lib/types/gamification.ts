@@ -45,11 +45,30 @@ export interface WritingStreakState {
 export type QuestType = 'dialogue' | 'character' | 'story';
 export type QuestStatus = 'active' | 'completed' | 'expired';
 
+/**
+ * Params a quest template personalizes with. Absent values mean the story had
+ * no matching data — the renderer substitutes a translated generic default.
+ */
+export interface QuestParams {
+  name?: string;
+  conflict?: string;
+  location?: string;
+}
+
 export interface DailyQuest {
   id: string;
   type: QuestType;
+  /** Legacy English title — kept as fallback for quests stored before i18n. */
   title: string;
+  /** Legacy English description — fallback for quests stored before i18n. */
   description: string;
+  /**
+   * Stable template id (i18n). When present, the renderer translates
+   * `gamification.quest.{templateId}.title/description` with `params`
+   * instead of showing the persisted English `title`/`description`.
+   */
+  templateId?: string;
+  params?: QuestParams;
   xpReward: number;
   status: QuestStatus;
   dateKey: string; // YYYY-MM-DD
@@ -107,7 +126,15 @@ export interface FinishingEngineState {
   currentPhase: NarrativePhase;
   overallProgress: number; // 0-100
   milestones: Milestone[];
+  /** Legacy English suggestion — fallback for pre-i18n persisted blobs. */
   nextSuggestion: string;
+  /**
+   * Stable i18n id of the next incomplete milestone (i18n key
+   * `gamification.milestoneDesc.{id}`); null when the story is complete
+   * (`gamification.milestoneDesc.complete`); absent on pre-i18n blobs
+   * (renderer falls back to `nextSuggestion`).
+   */
+  nextSuggestionId?: string | null;
 }
 
 // ─── One-time Award Markers (S5-G1) ───

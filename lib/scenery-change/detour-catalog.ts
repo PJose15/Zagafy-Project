@@ -10,6 +10,13 @@ interface DetourTemplate {
   type: DetourType;
   title: string;
   buildPrompt: (ctx: StoryContext) => string;
+  /**
+   * The raw story value the template personalizes with (null when the story
+   * has no matching data). Persisted so the renderer can translate the prompt
+   * (`flow.detourCatalog.{type}.prompt`) with the value — or a translated
+   * default — in the active locale.
+   */
+  getParam: (ctx: StoryContext) => string | null;
   durationMinutes: number;
 }
 
@@ -21,6 +28,7 @@ const DETOUR_TEMPLATES: DetourTemplate[] = [
       const name = ctx.characterNames?.[0] || 'your protagonist';
       return `Write a rapid-fire dialogue between ${name} and someone who just told them something shocking. No action tags, no description — just raw dialogue. 5 minutes, as many lines as you can.`;
     },
+    getParam: (ctx) => ctx.characterNames?.[0] || null,
     durationMinutes: 5,
   },
   {
@@ -30,6 +38,7 @@ const DETOUR_TEMPLATES: DetourTemplate[] = [
       const name = ctx.characterNames?.[1] || ctx.characterNames?.[0] || 'a side character';
       return `Rewrite the current scene from ${name}'s perspective. What do they notice? What are they hiding? Write freely for 7 minutes.`;
     },
+    getParam: (ctx) => ctx.characterNames?.[1] || ctx.characterNames?.[0] || null,
     durationMinutes: 7,
   },
   {
@@ -39,6 +48,7 @@ const DETOUR_TEMPLATES: DetourTemplate[] = [
       const chapter = ctx.currentChapterTitle || 'the current scene';
       return `Describe ${chapter} using ONLY the five senses — no thoughts, no emotions, no dialogue. What does the air taste like? What's the texture underfoot? 5 minutes.`;
     },
+    getParam: (ctx) => ctx.currentChapterTitle || null,
     durationMinutes: 5,
   },
   {
@@ -48,6 +58,7 @@ const DETOUR_TEMPLATES: DetourTemplate[] = [
       const genre = ctx.genre || 'fiction';
       return `Write a private diary entry from the antagonist's perspective. What are they planning? What keeps them up at night? Channel the ${genre} genre. 7 minutes.`;
     },
+    getParam: (ctx) => ctx.genre || null,
     durationMinutes: 7,
   },
   {
@@ -57,6 +68,7 @@ const DETOUR_TEMPLATES: DetourTemplate[] = [
       const name = ctx.characterNames?.[0] || 'your protagonist';
       return `Jump 10 years into the future. ${name} is looking back on this moment. What do they remember? What do they wish they'd said? 5 minutes, no editing.`;
     },
+    getParam: (ctx) => ctx.characterNames?.[0] || null,
     durationMinutes: 5,
   },
   {
@@ -66,6 +78,7 @@ const DETOUR_TEMPLATES: DetourTemplate[] = [
       const name = ctx.characterNames?.[0] || 'your main character';
       return `You're a journalist interviewing ${name}. Ask them 3 questions they wouldn't want to answer. Write both the questions and their uncomfortable, revealing answers. 7 minutes.`;
     },
+    getParam: (ctx) => ctx.characterNames?.[0] || null,
     durationMinutes: 7,
   },
 ];
@@ -115,6 +128,7 @@ export function getDetourSuggestions(
     type: t.type,
     title: t.title,
     prompt: t.buildPrompt(context),
+    promptParam: t.getParam(context),
     durationMinutes: t.durationMinutes,
   }));
 }

@@ -28,12 +28,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Z8: remember who opened the dialog so focus can return there — without
-  // this, keyboard users are dropped back at <body> after every confirm.
-  const openerRef = useRef<HTMLElement | null>(null);
+  // Z8: focus returns to the opener on close — handled by useModalHygiene,
+  // which captures document.activeElement when the dialog activates.
 
   const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
-    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setOptions(opts);
     return new Promise<boolean>((resolve) => {
       resolveRef.current = resolve;
@@ -44,11 +42,6 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     resolveRef.current?.(value);
     resolveRef.current = null;
     setOptions(null);
-    const opener = openerRef.current;
-    openerRef.current = null;
-    if (opener && document.contains(opener)) {
-      setTimeout(() => opener.focus(), 0);
-    }
   }, []);
 
   const handleCancel = useCallback(() => handleResponse(false), [handleResponse]);

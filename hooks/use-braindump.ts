@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useSpeechRecognition } from './use-speech-recognition';
 import type { UseSpeechRecognitionReturn } from './use-speech-recognition';
 import { useToast } from '@/components/toast';
@@ -15,13 +16,7 @@ import {
 import type { BraindumpEntry } from '@/lib/types/braindump';
 import { getProjectId } from '@/lib/types/writing-session';
 
-const POLISH_MESSAGES = [
-  'Polishing your words...',
-  'Cleaning up the transcript...',
-  'Smoothing rough edges...',
-  'Making it shine...',
-  'Almost there...',
-];
+const POLISH_MESSAGE_KEYS = ['polish1', 'polish2', 'polish3', 'polish4', 'polish5'] as const;
 
 interface UseBraindumpOptions {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -59,15 +54,23 @@ export function useBraindump({
   scheduleAutosave,
   projectName,
 }: UseBraindumpOptions): UseBraindumpReturn {
+  // i18n: hooks translate directly (use-word-milestones / use-unsaved-changes
+  // pattern) — toasts and progress copy render in the active locale.
+  const t = useTranslations('flow.braindumpHook');
   const speech = useSpeechRecognition();
   const { toast } = useToast();
   const { confirm } = useConfirm();
+
+  const polishMessages = useMemo(
+    () => POLISH_MESSAGE_KEYS.map((key) => t(key)),
+    [t],
+  );
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishError, setPolishError] = useState<string | null>(null);
-  const [polishProgress, setPolishProgress] = useState(POLISH_MESSAGES[0]);
+  const [polishProgress, setPolishProgress] = useState(polishMessages[0]);
   const [history, setHistory] = useState<BraindumpEntry[]>(() => readBraindumps());
 
   const autosavePausedRef = useRef(false);
@@ -146,9 +149,9 @@ export function useBraindump({
       const hasWords = speech.finalTranscript.trim().split(/\s+/).filter(Boolean).length > 0;
       if (hasWords) {
         const confirmed = await confirm({
-          title: 'Stop Recording?',
-          message: 'You have an active recording. Stopping will discard the current transcript.',
-          confirmLabel: 'Stop & discard',
+          title: t('confirmStopTitle'),
+          message: t('confirmStopMessage'),
+          confirmLabel: t('confirmStopLabel'),
           variant: 'danger',
         });
         if (!confirmed) return;
@@ -166,7 +169,7 @@ export function useBraindump({
       clearInterval(polishMessageTimerRef.current);
       polishMessageTimerRef.current = null;
     }
-  }, [speech, confirm]);
+  }, [speech, confirm, t]);
 
   const openHistory = useCallback(() => {
     refreshHistory();
@@ -187,17 +190,17 @@ export function useBraindump({
     setPanelOpen(false);
     autosavePausedRef.current = false;
     clearBraindumpTemp();
-    toast('Voice transcript inserted!', 'success');
-  }, [speech, insertTextAtCursor, saveToHistory, toast]);
+    toast(t('insertedToast'), 'success');
+  }, [speech, insertTextAtCursor, saveToHistory, toast, t]);
 
   const startPolishMessages = useCallback(() => {
     let idx = 0;
-    setPolishProgress(POLISH_MESSAGES[0]);
+    setPolishProgress(polishMessages[0]);
     polishMessageTimerRef.current = setInterval(() => {
-      idx = (idx + 1) % POLISH_MESSAGES.length;
-      setPolishProgress(POLISH_MESSAGES[idx]);
+      idx = (idx + 1) % polishMessages.length;
+      setPolishProgress(polishMessages[idx]);
     }, 3000);
-  }, []);
+  }, [polishMessages]);
 
   const stopPolishMessages = useCallback(() => {
     if (polishMessageTimerRef.current) {
@@ -229,12 +232,12 @@ export function useBraindump({
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: 'Network error' }));
-        throw new Error(data.error || `Failed to polish (${res.status})`);
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t('polishFailedStatus', { status: res.status }));
       }
 
       const { polishedText } = await res.json();
-      if (!polishedText) throw new Error('No polished text returned');
+      if (!polishedText) throw new Error(t('noPolishedText'));
 
       insertTextAtCursor(polishedText);
       saveToHistory(rawText, polishedText, speech.elapsedSeconds, speech.language);
@@ -242,10 +245,10 @@ export function useBraindump({
       setPanelOpen(false);
       autosavePausedRef.current = false;
       clearBraindumpTemp();
-      toast('Polished text inserted!', 'success');
+      toast(t('polishedInsertedToast'), 'success');
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return; // cancelled
-      const message = err instanceof Error ? err.message : 'Failed to polish transcript';
+      const message = err instanceof Error && err.message ? err.message : t('polishFailed');
       setPolishError(message);
     } finally {
       setIsPolishing(false);
@@ -253,7 +256,7 @@ export function useBraindump({
       polishAbortRef.current = null;
       stopPolishMessages();
     }
-  }, [speech, insertTextAtCursor, saveToHistory, toast, startPolishMessages, stopPolishMessages]);
+  }, [speech, insertTextAtCursor, saveToHistory, toast, startPolishMessages, stopPolishMessages, t]);
 
   const reRecord = useCallback(() => {
     speech.reset();
@@ -266,8 +269,8 @@ export function useBraindump({
     if (!entry) return;
     const text = entry.polishedText || entry.rawTranscript;
     insertTextAtCursor(text);
-    toast('Text re-inserted from history!', 'success');
-  }, [history, insertTextAtCursor, toast]);
+    toast(t('reInsertedToast'), 'success');
+  }, [history, insertTextAtCursor, toast, t]);
 
   const rePolishFromHistory = useCallback(async (entryId: string) => {
     const entry = history.find(e => e.id === entryId);
@@ -294,19 +297,19 @@ export function useBraindump({
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: 'Network error' }));
-        throw new Error(data.error || `Failed to polish (${res.status})`);
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t('polishFailedStatus', { status: res.status }));
       }
 
       const { polishedText } = await res.json();
-      if (!polishedText) throw new Error('No polished text returned');
+      if (!polishedText) throw new Error(t('noPolishedText'));
 
       updateBraindump(entryId, { polishedText, wasPolished: true });
       refreshHistory();
-      toast('History entry polished!', 'success');
+      toast(t('historyPolishedToast'), 'success');
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return; // cancelled/unmounted
-      const message = err instanceof Error ? err.message : 'Failed to polish';
+      const message = err instanceof Error && err.message ? err.message : t('polishFailed');
       toast(message, 'error');
     } finally {
       // Only the latest request clears shared state — a superseded request
@@ -318,13 +321,13 @@ export function useBraindump({
         stopPolishMessages();
       }
     }
-  }, [history, refreshHistory, toast, startPolishMessages, stopPolishMessages]);
+  }, [history, refreshHistory, toast, startPolishMessages, stopPolishMessages, t]);
 
   const deleteHistoryEntry = useCallback((entryId: string) => {
     deleteBraindump(entryId);
     refreshHistory();
-    toast('Entry deleted', 'info');
-  }, [refreshHistory, toast]);
+    toast(t('entryDeletedToast'), 'info');
+  }, [refreshHistory, toast, t]);
 
   // beforeunload guard when recording with substantial text
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Pencil, Trash2, Crown, X } from 'lucide-react';
 import { ParchmentCard } from '@/components/antiquarian';
@@ -32,6 +32,23 @@ export function VersionSwitcher({
   const t = useTranslations('flow.versionSwitcher');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Escape and clicks outside the dropdown close it (standard menu conduct).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const onPointerDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onPointerDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onPointerDown);
+    };
+  }, [onClose]);
 
   const startRename = (v: ChapterVersion) => {
     setEditingId(v.id);
@@ -46,7 +63,7 @@ export function VersionSwitcher({
   };
 
   return (
-    <div className="absolute top-full right-0 mt-1 z-50 w-80" data-testid="version-switcher">
+    <div ref={rootRef} className="absolute top-full right-0 mt-1 z-50 w-80" data-testid="version-switcher">
       <ParchmentCard className="p-3 shadow-lg">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-sepia-800">{t('heading')}</h3>

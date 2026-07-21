@@ -3,16 +3,19 @@
 import { useTranslations } from 'next-intl';
 import { Flame, Bell } from 'lucide-react';
 import { isStreakMilestone } from '@/lib/gamification/writing-streak';
+import type { StreakWarning } from '@/lib/gamification/writing-streak';
 
 interface StreakBadgeProps {
   streak: number;
-  warning?: string | null;
+  warning?: StreakWarning | null;
   compact?: boolean;
 }
 
 export function StreakBadge({ streak, warning, compact = false }: StreakBadgeProps) {
   const t = useTranslations('gamification');
   const isMilestone = isStreakMilestone(streak);
+  // i18n: the streak lib emits a stable code + params; the badge translates.
+  const warningText = warning ? t(warning.key, warning.params) : null;
 
   if (streak === 0 && !warning) {
     return compact ? null : (
@@ -61,8 +64,8 @@ export function StreakBadge({ streak, warning, compact = false }: StreakBadgePro
             {Math.max(1, 24 - new Date().getHours())}h
           </span>
           {/* M3: sr-only fallback so warning is always announced */}
-          <span className="hidden sm:inline">{warning}</span>
-          <span className="sm:hidden sr-only">{warning}</span>
+          <span className="hidden sm:inline">{warningText}</span>
+          <span className="sm:hidden sr-only">{warningText}</span>
         </div>
       )}
     </div>

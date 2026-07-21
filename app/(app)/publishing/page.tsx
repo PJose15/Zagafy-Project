@@ -58,7 +58,11 @@ function loadSubmissions(): Submission[] {
 }
 
 function saveSubmissions(subs: Submission[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(subs));
+  } catch {
+    // Storage full or unavailable (private mode) — tracker stays in-memory.
+  }
 }
 
 export default function PublishingPage() {
@@ -84,34 +88,36 @@ export default function PublishingPage() {
 
   // --- KDP ---
   const totalWords = state.chapters.reduce((s, c) => s + (c.content ? wordCount(c.content) : 0), 0);
-  const kdpPreview = `KDP Formatting Preview
-━━━━━━━━━━━━━━━━━━━━━━━━
-Title: ${state.title || 'Untitled'}
-Word Count: ${totalWords.toLocaleString()}
-Chapters: ${state.chapters.length}
-
-Recommended KDP Settings:
-• Font: 12pt Times New Roman
-• Margins: 1" all sides
-• Line Spacing: Double-spaced
-• Page Size: 6" x 9" (standard trade)
-• Headers: Chapter title, right-aligned
-• Page Numbers: Bottom center, starting after front matter
-
-Front Matter Order:
-  1. Title Page
-  2. Copyright Page
-  3. Dedication (optional)
-  4. Table of Contents
-
-Chapter Formatting:
-  • Start each chapter on a new page
-  • Chapter title: 14pt, bold, centered
-  • First paragraph: No indent
-  • Body paragraphs: 0.5" first-line indent
-  • Scene breaks: Centered "* * *"
-
-Use "Export manuscript" below for a standard-format .docx or .pdf.`;
+  const kdpPreview = [
+    t('kdp.preview.header'),
+    '━━━━━━━━━━━━━━━━━━━━━━━━',
+    t('kdp.preview.titleLine', { title: state.title || t('kdp.preview.untitled') }),
+    t('kdp.preview.wordCountLine', { count: totalWords.toLocaleString() }),
+    t('kdp.preview.chaptersLine', { count: state.chapters.length }),
+    '',
+    t('kdp.preview.settingsHeading'),
+    `• ${t('kdp.preview.settingFont')}`,
+    `• ${t('kdp.preview.settingMargins')}`,
+    `• ${t('kdp.preview.settingSpacing')}`,
+    `• ${t('kdp.preview.settingPageSize')}`,
+    `• ${t('kdp.preview.settingHeaders')}`,
+    `• ${t('kdp.preview.settingPageNumbers')}`,
+    '',
+    t('kdp.preview.frontMatterHeading'),
+    `  1. ${t('kdp.preview.frontMatter1')}`,
+    `  2. ${t('kdp.preview.frontMatter2')}`,
+    `  3. ${t('kdp.preview.frontMatter3')}`,
+    `  4. ${t('kdp.preview.frontMatter4')}`,
+    '',
+    t('kdp.preview.chapterHeading'),
+    `  • ${t('kdp.preview.chapterRule1')}`,
+    `  • ${t('kdp.preview.chapterRule2')}`,
+    `  • ${t('kdp.preview.chapterRule3')}`,
+    `  • ${t('kdp.preview.chapterRule4')}`,
+    `  • ${t('kdp.preview.chapterRule5')}`,
+    '',
+    t('kdp.preview.footer'),
+  ].join('\n');
 
   // --- Query Letter ---
   const [queryForm, setQueryForm] = useState({ agentName: '', agencyName: '', genrePrefs: '' });
@@ -179,9 +185,11 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
   // --- Comp Titles ---
   const [compTitles, setCompTitles] = useState<Array<{ title: string; author: string; year: number; rationale: string }>>([]);
   const [compLoading, setCompLoading] = useState(false);
+  const [compError, setCompError] = useState('');
 
   const findCompTitles = useCallback(async () => {
     setCompLoading(true);
+    setCompError('');
     try {
       const res = await fetch('/api/publishing/comp-titles', {
         method: 'POST',
@@ -196,13 +204,17 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       });
       const data = await res.json();
       if (data.ok) setCompTitles(data.compTitles || data.data?.compTitles || []);
-      else setCompTitles([]);
+      else {
+        setCompTitles([]);
+        setCompError(genErr(data));
+      }
     } catch {
       setCompTitles([]);
+      setCompError(tCommon('networkError'));
     } finally {
       setCompLoading(false);
     }
-  }, [state]);
+  }, [state, genErr, tCommon]);
 
   // --- Back-Cover Blurb ---
   const [blurb, setBlurb] = useState('');
@@ -353,17 +365,30 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
     rootRef.current?.closest('main')?.scrollTo({ top: 0 });
   };
 
+  // Roving tabindex: Left/Right walk the tablist, wrapping at the edges
+  // (mirrors the characters page tablist).
+  const handleTablistKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const idx = tabs.findIndex(tb => tb.key === tab);
+    const next = e.key === 'ArrowRight' ? (idx + 1) % tabs.length : (idx - 1 + tabs.length) % tabs.length;
+    selectTab(tabs[next].key);
+    (e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')[next])?.focus();
+  };
+
   return (
     <div ref={rootRef} className="max-w-5xl mx-auto space-y-6">
       <CarvedHeader title={t('title')} subtitle={t('subtitle')} />
 
       {/* Tabs — the brass pill glides between selections (M14) */}
-      <div role="tablist" className="flex flex-wrap gap-2">
+      <div role="tablist" onKeyDown={handleTablistKey} className="flex flex-wrap gap-2">
         {tabs.map(tb => (
           <button
             key={tb.key}
+            id={`publishing-tab-${tb.key}`}
             role="tab"
             aria-selected={tab === tb.key}
+            tabIndex={tab === tb.key ? 0 : -1}
             onClick={() => selectTab(tb.key)}
             className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               tab === tb.key
@@ -388,7 +413,7 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={tab} {...fadeUp}>
+      <motion.div key={tab} {...fadeUp} role="tabpanel" aria-labelledby={`publishing-tab-${tab}`}>
 
       {/* KDP Export Tab */}
       {tab === 'kdp' && (
@@ -487,6 +512,9 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
             <Search size={16} className="mr-2" />
             {compLoading ? t('comp.searching') : t('comp.find')}
           </BrassButton>
+          {compError && (
+            <p role="alert" className="text-sm text-wax-600 mt-3">{compError}</p>
+          )}
           {compTitles.length > 0 && (
             <div className="mt-4 space-y-4">
               {compTitles.map((ct, i) => (
@@ -625,9 +653,11 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                       </select>
                     </td>
                     <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={newRow.notes} onChange={e => setNewRow(r => ({ ...r, notes: e.target.value }))} placeholder={t('tracker.notes')} /></td>
-                    <td className="py-2 flex gap-1">
-                      <button onClick={addSubmission} className="text-forest-700 hover:text-forest-600 p-1"><Check size={16} /></button>
-                      <button onClick={() => setShowAddRow(false)} className="text-wax-600 hover:text-wax-500 p-1"><X size={16} /></button>
+                    <td className="py-2">
+                      <div className="flex gap-1">
+                        <button onClick={addSubmission} aria-label={tCommon('save')} className="text-forest-700 hover:text-forest-600 p-1"><Check size={16} aria-hidden="true" /></button>
+                        <button onClick={() => setShowAddRow(false)} aria-label={tCommon('cancel')} className="text-wax-600 hover:text-wax-500 p-1"><X size={16} aria-hidden="true" /></button>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -647,9 +677,11 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                           </select>
                         </td>
                         <td className="py-2 pr-2"><input className="w-full bg-parchment-200 border border-sepia-300/60 rounded px-2 py-1 text-sepia-900 text-sm focus:outline-none focus:ring-2 focus:ring-brass-400/40" value={editDraft.notes} onChange={e => setEditDraft(d => d ? { ...d, notes: e.target.value } : d)} /></td>
-                        <td className="py-2 flex gap-1">
-                          <button onClick={saveEdit} className="text-forest-700 hover:text-forest-600 p-1"><Check size={16} /></button>
-                          <button onClick={cancelEdit} className="text-wax-600 hover:text-wax-500 p-1"><X size={16} /></button>
+                        <td className="py-2">
+                          <div className="flex gap-1">
+                            <button onClick={saveEdit} aria-label={tCommon('save')} className="text-forest-700 hover:text-forest-600 p-1"><Check size={16} aria-hidden="true" /></button>
+                            <button onClick={cancelEdit} aria-label={tCommon('cancel')} className="text-wax-600 hover:text-wax-500 p-1"><X size={16} aria-hidden="true" /></button>
+                          </div>
                         </td>
                       </>
                     ) : (
@@ -659,9 +691,11 @@ Use "Export manuscript" below for a standard-format .docx or .pdf.`;
                         <td className="py-2 pr-3 text-sepia-700">{sub.dateSent}</td>
                         <td className={`py-2 pr-3 font-medium ${statusColors[sub.status] || 'text-sepia-700'}`}>{statusLabel(sub.status)}</td>
                         <td className="py-2 pr-3 text-sepia-600 max-w-[200px] truncate">{sub.notes}</td>
-                        <td className="py-2 flex gap-1">
-                          <button onClick={() => startEdit(sub)} className="text-brass-700 hover:text-brass-600 p-1"><Edit3 size={16} /></button>
-                          <button onClick={() => deleteSubmission(sub.id)} className="text-wax-600 hover:text-wax-500 p-1"><Trash2 size={16} /></button>
+                        <td className="py-2">
+                          <div className="flex gap-1">
+                            <button onClick={() => startEdit(sub)} aria-label={t('tracker.editAria', { agent: sub.agentName })} className="text-brass-700 hover:text-brass-600 p-1"><Edit3 size={16} aria-hidden="true" /></button>
+                            <button onClick={() => deleteSubmission(sub.id)} aria-label={t('tracker.deleteAria', { agent: sub.agentName })} className="text-wax-600 hover:text-wax-500 p-1"><Trash2 size={16} aria-hidden="true" /></button>
+                          </div>
                         </td>
                       </>
                     )}

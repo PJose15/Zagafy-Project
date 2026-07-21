@@ -139,7 +139,7 @@ export default function BiblePage() {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-      const msg = err.error || 'Extraction failed';
+      const msg = err.error || t('extractionFailed');
       throw new Error(`[HTTP ${res.status}] ${msg}`);
     }
     const data = await res.json();

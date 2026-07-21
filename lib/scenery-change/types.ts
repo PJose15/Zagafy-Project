@@ -28,8 +28,17 @@ export type DetourType =
 
 export interface DetourSuggestion {
   type: DetourType;
+  /** Legacy English title — i18n renders `flow.detourCatalog.{type}.title`. */
   title: string;
+  /** Legacy English prompt — i18n renders `flow.detourCatalog.{type}.prompt`. */
   prompt: string;
+  /**
+   * The single dynamic value the prompt template personalizes with (character
+   * name, chapter title or genre). `null` = the story had no matching data —
+   * the renderer substitutes a translated default. `undefined` = legacy
+   * record from before i18n — the renderer falls back to the stored `prompt`.
+   */
+  promptParam?: string | null;
   durationMinutes: number;
 }
 
@@ -39,6 +48,8 @@ export interface DetourSession {
   startedAt: string;    // ISO timestamp
   endedAt: string | null;
   prompt: string;
+  /** See DetourSuggestion.promptParam. */
+  promptParam?: string | null;
   content: string;
   wordCount: number;
 }

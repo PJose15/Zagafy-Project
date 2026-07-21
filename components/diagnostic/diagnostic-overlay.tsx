@@ -6,7 +6,7 @@ import { useSession } from '@/lib/session';
 import { incrementStreak, getStreak } from '@/lib/diagnostic-streak';
 import { BlockCard, blockCards } from './block-card';
 import type { BlockType } from '@/lib/session';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function DiagnosticOverlay() {
   const t = useTranslations('diagnostic');
@@ -19,6 +19,14 @@ export function DiagnosticOverlay() {
     return 0;
   });
   const [preparationMessage, setPreparationMessage] = useState<string | null>(null);
+  const prepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear the pending 3s preparation timeout if the overlay unmounts first.
+  useEffect(() => {
+    return () => {
+      if (prepTimerRef.current) clearTimeout(prepTimerRef.current);
+    };
+  }, []);
 
   const handleSelect = (type: Exclude<BlockType, null>) => {
     setBlockType(type);
@@ -27,7 +35,8 @@ export function DiagnosticOverlay() {
 
     // Show preparation message for 3 seconds (localized by block type)
     setPreparationMessage(t(`prep.${type}`));
-    setTimeout(() => {
+    if (prepTimerRef.current) clearTimeout(prepTimerRef.current);
+    prepTimerRef.current = setTimeout(() => {
       setPreparationMessage(null);
       completeDiagnostic(false);
     }, 3000);

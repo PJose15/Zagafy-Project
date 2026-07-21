@@ -17,7 +17,7 @@ export function QuestPanel({ quests, onComplete }: QuestPanelProps) {
     <div className="space-y-3">
       <div className="flex items-center gap-3">
         <Scroll size={16} className="text-brass-600" aria-hidden="true" />
-        <h2 className="text-sm font-serif font-semibold text-sepia-400 uppercase tracking-wider">{t('dailyQuests')}</h2>
+        <h2 className="text-sm font-serif font-semibold text-sepia-300 uppercase tracking-wider">{t('dailyQuests')}</h2>
         <DecorativeDivider variant="section" className="flex-1" />
       </div>
       {/* M11: Empty state */}

@@ -60,7 +60,8 @@
     "timeDays": "{count}d ago",
     "undo": "Undo",
     "kbdSend": "send",
-    "kbdNewline": "new line"
+    "kbdNewline": "new line",
+    "skipToContent": "Skip to content"
   },
   "unsavedChanges": {
     "confirmLeave": "You have unsaved changes. Leave this page and discard them?"
@@ -158,7 +159,33 @@
     "kdp": {
       "heading": "KDP Formatting Preview",
       "exportButton": "Export manuscript (.docx / .pdf)",
-      "noChapters": "Add chapters on the Manuscript page to enable export."
+      "noChapters": "Add chapters on the Manuscript page to enable export.",
+      "preview": {
+        "header": "KDP Formatting Preview",
+        "titleLine": "Title: {title}",
+        "untitled": "Untitled",
+        "wordCountLine": "Word Count: {count}",
+        "chaptersLine": "Chapters: {count}",
+        "settingsHeading": "Recommended KDP Settings:",
+        "settingFont": "Font: 12pt Times New Roman",
+        "settingMargins": "Margins: 1\" all sides",
+        "settingSpacing": "Line Spacing: Double-spaced",
+        "settingPageSize": "Page Size: 6\" x 9\" (standard trade)",
+        "settingHeaders": "Headers: Chapter title, right-aligned",
+        "settingPageNumbers": "Page Numbers: Bottom center, starting after front matter",
+        "frontMatterHeading": "Front Matter Order:",
+        "frontMatter1": "Title Page",
+        "frontMatter2": "Copyright Page",
+        "frontMatter3": "Dedication (optional)",
+        "frontMatter4": "Table of Contents",
+        "chapterHeading": "Chapter Formatting:",
+        "chapterRule1": "Start each chapter on a new page",
+        "chapterRule2": "Chapter title: 14pt, bold, centered",
+        "chapterRule3": "First paragraph: No indent",
+        "chapterRule4": "Body paragraphs: 0.5\" first-line indent",
+        "chapterRule5": "Scene breaks: Centered \"* * *\"",
+        "footer": "Use \"Export manuscript\" below for a standard-format .docx or .pdf."
+      }
     },
     "query": {
       "heading": "AI Query Letter Generator",
@@ -220,7 +247,9 @@
       "statusAccepted": "Accepted",
       "deleteConfirmTitle": "Delete submission?",
       "deleteConfirmMessage": "Remove the submission to {agent}? This cannot be undone.",
-      "deleteConfirmFallback": "this agent"
+      "deleteConfirmFallback": "this agent",
+      "editAria": "Edit submission to {agent}",
+      "deleteAria": "Delete submission to {agent}"
     }
   },
   "dashboard": {
@@ -337,7 +366,8 @@
     "ariaRename": "Rename {title}",
     "ariaDelete": "Delete {title}",
     "rename": "Rename",
-    "delete": "Delete"
+    "delete": "Delete",
+    "importedProjectTitle": "Imported Manuscript"
   },
   "genesis": {
     "mode": "Genesis Mode",
@@ -349,6 +379,34 @@
     "genreLabel": "Genre",
     "toneLabel": "Tone",
     "typeLabel": "Type",
+    "genreOptions": {
+      "fantasy": "Fantasy",
+      "scienceFiction": "Science Fiction",
+      "mystery": "Mystery",
+      "thriller": "Thriller",
+      "romance": "Romance",
+      "horror": "Horror",
+      "literaryFiction": "Literary Fiction",
+      "historicalFiction": "Historical Fiction",
+      "adventure": "Adventure",
+      "dystopian": "Dystopian",
+      "crime": "Crime",
+      "magicalRealism": "Magical Realism"
+    },
+    "toneOptions": {
+      "dark": "Dark",
+      "humorous": "Humorous",
+      "romantic": "Romantic",
+      "suspenseful": "Suspenseful",
+      "whimsical": "Whimsical",
+      "gritty": "Gritty",
+      "lyrical": "Lyrical",
+      "minimalist": "Minimalist",
+      "epic": "Epic",
+      "intimate": "Intimate",
+      "satirical": "Satirical",
+      "melancholic": "Melancholic"
+    },
     "worldRules": "World Rules (optional)",
     "requirement": {
       "name": "Give your project a name to continue",
@@ -498,6 +556,7 @@
       "newTitle": "New Alter Ego",
       "editAria": "Edit heteronym",
       "createAria": "Create heteronym",
+      "closeAria": "Close dialog",
       "unnamed": "Unnamed",
       "noStyleNote": "No style note",
       "nameLabel": "Name *",
@@ -748,6 +807,65 @@
       "leftAria": "Left version",
       "rightAria": "Right version",
       "option": "{label} ({count, number}w)"
+    },
+    "braindumpHook": {
+      "polish1": "Polishing your words...",
+      "polish2": "Cleaning up the transcript...",
+      "polish3": "Smoothing rough edges...",
+      "polish4": "Making it shine...",
+      "polish5": "Almost there...",
+      "confirmStopTitle": "Stop Recording?",
+      "confirmStopMessage": "You have an active recording. Stopping will discard the current transcript.",
+      "confirmStopLabel": "Stop & discard",
+      "insertedToast": "Voice transcript inserted!",
+      "polishedInsertedToast": "Polished text inserted!",
+      "reInsertedToast": "Text re-inserted from history!",
+      "historyPolishedToast": "History entry polished!",
+      "entryDeletedToast": "Entry deleted",
+      "polishFailedStatus": "Failed to polish ({status})",
+      "noPolishedText": "No polished text returned",
+      "polishFailed": "Failed to polish transcript"
+    },
+    "speechErrors": {
+      "micDenied": "Microphone access denied. Please allow microphone access in your browser settings.",
+      "noSpeech": "No speech detected — keep going or stop.",
+      "generic": "Speech recognition error: {error}",
+      "unsupported": "Speech recognition is not supported in this browser.",
+      "startFailed": "Failed to start speech recognition.",
+      "resumeFailed": "Failed to resume speech recognition."
+    },
+    "detourCatalog": {
+      "defaults": {
+        "protagonist": "your protagonist",
+        "sideCharacter": "a side character",
+        "mainCharacter": "your main character",
+        "currentScene": "the current scene",
+        "genre": "fiction"
+      },
+      "dialogue_sprint": {
+        "title": "Dialogue Sprint",
+        "prompt": "Write a rapid-fire dialogue between {param} and someone who just told them something shocking. No action tags, no description — just raw dialogue. 5 minutes, as many lines as you can."
+      },
+      "alternate_pov": {
+        "title": "Alternate POV",
+        "prompt": "Rewrite the current scene from {param}'s perspective. What do they notice? What are they hiding? Write freely for 7 minutes."
+      },
+      "sensory_snapshot": {
+        "title": "Sensory Snapshot",
+        "prompt": "Describe {param} using ONLY the five senses — no thoughts, no emotions, no dialogue. What does the air taste like? What's the texture underfoot? 5 minutes."
+      },
+      "villains_diary": {
+        "title": "Villain's Diary",
+        "prompt": "Write a private diary entry from the antagonist's perspective. What are they planning? What keeps them up at night? Channel the {param} genre. 7 minutes."
+      },
+      "flash_forward": {
+        "title": "Flash Forward",
+        "prompt": "Jump 10 years into the future. {param} is looking back on this moment. What do they remember? What do they wish they'd said? 5 minutes, no editing."
+      },
+      "character_interview": {
+        "title": "Character Interview",
+        "prompt": "You're a journalist interviewing {param}. Ask them 3 questions they wouldn't want to answer. Write both the questions and their uncomfortable, revealing answers. 7 minutes."
+      }
     }
   },
   "reader": {
@@ -1349,6 +1467,7 @@
     "importMore": "Import More Files",
     "parseError": "Failed to parse files",
     "ingestError": "An error occurred during ingestion.",
+    "unsupportedFiles": "Unsupported file type skipped: {names}. Use .pdf, .docx, .txt or .md.",
     "toastImported": "Successfully imported {count} entities into project memory.",
     "chapterFallback": "Chapter {n}",
     "sceneTitle": "Scene {n}",
@@ -1500,6 +1619,7 @@
     "wordsWrittenAria": "{count} words written",
     "wordTargetAria": "{count} word target",
     "sprintStatsAria": "Sprint statistics",
+    "minutesLeftAria": "{count, plural, =0 {Less than a minute left} one {# minute left} other {# minutes left}}",
     "seeResults": "See Results",
     "finishEarly": "Finish Early",
     "abandon": "Abandon",
@@ -1546,7 +1666,151 @@
     },
     "levelUpEyebrow": "The library takes note",
     "levelUpTitle": "Level {level}",
-    "streakRuleHint": "Write for 10+ minutes today to keep the streak alive."
+    "streakRuleHint": "Write for 10+ minutes today to keep the streak alive.",
+    "streakWarning": {
+      "atRisk": "Your {days}-day streak expires at midnight! Write for 10+ minutes to keep it alive.",
+      "reminder": "Don't forget — write for 10+ minutes today to maintain your {days}-day streak."
+    },
+    "quest": {
+      "defaults": {
+        "character": "a character",
+        "conflict": "the central conflict",
+        "location": "the main setting"
+      },
+      "voiceOf": {
+        "title": "Voice of {name}",
+        "description": "Write a dialogue scene where {name} reveals something they've been hiding."
+      },
+      "subtextDuel": {
+        "title": "Subtext Duel",
+        "description": "Write a conversation where two characters say one thing but mean another."
+      },
+      "awkwardSilence": {
+        "title": "The Awkward Silence",
+        "description": "Write a scene where what is NOT said matters more than the words spoken."
+      },
+      "confession": {
+        "title": "{name}'s Confession",
+        "description": "Write a scene where {name} admits a vulnerability to someone they don't fully trust."
+      },
+      "rapidFire": {
+        "title": "Rapid Fire",
+        "description": "Write a tense dialogue scene with short, punchy exchanges — no line longer than 10 words."
+      },
+      "eavesdropped": {
+        "title": "Eavesdropped Truth",
+        "description": "Write dialogue that reveals a secret, overheard by someone who shouldn't be listening."
+      },
+      "negotiation": {
+        "title": "The Negotiation",
+        "description": "Write a scene where two characters negotiate, with {conflict} as the underlying tension."
+      },
+      "farewell": {
+        "title": "Farewell Words",
+        "description": "Write {name}'s goodbye — something that could be permanent."
+      },
+      "threeWay": {
+        "title": "Three-Way Tension",
+        "description": "Write a scene with three characters where alliances shift mid-conversation."
+      },
+      "phoneCall": {
+        "title": "The Phone Call",
+        "description": "Write a dialogue scene where we only hear one side of a conversation, but can infer the other."
+      },
+      "secret": {
+        "title": "{name}'s Secret",
+        "description": "Write a scene that reveals a hidden aspect of {name}'s personality."
+      },
+      "mirrorMoment": {
+        "title": "Mirror Moment",
+        "description": "Write a quiet scene where {name} reflects on how they've changed."
+      },
+      "underPressure": {
+        "title": "Under Pressure",
+        "description": "Put {name} in a situation where their deepest fear is triggered."
+      },
+      "unlikelyAlly": {
+        "title": "Unlikely Ally",
+        "description": "Write a scene where two characters who distrust each other must cooperate."
+      },
+      "habit": {
+        "title": "The Habit",
+        "description": "Show {name}'s daily routine — and the one detail that reveals their inner state."
+      },
+      "backstory": {
+        "title": "Backstory Fragment",
+        "description": "Write a flashback scene (under 500 words) that explains why {name} is the way they are."
+      },
+      "moralDilemma": {
+        "title": "Moral Dilemma",
+        "description": "Force {name} to choose between two things they value — with no good option."
+      },
+      "maskSlips": {
+        "title": "The Mask Slips",
+        "description": "Write a scene where {name}'s public persona cracks under stress."
+      },
+      "comfortObject": {
+        "title": "Comfort Object",
+        "description": "Write a scene centered on an object that {name} carries — and what it means to them."
+      },
+      "firstImpression": {
+        "title": "First Impression",
+        "description": "Write a scene introducing a character through another character's eyes — biased and incomplete."
+      },
+      "raiseStakes": {
+        "title": "Raise the Stakes",
+        "description": "Write a scene that escalates {conflict} — make the consequences feel more real."
+      },
+      "plantSeed": {
+        "title": "Plant a Seed",
+        "description": "Write a scene with a detail that seems insignificant now but will pay off later."
+      },
+      "exploreLocation": {
+        "title": "Explore {location}",
+        "description": "Write a scene that uses {location} as more than backdrop — let the setting shape the action."
+      },
+      "tickingClock": {
+        "title": "Ticking Clock",
+        "description": "Write a scene that introduces or emphasizes a deadline your characters are racing against."
+      },
+      "twist": {
+        "title": "The Twist",
+        "description": "Write a scene where what the reader expects to happen does not — subvert one assumption."
+      },
+      "parallelPaths": {
+        "title": "Parallel Paths",
+        "description": "Write two short scenes happening simultaneously that mirror or contrast each other."
+      },
+      "worldDetail": {
+        "title": "World Detail",
+        "description": "Write a brief scene that reveals something about {location} the reader didn't know."
+      },
+      "chapterHook": {
+        "title": "Chapter Hook",
+        "description": "Write the last 200 words of a chapter that makes the reader unable to stop."
+      },
+      "themeEcho": {
+        "title": "Theme Echo",
+        "description": "Write a scene where your story's central theme is reflected through a small, ordinary moment."
+      },
+      "complication": {
+        "title": "The Complication",
+        "description": "Write a scene that adds a new obstacle to {conflict} — something nobody saw coming."
+      }
+    },
+    "milestoneDesc": {
+      "synopsis-written": "Write a synopsis for your story",
+      "three-characters": "Create at least 3 characters",
+      "first-chapter": "Write your first chapter (500+ words)",
+      "active-conflict": "Establish an active conflict",
+      "five-chapters": "Write 5 chapters",
+      "three-open-loops": "Have 3 or more open narrative loops",
+      "foreshadowing-planted": "Plant at least one foreshadowing element",
+      "twenty-thousand-words": "Reach 20,000 words",
+      "half-conflicts-resolved": "Resolve at least 50% of your conflicts",
+      "half-loops-closed": "Close at least 50% of your open loops",
+      "complete": "Your story is complete! Review and polish your manuscript."
+    }
   },
   "writingStats": {
     "insight": {
@@ -1801,7 +2065,11 @@
     "summary": "{chapters, plural, one {# chapter} other {# chapters}} · {words, number} words",
     "generating": "Generating…",
     "exportFormat": "Export {format}",
-    "exportError": "The export failed partway through. Please try again."
+    "exportError": "The export failed partway through. Please try again.",
+    "errorNetwork": "Network request failed. Check your connection and try again.",
+    "errorRateLimited": "Export limit reached. Upgrade for unlimited exports, or try again later.",
+    "errorInterrupted": "The download was interrupted. Please try again.",
+    "errorHttp": "Export failed ({status})"
   },
   "novelCompletion": {
     "aria": "Novel completion ceremony",
@@ -1845,7 +2113,8 @@
       "hours": "Hours",
       "completed": "Completed",
       "tagline": "I wrote my novel."
-    }
+    },
+    "defaultTitle": "My Novel"
   },
   "billing": {
     "title": "Billing",
@@ -1885,7 +2154,9 @@
       "about": "About",
       "blog": "Blog",
       "help": "Help",
-      "signIn": "Sign In"
+      "signIn": "Sign In",
+      "openMenu": "Open navigation menu",
+      "closeMenu": "Close navigation menu"
     },
     "footer": {
       "rights": "© {year} Zagafy. All rights reserved.",
@@ -2128,5 +2399,14 @@
     "composer": "Send · new line (in chat)",
     "escape": "Close dialogs and drawers",
     "sheet": "Show this sheet"
+  },
+  "featureError": {
+    "body": "This module encountered an error and could not render.",
+    "retry": "Retry"
+  },
+  "versionLabels": {
+    "beforeFlowSession": "Before flow session",
+    "beforeRichText": "Before rich text",
+    "preReplace": "Pre-replace \"{query}\""
   }
 }

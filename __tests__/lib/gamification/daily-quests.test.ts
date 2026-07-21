@@ -85,6 +85,29 @@ describe('generateDailyQuests', () => {
     expect(quests).toHaveLength(3);
   });
 
+  it('persists a stable templateId and raw params for i18n rendering', () => {
+    const quests = generateDailyQuests('2025-01-15', mockStory);
+    for (const q of quests) {
+      expect(typeof q.templateId).toBe('string');
+      expect(q.templateId!.length).toBeGreaterThan(0);
+      expect(q.params).toBeDefined();
+    }
+    // mockStory has characters, conflicts and locations — all params present.
+    expect(quests[0].params).toEqual({
+      name: expect.any(String),
+      conflict: expect.any(String),
+      location: expect.any(String),
+    });
+  });
+
+  it('omits params the story cannot provide (renderer substitutes translated defaults)', () => {
+    const quests = generateDailyQuests('2025-01-15', null);
+    for (const q of quests) {
+      expect(q.templateId).toBeDefined();
+      expect(q.params).toEqual({});
+    }
+  });
+
   it('uses character names from story', () => {
     const quests = generateDailyQuests('2025-01-15', mockStory);
     // At least one quest should reference a character name

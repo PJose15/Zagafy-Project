@@ -60,7 +60,8 @@
     "timeDays": "hace {count}d",
     "undo": "Deshacer",
     "kbdSend": "enviar",
-    "kbdNewline": "nueva línea"
+    "kbdNewline": "nueva línea",
+    "skipToContent": "Saltar al contenido"
   },
   "unsavedChanges": {
     "confirmLeave": "Tienes cambios sin guardar. ¿Salir de esta página y descartarlos?"
@@ -158,7 +159,33 @@
     "kdp": {
       "heading": "Vista Previa de Formato KDP",
       "exportButton": "Exportar manuscrito (.docx / .pdf)",
-      "noChapters": "Añade capítulos en la página de Manuscrito para habilitar la exportación."
+      "noChapters": "Añade capítulos en la página de Manuscrito para habilitar la exportación.",
+      "preview": {
+        "header": "Vista Previa de Formato KDP",
+        "titleLine": "Título: {title}",
+        "untitled": "Sin título",
+        "wordCountLine": "Número de palabras: {count}",
+        "chaptersLine": "Capítulos: {count}",
+        "settingsHeading": "Configuración recomendada de KDP:",
+        "settingFont": "Fuente: Times New Roman de 12 pt",
+        "settingMargins": "Márgenes: 1\" en todos los lados",
+        "settingSpacing": "Interlineado: Doble espacio",
+        "settingPageSize": "Tamaño de página: 6\" x 9\" (formato comercial estándar)",
+        "settingHeaders": "Encabezados: Título del capítulo, alineado a la derecha",
+        "settingPageNumbers": "Números de página: Centrados abajo, comenzando tras las páginas preliminares",
+        "frontMatterHeading": "Orden de las páginas preliminares:",
+        "frontMatter1": "Portada",
+        "frontMatter2": "Página de derechos de autor",
+        "frontMatter3": "Dedicatoria (opcional)",
+        "frontMatter4": "Índice",
+        "chapterHeading": "Formato de capítulos:",
+        "chapterRule1": "Comienza cada capítulo en una página nueva",
+        "chapterRule2": "Título del capítulo: 14 pt, negrita, centrado",
+        "chapterRule3": "Primer párrafo: Sin sangría",
+        "chapterRule4": "Párrafos del cuerpo: sangría de primera línea de 0,5\"",
+        "chapterRule5": "Cambios de escena: «* * *» centrado",
+        "footer": "Usa «Exportar manuscrito» abajo para obtener un .docx o .pdf en formato estándar."
+      }
     },
     "query": {
       "heading": "Generador de Cartas de Consulta con IA",
@@ -220,7 +247,9 @@
       "statusAccepted": "Aceptado",
       "deleteConfirmTitle": "¿Eliminar envío?",
       "deleteConfirmMessage": "¿Quitar el envío a {agent}? Esta acción no se puede deshacer.",
-      "deleteConfirmFallback": "este agente"
+      "deleteConfirmFallback": "este agente",
+      "editAria": "Editar envío a {agent}",
+      "deleteAria": "Eliminar envío a {agent}"
     }
   },
   "dashboard": {
@@ -337,7 +366,8 @@
     "ariaRename": "Renombrar {title}",
     "ariaDelete": "Eliminar {title}",
     "rename": "Renombrar",
-    "delete": "Eliminar"
+    "delete": "Eliminar",
+    "importedProjectTitle": "Manuscrito importado"
   },
   "genesis": {
     "mode": "Modo Génesis",
@@ -349,6 +379,34 @@
     "genreLabel": "Género",
     "toneLabel": "Tono",
     "typeLabel": "Tipo",
+    "genreOptions": {
+      "fantasy": "Fantasía",
+      "scienceFiction": "Ciencia ficción",
+      "mystery": "Misterio",
+      "thriller": "Thriller",
+      "romance": "Romance",
+      "horror": "Terror",
+      "literaryFiction": "Ficción literaria",
+      "historicalFiction": "Ficción histórica",
+      "adventure": "Aventura",
+      "dystopian": "Distopía",
+      "crime": "Crimen",
+      "magicalRealism": "Realismo mágico"
+    },
+    "toneOptions": {
+      "dark": "Oscuro",
+      "humorous": "Humorístico",
+      "romantic": "Romántico",
+      "suspenseful": "De suspense",
+      "whimsical": "Fantasioso",
+      "gritty": "Crudo",
+      "lyrical": "Lírico",
+      "minimalist": "Minimalista",
+      "epic": "Épico",
+      "intimate": "Íntimo",
+      "satirical": "Satírico",
+      "melancholic": "Melancólico"
+    },
     "worldRules": "Reglas del Mundo (opcional)",
     "requirement": {
       "name": "Dale un nombre a tu proyecto para continuar",
@@ -498,6 +556,7 @@
       "newTitle": "Nuevo Álter Ego",
       "editAria": "Editar heterónimo",
       "createAria": "Crear heterónimo",
+      "closeAria": "Cerrar diálogo",
       "unnamed": "Sin nombre",
       "noStyleNote": "Sin nota de estilo",
       "nameLabel": "Nombre *",
@@ -748,6 +807,65 @@
       "leftAria": "Versión izquierda",
       "rightAria": "Versión derecha",
       "option": "{label} ({count, number}p)"
+    },
+    "braindumpHook": {
+      "polish1": "Puliendo tus palabras...",
+      "polish2": "Limpiando la transcripción...",
+      "polish3": "Suavizando los bordes ásperos...",
+      "polish4": "Haciéndolo brillar...",
+      "polish5": "Ya casi está...",
+      "confirmStopTitle": "¿Detener la grabación?",
+      "confirmStopMessage": "Tienes una grabación activa. Al detenerla se descartará la transcripción actual.",
+      "confirmStopLabel": "Detener y descartar",
+      "insertedToast": "¡Transcripción de voz insertada!",
+      "polishedInsertedToast": "¡Texto pulido insertado!",
+      "reInsertedToast": "¡Texto reinsertado desde el historial!",
+      "historyPolishedToast": "¡Entrada del historial pulida!",
+      "entryDeletedToast": "Entrada eliminada",
+      "polishFailedStatus": "No se pudo pulir ({status})",
+      "noPolishedText": "No se devolvió texto pulido",
+      "polishFailed": "No se pudo pulir la transcripción"
+    },
+    "speechErrors": {
+      "micDenied": "Acceso al micrófono denegado. Permite el acceso al micrófono en la configuración de tu navegador.",
+      "noSpeech": "No se detectó voz — continúa o detente.",
+      "generic": "Error de reconocimiento de voz: {error}",
+      "unsupported": "El reconocimiento de voz no es compatible con este navegador.",
+      "startFailed": "No se pudo iniciar el reconocimiento de voz.",
+      "resumeFailed": "No se pudo reanudar el reconocimiento de voz."
+    },
+    "detourCatalog": {
+      "defaults": {
+        "protagonist": "tu protagonista",
+        "sideCharacter": "un personaje secundario",
+        "mainCharacter": "tu personaje principal",
+        "currentScene": "la escena actual",
+        "genre": "ficción"
+      },
+      "dialogue_sprint": {
+        "title": "Sprint de diálogo",
+        "prompt": "Escribe un diálogo a ritmo vertiginoso entre {param} y alguien que acaba de contarle algo impactante. Sin acotaciones, sin descripciones — solo diálogo puro. 5 minutos, tantas líneas como puedas."
+      },
+      "alternate_pov": {
+        "title": "Otro punto de vista",
+        "prompt": "Reescribe la escena actual desde la perspectiva de {param}. ¿Qué nota? ¿Qué esconde? Escribe libremente durante 7 minutos."
+      },
+      "sensory_snapshot": {
+        "title": "Instantánea sensorial",
+        "prompt": "Describe {param} usando SOLO los cinco sentidos — sin pensamientos, sin emociones, sin diálogo. ¿A qué sabe el aire? ¿Qué textura hay bajo los pies? 5 minutos."
+      },
+      "villains_diary": {
+        "title": "Diario del villano",
+        "prompt": "Escribe una entrada privada de diario desde la perspectiva del antagonista. ¿Qué está tramando? ¿Qué le quita el sueño? Canaliza el género {param}. 7 minutos."
+      },
+      "flash_forward": {
+        "title": "Salto al futuro",
+        "prompt": "Salta 10 años al futuro. {param} rememora este momento. ¿Qué recuerda? ¿Qué desearía haber dicho? 5 minutos, sin editar."
+      },
+      "character_interview": {
+        "title": "Entrevista al personaje",
+        "prompt": "Eres un periodista entrevistando a {param}. Hazle 3 preguntas que no querría responder. Escribe tanto las preguntas como sus respuestas incómodas y reveladoras. 7 minutos."
+      }
     }
   },
   "reader": {
@@ -1349,6 +1467,7 @@
     "importMore": "Importar Más Archivos",
     "parseError": "No se pudieron analizar los archivos",
     "ingestError": "Ocurrió un error durante la ingesta.",
+    "unsupportedFiles": "Se omitió un tipo de archivo no compatible: {names}. Usa .pdf, .docx, .txt o .md.",
     "toastImported": "Se importaron correctamente {count} entidades a la memoria del proyecto.",
     "chapterFallback": "Capítulo {n}",
     "sceneTitle": "Escena {n}",
@@ -1500,6 +1619,7 @@
     "wordsWrittenAria": "{count} palabras escritas",
     "wordTargetAria": "meta de {count} palabras",
     "sprintStatsAria": "Estadísticas del sprint",
+    "minutesLeftAria": "{count, plural, =0 {Queda menos de un minuto} one {Queda # minuto} other {Quedan # minutos}}",
     "seeResults": "Ver Resultados",
     "finishEarly": "Terminar Antes",
     "abandon": "Abandonar",
@@ -1546,7 +1666,151 @@
     },
     "levelUpEyebrow": "La biblioteca toma nota",
     "levelUpTitle": "Nivel {level}",
-    "streakRuleHint": "Escribe 10+ minutos hoy para mantener viva la racha."
+    "streakRuleHint": "Escribe 10+ minutos hoy para mantener viva la racha.",
+    "streakWarning": {
+      "atRisk": "¡Tu racha de {days, plural, one {# día} other {# días}} expira a medianoche! Escribe más de 10 minutos para mantenerla viva.",
+      "reminder": "No lo olvides — escribe más de 10 minutos hoy para mantener tu racha de {days, plural, one {# día} other {# días}}."
+    },
+    "quest": {
+      "defaults": {
+        "character": "un personaje",
+        "conflict": "el conflicto central",
+        "location": "el escenario principal"
+      },
+      "voiceOf": {
+        "title": "La voz de {name}",
+        "description": "Escribe una escena de diálogo donde {name} revela algo que ha estado ocultando."
+      },
+      "subtextDuel": {
+        "title": "Duelo de subtexto",
+        "description": "Escribe una conversación donde dos personajes dicen una cosa pero quieren decir otra."
+      },
+      "awkwardSilence": {
+        "title": "El silencio incómodo",
+        "description": "Escribe una escena donde lo que NO se dice importa más que las palabras pronunciadas."
+      },
+      "confession": {
+        "title": "La confesión de {name}",
+        "description": "Escribe una escena donde {name} admite una vulnerabilidad ante alguien en quien no confía del todo."
+      },
+      "rapidFire": {
+        "title": "Fuego rápido",
+        "description": "Escribe una escena de diálogo tensa con intercambios cortos y contundentes — ninguna línea de más de 10 palabras."
+      },
+      "eavesdropped": {
+        "title": "Verdad a escondidas",
+        "description": "Escribe un diálogo que revela un secreto, escuchado por alguien que no debería estar oyendo."
+      },
+      "negotiation": {
+        "title": "La negociación",
+        "description": "Escribe una escena donde dos personajes negocian, con {conflict} como tensión de fondo."
+      },
+      "farewell": {
+        "title": "Palabras de despedida",
+        "description": "Escribe la despedida de {name} — algo que podría ser definitivo."
+      },
+      "threeWay": {
+        "title": "Tensión a tres bandas",
+        "description": "Escribe una escena con tres personajes donde las alianzas cambian a mitad de conversación."
+      },
+      "phoneCall": {
+        "title": "La llamada",
+        "description": "Escribe una escena de diálogo donde solo oímos un lado de la conversación, pero podemos inferir el otro."
+      },
+      "secret": {
+        "title": "El secreto de {name}",
+        "description": "Escribe una escena que revela un aspecto oculto de la personalidad de {name}."
+      },
+      "mirrorMoment": {
+        "title": "Momento de espejo",
+        "description": "Escribe una escena tranquila donde {name} reflexiona sobre cómo ha cambiado."
+      },
+      "underPressure": {
+        "title": "Bajo presión",
+        "description": "Pon a {name} en una situación donde despierta su miedo más profundo."
+      },
+      "unlikelyAlly": {
+        "title": "Aliado improbable",
+        "description": "Escribe una escena donde dos personajes que desconfían entre sí deben cooperar."
+      },
+      "habit": {
+        "title": "El hábito",
+        "description": "Muestra la rutina diaria de {name} — y el único detalle que revela su estado interior."
+      },
+      "backstory": {
+        "title": "Fragmento del pasado",
+        "description": "Escribe una escena retrospectiva (de menos de 500 palabras) que explique por qué {name} es como es."
+      },
+      "moralDilemma": {
+        "title": "Dilema moral",
+        "description": "Obliga a {name} a elegir entre dos cosas que valora — sin ninguna buena opción."
+      },
+      "maskSlips": {
+        "title": "La máscara cae",
+        "description": "Escribe una escena donde la fachada pública de {name} se agrieta bajo presión."
+      },
+      "comfortObject": {
+        "title": "Objeto de consuelo",
+        "description": "Escribe una escena centrada en un objeto que {name} lleva consigo — y lo que significa para quien lo lleva."
+      },
+      "firstImpression": {
+        "title": "Primera impresión",
+        "description": "Escribe una escena que presenta a un personaje a través de los ojos de otro — sesgada e incompleta."
+      },
+      "raiseStakes": {
+        "title": "Sube la apuesta",
+        "description": "Escribe una escena que intensifica {conflict} — haz que las consecuencias se sientan más reales."
+      },
+      "plantSeed": {
+        "title": "Planta una semilla",
+        "description": "Escribe una escena con un detalle que parece insignificante ahora pero dará frutos más adelante."
+      },
+      "exploreLocation": {
+        "title": "Explora {location}",
+        "description": "Escribe una escena que usa {location} como algo más que un telón de fondo — deja que el escenario moldee la acción."
+      },
+      "tickingClock": {
+        "title": "Cuenta atrás",
+        "description": "Escribe una escena que introduce o enfatiza un plazo contra el que corren tus personajes."
+      },
+      "twist": {
+        "title": "El giro",
+        "description": "Escribe una escena donde lo que el lector espera que ocurra no ocurre — subvierte una suposición."
+      },
+      "parallelPaths": {
+        "title": "Caminos paralelos",
+        "description": "Escribe dos escenas breves que suceden simultáneamente y se reflejan o contrastan entre sí."
+      },
+      "worldDetail": {
+        "title": "Detalle del mundo",
+        "description": "Escribe una escena breve que revela algo de {location} que el lector no sabía."
+      },
+      "chapterHook": {
+        "title": "Anzuelo de capítulo",
+        "description": "Escribe las últimas 200 palabras de un capítulo que hagan imposible que el lector se detenga."
+      },
+      "themeEcho": {
+        "title": "Eco del tema",
+        "description": "Escribe una escena donde el tema central de tu historia se refleja en un momento pequeño y cotidiano."
+      },
+      "complication": {
+        "title": "La complicación",
+        "description": "Escribe una escena que añade un nuevo obstáculo a {conflict} — algo que nadie vio venir."
+      }
+    },
+    "milestoneDesc": {
+      "synopsis-written": "Escribe una sinopsis de tu historia",
+      "three-characters": "Crea al menos 3 personajes",
+      "first-chapter": "Escribe tu primer capítulo (500+ palabras)",
+      "active-conflict": "Establece un conflicto activo",
+      "five-chapters": "Escribe 5 capítulos",
+      "three-open-loops": "Ten 3 o más hilos narrativos abiertos",
+      "foreshadowing-planted": "Planta al menos un elemento de presagio",
+      "twenty-thousand-words": "Alcanza las 20.000 palabras",
+      "half-conflicts-resolved": "Resuelve al menos el 50% de tus conflictos",
+      "half-loops-closed": "Cierra al menos el 50% de tus hilos abiertos",
+      "complete": "¡Tu historia está completa! Revisa y pule tu manuscrito."
+    }
   },
   "writingStats": {
     "insight": {
@@ -1801,7 +2065,11 @@
     "summary": "{chapters, plural, one {# capítulo} other {# capítulos}} · {words, number} palabras",
     "generating": "Generando…",
     "exportFormat": "Exportar {format}",
-    "exportError": "La exportación falló a mitad de camino. Inténtalo de nuevo."
+    "exportError": "La exportación falló a mitad de camino. Inténtalo de nuevo.",
+    "errorNetwork": "Falló la solicitud de red. Comprueba tu conexión e inténtalo de nuevo.",
+    "errorRateLimited": "Has alcanzado el límite de exportaciones. Mejora tu plan para exportar sin límites o inténtalo más tarde.",
+    "errorInterrupted": "La descarga se interrumpió. Inténtalo de nuevo.",
+    "errorHttp": "La exportación falló ({status})"
   },
   "novelCompletion": {
     "aria": "Ceremonia de completar novela",
@@ -1845,7 +2113,8 @@
       "hours": "Horas",
       "completed": "Completada",
       "tagline": "Escribí mi novela."
-    }
+    },
+    "defaultTitle": "Mi Novela"
   },
   "billing": {
     "title": "Facturación",
@@ -1885,7 +2154,9 @@
       "about": "Acerca de",
       "blog": "Blog",
       "help": "Ayuda",
-      "signIn": "Iniciar sesión"
+      "signIn": "Iniciar sesión",
+      "openMenu": "Abrir menú de navegación",
+      "closeMenu": "Cerrar menú de navegación"
     },
     "footer": {
       "rights": "© {year} Zagafy. Todos los derechos reservados.",
@@ -2128,5 +2399,14 @@
     "composer": "Enviar · nueva línea (en el chat)",
     "escape": "Cerrar diálogos y paneles",
     "sheet": "Mostrar esta hoja"
+  },
+  "featureError": {
+    "body": "Este módulo encontró un error y no se pudo mostrar.",
+    "retry": "Reintentar"
+  },
+  "versionLabels": {
+    "beforeFlowSession": "Antes de la sesión de flujo",
+    "beforeRichText": "Antes del texto enriquecido",
+    "preReplace": "Antes de reemplazar \"{query}\""
   }
 }

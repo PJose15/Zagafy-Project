@@ -83,6 +83,9 @@ export function useBlockDetector(
       startedAt: new Date().toISOString(),
       endedAt: null,
       prompt: suggestion.prompt,
+      // i18n: carry the raw story value so the editor can translate the
+      // prompt template in the active locale (null = translated default).
+      promptParam: suggestion.promptParam ?? null,
       content: '',
       wordCount: 0,
     };

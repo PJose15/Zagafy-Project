@@ -268,7 +268,7 @@ export function CardCatalog() {
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder={t('placeholder')}
-                className="w-full bg-transparent text-sm text-sepia-900 placeholder:text-sepia-500 focus:outline-none"
+                className="w-full bg-transparent text-sm text-sepia-900 placeholder:text-sepia-600 focus:outline-none"
               />
               <kbd className="shrink-0 rounded border border-sepia-300/50 bg-parchment-200 px-1.5 py-0.5 font-mono text-[10px] text-sepia-600">esc</kbd>
             </div>
@@ -283,7 +283,7 @@ export function CardCatalog() {
                 return (
                   <div key={r.id}>
                     {header && (
-                      <p className="label-caps px-4 pb-1 pt-2 text-[10px] text-sepia-500">
+                      <p className="label-caps px-4 pb-1 pt-2 text-[10px] text-sepia-600">
                         {t(header)}
                       </p>
                     )}
@@ -303,7 +303,7 @@ export function CardCatalog() {
                       {r.icon}
                       <span className="min-w-0 flex-1 truncate">{r.label}</span>
                       {r.meta && (
-                        <span className="shrink-0 font-mono text-[10px] text-sepia-500">{r.meta}</span>
+                        <span className="shrink-0 font-mono text-[10px] text-sepia-600">{r.meta}</span>
                       )}
                     </button>
                   </div>

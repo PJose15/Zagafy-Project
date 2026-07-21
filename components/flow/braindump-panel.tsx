@@ -4,17 +4,19 @@ import { Mic, MicOff, Pause, Play, X, Sparkles, Type, RotateCcw, Loader2 } from 
 import { useTranslations } from 'next-intl';
 import type { UseBraindumpReturn } from '@/hooks/use-braindump';
 
+// Speech-recognition locale choices, labelled in each language's own (native)
+// name — self-describing in every UI locale, so no catalog entry is needed.
 const LANGUAGES = [
   { value: 'en-US', label: 'English (US)' },
   { value: 'en-GB', label: 'English (UK)' },
-  { value: 'pt-BR', label: 'Portuguese (BR)' },
-  { value: 'pt-PT', label: 'Portuguese (PT)' },
-  { value: 'es-ES', label: 'Spanish' },
-  { value: 'fr-FR', label: 'French' },
-  { value: 'de-DE', label: 'German' },
-  { value: 'it-IT', label: 'Italian' },
-  { value: 'ja-JP', label: 'Japanese' },
-  { value: 'zh-CN', label: 'Chinese' },
+  { value: 'pt-BR', label: 'Português (BR)' },
+  { value: 'pt-PT', label: 'Português (PT)' },
+  { value: 'es-ES', label: 'Español' },
+  { value: 'fr-FR', label: 'Français' },
+  { value: 'de-DE', label: 'Deutsch' },
+  { value: 'it-IT', label: 'Italiano' },
+  { value: 'ja-JP', label: '日本語' },
+  { value: 'zh-CN', label: '中文' },
 ];
 
 function formatTime(seconds: number): string {

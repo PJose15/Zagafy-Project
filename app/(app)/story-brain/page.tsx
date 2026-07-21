@@ -10,7 +10,6 @@ import { EntityDetailCard } from '@/components/story-brain/entity-detail-card';
 import { InconsistencyAlert } from '@/components/story-brain/inconsistency-alert';
 import { RelationshipMatrix } from '@/components/story-brain/relationship-matrix';
 import { PlotHolePanel } from '@/components/story-brain/plot-hole-panel';
-import type { EntityCatalogEntry } from '@/lib/story-brain/types';
 
 type Tab = 'entities' | 'relationships' | 'alerts' | 'plot-holes';
 
@@ -32,7 +31,13 @@ export default function StoryBrainPage() {
   const isStale = deferredAnalysis !== analysis;
 
   const [activeTab, setActiveTab] = useState<Tab>('entities');
-  const [selectedEntity, setSelectedEntity] = useState<EntityCatalogEntry | null>(null);
+  // Store only the id and re-derive the entry from the CURRENT analysis so a
+  // re-analysis never leaves a stale object rendered: if the entity vanished
+  // the panel closes; if it changed, the fresh data shows.
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const selectedEntity = selectedEntityId
+    ? deferredAnalysis.entities.find(e => e.id === selectedEntityId) ?? null
+    : null;
 
   const tabs: { id: Tab; label: string; badge?: number }[] = [
     { id: 'entities', label: t('tabs.entities'), badge: deferredAnalysis.entities.length },
@@ -68,13 +73,26 @@ export default function StoryBrainPage() {
         </ParchmentCard>
       </div>
 
-      {/* Tab Bar */}
-      <div className="flex gap-1 border-b border-sepia-300/30 pb-0" role="tablist">
+      {/* Tab Bar — roving tabindex: Left/Right walk the tablist, wrapping */}
+      <div
+        className="flex gap-1 border-b border-sepia-300/30 pb-0"
+        role="tablist"
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+          e.preventDefault();
+          const idx = tabs.findIndex(tb => tb.id === activeTab);
+          const next = e.key === 'ArrowRight' ? (idx + 1) % tabs.length : (idx - 1 + tabs.length) % tabs.length;
+          setActiveTab(tabs[next].id);
+          (e.currentTarget.querySelectorAll<HTMLElement>('[role="tab"]')[next])?.focus();
+        }}
+      >
         {tabs.map(tab => (
           <button
             key={tab.id}
+            id={`storybrain-tab-${tab.id}`}
             role="tab"
             aria-selected={activeTab === tab.id}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors relative ${
               activeTab === tab.id
@@ -97,7 +115,7 @@ export default function StoryBrainPage() {
       </div>
 
       {/* Tab Content — M2: dim while deferred value is stale */}
-      <div role="tabpanel" className={`transition-opacity ${isStale ? 'opacity-60' : ''}`}>
+      <div role="tabpanel" aria-labelledby={`storybrain-tab-${activeTab}`} className={`transition-opacity ${isStale ? 'opacity-60' : ''}`}>
         <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={activeTab}
@@ -112,7 +130,7 @@ export default function StoryBrainPage() {
               <FeatureErrorBoundary title={t('entityCatalogTitle')}>
                 <EntityCatalog
                   entities={deferredAnalysis.entities}
-                  onSelect={setSelectedEntity}
+                  onSelect={(entity) => setSelectedEntityId(entity.id)}
                 />
               </FeatureErrorBoundary>
             </div>
@@ -121,7 +139,7 @@ export default function StoryBrainPage() {
                 <EntityDetailCard
                   entity={selectedEntity}
                   relationships={deferredAnalysis.relationships}
-                  onClose={() => setSelectedEntity(null)}
+                  onClose={() => setSelectedEntityId(null)}
                 />
               </div>
             )}

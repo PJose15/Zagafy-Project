@@ -22,6 +22,10 @@ export function AmbientParticles() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Honor prefers-reduced-motion: draw a single static frame instead of
+    // running the 50-particle rAF loop; react to preference changes live.
+    const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -42,7 +46,7 @@ export function AmbientParticles() {
 
     let time = 0;
 
-    const draw = () => {
+    const draw = (animate: boolean = true) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Center radial glow
@@ -58,14 +62,16 @@ export function AmbientParticles() {
 
       // Particles
       for (const p of particles) {
-        p.x += p.speedX + Math.sin(time + p.phase) * 0.2;
-        p.y += p.speedY + Math.cos(time + p.phase) * 0.15;
+        if (animate) {
+          p.x += p.speedX + Math.sin(time + p.phase) * 0.2;
+          p.y += p.speedY + Math.cos(time + p.phase) * 0.15;
 
-        // Wrap around
-        if (p.x < -10) p.x = canvas.width + 10;
-        if (p.x > canvas.width + 10) p.x = -10;
-        if (p.y < -10) p.y = canvas.height + 10;
-        if (p.y > canvas.height + 10) p.y = -10;
+          // Wrap around
+          if (p.x < -10) p.x = canvas.width + 10;
+          if (p.x > canvas.width + 10) p.x = -10;
+          if (p.y < -10) p.y = canvas.height + 10;
+          if (p.y > canvas.height + 10) p.y = -10;
+        }
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
@@ -73,14 +79,26 @@ export function AmbientParticles() {
         ctx.fill();
       }
 
-      time += 0.005;
-      animationRef.current = requestAnimationFrame(draw);
+      if (animate) {
+        time += 0.005;
+        animationRef.current = requestAnimationFrame(() => draw(true));
+      }
     };
 
-    animationRef.current = requestAnimationFrame(draw);
+    const start = () => {
+      cancelAnimationFrame(animationRef.current);
+      if (motionQuery.matches) {
+        draw(false); // one calm, static frame
+      } else {
+        animationRef.current = requestAnimationFrame(() => draw(true));
+      }
+    };
+    start();
+    motionQuery.addEventListener('change', start);
 
     return () => {
       cancelAnimationFrame(animationRef.current);
+      motionQuery.removeEventListener('change', start);
       window.removeEventListener('resize', resize);
     };
   }, []);

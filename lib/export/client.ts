@@ -20,7 +20,15 @@ export interface ExportRequest {
   chapters: { title: string; content: string }[];
 }
 
-export type ExportResult = { ok: true } | { ok: false; message: string };
+/**
+ * Stable error codes — translated by the rendering component (ExportDialog).
+ * `serverMessage` carries the API's own error detail when the body had one.
+ */
+export type ExportErrorCode = 'network' | 'rate_limited' | 'http' | 'interrupted';
+
+export type ExportResult =
+  | { ok: true }
+  | { ok: false; code: ExportErrorCode; status?: number; serverMessage?: string };
 
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
@@ -54,19 +62,21 @@ export async function requestManuscriptExport(req: ExportRequest): Promise<Expor
       }),
     });
   } catch {
-    return { ok: false, message: 'Network request failed. Check your connection and try again.' };
+    return { ok: false, code: 'network' };
   }
 
   if (!res.ok) {
-    let message = `Export failed (${res.status})`;
-    if (res.status === 429) message = 'Export limit reached. Upgrade for unlimited exports, or try again later.';
+    if (res.status === 429) {
+      return { ok: false, code: 'rate_limited', status: res.status };
+    }
+    let serverMessage: string | undefined;
     try {
       const body = await res.json();
-      if (body?.message || body?.error) message = body.message || body.error;
+      if (body?.message || body?.error) serverMessage = body.message || body.error;
     } catch {
-      // non-JSON error body — keep the status-based message
+      // non-JSON error body — no server detail
     }
-    return { ok: false, message };
+    return { ok: false, code: 'http', status: res.status, serverMessage };
   }
 
   // A body-stream failure mid-download rejects blob(); report it instead of
@@ -75,7 +85,7 @@ export async function requestManuscriptExport(req: ExportRequest): Promise<Expor
   try {
     blob = await res.blob();
   } catch {
-    return { ok: false, message: 'The download was interrupted. Please try again.' };
+    return { ok: false, code: 'interrupted' };
   }
   const filename = filenameFromDisposition(
     res.headers.get('Content-Disposition'),

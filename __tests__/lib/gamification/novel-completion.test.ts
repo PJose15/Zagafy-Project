@@ -126,14 +126,16 @@ describe('generateNovelStats', () => {
     expect(stats.title).toBe('La Sombra del Viento');
   });
 
-  it('falls back to "Mi Novela" for empty title', () => {
+  // i18n: no baked-in default — the renderer resolves an empty title via the
+  // `novelCompletion.defaultTitle` catalog key in the active locale.
+  it('returns empty string for empty title (renderer localizes the default)', () => {
     const stats = generateNovelStats([], [], '');
-    expect(stats.title).toBe('Mi Novela');
+    expect(stats.title).toBe('');
   });
 
-  it('falls back to "Mi Novela" for whitespace-only title', () => {
+  it('trims whitespace-only titles to empty string', () => {
     const stats = generateNovelStats([], [], '   ');
-    expect(stats.title).toBe('Mi Novela');
+    expect(stats.title).toBe('');
   });
 
   it('handles invalid session dates gracefully', () => {

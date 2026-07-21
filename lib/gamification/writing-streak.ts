@@ -111,17 +111,41 @@ export function updateStreak(
 
 // ─── Streak Warning ───
 
-export function getStreakWarning(state: WritingStreakState, currentHour: number): string | null {
+/**
+ * i18n-stable streak warning: a catalog key (relative to the `gamification`
+ * namespace) plus params, translated at render time (streak-badge / toast).
+ */
+export interface StreakWarning {
+  key: 'streakWarning.atRisk' | 'streakWarning.reminder';
+  params: { days: number };
+}
+
+export function getStreakWarningInfo(
+  state: WritingStreakState,
+  currentHour: number,
+): StreakWarning | null {
   if (state.todayQualified) return null;
   if (state.currentStreak === 0) return null;
 
   if (currentHour >= STREAK_WARNING_URGENT_HOUR) {
-    return `Your ${state.currentStreak}-day streak expires at midnight! Write for 10+ minutes to keep it alive.`;
+    return { key: 'streakWarning.atRisk', params: { days: state.currentStreak } };
   }
   if (currentHour >= STREAK_WARNING_REMINDER_HOUR) {
-    return `Don't forget — write for 10+ minutes today to maintain your ${state.currentStreak}-day streak.`;
+    return { key: 'streakWarning.reminder', params: { days: state.currentStreak } };
   }
   return null;
+}
+
+/**
+ * Legacy English-string variant, kept for callers that toast the message
+ * directly (library-shell). Prefer getStreakWarningInfo + t() at render.
+ */
+export function getStreakWarning(state: WritingStreakState, currentHour: number): string | null {
+  const info = getStreakWarningInfo(state, currentHour);
+  if (!info) return null;
+  return info.key === 'streakWarning.atRisk'
+    ? `Your ${info.params.days}-day streak expires at midnight! Write for 10+ minutes to keep it alive.`
+    : `Don't forget — write for 10+ minutes today to maintain your ${info.params.days}-day streak.`;
 }
 
 // ─── Streak Milestones ───

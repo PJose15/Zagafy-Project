@@ -25,6 +25,11 @@ export default function GenesisPage() {
   const t = useTranslations('genesis');
   const stepLabel = (step: GenesisStep) => t(`steps.${step}.label`);
   const stepDescription = (step: GenesisStep) => t(`steps.${step}.description`);
+  // Genre/tone options: the canonical English value stays in state (it is what
+  // gets stored); only the chip label is translated. "Science Fiction" →
+  // catalog key "scienceFiction".
+  const optionKey = (value: string) =>
+    value.split(' ').map((w, i) => (i === 0 ? w.toLowerCase() : w)).join('');
   const { state, saveNow } = useStory();
   const { toast } = useToast();
   const [stepIndex, setStepIndex] = useState(0);
@@ -322,6 +327,7 @@ export default function GenesisPage() {
                             key={g}
                             type="button"
                             onClick={() => toggleGenre(g)}
+                            aria-pressed={data.genres?.includes(g) ?? false}
                             className={[
                               'text-xs px-3 py-1.5 rounded-full border transition',
                               data.genres?.includes(g)
@@ -329,7 +335,7 @@ export default function GenesisPage() {
                                 : 'bg-parchment-200 text-sepia-700 border-sepia-300/50 hover:border-sepia-400',
                             ].join(' ')}
                           >
-                            {g}
+                            {t(`genreOptions.${optionKey(g)}`)}
                           </button>
                         ))}
                       </div>
@@ -337,19 +343,20 @@ export default function GenesisPage() {
                     <div>
                       <label className="text-xs font-medium text-sepia-700 uppercase tracking-wider">{t('toneLabel')}</label>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {TONE_OPTIONS.map(t => (
+                        {TONE_OPTIONS.map(tone => (
                           <button
-                            key={t}
+                            key={tone}
                             type="button"
-                            onClick={() => toggleTone(t)}
+                            onClick={() => toggleTone(tone)}
+                            aria-pressed={data.tones?.includes(tone) ?? false}
                             className={[
                               'text-xs px-3 py-1.5 rounded-full border transition',
-                              data.tones?.includes(t)
+                              data.tones?.includes(tone)
                                 ? 'bg-brass-600 text-cream-50 border-brass-500'
                                 : 'bg-parchment-200 text-sepia-700 border-sepia-300/50 hover:border-sepia-400',
                             ].join(' ')}
                           >
-                            {t}
+                            {t(`toneOptions.${optionKey(tone)}`)}
                           </button>
                         ))}
                       </div>
@@ -395,6 +402,7 @@ export default function GenesisPage() {
                             key={ty}
                             type="button"
                             onClick={() => updateField('antagonist', { ...data.antagonist!, type: ty })}
+                            aria-pressed={data.antagonist?.type === ty}
                             className={[
                               'text-xs px-3 py-1.5 rounded-full border transition capitalize',
                               data.antagonist?.type === ty

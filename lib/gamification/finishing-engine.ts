@@ -180,7 +180,9 @@ export function analyzeStory(story: StoryState, previousMilestones?: Milestone[]
 
   const currentPhase = phaseFromProgress(overallProgress);
 
-  // Next suggestion = first incomplete milestone in phase order
+  // Next suggestion = first incomplete milestone in phase order.
+  // i18n: the stable milestone id travels alongside the legacy English string;
+  // the renderer translates `gamification.milestoneDesc.{id}` (null = complete).
   const nextIncomplete = findNextIncomplete(milestones);
   const nextSuggestion = nextIncomplete
     ? nextIncomplete.description
@@ -191,6 +193,7 @@ export function analyzeStory(story: StoryState, previousMilestones?: Milestone[]
     overallProgress,
     milestones,
     nextSuggestion,
+    nextSuggestionId: nextIncomplete ? nextIncomplete.id : null,
   };
 }
 
@@ -218,7 +221,9 @@ export function generateNovelStats(
   chapters: Chapter[],
   title: string,
 ): NovelCompletionStats {
-  const safeTitle = title.trim() || 'Mi Novela';
+  // i18n: no baked-in default title — an empty title is resolved at render
+  // time via the `novelCompletion.defaultTitle` catalog key.
+  const safeTitle = title.trim();
   const safeChapters = Array.isArray(chapters) ? chapters : [];
   const safeSessions = Array.isArray(sessions) ? sessions : [];
 

@@ -110,8 +110,8 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
             <h2 className="text-lg font-serif font-semibold text-sepia-900">
               {isEditing ? t('editTitle') : t('newTitle')}
             </h2>
-            <button onClick={onClose} className="p-1 text-sepia-600 hover:text-sepia-800 rounded-lg hover:bg-parchment-200">
-              <X size={20} />
+            <button onClick={onClose} aria-label={t('closeAria')} className="p-1 text-sepia-600 hover:text-sepia-800 rounded-lg hover:bg-parchment-200">
+              <X size={20} aria-hidden="true" />
             </button>
           </div>
 

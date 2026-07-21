@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import {
   getPlainText,
@@ -18,6 +19,9 @@ import { addVersion } from '@/lib/types/chapter-version';
  * any pre-flow rich formatting so flattening it stays recoverable.
  */
 export function useFlowAutosave(chapterId: string | null) {
+  // i18n: auto-snapshot labels are stored strings shown in the version
+  // switcher — created in the active locale.
+  const t = useTranslations('versionLabels');
   const { state, setState } = useStory();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef<string>('');
@@ -54,7 +58,7 @@ export function useFlowAutosave(chapterId: string | null) {
       snapshotDoneRef.current = true;
       const orig = originalRawRef.current;
       if (isLexicalJson(orig) && hasFormatting(orig)) {
-        addVersion(chapterId, orig, 'Before flow session', 'auto-snapshot').catch(() => {
+        addVersion(chapterId, orig, t('beforeFlowSession'), 'auto-snapshot').catch(() => {
           // Snapshot is best-effort — never block the save.
         });
       }
@@ -66,7 +70,7 @@ export function useFlowAutosave(chapterId: string | null) {
         ch.id === chapterId ? { ...ch, content: json } : ch
       ),
     }));
-  }, [chapterId, setState]);
+  }, [chapterId, setState, t]);
 
   const scheduleAutosave = useCallback(
     (content: string) => {

@@ -309,7 +309,7 @@ export function EmptyState({ variant, title, subtitle, action }: EmptyStateProps
       </motion.div>
       <h3 className="text-lg font-serif font-semibold text-parchment-200">{title}</h3>
       {subtitle && (
-        <p className="text-sm text-sepia-400 mt-2 max-w-sm">{subtitle}</p>
+        <p className="text-sm text-sepia-300 mt-2 max-w-sm">{subtitle}</p>
       )}
       {action && (
         <div className="mt-5">

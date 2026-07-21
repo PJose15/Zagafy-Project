@@ -31,7 +31,7 @@ export function SceneChangeBanner({
     ? 'bg-wax-500/10 border-wax-500/20'
     : 'bg-brass-500/10 border-brass-500/20';
 
-  const textClass = isExpired ? 'text-wax-500' : 'text-brass-300';
+  const textClass = isExpired ? 'text-wax-600' : 'text-brass-700';
 
   return (
     <div
@@ -69,7 +69,7 @@ export function SceneChangeBanner({
         {!isExpired && extensionsLeft > 0 && (
           <button
             onClick={onExtend}
-            className="text-xs text-brass-400/70 hover:text-brass-300 transition-colors px-2 py-0.5 rounded hover:bg-brass-500/10"
+            className="text-xs text-brass-700/80 hover:text-brass-800 transition-colors px-2 py-0.5 rounded hover:bg-brass-500/10"
           >
             {t('extend')}
           </button>
@@ -82,7 +82,7 @@ export function SceneChangeBanner({
           className={`text-xs font-medium px-3 py-1 rounded-lg transition-colors ${
             isExpired
               ? 'bg-wax-700 text-cream-50 hover:bg-wax-600'
-              : 'text-brass-300 hover:bg-brass-500/20'
+              : 'text-brass-700 hover:bg-brass-500/20'
           }`}
         >
           {t('returnNow')}

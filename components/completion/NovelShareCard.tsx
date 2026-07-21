@@ -11,6 +11,7 @@ interface NovelShareCardProps {
 const NovelShareCard = forwardRef<HTMLDivElement, NovelShareCardProps>(
   function NovelShareCard({ stats }, ref) {
     const t = useTranslations('novelCompletion.shareCard');
+    const tCompletion = useTranslations('novelCompletion');
     const locale = useLocale();
     const statItems = [
       { label: t('words'), value: stats.totalWords.toLocaleString(locale) },
@@ -63,7 +64,7 @@ const NovelShareCard = forwardRef<HTMLDivElement, NovelShareCardProps>(
             wordBreak: 'break-word',
           }}
         >
-          {stats.title}
+          {stats.title || tCompletion('defaultTitle')}
         </div>
 
         {/* Stats grid — 2x3 */}

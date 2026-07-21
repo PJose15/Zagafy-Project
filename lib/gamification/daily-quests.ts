@@ -1,4 +1,4 @@
-import type { DailyQuest, QuestsState, QuestType } from '@/lib/types/gamification';
+import type { DailyQuest, QuestParams, QuestsState, QuestType } from '@/lib/types/gamification';
 import type { StoryState } from '@/lib/store';
 import { formatDateKey } from './date-utils';
 
@@ -34,6 +34,12 @@ function pick<T>(arr: T[], rng: () => number): T | undefined {
 
 interface QuestTemplate {
   type: QuestType;
+  /**
+   * Stable i18n id — the renderer translates
+   * `gamification.quest.{templateId}.title/description` with the quest params.
+   */
+  templateId: string;
+  /** Legacy English builders — persisted as fallback for pre-i18n readers. */
   title: (ctx: QuestContext) => string;
   description: (ctx: QuestContext) => string;
 }
@@ -42,6 +48,11 @@ interface QuestContext {
   characterName: string;
   conflictTitle: string;
   locationName: string;
+  /** Raw story values (null when the story has no matching data) — persisted
+   * as quest params so the renderer can substitute translated defaults. */
+  rawCharacterName: string | null;
+  rawConflictTitle: string | null;
+  rawLocationName: string | null;
   hasStoryData: boolean;
 }
 
@@ -59,51 +70,61 @@ function getContext(story: StoryState | null, rng: () => number): QuestContext {
   const conflicts = Array.isArray(story?.active_conflicts) ? story.active_conflicts : [];
   const locs = Array.isArray(story?.locations) ? story.locations : [];
   if (!story || (chars.length === 0 && conflicts.length === 0 && locs.length === 0)) {
-    return { characterName: 'a character', conflictTitle: 'the central conflict', locationName: 'the main setting', hasStoryData: false };
+    return {
+      characterName: 'a character', conflictTitle: 'the central conflict', locationName: 'the main setting',
+      rawCharacterName: null, rawConflictTitle: null, rawLocationName: null,
+      hasStoryData: false,
+    };
   }
-  const characterName = chars.length > 0 ? pick(chars, rng)!.name : 'a character';
-  const conflictTitle = conflicts.length > 0 ? pick(conflicts, rng)!.title : 'the central conflict';
-  const locationName = locs.length > 0 ? pick(locs, rng)!.name : 'the main setting';
-  return { characterName, conflictTitle, locationName, hasStoryData: true };
+  const rawCharacterName = chars.length > 0 ? pick(chars, rng)!.name : null;
+  const rawConflictTitle = conflicts.length > 0 ? pick(conflicts, rng)!.title : null;
+  const rawLocationName = locs.length > 0 ? pick(locs, rng)!.name : null;
+  return {
+    characterName: rawCharacterName ?? 'a character',
+    conflictTitle: rawConflictTitle ?? 'the central conflict',
+    locationName: rawLocationName ?? 'the main setting',
+    rawCharacterName, rawConflictTitle, rawLocationName,
+    hasStoryData: true,
+  };
 }
 
 const DIALOGUE_TEMPLATES: QuestTemplate[] = [
-  { type: 'dialogue', title: (c) => `Voice of ${c.characterName}`, description: (c) => `Write a dialogue scene where ${c.characterName} reveals something they've been hiding.` },
-  { type: 'dialogue', title: () => 'Subtext Duel', description: () => 'Write a conversation where two characters say one thing but mean another.' },
-  { type: 'dialogue', title: () => 'The Awkward Silence', description: () => 'Write a scene where what is NOT said matters more than the words spoken.' },
-  { type: 'dialogue', title: (c) => `${c.characterName}'s Confession`, description: (c) => `Write a scene where ${c.characterName} admits a vulnerability to someone they don't fully trust.` },
-  { type: 'dialogue', title: () => 'Rapid Fire', description: () => 'Write a tense dialogue scene with short, punchy exchanges — no line longer than 10 words.' },
-  { type: 'dialogue', title: () => 'Eavesdropped Truth', description: () => 'Write dialogue that reveals a secret, overheard by someone who shouldn\'t be listening.' },
-  { type: 'dialogue', title: () => 'The Negotiation', description: (c) => `Write a scene where two characters negotiate, with ${c.conflictTitle} as the underlying tension.` },
-  { type: 'dialogue', title: () => 'Farewell Words', description: (c) => `Write ${c.characterName}'s goodbye — something that could be permanent.` },
-  { type: 'dialogue', title: () => 'Three-Way Tension', description: () => 'Write a scene with three characters where alliances shift mid-conversation.' },
-  { type: 'dialogue', title: () => 'The Phone Call', description: () => 'Write a dialogue scene where we only hear one side of a conversation, but can infer the other.' },
+  { type: 'dialogue', templateId: 'voiceOf', title: (c) => `Voice of ${c.characterName}`, description: (c) => `Write a dialogue scene where ${c.characterName} reveals something they've been hiding.` },
+  { type: 'dialogue', templateId: 'subtextDuel', title: () => 'Subtext Duel', description: () => 'Write a conversation where two characters say one thing but mean another.' },
+  { type: 'dialogue', templateId: 'awkwardSilence', title: () => 'The Awkward Silence', description: () => 'Write a scene where what is NOT said matters more than the words spoken.' },
+  { type: 'dialogue', templateId: 'confession', title: (c) => `${c.characterName}'s Confession`, description: (c) => `Write a scene where ${c.characterName} admits a vulnerability to someone they don't fully trust.` },
+  { type: 'dialogue', templateId: 'rapidFire', title: () => 'Rapid Fire', description: () => 'Write a tense dialogue scene with short, punchy exchanges — no line longer than 10 words.' },
+  { type: 'dialogue', templateId: 'eavesdropped', title: () => 'Eavesdropped Truth', description: () => 'Write dialogue that reveals a secret, overheard by someone who shouldn\'t be listening.' },
+  { type: 'dialogue', templateId: 'negotiation', title: () => 'The Negotiation', description: (c) => `Write a scene where two characters negotiate, with ${c.conflictTitle} as the underlying tension.` },
+  { type: 'dialogue', templateId: 'farewell', title: () => 'Farewell Words', description: (c) => `Write ${c.characterName}'s goodbye — something that could be permanent.` },
+  { type: 'dialogue', templateId: 'threeWay', title: () => 'Three-Way Tension', description: () => 'Write a scene with three characters where alliances shift mid-conversation.' },
+  { type: 'dialogue', templateId: 'phoneCall', title: () => 'The Phone Call', description: () => 'Write a dialogue scene where we only hear one side of a conversation, but can infer the other.' },
 ];
 
 const CHARACTER_TEMPLATES: QuestTemplate[] = [
-  { type: 'character', title: (c) => `${c.characterName}'s Secret`, description: (c) => `Write a scene that reveals a hidden aspect of ${c.characterName}'s personality.` },
-  { type: 'character', title: () => 'Mirror Moment', description: (c) => `Write a quiet scene where ${c.characterName} reflects on how they've changed.` },
-  { type: 'character', title: () => 'Under Pressure', description: (c) => `Put ${c.characterName} in a situation where their deepest fear is triggered.` },
-  { type: 'character', title: () => 'Unlikely Ally', description: () => 'Write a scene where two characters who distrust each other must cooperate.' },
-  { type: 'character', title: () => 'The Habit', description: (c) => `Show ${c.characterName}'s daily routine — and the one detail that reveals their inner state.` },
-  { type: 'character', title: () => 'Backstory Fragment', description: (c) => `Write a flashback scene (under 500 words) that explains why ${c.characterName} is the way they are.` },
-  { type: 'character', title: () => 'Moral Dilemma', description: (c) => `Force ${c.characterName} to choose between two things they value — with no good option.` },
-  { type: 'character', title: () => 'The Mask Slips', description: (c) => `Write a scene where ${c.characterName}'s public persona cracks under stress.` },
-  { type: 'character', title: () => 'Comfort Object', description: (c) => `Write a scene centered on an object that ${c.characterName} carries — and what it means to them.` },
-  { type: 'character', title: () => 'First Impression', description: () => 'Write a scene introducing a character through another character\'s eyes — biased and incomplete.' },
+  { type: 'character', templateId: 'secret', title: (c) => `${c.characterName}'s Secret`, description: (c) => `Write a scene that reveals a hidden aspect of ${c.characterName}'s personality.` },
+  { type: 'character', templateId: 'mirrorMoment', title: () => 'Mirror Moment', description: (c) => `Write a quiet scene where ${c.characterName} reflects on how they've changed.` },
+  { type: 'character', templateId: 'underPressure', title: () => 'Under Pressure', description: (c) => `Put ${c.characterName} in a situation where their deepest fear is triggered.` },
+  { type: 'character', templateId: 'unlikelyAlly', title: () => 'Unlikely Ally', description: () => 'Write a scene where two characters who distrust each other must cooperate.' },
+  { type: 'character', templateId: 'habit', title: () => 'The Habit', description: (c) => `Show ${c.characterName}'s daily routine — and the one detail that reveals their inner state.` },
+  { type: 'character', templateId: 'backstory', title: () => 'Backstory Fragment', description: (c) => `Write a flashback scene (under 500 words) that explains why ${c.characterName} is the way they are.` },
+  { type: 'character', templateId: 'moralDilemma', title: () => 'Moral Dilemma', description: (c) => `Force ${c.characterName} to choose between two things they value — with no good option.` },
+  { type: 'character', templateId: 'maskSlips', title: () => 'The Mask Slips', description: (c) => `Write a scene where ${c.characterName}'s public persona cracks under stress.` },
+  { type: 'character', templateId: 'comfortObject', title: () => 'Comfort Object', description: (c) => `Write a scene centered on an object that ${c.characterName} carries — and what it means to them.` },
+  { type: 'character', templateId: 'firstImpression', title: () => 'First Impression', description: () => 'Write a scene introducing a character through another character\'s eyes — biased and incomplete.' },
 ];
 
 const STORY_TEMPLATES: QuestTemplate[] = [
-  { type: 'story', title: () => 'Raise the Stakes', description: (c) => `Write a scene that escalates ${c.conflictTitle} — make the consequences feel more real.` },
-  { type: 'story', title: () => 'Plant a Seed', description: () => 'Write a scene with a detail that seems insignificant now but will pay off later.' },
-  { type: 'story', title: (c) => `Explore ${c.locationName}`, description: (c) => `Write a scene that uses ${c.locationName} as more than backdrop — let the setting shape the action.` },
-  { type: 'story', title: () => 'Ticking Clock', description: () => 'Write a scene that introduces or emphasizes a deadline your characters are racing against.' },
-  { type: 'story', title: () => 'The Twist', description: () => 'Write a scene where what the reader expects to happen does not — subvert one assumption.' },
-  { type: 'story', title: () => 'Parallel Paths', description: () => 'Write two short scenes happening simultaneously that mirror or contrast each other.' },
-  { type: 'story', title: () => 'World Detail', description: (c) => `Write a brief scene that reveals something about ${c.locationName} the reader didn't know.` },
-  { type: 'story', title: () => 'Chapter Hook', description: () => 'Write the last 200 words of a chapter that makes the reader unable to stop.' },
-  { type: 'story', title: () => 'Theme Echo', description: () => 'Write a scene where your story\'s central theme is reflected through a small, ordinary moment.' },
-  { type: 'story', title: () => 'The Complication', description: (c) => `Write a scene that adds a new obstacle to ${c.conflictTitle} — something nobody saw coming.` },
+  { type: 'story', templateId: 'raiseStakes', title: () => 'Raise the Stakes', description: (c) => `Write a scene that escalates ${c.conflictTitle} — make the consequences feel more real.` },
+  { type: 'story', templateId: 'plantSeed', title: () => 'Plant a Seed', description: () => 'Write a scene with a detail that seems insignificant now but will pay off later.' },
+  { type: 'story', templateId: 'exploreLocation', title: (c) => `Explore ${c.locationName}`, description: (c) => `Write a scene that uses ${c.locationName} as more than backdrop — let the setting shape the action.` },
+  { type: 'story', templateId: 'tickingClock', title: () => 'Ticking Clock', description: () => 'Write a scene that introduces or emphasizes a deadline your characters are racing against.' },
+  { type: 'story', templateId: 'twist', title: () => 'The Twist', description: () => 'Write a scene where what the reader expects to happen does not — subvert one assumption.' },
+  { type: 'story', templateId: 'parallelPaths', title: () => 'Parallel Paths', description: () => 'Write two short scenes happening simultaneously that mirror or contrast each other.' },
+  { type: 'story', templateId: 'worldDetail', title: () => 'World Detail', description: (c) => `Write a brief scene that reveals something about ${c.locationName} the reader didn't know.` },
+  { type: 'story', templateId: 'chapterHook', title: () => 'Chapter Hook', description: () => 'Write the last 200 words of a chapter that makes the reader unable to stop.' },
+  { type: 'story', templateId: 'themeEcho', title: () => 'Theme Echo', description: () => 'Write a scene where your story\'s central theme is reflected through a small, ordinary moment.' },
+  { type: 'story', templateId: 'complication', title: () => 'The Complication', description: (c) => `Write a scene that adds a new obstacle to ${c.conflictTitle} — something nobody saw coming.` },
 ];
 
 const TEMPLATE_SETS: Record<QuestType, QuestTemplate[]> = {
@@ -122,6 +143,13 @@ export function generateDailyQuests(dateKey: string, storyState: StoryState | nu
   const rng = mulberry32(seedFromString(dateKey));
   const ctx = getContext(storyState, rng);
 
+  // i18n: persist only the raw story values; the renderer swaps in translated
+  // generic defaults for absent ones.
+  const params: QuestParams = {};
+  if (ctx.rawCharacterName !== null) params.name = ctx.rawCharacterName;
+  if (ctx.rawConflictTitle !== null) params.conflict = ctx.rawConflictTitle;
+  if (ctx.rawLocationName !== null) params.location = ctx.rawLocationName;
+
   const types: QuestType[] = ['dialogue', 'character', 'story'];
   return types.map((type) => {
     const template = pick(TEMPLATE_SETS[type], rng)!;
@@ -130,6 +158,8 @@ export function generateDailyQuests(dateKey: string, storyState: StoryState | nu
       type,
       title: template.title(ctx),
       description: template.description(ctx),
+      templateId: template.templateId,
+      params,
       xpReward: XP_REWARD,
       status: 'active' as const,
       dateKey,

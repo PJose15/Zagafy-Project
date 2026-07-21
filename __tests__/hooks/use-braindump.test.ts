@@ -1138,8 +1138,8 @@ describe('useBraindump', () => {
 
       await act(async () => { await result.current.polishAndInsert(); });
 
-      // .catch(() => ({ error: 'Network error' })) in the source produces fallback
-      expect(result.current.polishError).toBe('Network error');
+      // Unparseable body → translated status-based fallback (en catalog copy)
+      expect(result.current.polishError).toBe('Failed to polish (502)');
     });
 
     it('reRecord clears polishError', async () => {

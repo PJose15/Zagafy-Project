@@ -38,12 +38,29 @@ describe('StreakBadge', () => {
     expect(screen.getByText('Day 7')).toBeDefined();
   });
 
-  it('shows warning text with alert role', () => {
-    render(<StreakBadge streak={3} warning="Write today to keep your streak!" />);
+  it('translates warning codes and renders with alert role', () => {
+    render(
+      <StreakBadge
+        streak={3}
+        warning={{ key: 'streakWarning.atRisk', params: { days: 3 } }}
+      />,
+    );
 
     const alert = screen.getByRole('alert');
     expect(alert).toBeDefined();
-    expect(alert.textContent).toContain('Write today to keep your streak!');
+    // English catalog copy (test shim translates against messages/en.json).
+    expect(alert.textContent).toContain('Your 3-day streak expires at midnight!');
+  });
+
+  it('translates the reminder warning code', () => {
+    render(
+      <StreakBadge
+        streak={5}
+        warning={{ key: 'streakWarning.reminder', params: { days: 5 } }}
+      />,
+    );
+
+    expect(screen.getByRole('alert').textContent).toContain('maintain your 5-day streak');
   });
 
   it('applies milestone styles when isStreakMilestone returns true', () => {

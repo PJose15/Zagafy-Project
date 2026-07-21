@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { saveBraindumpTemp } from '@/lib/types/braindump';
 
 const AUTO_SAVE_INTERVAL = 10000; // 10 seconds
@@ -37,6 +38,9 @@ export function isSpeechRecognitionSupported(): boolean {
 }
 
 export function useSpeechRecognition(): UseSpeechRecognitionReturn {
+  // i18n: errors are translated at the source (hooks-use-useTranslations
+  // pattern) so consumers can render `error` directly in the active locale.
+  const t = useTranslations('flow.speechErrors');
   const [isSupported] = useState(() => getSpeechRecognition() !== null);
   const [permissionState, setPermissionState] = useState<'prompt' | 'granted' | 'denied' | 'unknown'>('unknown');
   const [isRecording, setIsRecording] = useState(false);
@@ -124,16 +128,16 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       if (event.error === 'not-allowed') {
         setPermissionState('denied');
-        setError('Microphone access denied. Please allow microphone access in your browser settings.');
+        setError(t('micDenied'));
         setIsRecording(false);
         setIsPaused(false);
         recognitionRef.current = null;
         clearTimers();
       } else if (event.error === 'no-speech') {
         // Not fatal — keep going
-        setError('No speech detected — keep going or stop.');
+        setError(t('noSpeech'));
       } else if (event.error !== 'aborted') {
-        setError(`Speech recognition error: ${event.error}`);
+        setError(t('generic', { error: event.error }));
       }
     };
 
@@ -149,11 +153,11 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     };
 
     return recognition;
-  }, [clearTimers]);
+  }, [clearTimers, t]);
 
   const start = useCallback(async () => {
     if (!isSupported) {
-      setError('Speech recognition is not supported in this browser.');
+      setError(t('unsupported'));
       return;
     }
 
@@ -162,11 +166,11 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     // Request microphone permission
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
+      stream.getTracks().forEach(track => track.stop());
       setPermissionState('granted');
     } catch {
       setPermissionState('denied');
-      setError('Microphone access denied. Please allow microphone access in your browser settings.');
+      setError(t('micDenied'));
       return;
     }
 
@@ -181,11 +185,11 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     try {
       recognition.start();
     } catch {
-      setError('Failed to start speech recognition.');
+      setError(t('startFailed'));
       setIsRecording(false);
       clearTimers();
     }
-  }, [isSupported, language, createRecognition, startTimers, clearTimers]);
+  }, [isSupported, language, createRecognition, startTimers, clearTimers, t]);
 
   const stop = useCallback(() => {
     if (recognitionRef.current) {
@@ -218,9 +222,9 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     try {
       recognition.start();
     } catch {
-      setError('Failed to resume speech recognition.');
+      setError(t('resumeFailed'));
     }
-  }, [isRecording, isPaused, language, createRecognition]);
+  }, [isRecording, isPaused, language, createRecognition, t]);
 
   const setLanguage = useCallback((lang: string) => {
     setLanguageState(lang);

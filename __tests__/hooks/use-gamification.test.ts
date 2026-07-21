@@ -206,8 +206,9 @@ describe('useGamification', () => {
 
   it('exposes streakWarning (null for fresh state)', () => {
     const { result } = renderHook(() => useGamification(), { wrapper });
-    // With default (no streak), warning should be null or a string
-    expect(typeof result.current.streakWarning === 'string' || result.current.streakWarning === null).toBe(true);
+    // With default (no streak), warning should be null or an i18n code object
+    const w = result.current.streakWarning;
+    expect(w === null || (typeof w === 'object' && typeof w.key === 'string')).toBe(true);
   });
 
   // ── Branch coverage: cross-tab storage sync ──

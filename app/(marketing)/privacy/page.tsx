@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { PrivacyContent } from '../_components/privacy-content';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy -- Zagafy',
+  title: 'Privacy Policy — Zagafy',
   description: 'How Zagafy handles your data, manuscripts, and privacy.',
 };
 

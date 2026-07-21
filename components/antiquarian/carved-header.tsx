@@ -18,7 +18,7 @@ export function CarvedHeader({ title, subtitle, actions }: CarvedHeaderProps) {
           {title}
         </h1>
         {subtitle && (
-          <p className="text-sepia-400 mt-2 text-[15px] leading-relaxed font-serif italic">{subtitle}</p>
+          <p className="text-sepia-300 mt-2 text-[15px] leading-relaxed font-serif italic">{subtitle}</p>
         )}
         {/* Brass rule ending in an engraved sprig — the ornament, not an icon */}
         <div className="mt-3 flex items-center">

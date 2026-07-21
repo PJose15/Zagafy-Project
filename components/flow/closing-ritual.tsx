@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { X } from 'lucide-react';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 
 interface ClosingRitualStats {
   wordsWritten: number;
@@ -54,6 +55,10 @@ function formatDuration(ms: number, t: Translator): string {
 
 export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
   const t = useTranslations('flow.closingRitual');
+  const locale = useLocale();
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Scroll lock + Escape + Tab trap + focus restore — mirrors NoRetreatEndModal.
+  useModalHygiene(panelRef, onClose, open);
   const fallbackQuestions = useMemo(
     () => [t('q1'), t('q2'), t('q3'), t('q4'), t('q5')],
     [t]
@@ -84,18 +89,29 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
         body: JSON.stringify({
           storyContext: stats.content.slice(-500),
           wordsWritten: stats.wordsWritten,
+          // Pin the AI answer to the UI locale ('en' | 'es').
+          language: locale,
         }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.question) return { q: data.question, degraded: data.degraded === true };
+        if (data.degraded === true) {
+          // Degraded: the server's canned question is English-only — swap in
+          // the locale-correct catalog fallback (server picks the index).
+          const idx = typeof data.fallbackIndex === 'number' ? data.fallbackIndex : -1;
+          const fallback =
+            fallbackQuestions[idx] ??
+            fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
+          return { q: fallback, degraded: true };
+        }
+        if (data.question) return { q: data.question, degraded: false };
       }
     } catch {
       // fallback
     }
     const fallback = fallbackQuestions[Math.floor(Math.random() * fallbackQuestions.length)];
     return { q: fallback, degraded: true };
-  }, [stats.content, stats.wordsWritten, fallbackQuestions]);
+  }, [stats.content, stats.wordsWritten, fallbackQuestions, locale]);
 
   useEffect(() => {
     if (!open) return;
@@ -126,10 +142,14 @@ export function ClosingRitual({ open, stats, onClose }: ClosingRitualProps) {
   return (
     <AnimatePresence>
       <motion.div
+        ref={panelRef}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[300] bg-mahogany-950 flex items-center justify-center p-8"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('sessionComplete')}
       >
         <button
           onClick={onClose}

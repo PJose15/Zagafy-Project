@@ -28,14 +28,26 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
   const [secondsLeft, setSecondsLeft] = useState(() =>
     Math.max(0, Math.floor((computedEnd - Date.now()) / 1000)),
   );
+  // Derived reset when a NEW sprint arrives without a remount (React 19
+  // adjust-state-during-render pattern, as in ClosingRitual). Render must stay
+  // pure (no Date.now()), so reset to the full duration — the wall-clock
+  // interval below corrects it within a second.
+  const [prevSprintId, setPrevSprintId] = useState(sprint.id);
+  if (prevSprintId !== sprint.id) {
+    setPrevSprintId(sprint.id);
+    setSecondsLeft(Math.max(0, sprint.durationMinutes * 60));
+  }
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wordsWritten = Math.max(0, currentWords - sprint.wordsStart);
   const timeProgress = sprint.durationMinutes * 60 > 0
     ? ((sprint.durationMinutes * 60 - secondsLeft) / (sprint.durationMinutes * 60)) * 100
     : 100;
 
-  // Compute from wall clock to avoid drift on tab backgrounding
+  // Compute from wall clock to avoid drift on tab backgrounding. Keyed on the
+  // sprint identity + end time so a NEW sprint arriving without a remount
+  // restarts the (possibly self-cleared) interval and re-arms the end guard.
   useEffect(() => {
+    autoEndedRef.current = false;
     intervalRef.current = setInterval(() => {
       const remaining = Math.max(0, Math.floor((endTimeMs.current - Date.now()) / 1000));
       setSecondsLeft(remaining);
@@ -46,7 +58,7 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [sprint.id, computedEnd]);
 
   // Auto-end when timer reaches 0
   useEffect(() => {
@@ -92,6 +104,12 @@ export function SprintTimer({ sprint, currentWords, onEnd, onAbandon }: SprintTi
           </span>
         </ProgressRing>
       </motion.div>
+      {/* Polite remaining-time announcements on minute boundaries only — the
+          visible per-second timer stays aria-live off (role=timer default) so
+          screen readers aren't flooded every tick. */}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {t('minutesLeftAria', { count: minutes })}
+      </span>
 
       <div className="text-center space-y-1">
         <h3 className="text-lg font-serif font-semibold text-sepia-800">{tSprints(`theme.${sprint.theme}.name`)}</h3>

@@ -23,6 +23,25 @@ export function QuestCard({ quest, onComplete }: QuestCardProps) {
   const t = useTranslations('gamification');
   const Icon = questIcons[quest.type] ?? BookOpen; // M9-adjacent: fallback for unknown type
   const isCompleted = quest.status === 'completed';
+
+  // i18n: quests persist a stable templateId + raw story params; translate at
+  // render so a locale switch retranslates already-stored quests. Quests saved
+  // before this field existed fall back to their persisted English strings.
+  let questTitle = quest.title;
+  let questDescription = quest.description;
+  if (quest.templateId) {
+    const params = {
+      name: quest.params?.name ?? t('quest.defaults.character'),
+      conflict: quest.params?.conflict ?? t('quest.defaults.conflict'),
+      location: quest.params?.location ?? t('quest.defaults.location'),
+    };
+    try {
+      questTitle = t(`quest.${quest.templateId}.title`, params);
+      questDescription = t(`quest.${quest.templateId}.description`, params);
+    } catch {
+      // Unknown template id (future/corrupted blob) — keep stored fallback.
+    }
+  }
   const [completing, setCompleting] = useState(false);
   const [showDone, setShowDone] = useState(false);
 
@@ -80,7 +99,7 @@ export function QuestCard({ quest, onComplete }: QuestCardProps) {
           </div>
           <h4 className="text-sm font-medium text-sepia-800 mt-0.5">
             <span className="relative inline-block">
-              {quest.title}
+              {questTitle}
               {/* M21: a line is ruled through the finished quest */}
               {isCompleted && (
                 <motion.span
@@ -93,7 +112,7 @@ export function QuestCard({ quest, onComplete }: QuestCardProps) {
               )}
             </span>
           </h4>
-          <p className="text-xs text-sepia-600 mt-1 leading-relaxed">{quest.description}</p>
+          <p className="text-xs text-sepia-600 mt-1 leading-relaxed">{questDescription}</p>
           {!isCompleted && (
             <BrassButton
               size="sm"
