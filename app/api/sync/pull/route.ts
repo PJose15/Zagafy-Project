@@ -7,6 +7,8 @@ import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { getStoryAccess } from '@/lib/collab';
+import { getLimits } from '@/lib/billing';
+import { getUserPlan } from '@/lib/get-user-plan';
 
 export const runtime = 'nodejs';
 
@@ -67,6 +69,20 @@ export async function GET(req: NextRequest) {
         where: eq(schema.stories.ownerId, userId),
         orderBy: (s, { desc }) => [desc(s.updatedAt)],
       });
+    }
+
+    // Plan gate: cloud sync is a paid feature. For SHARED stories the story
+    // OWNER's plan governs (the owner's plan pays for the story); with no
+    // story resolved, the caller's own plan decides.
+    const plan = await getUserPlan(story ? story.ownerId : userId);
+    if (!getLimits(plan).cloudSync) {
+      return err(
+        'forbidden',
+        'Cloud sync requires a paid plan. Upgrade to sync this story across devices.',
+        403,
+        undefined,
+        { requestId },
+      );
     }
 
     if (!story) {

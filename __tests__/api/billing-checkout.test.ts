@@ -11,6 +11,11 @@ vi.mock('@/lib/auth', () => ({
   isAuthEnabled: () => true,
 }));
 
+// Always allow through the rate limiter.
+vi.mock('@/lib/rate-limit', () => ({
+  rateLimit: vi.fn().mockResolvedValue(null),
+}));
+
 // Mock Stripe
 const mockCheckoutCreate = vi.fn();
 const mockCustomerCreate = vi.fn();
@@ -128,10 +133,41 @@ describe('POST /api/billing/checkout', () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.url).toBe('https://checkout.stripe.com/session/cs_test_123');
-    expect(mockCustomerCreate).toHaveBeenCalledWith({
-      email: 'pj@example.com',
-      metadata: { userId: 'user_abc' },
+    // Idempotency key pins concurrent creates for one user to one customer.
+    expect(mockCustomerCreate).toHaveBeenCalledWith(
+      {
+        email: 'pj@example.com',
+        metadata: { userId: 'user_abc' },
+      },
+      { idempotencyKey: 'customer-create-user_abc' },
+    );
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ customer: 'cus_new123' }),
+    );
+    // Fresh id was stored on the user row.
+    expect(mockUpdateSet).toHaveBeenCalledWith({ stripeCustomerId: 'cus_new123' });
+  });
+
+  it('prefers a concurrently-stored customer id over the one it just created', async () => {
+    // First select: no customer yet. Re-select after create: another request
+    // won the race and already stored cus_winner.
+    mockSelectLimit
+      .mockResolvedValueOnce([{ stripeCustomerId: null, email: 'pj@example.com' }])
+      .mockResolvedValueOnce([{ stripeCustomerId: 'cus_winner' }]);
+    mockCustomerCreate.mockResolvedValue({ id: 'cus_loser' });
+    mockCheckoutCreate.mockResolvedValue({
+      id: 'cs_test_789',
+      url: 'https://checkout.stripe.com/session/cs_test_789',
     });
+
+    const { POST } = await import('@/app/api/billing/checkout/route');
+    const res = await POST(makeRequest({ plan: 'writer' }));
+    expect(res.status).toBe(200);
+    expect(mockCheckoutCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ customer: 'cus_winner' }),
+    );
+    // The losing create result is NOT written over the stored id.
+    expect(mockUpdateSet).not.toHaveBeenCalled();
   });
 
   it('reuses existing Stripe customer ID', async () => {

@@ -236,13 +236,15 @@ describe('POST /api/extract-world-bible', () => {
     expect(callArg.config.thinkingConfig).toEqual({ thinkingBudget: 0 });
   });
 
-  it('surfaces underlying error message from thrown errors', async () => {
-    mockGenerateContent.mockRejectedValue(new Error('Quota exceeded for project'));
+  it('returns a generic message on thrown errors (no upstream detail leak)', async () => {
+    mockGenerateContent.mockRejectedValue(new Error('API key invalid for project internal-prod-1234'));
 
     const res = await POST(
       makeRequest({ chapters: [{ title: 'Ch1', content: 'Text.' }] }),
     );
+    expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toMatch(/quota exceeded/i);
+    expect(body.error).toBe('Extraction failed. Please try again.');
+    expect(body.error).not.toMatch(/internal-prod-1234/);
   });
 });

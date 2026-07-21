@@ -7,6 +7,8 @@ import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { getStoryAccess } from '@/lib/collab';
+import { getLimits } from '@/lib/billing';
+import { getUserPlan } from '@/lib/get-user-plan';
 
 export const runtime = 'nodejs';
 
@@ -61,16 +63,41 @@ export async function POST(req: NextRequest) {
       where: eq(schema.users.email, email),
     });
     if (!target) {
+      // Deliberately generic: a distinct "no account for that email" response
+      // would let any story owner probe which email addresses have Zagafy
+      // accounts. Same code/status regardless of why the invite failed.
+      log.info('collaborator invite failed: no matching account', { storyId });
       return err(
-        'user_not_found',
-        'No Zagafy account exists for that email. Ask them to sign up first, then invite them again.',
-        404,
+        'invite_failed',
+        "That invite couldn't be completed. Double-check the email address — the recipient needs a Zagafy account before they can be added.",
+        400,
         undefined,
         { requestId },
       );
     }
     if (target.id === userId) {
       return err('validation_failed', 'You already own this story — no need to share it with yourself', 400, undefined, { requestId });
+    }
+
+    // Plan cap: the OWNER's plan governs how many collaborators a story may
+    // have (the caller is the owner here — access === 'owner' above).
+    // Re-inviting an existing collaborator (role change) never counts anew.
+    const existing = await db().query.storyCollaborators.findMany({
+      where: eq(schema.storyCollaborators.storyId, storyId),
+      columns: { userId: true },
+    });
+    const alreadyCollaborator = existing.some((c) => c.userId === target.id);
+    const maxCollaborators = getLimits(await getUserPlan(userId)).maxCollaborators;
+    if (!alreadyCollaborator && existing.length >= maxCollaborators) {
+      return err(
+        'forbidden',
+        maxCollaborators === 0
+          ? 'Sharing stories with collaborators requires the Author or Studio plan.'
+          : `Your plan allows up to ${maxCollaborators} collaborator${maxCollaborators === 1 ? '' : 's'} per story. Upgrade to add more.`,
+        403,
+        undefined,
+        { requestId },
+      );
     }
 
     await db()

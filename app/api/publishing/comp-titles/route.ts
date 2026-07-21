@@ -2,12 +2,15 @@ import { NextRequest } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { enforceAiQuota } from '@/lib/ai-quota';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
-import { ok, err, makeRequestId } from '@/lib/api-response';
+import { getErrorStatus } from '@/lib/api-error';
+import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { withRetry } from '@/lib/ai/retry';
 import { buildLocaleBlock } from '@/lib/prompts/locale';
 import { safeParseGeminiResponse } from '@/lib/ai/safe-json-parse';
+import { validatePublishingInput, shortField } from '@/lib/publishing-validation';
 
 interface CompTitle {
   title: string;
@@ -26,11 +29,35 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
+  const quotaResponse = await enforceAiQuota(authResult, { requestId });
+  if (quotaResponse) return quotaResponse;
+
   try {
-    const { title, genre, tones, themes, language } = await req.json();
-    if (!title || !genre) {
-      return err('validation_failed', 'Missing required fields: title, genre', 400);
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return err('validation_failed', 'Invalid JSON body', 400, undefined, { requestId });
     }
+    const invalid = validatePublishingInput(
+      body,
+      [
+        shortField('title', true),
+        shortField('genre', true),
+        shortField('tones'),
+        shortField('themes'),
+        shortField('language'),
+      ],
+      { requestId },
+    );
+    if (invalid) return invalid;
+    const { title, genre, tones, themes, language } = body as {
+      title: string;
+      genre: string;
+      tones?: string;
+      themes?: string;
+      language?: string;
+    };
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -104,6 +131,7 @@ Respond in ${lang} for the rationale text.`;
     return ok({ compTitles });
   } catch (error: unknown) {
     log.error('Comp titles error', error);
-    return err('internal_error', 'Failed to generate comp titles', 500);
+    const status = getErrorStatus(error);
+    return err(statusToCode(status), 'Failed to generate comp titles', status);
   }
 }

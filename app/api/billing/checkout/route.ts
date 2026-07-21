@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 import { stripe, isStripeConfigured } from '@/lib/stripe';
 import { db, isDatabaseConfigured } from '@/db/client';
 import { users } from '@/db/schema';
@@ -26,6 +27,9 @@ export async function POST(req: NextRequest) {
 
   const auth = await requireCloudUser();
   if (isAuthError(auth)) return auth;
+
+  const limited = await rateLimit(req, { maxRequests: 10, windowMs: 60_000 });
+  if (limited) return limited;
 
   if (!isStripeConfigured()) {
     log.error('STRIPE_SECRET_KEY not configured');
@@ -75,15 +79,32 @@ export async function POST(req: NextRequest) {
     let customerId = user.stripeCustomerId;
 
     if (!customerId) {
-      const customer = await stripe().customers.create({
-        email: user.email,
-        metadata: { userId: auth.userId },
-      });
-      customerId = customer.id;
-      await db()
-        .update(users)
-        .set({ stripeCustomerId: customerId })
-        .where(eq(users.id, auth.userId));
+      // Idempotency key pins concurrent creates for the same user to one
+      // Stripe customer object (Stripe replays the original response).
+      const customer = await stripe().customers.create(
+        {
+          email: user.email,
+          metadata: { userId: auth.userId },
+        },
+        { idempotencyKey: `customer-create-${auth.userId}` },
+      );
+      // Re-check the user row: if a concurrent request already stored a
+      // customer id, prefer it so the account keeps a single customer even
+      // when the idempotency window has expired.
+      const [fresh] = await db()
+        .select({ stripeCustomerId: users.stripeCustomerId })
+        .from(users)
+        .where(eq(users.id, auth.userId))
+        .limit(1);
+      if (fresh?.stripeCustomerId) {
+        customerId = fresh.stripeCustomerId;
+      } else {
+        customerId = customer.id;
+        await db()
+          .update(users)
+          .set({ stripeCustomerId: customerId })
+          .where(eq(users.id, auth.userId));
+      }
     }
 
     const appUrl = resolveAppUrl();

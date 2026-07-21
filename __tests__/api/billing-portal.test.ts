@@ -11,6 +11,11 @@ vi.mock('@/lib/auth', () => ({
   isAuthEnabled: () => true,
 }));
 
+// Always allow through the rate limiter.
+vi.mock('@/lib/rate-limit', () => ({
+  rateLimit: vi.fn().mockResolvedValue(null),
+}));
+
 // Mock Stripe
 const mockPortalCreate = vi.fn();
 vi.mock('@/lib/stripe', () => ({

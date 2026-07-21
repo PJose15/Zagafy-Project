@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { enforceAiQuota } from '@/lib/ai-quota';
 import { getErrorStatus } from '@/lib/api-error';
 import { err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
@@ -118,6 +119,12 @@ export async function POST(req: NextRequest) {
 
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
+
+  // Only the main chat turn is metered — the auxiliary state/insight/
+  // contradiction/memory routes are fire-and-forget sidecars of this turn
+  // and deliberately do NOT count against the monthly AI quota.
+  const quotaResponse = await enforceAiQuota(authResult, { requestId });
+  if (quotaResponse) return quotaResponse;
 
   try {
     const body = await req.json();

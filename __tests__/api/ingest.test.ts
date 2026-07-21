@@ -169,6 +169,16 @@ describe('POST /api/ingest', () => {
     expect(body.fileParsingStatus).toHaveLength(1);
     expect(body.fileParsingStatus[0].status).toBe('success');
     expect(body.extractedData.project.title).toBe('Test');
+    expect(body.chunkStatus).toEqual([{ chunkIndex: 1, status: 'ok' }]);
+  });
+
+  it('disables Gemini thinking (thinkingBudget: 0) for extraction calls', async () => {
+    mockGenerateContent.mockResolvedValue(mockSuccessResponse(makeExtractedData()));
+
+    await POST(makeFormRequest([{ name: 'manuscript.txt', content: 'Chapter 1\nText.' }]));
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+    const callArg = mockGenerateContent.mock.calls[0][0];
+    expect(callArg.config.thinkingConfig).toEqual({ thinkingBudget: 0 });
   });
 
   it('returns 500 when GEMINI_API_KEY is not set', async () => {
@@ -550,6 +560,48 @@ describe('POST /api/ingest', () => {
 
       const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
       expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.chunkStatus).toEqual([
+        { chunkIndex: 1, status: 'skipped', reason: 'empty' },
+        { chunkIndex: 2, status: 'ok' },
+      ]);
+    });
+
+    it('reports a MAX_TOKENS chunk as skipped with the distinct "truncated" reason', async () => {
+      mockGenerateContent
+        .mockResolvedValueOnce({
+          candidates: [{ finishReason: 'MAX_TOKENS' }],
+          text: '{"chapters": [{"chapter_id": "ch-1", "title": "Trunc',
+        })
+        .mockResolvedValueOnce(mockSuccessResponse(makeExtractedData()));
+
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.chunkStatus).toEqual([
+        { chunkIndex: 1, status: 'skipped', reason: 'truncated' },
+        { chunkIndex: 2, status: 'ok' },
+      ]);
+    });
+
+    it('reports safety-blocked and invalid-JSON chunks with their own reasons', async () => {
+      mockGenerateContent
+        .mockResolvedValueOnce({
+          candidates: [{ finishReason: 'SAFETY' }],
+          text: null,
+        })
+        .mockResolvedValueOnce({
+          candidates: [{ finishReason: 'STOP' }],
+          text: 'bad json',
+        });
+
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      expect(res.status).toBe(502);
+      const body = await res.json();
+      expect(body.details.chunkStatus).toEqual([
+        { chunkIndex: 1, status: 'skipped', reason: 'safety' },
+        { chunkIndex: 2, status: 'skipped', reason: 'invalid-json' },
+      ]);
     });
 
     it('returns 502 when all chunks fail', async () => {
@@ -586,7 +638,9 @@ describe('POST /api/ingest', () => {
       const body = await res.json();
       const pdfStatus = body.fileParsingStatus.find((f: { name: string }) => f.name === 'bad.pdf');
       expect(pdfStatus.status).toBe('failed');
-      expect(pdfStatus.error).toBe('Corrupt PDF');
+      // Generic reason only — the raw parser message must not leak to clients.
+      expect(pdfStatus.error).toBe('Could not read this file. It may be corrupted or in an unsupported format.');
+      expect(pdfStatus.error).not.toMatch(/Corrupt PDF/);
     });
 
     it('handles mixed files: one fails, one succeeds → 200 with partial status', async () => {

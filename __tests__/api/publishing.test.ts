@@ -8,8 +8,14 @@ vi.mock('@/lib/rate-limit', () => ({
 
 // requireUser returns a local user (auth-off); never an error in tests.
 vi.mock('@/lib/auth', () => ({
-  requireUser: vi.fn().mockResolvedValue({ id: 'local-user' }),
+  requireUser: vi.fn().mockResolvedValue({ userId: 'local-user', embedMode: false }),
   isAuthError: vi.fn().mockReturnValue(false),
+}));
+
+// Monthly AI quota — allowed by default; the quota test flips it to a 429.
+const mockEnforceAiQuota = vi.fn(async (): Promise<Response | null> => null);
+vi.mock('@/lib/ai-quota', () => ({
+  enforceAiQuota: mockEnforceAiQuota,
 }));
 
 // Mock @google/genai — routes call ai.models.generateContent.
@@ -45,6 +51,54 @@ beforeEach(() => {
   vi.stubEnv('GEMINI_API_KEY', 'test-key');
   mockGenerateContent.mockReset();
   mockGenerateContent.mockResolvedValue({ text: 'GENERATED OUTPUT' });
+  mockEnforceAiQuota.mockReset();
+  mockEnforceAiQuota.mockResolvedValue(null);
+});
+
+describe('publishing routes — AI quota + input caps', () => {
+  it('returns 429 quota_exceeded when the monthly AI allowance is used up', async () => {
+    const { err } = await import('@/lib/api-response');
+    mockEnforceAiQuota.mockResolvedValue(
+      err('quota_exceeded', 'Your monthly AI allowance is used up.', 429),
+    );
+
+    const res = await blurbPOST(makeRequest('blurb', VALID));
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.code).toBe('quota_exceeded');
+    // The upstream model must never be called once the quota is exhausted.
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized short field (title > 300 chars) with 400', async () => {
+    const res = await blurbPOST(
+      makeRequest('blurb', { ...VALID, title: 'x'.repeat(301) }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('validation_failed');
+    expect(body.error).toMatch(/title/);
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized long field (synopsis > 30KB) with 400', async () => {
+    const res = await marketingPOST(
+      makeRequest('marketing', { ...VALID, synopsis: 'y'.repeat(30_001) }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('validation_failed');
+    expect(body.error).toMatch(/synopsis/);
+  });
+
+  it('rejects a non-string prompt field with 400', async () => {
+    const res = await loglinePOST(
+      makeRequest('logline', { ...VALID, protagonistName: { $inject: true } }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('validation_failed');
+  });
 });
 
 describe('POST /api/publishing/blurb', () => {

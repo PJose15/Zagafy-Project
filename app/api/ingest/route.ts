@@ -4,6 +4,7 @@ import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { enforceAiQuota } from '@/lib/ai-quota';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
 import { getErrorStatus, getErrorMessage } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
@@ -535,6 +536,9 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
+  const quotaResponse = await enforceAiQuota(authResult, { requestId });
+  if (quotaResponse) return quotaResponse;
+
   try {
     let formData: FormData;
     try {
@@ -594,8 +598,17 @@ export async function POST(req: NextRequest) {
         combinedText += `\n\n--- FILE: ${file.name} ---\n\n${text}`;
         fileParsingStatus.push({ name: file.name, status: 'success' });
       } catch (parseErr: unknown) {
-        log.error('Error parsing file', parseErr, { fileName: file.name });
-        fileParsingStatus.push({ name: file.name, status: 'failed', error: getErrorMessage(parseErr, 'Unknown parse error') });
+        // Raw parser message goes to the logs only — library error strings can
+        // leak file internals / dependency details to the client.
+        log.error('Error parsing file', parseErr, {
+          fileName: file.name,
+          rawMessage: getErrorMessage(parseErr, 'Unknown parse error'),
+        });
+        fileParsingStatus.push({
+          name: file.name,
+          status: 'failed',
+          error: 'Could not read this file. It may be corrupted or in an unsupported format.',
+        });
       }
     }
 
@@ -639,6 +652,14 @@ export async function POST(req: NextRequest) {
     log.info('Processing manuscript', { chunkCount: chunks.length, totalChars: combinedText.length });
 
     const results: ExtractedData[] = [];
+    // Per-chunk outcome report, returned to the client so a partially
+    // extracted manuscript is visible (which sections were skipped and why)
+    // instead of silently missing data.
+    const chunkStatus: {
+      chunkIndex: number;
+      status: 'ok' | 'skipped';
+      reason?: 'safety' | 'truncated' | 'empty' | 'invalid-json';
+    }[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
       const chunkLabel = chunks.length > 1
@@ -656,6 +677,10 @@ export async function POST(req: NextRequest) {
           config: {
             systemInstruction: systemPrompt,
             safetySettings: SAFETY_SETTINGS,
+            // Disable "thinking" for gemini-2.5-flash: thinking tokens are
+            // billed against maxOutputTokens and can consume the whole budget,
+            // truncating the JSON body (same rationale as extract-world-bible).
+            thinkingConfig: { thinkingBudget: 0 },
             responseMimeType: 'application/json',
             responseSchema,
           },
@@ -666,12 +691,22 @@ export async function POST(req: NextRequest) {
       const finishReason = candidate?.finishReason;
       if (finishReason === FinishReason.SAFETY || finishReason === FinishReason.PROHIBITED_CONTENT || finishReason === FinishReason.BLOCKLIST) {
         log.warn('Chunk blocked by safety filters; skipping', { chunkIndex: i + 1 });
+        chunkStatus.push({ chunkIndex: i + 1, status: 'skipped', reason: 'safety' });
+        continue;
+      }
+
+      if (finishReason === FinishReason.MAX_TOKENS) {
+        // Output hit the token budget — the JSON is cut off mid-stream and
+        // unusable. Distinct reason so the client can suggest fewer files.
+        log.warn('Chunk output truncated at MAX_TOKENS; skipping', { chunkIndex: i + 1 });
+        chunkStatus.push({ chunkIndex: i + 1, status: 'skipped', reason: 'truncated' });
         continue;
       }
 
       const rawText = response.text;
       if (!rawText) {
         log.warn('Chunk returned empty response; skipping', { chunkIndex: i + 1 });
+        chunkStatus.push({ chunkIndex: i + 1, status: 'skipped', reason: 'empty' });
         continue;
       }
       let parsed;
@@ -682,9 +717,11 @@ export async function POST(req: NextRequest) {
           chunkIndex: i + 1,
           rawTextSample: rawText.slice(0, 500),
         });
+        chunkStatus.push({ chunkIndex: i + 1, status: 'skipped', reason: 'invalid-json' });
         continue;
       }
       results.push(parsed);
+      chunkStatus.push({ chunkIndex: i + 1, status: 'ok' });
       log.info('Chunk done', { chunkIndex: i + 1 });
     }
 
@@ -693,13 +730,13 @@ export async function POST(req: NextRequest) {
         'upstream_unavailable',
         'AI failed to analyze the manuscript. Please try again.',
         502,
-        { fileParsingStatus },
+        { fileParsingStatus, chunkStatus },
       );
     }
 
     const extractedData = results.length === 1 ? results[0] : mergeResults(results);
 
-    return ok({ fileParsingStatus, extractedData });
+    return ok({ fileParsingStatus, chunkStatus, extractedData });
 
   } catch (error: unknown) {
     log.error('Ingestion error', error);

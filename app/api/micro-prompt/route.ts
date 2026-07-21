@@ -4,6 +4,7 @@ import { buildMicroPromptSystemPrompt, buildMicroPromptContent, validateMicroPro
 import { buildVoiceDirective } from '@/lib/heteronym-voice';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { enforceAiQuota } from '@/lib/ai-quota';
 import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
 
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
+
+  const quotaResponse = await enforceAiQuota(authResult, { requestId });
+  if (quotaResponse) return quotaResponse;
 
   try {
     const body = await req.json();

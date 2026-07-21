@@ -265,10 +265,16 @@ export function validateRateLimitConfig(): void {
  */
 export async function rateLimit(
   req: NextRequest,
-  { maxRequests = 10, windowMs = 60000 }: { maxRequests?: number; windowMs?: number } = {},
+  {
+    maxRequests = 10,
+    windowMs = 60000,
+    keyOverride,
+  }: { maxRequests?: number; windowMs?: number; keyOverride?: string } = {},
 ): Promise<NextResponse | null> {
-  const ip = getClientIP(req);
-  const key = `${ip}:${req.nextUrl.pathname}`;
+  // Default key is per-IP per-path; keyOverride lets callers bind the limit to
+  // something stronger (e.g. `user:<id>:export` so a cap follows the account
+  // instead of resetting on every IP rotation).
+  const key = keyOverride ?? `${getClientIP(req)}:${req.nextUrl.pathname}`;
   const mode = getRateLimitMode();
 
   if (mode === 'disabled') {

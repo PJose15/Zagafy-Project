@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { GoogleGenAI, Type, FinishReason } from '@google/genai';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { enforceAiQuota } from '@/lib/ai-quota';
 import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
 import { getErrorStatus, getErrorMessage } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
@@ -19,6 +20,9 @@ export async function POST(req: NextRequest) {
 
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
+
+  const quotaResponse = await enforceAiQuota(authResult, { requestId });
+  if (quotaResponse) return quotaResponse;
 
   try {
     const body = await req.json();
@@ -197,8 +201,10 @@ ${chapterText}
 
     return ok({ sections });
   } catch (error: unknown) {
-    log.error('WorldBible extraction error', error);
+    // Log the raw upstream message; the response stays generic so provider
+    // internals (key issues, project ids, quota details) never leak to clients.
     const rawMessage = getErrorMessage(error, 'Failed to extract worldbuilding');
+    log.error('WorldBible extraction error', error, { rawMessage });
     const isOverloaded = /\b503\b|UNAVAILABLE|overloaded|high demand/i.test(rawMessage);
     if (isOverloaded) {
       return err(
@@ -208,6 +214,6 @@ ${chapterText}
       );
     }
     const status = getErrorStatus(error);
-    return err(statusToCode(status), rawMessage, status);
+    return err(statusToCode(status), 'Extraction failed. Please try again.', status);
   }
 }

@@ -11,7 +11,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
 import { err } from '@/lib/api-response';
 import { planMeetsRequirement } from '@/lib/billing';
-import { getUserPlan } from './get-user-plan';
+import { getUserPlan } from '@/lib/get-user-plan';
 import {
   buildManuscriptModel,
   type ManuscriptModel,
@@ -61,7 +61,13 @@ export async function prepareExport(req: NextRequest): Promise<PrepareResult> {
     unlimited = planMeetsRequirement(plan, 'writer');
   }
   if (!unlimited) {
-    const limited = await rateLimit(req, { maxRequests: FREE_TIER_MAX, windowMs: FREE_TIER_WINDOW_MS });
+    const limited = await rateLimit(req, {
+      maxRequests: FREE_TIER_MAX,
+      windowMs: FREE_TIER_WINDOW_MS,
+      // Key by account, not IP — the free export cap follows the user across
+      // networks and cannot be reset by rotating IPs.
+      keyOverride: `user:${authResult.userId}:export`,
+    });
     if (limited) return { ok: false, response: limited };
   }
 

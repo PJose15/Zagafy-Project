@@ -54,6 +54,14 @@ vi.mock('@/lib/rate-limit', () => ({
   getRateLimitHealth: vi.fn(() => ({ reachable: true })),
 }));
 
+// ─── Plan resolver mock ─────────────────────────────────────────
+// Paid plan by default so the sync plan gate never masks the auth behavior
+// under test here.
+
+vi.mock('@/lib/get-user-plan', () => ({
+  getUserPlan: vi.fn(async () => 'writer'),
+}));
+
 // ─── Gemini mock (for AI routes) ────────────────────────────────
 
 vi.mock('@google/genai', () => ({

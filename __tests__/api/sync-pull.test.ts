@@ -16,6 +16,15 @@ vi.mock('@/lib/logger', () => ({
   })),
 }));
 
+// Plan resolver — default paid plan so pre-existing tests are unaffected;
+// the plan-gating tests flip this to 'free'.
+const mockGetUserPlan = vi.fn(async (_userId?: unknown): Promise<string> => 'writer');
+vi.mock('@/lib/get-user-plan', () => ({
+  // Lazy wrapper: the factory is hoisted above the const initializer, so it
+  // must not touch mockGetUserPlan until call time.
+  getUserPlan: (userId: unknown) => mockGetUserPlan(userId),
+}));
+
 const mockStoryFindFirst = vi.fn(async (): Promise<unknown> => null);
 const mockCollabFindFirst = vi.fn(async (): Promise<unknown> => null);
 const mockChaptersFindMany = vi.fn(async (): Promise<unknown[]> => []);
@@ -84,6 +93,39 @@ describe('GET /api/sync/pull', () => {
     mockSessionsFindMany.mockResolvedValue([]);
     mockChatMessagesFindMany.mockResolvedValue([]);
     mockInsightsFindMany.mockResolvedValue([]);
+    mockGetUserPlan.mockResolvedValue('writer');
+  });
+
+  it('returns 403 with forbidden for a free-plan user (no cloud sync)', async () => {
+    mockGetUserPlan.mockResolvedValue('free');
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'story-1',
+      ownerId: 'user_test',
+      title: 'T',
+      state: {},
+      updatedAt: new Date(),
+    });
+
+    const res = await GET(makeRequest());
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.code).toBe('forbidden');
+    expect(data.message).toMatch(/paid plan/i);
+  });
+
+  it('gates a shared story on the OWNER plan (owner id passed to the plan resolver)', async () => {
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'story-9',
+      ownerId: 'user_owner',
+      title: 'Shared',
+      state: {},
+      updatedAt: new Date(),
+    });
+    mockCollabFindFirst.mockResolvedValue({ storyId: 'story-9', userId: 'user_test', role: 'reader' });
+
+    const res = await GET(makeRequest({ storyId: 'story-9' }));
+    expect(res.status).toBe(200);
+    expect(mockGetUserPlan).toHaveBeenCalledWith('user_owner');
   });
 
   it('returns empty response when no story exists for user', async () => {

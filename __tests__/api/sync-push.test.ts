@@ -16,6 +16,15 @@ vi.mock('@/lib/logger', () => ({
   })),
 }));
 
+// Plan resolver — default paid plan so pre-existing tests are unaffected;
+// the plan-gating tests flip this to 'free'.
+const mockGetUserPlan = vi.fn(async (_userId?: unknown): Promise<string> => 'writer');
+vi.mock('@/lib/get-user-plan', () => ({
+  // Lazy wrapper: the factory is hoisted above the const initializer, so it
+  // must not touch mockGetUserPlan until call time.
+  getUserPlan: (userId: unknown) => mockGetUserPlan(userId),
+}));
+
 // Track calls for assertions
 const mockInsertValues = vi.fn().mockReturnThis();
 const mockOnConflictDoUpdate = vi.fn().mockReturnThis();
@@ -88,6 +97,44 @@ describe('POST /api/sync/push', () => {
     vi.clearAllMocks();
     mockStoryFindFirst.mockResolvedValue({ id: 'story-1', ownerId: 'user_test' });
     mockCollabFindFirst.mockResolvedValue(null);
+    mockGetUserPlan.mockResolvedValue('writer');
+  });
+
+  it('returns 403 with forbidden when the story owner is on the free plan (no cloud sync)', async () => {
+    mockGetUserPlan.mockResolvedValue('free');
+
+    const res = await POST(makeRequest({
+      storyId: 'story-1',
+      storyTitle: 'Test',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Test' }, timestamp: Date.now() },
+      ],
+    }));
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.code).toBe('forbidden');
+    expect(data.message).toMatch(/paid plan/i);
+    // Nothing was written.
+    expect(mockInsertValues).not.toHaveBeenCalled();
+    expect(mockUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('gates a shared story on the OWNER plan, not the collaborator plan', async () => {
+    // Story owned by user_owner (paid check happens against them); the caller
+    // user_test is an editor collaborator.
+    mockStoryFindFirst.mockResolvedValue({ id: 'story-1', ownerId: 'user_owner' });
+    mockCollabFindFirst.mockResolvedValue({ storyId: 'story-1', userId: 'user_test', role: 'editor' });
+    mockGetUserPlan.mockResolvedValue('writer');
+
+    const res = await POST(makeRequest({
+      storyId: 'story-1',
+      storyTitle: 'Test',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Test' }, timestamp: Date.now() },
+      ],
+    }));
+    expect(res.status).toBe(200);
+    expect(mockGetUserPlan).toHaveBeenCalledWith('user_owner');
   });
 
   it('returns 400 for invalid JSON body', async () => {
@@ -256,9 +303,11 @@ describe('POST /api/sync/push', () => {
   });
 
   it('first push creates the story with an ownership-guarded upsert', async () => {
-    // getStoryAccess lookup → null, existence check → null, post-upsert
-    // ownership re-check → row owned by the caller.
+    // Plan-gate lookup → null (plan falls back to the caller), getStoryAccess
+    // lookup → null, existence check → null, post-upsert ownership re-check →
+    // row owned by the caller.
     mockStoryFindFirst
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ ownerId: 'user_test' });
@@ -290,9 +339,10 @@ describe('POST /api/sync/push', () => {
   });
 
   it('returns 403 when a first-push id collides with another user\'s story', async () => {
-    // Access lookup and existence check race past a concurrent insert; the
-    // post-upsert re-check reveals the row belongs to someone else.
+    // Plan-gate, access lookup and existence check race past a concurrent
+    // insert; the post-upsert re-check reveals the row belongs to someone else.
     mockStoryFindFirst
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ ownerId: 'user_someone_else' });

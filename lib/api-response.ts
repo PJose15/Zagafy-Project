@@ -15,11 +15,13 @@ import { NextResponse } from 'next/server';
 
 export type ApiErrorCode =
   | 'rate_limited'
+  | 'quota_exceeded'
   | 'validation_failed'
   | 'unauthorized'
   | 'forbidden'
   | 'not_found'
   | 'user_not_found'
+  | 'invite_failed'
   | 'upstream_unavailable'
   | 'upstream_timeout'
   | 'parse_error'

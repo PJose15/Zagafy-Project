@@ -8,6 +8,8 @@ import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { wordCount as lexicalWordCount } from '@/lib/editor/serialization';
 import { getStoryAccess } from '@/lib/collab';
+import { getLimits } from '@/lib/billing';
+import { getUserPlan } from '@/lib/get-user-plan';
 import type { PushRequest, SyncDelta, ConflictRecord } from '@/lib/sync/types';
 
 export const runtime = 'nodejs';
@@ -62,6 +64,26 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Plan gate: cloud sync is a paid feature. For SHARED stories the story
+    // OWNER's plan governs — a collaborator with a free plan may still push to
+    // a paid owner's story, and a paid collaborator cannot sync a free owner's
+    // story. Checked BEFORE the first-push upsert so a free user never creates
+    // a server story row.
+    const storyRow = await db().query.stories.findFirst({
+      where: eq(schema.stories.id, storyId),
+      columns: { ownerId: true },
+    });
+    const plan = await getUserPlan(storyRow?.ownerId ?? userId);
+    if (!getLimits(plan).cloudSync) {
+      return err(
+        'forbidden',
+        'Cloud sync requires a paid plan. Upgrade to sync this story across devices.',
+        403,
+        undefined,
+        { requestId },
+      );
+    }
+
     // Access check FIRST — owner and editor collaborators may push;
     // readers and strangers may not.
     const access = await getStoryAccess(storyId, userId);

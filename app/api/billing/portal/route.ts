@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 import { stripe, isStripeConfigured } from '@/lib/stripe';
 import { db, isDatabaseConfigured } from '@/db/client';
 import { users } from '@/db/schema';
@@ -17,12 +18,15 @@ export const runtime = 'nodejs';
  * subscription, update payment methods, download invoices, or cancel.
  * Returns `{ url }` — the client redirects the browser there.
  */
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   const requestId = makeRequestId();
   const log = createRouteLogger({ endpoint: '/api/billing/portal', requestId });
 
   const auth = await requireCloudUser();
   if (isAuthError(auth)) return auth;
+
+  const limited = await rateLimit(req, { maxRequests: 10, windowMs: 60_000 });
+  if (limited) return limited;
 
   if (!isStripeConfigured()) {
     log.error('STRIPE_SECRET_KEY not configured');

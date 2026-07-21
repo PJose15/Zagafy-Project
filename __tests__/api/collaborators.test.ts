@@ -20,9 +20,19 @@ vi.mock('@/lib/rate-limit', () => ({
   rateLimit: vi.fn().mockResolvedValue(null),
 }));
 
+// Plan resolver — default to studio (5 collaborators) so pre-existing tests
+// are unaffected; individual tests lower the plan to exercise the cap.
+const mockGetUserPlan = vi.fn(async (_userId?: unknown): Promise<string> => 'studio');
+vi.mock('@/lib/get-user-plan', () => ({
+  // Lazy wrapper: the factory is hoisted above the const initializer, so it
+  // must not touch mockGetUserPlan until call time.
+  getUserPlan: (userId: unknown) => mockGetUserPlan(userId),
+}));
+
 // ── Chainable DB mocks ──
 const mockStoryFindFirst = vi.fn(async (): Promise<unknown> => null);
 const mockCollabFindFirst = vi.fn(async (): Promise<unknown> => null);
+const mockCollabFindMany = vi.fn(async (): Promise<unknown[]> => []);
 const mockUserFindFirst = vi.fn(async (): Promise<unknown> => null);
 
 const mockOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
@@ -39,7 +49,7 @@ vi.mock('@/db/client', () => ({
   db: vi.fn(() => ({
     query: {
       stories: { findFirst: mockStoryFindFirst },
-      storyCollaborators: { findFirst: mockCollabFindFirst },
+      storyCollaborators: { findFirst: mockCollabFindFirst, findMany: mockCollabFindMany },
       users: { findFirst: mockUserFindFirst },
     },
     insert: vi.fn(() => ({ values: mockInsertValues })),
@@ -90,8 +100,10 @@ describe('/api/collaborators', () => {
     vi.clearAllMocks();
     mockStoryFindFirst.mockResolvedValue(null);
     mockCollabFindFirst.mockResolvedValue(null);
+    mockCollabFindMany.mockResolvedValue([]);
     mockUserFindFirst.mockResolvedValue(null);
     mockSelectWhere.mockResolvedValue([]);
+    mockGetUserPlan.mockResolvedValue('studio');
   });
 
   // ── POST ──
@@ -123,14 +135,53 @@ describe('/api/collaborators', () => {
       expect(mockInsertValues).not.toHaveBeenCalled();
     });
 
-    it('unknown email returns 404 user_not_found', async () => {
+    it('unknown email returns a generic invite_failed (no account-existence oracle)', async () => {
       mockOwnerAccess();
       mockUserFindFirst.mockResolvedValue(null);
 
       const res = await POST(makeRequest('POST', { storyId: 'story-1', email: 'ghost@test.com', role: 'editor' }));
-      expect(res.status).toBe(404);
+      expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.code).toBe('user_not_found');
+      expect(data.code).toBe('invite_failed');
+      // The message must not confirm or deny that an account exists for the
+      // probed email address.
+      expect(data.message).not.toMatch(/no .*account exists/i);
+      expect(data.message).not.toMatch(/not found/i);
+      expect(mockInsertValues).not.toHaveBeenCalled();
+    });
+
+    it('collaborator cap: 403 when the owner plan limit is reached', async () => {
+      mockOwnerAccess();
+      mockGetUserPlan.mockResolvedValue('author'); // maxCollaborators: 1
+      mockCollabFindMany.mockResolvedValue([{ userId: 'user_existing' }]);
+      mockUserFindFirst.mockResolvedValue({ id: 'user_new', email: 'new@test.com', name: 'New' });
+
+      const res = await POST(makeRequest('POST', { storyId: 'story-1', email: 'new@test.com', role: 'reader' }));
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.code).toBe('forbidden');
+      expect(mockInsertValues).not.toHaveBeenCalled();
+    });
+
+    it('collaborator cap: free plan (0 collaborators) always 403s', async () => {
+      mockOwnerAccess();
+      mockGetUserPlan.mockResolvedValue('free');
+      mockUserFindFirst.mockResolvedValue({ id: 'user_new', email: 'new@test.com', name: 'New' });
+
+      const res = await POST(makeRequest('POST', { storyId: 'story-1', email: 'new@test.com', role: 'reader' }));
+      expect(res.status).toBe(403);
+      expect(mockInsertValues).not.toHaveBeenCalled();
+    });
+
+    it('collaborator cap: re-inviting an existing collaborator at the cap still succeeds (role change)', async () => {
+      mockOwnerAccess();
+      mockGetUserPlan.mockResolvedValue('author'); // maxCollaborators: 1
+      mockCollabFindMany.mockResolvedValue([{ userId: 'user_collab' }]);
+      mockUserFindFirst.mockResolvedValue({ id: 'user_collab', email: 'collab@test.com', name: 'Collab' });
+
+      const res = await POST(makeRequest('POST', { storyId: 'story-1', email: 'collab@test.com', role: 'reader' }));
+      expect(res.status).toBe(200);
+      expect(mockInsertValues).toHaveBeenCalledWith({ storyId: 'story-1', userId: 'user_collab', role: 'reader' });
     });
 
     it('invalid role returns 400', async () => {

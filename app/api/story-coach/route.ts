@@ -3,6 +3,7 @@ import { GoogleGenAI, FinishReason } from '@google/genai';
 import { buildStoryCoachPrompt, buildStoryCoachContent } from '@/lib/prompts/story-coach';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
+import { enforceAiQuota } from '@/lib/ai-quota';
 import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
@@ -23,6 +24,9 @@ export async function POST(req: NextRequest) {
 
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
+
+  const quotaResponse = await enforceAiQuota(authResult, { requestId });
+  if (quotaResponse) return quotaResponse;
 
   try {
     const body = await req.json();
