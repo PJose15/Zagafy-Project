@@ -1,14 +1,17 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import postgres from 'postgres';
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from './schema';
 
 /**
  * Lazy Drizzle client. Reading `db` throws if `DATABASE_URL` is unset, so
  * importing this module is always safe — only call `db()` from code paths
- * that genuinely need Postgres. The Clerk webhook is the only consumer
- * landing in Phase 5.3; full sync wiring arrives in 5.4.
+ * that genuinely need Postgres.
+ *
+ * Driver: postgres-js against the Supabase transaction pooler (PgBouncer).
+ * `prepare: false` is required — transaction-mode pooling can't hold
+ * prepared statements across the pooled connections.
  */
-type DB = NeonHttpDatabase<typeof schema>;
+type DB = PostgresJsDatabase<typeof schema>;
 
 let cached: DB | null = null;
 
@@ -17,10 +20,10 @@ export function db(): DB {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error(
-      'DATABASE_URL is not set. See docs/NEON_SETUP.md for the Neon signup runbook.',
+      'DATABASE_URL is not set. Point it at a Postgres connection string (Supabase pooler or equivalent).',
     );
   }
-  const sql = neon(url);
+  const sql = postgres(url, { prepare: false, max: 1 });
   cached = drizzle(sql, { schema });
   return cached;
 }
