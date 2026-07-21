@@ -27,9 +27,13 @@ export default function ReaderPage() {
   const [issues, setIssues] = useState<ProseIssue[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzedAt, setAnalyzedAt] = useState<number | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const chapters = state.chapters.filter(ch => ch.canonStatus !== 'discarded');
-  const chapter = chapters[chapterIndex];
+  // Clamp: a cross-tab delete can shrink the list below the current index
+  // while this page is mounted.
+  const safeChapterIndex = Math.max(0, Math.min(chapterIndex, chapters.length - 1));
+  const chapter = chapters[safeChapterIndex];
   const chapterId = chapter?.id;
   // CB-07: chapter content is Lexical JSON; the reader views, pagination and
   // prose analysis all operate on plain text. Decode once so issue indices
@@ -61,10 +65,13 @@ export default function ReaderPage() {
   const handleAnalyze = async () => {
     if (!chapter || !plainContent.trim()) return;
     setIsAnalyzing(true);
+    setAnalysisError(null);
     try {
       const result = await getOrAnalyze(chapter.id, plainContent);
       setIssues(result.issues);
       setAnalyzedAt(result.analyzedAt);
+    } catch {
+      setAnalysisError(t('analysisError'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -74,6 +81,7 @@ export default function ReaderPage() {
     setChapterIndex(index);
     setIssues([]);
     setAnalyzedAt(null);
+    setAnalysisError(null);
   };
 
   if (chapters.length === 0) {
@@ -95,7 +103,7 @@ export default function ReaderPage() {
     <ReadingRibbon />
     <ReaderLayout
       chapters={chapters.map(ch => ({ id: ch.id, title: ch.title }))}
-      currentChapterIndex={chapterIndex}
+      currentChapterIndex={safeChapterIndex}
       onChapterChange={handleChapterChange}
       onBack={() => router.push('/manuscript')}
       onAnalyze={handleAnalyze}
@@ -117,6 +125,12 @@ export default function ReaderPage() {
           </button>
         ))}
       </div>
+
+      {analysisError && (
+        <div role="alert" className="mx-auto max-w-2xl px-4 py-3 text-sm text-wax-700">
+          {analysisError}
+        </div>
+      )}
 
       {/* Crossfade between modes and chapters — a soft "page turn" */}
       <AnimatePresence mode="wait" initial={false}>

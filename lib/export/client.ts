@@ -69,7 +69,14 @@ export async function requestManuscriptExport(req: ExportRequest): Promise<Expor
     return { ok: false, message };
   }
 
-  const blob = await res.blob();
+  // A body-stream failure mid-download rejects blob(); report it instead of
+  // letting the rejection escape to the caller.
+  let blob: Blob;
+  try {
+    blob = await res.blob();
+  } catch {
+    return { ok: false, message: 'The download was interrupted. Please try again.' };
+  }
   const filename = filenameFromDisposition(
     res.headers.get('Content-Disposition'),
     `manuscript.${req.format}`,

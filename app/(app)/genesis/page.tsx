@@ -15,6 +15,7 @@ import {
 } from '@/lib/types/genesis';
 import type { GenesisStep, GenesisData, AntagonistType } from '@/lib/types/genesis';
 import { GenesisSummary } from '@/components/genesis/genesis-summary';
+import { useToast } from '@/components/toast';
 import { ParchmentCard, BrassButton, ParchmentInput, ParchmentTextarea } from '@/components/antiquarian';
 import { fadeUp, springs } from '@/lib/animations';
 import { ChevronLeft, ChevronRight, Sparkles, X, UploadCloud } from 'lucide-react';
@@ -25,6 +26,7 @@ export default function GenesisPage() {
   const stepLabel = (step: GenesisStep) => t(`steps.${step}.label`);
   const stepDescription = (step: GenesisStep) => t(`steps.${step}.description`);
   const { state, saveNow } = useStory();
+  const { toast } = useToast();
   const [stepIndex, setStepIndex] = useState(0);
   // Leaf-turn direction: forward turns the page rightward, Back leftward.
   const [turnDirection, setTurnDirection] = useState(1);
@@ -89,12 +91,17 @@ export default function GenesisPage() {
     localStorage.removeItem('zagafy_tour_completed');
     // Persist BEFORE navigating so GenesisGuard sees the saved project and
     // doesn't bounce the dashboard straight back to Genesis (the old race).
+    // Navigate only on success — a failed persist would otherwise land on a
+    // dashboard showing none of the just-entered story.
     try {
       await saveNow(merged);
-    } finally {
-      router.replace('/');
+    } catch {
+      setIsCreating(false);
+      toast(t('saveError'), 'error');
+      return;
     }
-  }, [data, state, saveNow, router]);
+    router.replace('/');
+  }, [data, state, saveNow, router, toast, t]);
 
   const toggleGenre = useCallback((genre: string) => {
     setData(prev => {

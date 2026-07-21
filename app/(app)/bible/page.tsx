@@ -2,7 +2,12 @@
 
 import { useStory } from '@/lib/store';
 import { getPlainText } from '@/lib/editor/serialization';
-import { useState, useCallback } from 'react';
+import {
+  getActiveProjectId,
+  PROJECT_CHANGED,
+  PROJECT_CHANGED_EVENT,
+} from '@/lib/projects/active-project';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import {
@@ -54,6 +59,52 @@ export default function BiblePage() {
   const [extractError, setExtractError] = useState<string | null>(null);
 
   const draftCount = state.world_bible.filter(s => s.canonStatus === 'draft').length;
+
+  // Track the active project id (same-tab DOM event + cross-tab broadcast).
+  // The four form fields above are seeded from state only once, so a project
+  // switch while this page is mounted would otherwise leave the OLD project's
+  // values saveable into the NEW project.
+  const [activeProjectId, setActiveProjectId] = useState(() => getActiveProjectId());
+  useEffect(() => {
+    const sync = () => setActiveProjectId(getActiveProjectId());
+    window.addEventListener(PROJECT_CHANGED_EVENT, sync);
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        channel = new BroadcastChannel('zagafy_sync');
+        channel.addEventListener('message', (e: MessageEvent) => {
+          if (e.data?.type === PROJECT_CHANGED) sync();
+        });
+      } catch {
+        // BroadcastChannel unavailable — same-tab switches still re-seed.
+      }
+    }
+    return () => {
+      window.removeEventListener(PROJECT_CHANGED_EVENT, sync);
+      channel?.close();
+    };
+  }, []);
+
+  // Re-seed the form when the project identity changes — even if dirty, stale
+  // values must never be saveable into the new project. Render-time state
+  // adjustment (not an effect) per the ExportDialog open/prevOpen pattern.
+  // The store hydrates the new project's state asynchronously, so seed once at
+  // switch time and once more when the hydrated state object lands.
+  const [seeded, setSeeded] = useState<{ projectId: string; pendingSince: typeof state | null }>(
+    () => ({ projectId: activeProjectId, pendingSince: null }),
+  );
+  const reseed = seeded.projectId !== activeProjectId
+    ? { projectId: activeProjectId, pendingSince: state }
+    : seeded.pendingSince && seeded.pendingSince !== state
+      ? { projectId: seeded.projectId, pendingSince: null }
+      : null;
+  if (reseed) {
+    setSeeded(reseed);
+    setTitle(state.title);
+    setSynopsis(state.synopsis);
+    setStyleProfile(state.style_profile);
+    setAuthorIntent(state.author_intent);
+  }
 
   useUnsavedChanges(
     title !== state.title ||

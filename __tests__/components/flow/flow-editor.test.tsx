@@ -276,4 +276,45 @@ describe('FlowEditor', () => {
     const prevented = fireEvent.keyDown(textarea, { key: ' ' });
     expect(prevented).toBe(true);
   });
+
+  // ── Select-range-and-type bypass of the destructive-key block ──
+  // initialContent is 'Initial text' (12 chars) → session start offset 12.
+
+  it('blocks printable keys over a selection reaching into pre-session text', async () => {
+    await renderEditor();
+    const textarea = screen.getByPlaceholderText(/start writing/i) as HTMLTextAreaElement;
+    textarea.setSelectionRange(0, 5);
+    const prevented = fireEvent.keyDown(textarea, { key: 'a' });
+    expect(prevented).toBe(false);
+  });
+
+  it('allows printable keys over a selection entirely within session text', async () => {
+    await renderEditor();
+    const textarea = screen.getByPlaceholderText(/start writing/i) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'Initial text plus more' } });
+    textarea.setSelectionRange(13, 17);
+    const prevented = fireEvent.keyDown(textarea, { key: 'a' });
+    expect(prevented).toBe(true);
+  });
+
+  // ── No-Retreat Burn restores the armed snapshot, not a length slice ──
+
+  it('Burn restores the exact session-start snapshot after mid-document edits', async () => {
+    await renderEditor();
+    const textarea = screen.getByPlaceholderText(/start writing/i) as HTMLTextAreaElement;
+
+    // Arm no-retreat with 'Initial text' in the buffer.
+    fireEvent.click(screen.getByLabelText('Enable No-Retreat Mode'));
+
+    // Mid-document insertion breaks the old append-only slice() assumption.
+    fireEvent.change(textarea, { target: { value: 'XX Initial text plus' } });
+
+    // Disarm → end modal → armed Burn (two clicks).
+    fireEvent.click(screen.getByLabelText('Disable No-Retreat Mode'));
+    fireEvent.click(screen.getByText('Burn'));
+    fireEvent.click(screen.getByText('Burn it — I’m sure'));
+
+    expect(textarea.value).toBe('Initial text');
+    expect(mockScheduleAutosave).toHaveBeenCalledWith('Initial text');
+  });
 });

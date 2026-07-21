@@ -62,6 +62,9 @@
     "kbdSend": "enviar",
     "kbdNewline": "nueva línea"
   },
+  "unsavedChanges": {
+    "confirmLeave": "Tienes cambios sin guardar. ¿Salir de esta página y descartarlos?"
+  },
   "settings": {
     "title": "Ajustes",
     "subtitle": "Gestiona los datos y preferencias de tu proyecto.",
@@ -361,6 +364,7 @@
     "back": "Atrás",
     "next": "Siguiente",
     "review": "Revisar",
+    "saveError": "No se pudo guardar tu historia. Inténtalo de nuevo.",
     "steps": {
       "name": {
         "label": "Nombre del Proyecto",
@@ -745,6 +749,7 @@
   },
   "reader": {
     "errorTitle": "Análisis de Lectura",
+    "analysisError": "El análisis de prosa falló. Inténtalo de nuevo.",
     "emptyTitle": "La sala de lectura está en silencio",
     "emptySubtitle": "Cuando tu manuscrito tenga capítulos, quedarán encuadernados aquí para leerlos.",
     "goToManuscript": "Ir al Manuscrito",
@@ -1035,6 +1040,8 @@
     "toastSaveError": "No se pudo guardar la instantánea",
     "toastCorrupted": "La instantánea está dañada; no se puede restaurar.",
     "toastRestored": "Restaurada \"{name}\".",
+    "toastRestoreError": "No se pudo cargar la instantánea. Inténtalo de nuevo.",
+    "toastDeleteError": "No se pudo eliminar la instantánea. Inténtalo de nuevo.",
     "deltaNoun": {
       "chapters": "{count, plural, one {capítulo} other {capítulos}}",
       "words": "palabras",
@@ -1744,7 +1751,8 @@
     "confirmCurrent": "¿Reemplazar {count, plural, one {# aparición} other {# apariciones}} de \"{query}\" en este capítulo?",
     "confirmAll": "¿Reemplazar {count, plural, one {# aparición} other {# apariciones}} de \"{query}\" en {chapters, plural, one {# capítulo} other {# capítulos}}?",
     "confirmChapter": "¿Reemplazar {count, plural, one {# aparición} other {# apariciones}} en \"{title}\"?",
-    "formattingNotice": "{count, plural, one {# coincidencia cruza un límite de formato y se dejó sin cambiar — edítala manualmente.} other {# coincidencias cruzan un límite de formato y se dejaron sin cambiar — edítalas manualmente.}}"
+    "formattingNotice": "{count, plural, one {# coincidencia cruza un límite de formato y se dejó sin cambiar — edítala manualmente.} other {# coincidencias cruzan un límite de formato y se dejaron sin cambiar — edítalas manualmente.}}",
+    "editingExcluded": "El capítulo en edición está excluido del reemplazo — guárdalo primero."
   },
   "manuscriptEditor": {
     "bold": "Negrita",
@@ -1785,7 +1793,8 @@
     "downloadingNote": "Tu {format} se está descargando.",
     "summary": "{chapters, plural, one {# capítulo} other {# capítulos}} · {words, number} palabras",
     "generating": "Generando…",
-    "exportFormat": "Exportar {format}"
+    "exportFormat": "Exportar {format}",
+    "exportError": "La exportación falló a mitad de camino. Inténtalo de nuevo."
   },
   "novelCompletion": {
     "aria": "Ceremonia de completar novela",

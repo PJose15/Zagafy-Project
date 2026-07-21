@@ -133,6 +133,9 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
   const [noRetreatMode, setNoRetreatMode] = useState(false);
   const [noRetreatEndOpen, setNoRetreatEndOpen] = useState(false);
   const sessionStartOffsetRef = useRef<number>(initialContent.length);
+  // Full content snapshot at no-retreat arm time — Burn restores this string.
+  // A plain slice(0, offset) would corrupt text after any mid-document edit.
+  const sessionStartContentRef = useRef<string>(initialContent);
   const noRetreatStartTimeRef = useRef<number>(0);
   const noRetreatStartWordCountRef = useRef<number>(0);
   // Word count when this flow session started (the editor is keyed by chapterId,
@@ -168,6 +171,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     const config = getAdaptiveConfig(session.blockType);
     if (config.noRetreat && !noRetreatMode) {
       sessionStartOffsetRef.current = content.length;
+      sessionStartContentRef.current = content;
       noRetreatStartTimeRef.current = Date.now();
       noRetreatStartWordCountRef.current = wordCount;
       setNoRetreatMode(true);
@@ -305,11 +309,12 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     } else {
       // Turning on — capture session start
       sessionStartOffsetRef.current = content.length;
+      sessionStartContentRef.current = content;
       noRetreatStartTimeRef.current = Date.now();
       noRetreatStartWordCountRef.current = wordCount;
       setNoRetreatMode(true);
     }
-  }, [noRetreatMode, content.length, wordCount]);
+  }, [noRetreatMode, content, wordCount]);
 
   const handleNoRetreatSave = useCallback(() => {
     setNoRetreatMode(false);
@@ -317,13 +322,13 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
   }, []);
 
   const handleNoRetreatBurn = useCallback(() => {
-    // Revert to content at session start
-    const originalContent = content.slice(0, sessionStartOffsetRef.current);
+    // Revert to the exact content snapshotted when the session was armed
+    const originalContent = sessionStartContentRef.current;
     setContent(originalContent);
     scheduleAutosave(originalContent);
     setNoRetreatMode(false);
     setNoRetreatEndOpen(false);
-  }, [content, scheduleAutosave]);
+  }, [scheduleAutosave]);
 
   const genre = state.genre.join(', ');
   const protagonist = state.characters.find(c => c.role === 'protagonist' || c.role === 'Protagonist');
@@ -471,6 +476,22 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
         metricsCollectorRef.current.recordDeletionAttempt();
         return;
       }
+    }
+
+    // Select-range-and-type bypasses the destructive-key block above:
+    // replacing a selection that reaches into pre-session text is deletion
+    // in disguise, so block printable keys over such selections.
+    if (
+      e.key.length === 1 &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey &&
+      e.currentTarget.selectionStart !== e.currentTarget.selectionEnd &&
+      e.currentTarget.selectionStart < sessionStartOffsetRef.current
+    ) {
+      e.preventDefault();
+      metricsCollectorRef.current.recordDeletionAttempt();
+      return;
     }
 
     // Resume writing - clear prompt

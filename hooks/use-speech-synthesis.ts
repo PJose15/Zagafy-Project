@@ -27,6 +27,17 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
   const [rate, setRate] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(0);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  // Guards utterance-callback setState after unmount, and stops the browser
+  // from reading on after the consuming view is gone.
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isSupported) return;
@@ -48,11 +59,11 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
     const utterance = new SpeechSynthesisUtterance(text);
     if (selectedVoice) utterance.voice = selectedVoice;
     utterance.rate = rate;
-    utterance.onstart = () => { setIsSpeaking(true); setIsPaused(false); };
-    utterance.onend = () => { setIsSpeaking(false); setIsPaused(false); setCurrentIndex(0); };
-    utterance.onpause = () => setIsPaused(true);
-    utterance.onresume = () => setIsPaused(false);
-    utterance.onboundary = (e) => { if (e.name === 'word') setCurrentIndex(e.charIndex); };
+    utterance.onstart = () => { if (mountedRef.current) { setIsSpeaking(true); setIsPaused(false); } };
+    utterance.onend = () => { if (mountedRef.current) { setIsSpeaking(false); setIsPaused(false); setCurrentIndex(0); } };
+    utterance.onpause = () => { if (mountedRef.current) setIsPaused(true); };
+    utterance.onresume = () => { if (mountedRef.current) setIsPaused(false); };
+    utterance.onboundary = (e) => { if (mountedRef.current && e.name === 'word') setCurrentIndex(e.charIndex); };
     utteranceRef.current = utterance;
     speechSynthesis.speak(utterance);
   }, [isSupported, selectedVoice, rate]);

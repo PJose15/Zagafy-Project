@@ -124,10 +124,13 @@ export default function SettingsPage() {
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // Reset the input up front so it runs on ALL exit paths — otherwise
+    // re-selecting the same file never fires a change event. The File object
+    // stays readable after the input value is cleared.
+    if (fileInputRef.current) fileInputRef.current.value = '';
     if (!file) return;
     if (file.size > MAX_IMPORT_FILE_BYTES) {
       toast(t('restoreProject.tooLarge', { mb: Math.round(MAX_IMPORT_FILE_BYTES / (1024 * 1024)) }), 'error');
-      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
     readerRef.current?.abort();
@@ -173,7 +176,6 @@ export default function SettingsPage() {
       } catch {
         toast(t('restoreProject.parseError'), 'error');
       }
-      if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
   };

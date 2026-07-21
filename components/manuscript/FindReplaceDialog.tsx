@@ -27,6 +27,12 @@ interface FindReplaceDialogProps {
    *  current-chapter scope option. */
   currentChapterId?: string | null;
   /**
+   * Optional id of a chapter whose replacements must be skipped — the
+   * manuscript page keeps the OPEN chapter's edits in local editForm state,
+   * so a store-level replace there would be erased by the next Save.
+   */
+  excludedChapterId?: string | null;
+  /**
    * Apply edits to chapter content. The callback should perform the
    * StoryState update (typically via useStory().updateField('chapters', ...)).
    */
@@ -40,6 +46,7 @@ export function FindReplaceDialog({
   onClose,
   chapters,
   currentChapterId,
+  excludedChapterId,
   onApplyEdits,
 }: FindReplaceDialogProps) {
   const t = useTranslations('findReplace');
@@ -91,6 +98,18 @@ export function FindReplaceDialog({
     return map;
   }, [matches]);
 
+  // The open chapter's replacements are skipped (its edits live in editForm,
+  // not the store) — count what can actually be replaced.
+  const excludedHasMatches = !!excludedChapterId && grouped.has(excludedChapterId);
+  const replaceableMatchCount = useMemo(
+    () =>
+      excludedChapterId
+        ? matches.reduce((n, m) => (m.chapterId === excludedChapterId ? n : n + 1), 0)
+        : matches.length,
+    [matches, excludedChapterId],
+  );
+  const replaceableChapterCount = excludedHasMatches ? grouped.size - 1 : grouped.size;
+
   // Reset selection on open via the React-19 derived-state idiom so we
   // don't have a stale query carry over between launches.
   const [prevOpen, setPrevOpen] = useState(open);
@@ -108,10 +127,13 @@ export function FindReplaceDialog({
   useModalHygiene(panelRef, onClose, open);
 
   const replaceInChapters = async (
-    targetIds: string[],
+    rawTargetIds: string[],
     confirmMessage: string,
   ) => {
-    if (matches.length === 0 || working || error) return;
+    const targetIds = excludedChapterId
+      ? rawTargetIds.filter(id => id !== excludedChapterId)
+      : rawTargetIds;
+    if (targetIds.length === 0 || matches.length === 0 || working || error) return;
     const ok = await confirm({
       title: t('confirmTitle'),
       message: confirmMessage,
@@ -166,8 +188,8 @@ export function FindReplaceDialog({
     replaceInChapters(
       targets,
       scope === 'current-chapter'
-        ? t('confirmCurrent', { count: matches.length, query })
-        : t('confirmAll', { count: matches.length, query, chapters: grouped.size }),
+        ? t('confirmCurrent', { count: replaceableMatchCount, query })
+        : t('confirmAll', { count: replaceableMatchCount, query, chapters: replaceableChapterCount }),
     );
   };
 
@@ -269,6 +291,16 @@ export function FindReplaceDialog({
                 </div>
               )}
 
+              {excludedHasMatches && (
+                <div
+                  role="status"
+                  className="flex items-start gap-2 text-xs text-brass-800 bg-brass-300/20 border border-brass-400/40 rounded-lg p-2"
+                >
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                  <span>{t('editingExcluded')}</span>
+                </div>
+              )}
+
               {notice && (
                 <div
                   role="status"
@@ -301,7 +333,8 @@ export function FindReplaceDialog({
                     <button
                       type="button"
                       onClick={() => handleReplaceInChapter(chapterId, group.matches.length, group.title)}
-                      disabled={working || !!error}
+                      disabled={working || !!error || chapterId === excludedChapterId}
+                      title={chapterId === excludedChapterId ? t('editingExcluded') : undefined}
                       className="text-xs text-brass-700 hover:text-brass-900 underline disabled:opacity-50"
                     >
                       {t('replaceInChapter')}
@@ -341,7 +374,7 @@ export function FindReplaceDialog({
                   size="sm"
                   icon={<Replace size={14} />}
                   onClick={handleReplaceAll}
-                  disabled={matches.length === 0 || working || !!error}
+                  disabled={replaceableMatchCount === 0 || working || !!error}
                 >
                   {t('replaceAll')}
                 </InkStampButton>

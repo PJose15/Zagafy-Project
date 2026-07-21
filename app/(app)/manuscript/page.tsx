@@ -177,6 +177,28 @@ export default function ManuscriptPage() {
     return () => window.removeEventListener('keydown', handle);
   }, [editingId]);
 
+  // Navigating away mid-creation (without Cancel) would leave a permanently
+  // empty "Chapter N" behind — drop a never-saved new chapter on unmount.
+  // Latest values live in refs; the store copy stays untouched until Save,
+  // so a non-empty content means something else wrote it and we keep it.
+  const isNewItemRef = useRef(false);
+  const editingIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    isNewItemRef.current = isNewItem;
+    editingIdRef.current = editingId;
+  });
+  useEffect(() => {
+    return () => {
+      const id = editingIdRef.current;
+      if (!isNewItemRef.current || !id) return;
+      const ghost = chaptersRef.current.find((c) => c.id === id);
+      if (ghost && !getPlainText(ghost.content).trim()) {
+        updateField('chapters', chaptersRef.current.filter((c) => c.id !== id));
+      }
+    };
+    // updateField is stable (useCallback([]) in the store).
+  }, [updateField]);
+
   const handleCancel = () => {
     if (isNewItem && editingId) {
       updateField('chapters', state.chapters.filter(c => c.id !== editingId));
@@ -293,6 +315,8 @@ export default function ManuscriptPage() {
         const active = document.activeElement;
         const tag = active?.tagName.toLowerCase();
         if (tag === 'input' || tag === 'textarea') return;
+        // The Lexical editor is a contenteditable div, not an input/textarea.
+        if (active?.closest('[contenteditable="true"]')) return;
         e.preventDefault();
         setFindOpen(true);
       }
@@ -530,6 +554,7 @@ export default function ManuscriptPage() {
         onClose={() => setFindOpen(false)}
         chapters={state.chapters}
         currentChapterId={editingId}
+        excludedChapterId={editingId}
         onApplyEdits={handleFindReplaceApply}
       />
     </div>

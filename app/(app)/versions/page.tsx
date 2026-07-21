@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { springs, strikeFade, strikeLine } from '@/lib/animations';
 import { Save, RotateCcw, Trash2 } from 'lucide-react';
-import { useStory } from '@/lib/store';
+import { useStory, defaultState } from '@/lib/store';
 import {
   createSnapshot,
   listSnapshots,
@@ -87,7 +87,13 @@ export default function VersionsPage() {
   };
 
   const handleRestore = async (snap: SnapshotMetadata) => {
-    const full = await getSnapshot(snap.id);
+    let full: Awaited<ReturnType<typeof getSnapshot>>;
+    try {
+      full = await getSnapshot(snap.id);
+    } catch {
+      toast(t('toastRestoreError'), 'error');
+      return;
+    }
     if (!full) {
       toast(t('toastCorrupted'), 'error');
       return;
@@ -116,7 +122,10 @@ export default function VersionsPage() {
     });
     if (!ok) return;
 
-    setState(full.payload);
+    // Spread over defaultState so snapshots taken before newer StoryState
+    // fields existed (e.g. author_name, world_bible) restore with defaults
+    // instead of leaving those fields undefined until the next reload.
+    setState({ ...defaultState, ...full.payload });
     toast(t('toastRestored', { name: snap.name }), 'success');
   };
 
@@ -128,8 +137,12 @@ export default function VersionsPage() {
       variant: 'danger',
     });
     if (!ok) return;
-    await deleteSnapshot(snap.id);
-    await refresh();
+    try {
+      await deleteSnapshot(snap.id);
+      await refresh();
+    } catch {
+      toast(t('toastDeleteError'), 'error');
+    }
   };
 
   return (

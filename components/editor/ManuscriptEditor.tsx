@@ -15,6 +15,7 @@ import {
   KEY_DOWN_COMMAND,
   KEY_TAB_COMMAND,
   type EditorState,
+  type ElementNode,
   type LexicalEditor,
   type LexicalNode,
   type SerializedEditorState,
@@ -112,6 +113,44 @@ function buildInitialConfig(content: string, readOnly: boolean) {
 
 // ─── Toolbar Plugin ───
 
+/**
+ * No QuoteNode is registered in this editor config, so the block-quote
+ * convention is a "> " text prefix (styled via CSS). Prefix each top-level
+ * block covered by the selection IN PLACE — never rebuild or remove nodes,
+ * so text outside the selection survives partial and multi-paragraph
+ * selections. Already-quoted blocks are skipped to keep the action
+ * idempotent. Must run inside `editor.update()`. Exported for tests.
+ */
+export function $applyBlockQuoteToSelection(): void {
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection)) return;
+
+  const seen = new Set<string>();
+  const blocks: ElementNode[] = [];
+  const addBlock = (node: LexicalNode) => {
+    const top = node.getTopLevelElement();
+    if (top && $isElementNode(top) && !seen.has(top.getKey())) {
+      seen.add(top.getKey());
+      blocks.push(top);
+    }
+  };
+  const nodes = selection.getNodes();
+  if (nodes.length === 0) addBlock(selection.anchor.getNode());
+  for (const node of nodes) addBlock(node);
+
+  for (const block of blocks) {
+    if (block.getTextContent().startsWith('> ')) continue;
+    const first = block.getFirstChild();
+    if ($isTextNode(first)) {
+      first.setTextContent(`> ${first.getTextContent()}`);
+    } else {
+      const prefix = $createTextNode('> ');
+      if (first) first.insertBefore(prefix);
+      else block.append(prefix);
+    }
+  }
+}
+
 function ToolbarPlugin() {
   const [editor] = useLexicalComposerContext();
   const t = useTranslations('manuscriptEditor');
@@ -140,22 +179,7 @@ function ToolbarPlugin() {
   };
 
   const insertBlockQuote = () => {
-    editor.update(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
-
-      const quoteNode = $createParagraphNode();
-      // We use a simple approach: prefix with ">" for block quote styling
-      // This is handled via CSS class in the theme
-      const textContent = selection.getTextContent();
-      quoteNode.append($createTextNode(textContent ? `> ${textContent}` : '> '));
-
-      const anchor = selection.anchor.getNode();
-      const topLevel = anchor.getTopLevelElementOrThrow();
-      topLevel.insertAfter(quoteNode);
-      topLevel.remove();
-      quoteNode.selectEnd();
-    });
+    editor.update($applyBlockQuoteToSelection);
   };
 
   const btnClass =
@@ -190,6 +214,24 @@ function ToolbarPlugin() {
 }
 
 // ─── Auto-format Plugin (em-dash, curly quotes) ───
+
+/**
+ * Whether a quote typed at the current caret should be an OPENING quote.
+ * An element anchor (e.g. the caret in an empty paragraph — the usual
+ * opening-dialogue position) has no preceding char, so it opens. Must run
+ * inside an editor read/update. Exported for tests.
+ */
+export function $isOpeningQuoteAtCaret(): boolean {
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection)) return true;
+  const anchor = selection.anchor;
+  const node = anchor.getNode();
+  if (node.getType() !== 'text') return true;
+  const text = node.getTextContent();
+  const offset = anchor.offset;
+  const charBefore = offset > 0 ? text[offset - 1] : '';
+  return !charBefore || /[\s(\[]/.test(charBefore);
+}
 
 function AutoFormatPlugin() {
   const [editor] = useLexicalComposerContext();
@@ -242,13 +284,7 @@ function AutoFormatPlugin() {
         editor.getEditorState().read(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
-          const anchor = selection.anchor;
-          const node = anchor.getNode();
-          if (node.getType() !== 'text') return;
-          const text = node.getTextContent();
-          const offset = anchor.offset;
-          const charBefore = offset > 0 ? text[offset - 1] : '';
-          const isOpening = !charBefore || /[\s(\[]/.test(charBefore);
+          const isOpening = $isOpeningQuoteAtCaret();
 
           e.preventDefault();
           setTimeout(() => {
@@ -266,13 +302,7 @@ function AutoFormatPlugin() {
         editor.getEditorState().read(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
-          const anchor = selection.anchor;
-          const node = anchor.getNode();
-          if (node.getType() !== 'text') return;
-          const text = node.getTextContent();
-          const offset = anchor.offset;
-          const charBefore = offset > 0 ? text[offset - 1] : '';
-          const isOpening = !charBefore || /[\s(\[]/.test(charBefore);
+          const isOpening = $isOpeningQuoteAtCaret();
 
           e.preventDefault();
           setTimeout(() => {

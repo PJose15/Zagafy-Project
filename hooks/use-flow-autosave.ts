@@ -37,6 +37,9 @@ export function useFlowAutosave(chapterId: string | null) {
       ? state.chapters.find(ch => ch.id === chapterId)?.content ?? ''
       : '';
     snapshotDoneRef.current = false;
+    // Resync the pending-content buffer so a later flush can never write the
+    // PREVIOUS chapter's text into this one (chapter swaps don't remount).
+    contentRef.current = getPlainText(originalRawRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId]);
 
@@ -69,16 +72,24 @@ export function useFlowAutosave(chapterId: string | null) {
     (content: string) => {
       contentRef.current = content;
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(save, 5000);
+      timerRef.current = setTimeout(() => {
+        // Null before saving — a non-null ref means "flush pending on
+        // cleanup", and a fired timer has nothing pending anymore.
+        timerRef.current = null;
+        save();
+      }, 5000);
     },
     [save]
   );
 
-  // Save on unmount
+  // Flush a pending save on unmount / chapter swap (the `save` identity
+  // changes with chapterId, so this cleanup still holds the old chapter's
+  // closure and writes to the chapter the content belongs to).
   useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
+        timerRef.current = null;
         // Final save
         save();
       }

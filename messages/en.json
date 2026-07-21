@@ -62,6 +62,9 @@
     "kbdSend": "send",
     "kbdNewline": "new line"
   },
+  "unsavedChanges": {
+    "confirmLeave": "You have unsaved changes. Leave this page and discard them?"
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your project data and preferences.",
@@ -361,6 +364,7 @@
     "back": "Back",
     "next": "Next",
     "review": "Review",
+    "saveError": "Could not save your story. Please try again.",
     "steps": {
       "name": {
         "label": "Project Name",
@@ -745,6 +749,7 @@
   },
   "reader": {
     "errorTitle": "Reader Analysis",
+    "analysisError": "Prose analysis failed. Please try again.",
     "emptyTitle": "The reading room is quiet",
     "emptySubtitle": "Once your manuscript has chapters, they'll be bound here for reading.",
     "goToManuscript": "Go to Manuscript",
@@ -1035,6 +1040,8 @@
     "toastSaveError": "Failed to save snapshot",
     "toastCorrupted": "Snapshot is corrupted; cannot restore.",
     "toastRestored": "Restored \"{name}\".",
+    "toastRestoreError": "Could not load the snapshot. Please try again.",
+    "toastDeleteError": "Could not delete the snapshot. Please try again.",
     "deltaNoun": {
       "chapters": "{count, plural, one {chapter} other {chapters}}",
       "words": "words",
@@ -1744,7 +1751,8 @@
     "confirmCurrent": "Replace {count, plural, one {# occurrence} other {# occurrences}} of \"{query}\" in this chapter?",
     "confirmAll": "Replace {count, plural, one {# occurrence} other {# occurrences}} of \"{query}\" across {chapters, plural, one {# chapter} other {# chapters}}?",
     "confirmChapter": "Replace {count, plural, one {# occurrence} other {# occurrences}} in \"{title}\"?",
-    "formattingNotice": "{count, plural, one {# match spans a formatting boundary and was left unchanged — edit it manually.} other {# matches span a formatting boundary and were left unchanged — edit them manually.}}"
+    "formattingNotice": "{count, plural, one {# match spans a formatting boundary and was left unchanged — edit it manually.} other {# matches span a formatting boundary and were left unchanged — edit them manually.}}",
+    "editingExcluded": "The chapter being edited is excluded from replace — save it first."
   },
   "manuscriptEditor": {
     "bold": "Bold",
@@ -1785,7 +1793,8 @@
     "downloadingNote": "Your {format} is downloading.",
     "summary": "{chapters, plural, one {# chapter} other {# chapters}} · {words, number} words",
     "generating": "Generating…",
-    "exportFormat": "Export {format}"
+    "exportFormat": "Export {format}",
+    "exportError": "The export failed partway through. Please try again."
   },
   "novelCompletion": {
     "aria": "Novel completion ceremony",

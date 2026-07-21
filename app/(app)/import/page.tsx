@@ -117,13 +117,27 @@ export default function ImportPage() {
   // their details into the existing entity non-destructively.
   const handleReviewConfirm = useCallback((resolvedItems: ReviewItem[]) => {
     // Deduplicates incoming against existing AND against itself. O(n+m).
-    const dedup = <T,>(existing: T[], incoming: T[], key: keyof T): T[] => {
-      const normalize = (item: T) => String(item[key] ?? '').toLowerCase().trim();
+    // `key` is a field name or a custom key extractor. `keepEmptyKeys` passes
+    // through items with an empty key instead of dropping them — used for
+    // entity types whose key field is optional (scenes, timeline events),
+    // where an absent key must never mean silent data loss.
+    const dedup = <T,>(
+      existing: T[],
+      incoming: T[],
+      key: keyof T | ((item: T) => string),
+      keepEmptyKeys = false,
+    ): T[] => {
+      const normalize = (item: T) =>
+        (typeof key === 'function' ? key(item) : String(item[key] ?? '')).toLowerCase().trim();
       const seen = new Set<string>(existing.map(normalize));
       const out: T[] = [];
       for (const item of incoming) {
         const k = normalize(item);
-        if (!k || seen.has(k)) continue;
+        if (!k) {
+          if (keepEmptyKeys) out.push(item);
+          continue;
+        }
+        if (seen.has(k)) continue;
         seen.add(k);
         out.push(item);
       }
@@ -419,9 +433,22 @@ export default function ImportPage() {
     // Apply merges (updated existing entities) + deduped new accepted entities.
     updateField('characters', [...baseCharacters, ...dedup(baseCharacters, newCharacters, 'name')]);
     updateField('chapters', [...baseChapters, ...dedup(baseChapters, newChapters, 'title')]);
-    updateField('scenes', [...state.scenes, ...dedup(state.scenes, newScenes, 'title')]);
+    // Scenes carry a generated "Scene N" title, so a title-only key collides
+    // across chapters (every chapter has a "Scene 1"). Key on chapter + title
+    // (the title encodes order_index within its chapter); scenes without a
+    // usable position fall back to their unique id so they are never dropped.
+    const untitledScene = t('sceneTitle', { n: '' });
+    const sceneDedupKey = (s: { id: string; chapterId: string; title: string }) =>
+      s.title && s.title !== untitledScene
+        ? `${s.chapterId}::${s.title}`
+        : String(s.id ?? '');
+    updateField('scenes', [...state.scenes, ...dedup(state.scenes, newScenes, sceneDedupKey, true)]);
     updateField('active_conflicts', [...baseConflicts, ...dedup(baseConflicts, newConflicts, 'title')]);
-    updateField('timeline_events', [...state.timeline_events, ...dedup(state.timeline_events, newTimelineEvents, 'description')]);
+    // Timeline events map the extracted `event` text into `date` and the
+    // (often empty) immediate_effect into `description` — keying on
+    // description dropped every event without one. Key on `date` instead,
+    // passing through empty-key events.
+    updateField('timeline_events', [...state.timeline_events, ...dedup(state.timeline_events, newTimelineEvents, 'date', true)]);
     updateField('world_rules', [...baseWorldRules, ...dedup(baseWorldRules, newWorldRules, 'rule')]);
     updateField('locations', [...baseLocations, ...dedup(baseLocations, newLocations, 'name')]);
     updateField('themes', [...baseThemes, ...dedup(baseThemes, newThemes, 'theme')]);

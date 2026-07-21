@@ -108,13 +108,20 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       chapters: selectedChapters.map(c => ({ title: c.title, content: c.content })),
     };
 
-    const result = await requestManuscriptExport(req);
-    if (result.ok) {
-      setDone(true);
-    } else {
-      setError(result.message);
+    // try/finally: a rejection anywhere (e.g. the download stream dying
+    // mid-transfer) must never leave the dialog stuck busy.
+    try {
+      const result = await requestManuscriptExport(req);
+      if (result.ok) {
+        setDone(true);
+      } else {
+        setError(result.message);
+      }
+    } catch {
+      setError(t('exportError'));
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   return (

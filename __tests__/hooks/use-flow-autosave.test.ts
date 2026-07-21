@@ -230,4 +230,89 @@ describe('useFlowAutosave', () => {
     });
     expect(result.current.initialContent).toBe('');
   });
+
+  // ── Chapter swap without remount (scene change) — stale timer guard ──
+
+  const chapterTwo: Chapter = {
+    id: 'ch-2',
+    title: 'Chapter Two',
+    content: 'Second chapter text',
+    summary: 'The middle',
+  };
+
+  it('never writes a previous chapter\'s content into another chapter after swaps', async () => {
+    setupLocalStorage([testChapter, chapterTwo]);
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => {
+        const autosave = useFlowAutosave(id);
+        const story = useStory();
+        return { autosave, story };
+      },
+      { wrapper, initialProps: { id: 'ch-1' } }
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    // Type in chapter one and let the debounce FIRE (timer completes).
+    act(() => {
+      result.current.autosave.scheduleAutosave('typed in chapter one');
+    });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(
+      getPlainText(result.current.story.state.chapters.find(ch => ch.id === 'ch-1')?.content ?? '')
+    ).toBe('typed in chapter one');
+
+    // Swap to chapter two, then back — a stale (already-fired) timer ref must
+    // not cause the cleanup flush to write chapter one's text into chapter two.
+    act(() => {
+      rerender({ id: 'ch-2' });
+    });
+    act(() => {
+      rerender({ id: 'ch-1' });
+    });
+
+    const chapterTwoAfter = result.current.story.state.chapters.find(ch => ch.id === 'ch-2');
+    expect(getPlainText(chapterTwoAfter?.content ?? '')).toBe('Second chapter text');
+  });
+
+  it('flushes a pending save to the OLD chapter when chapterId swaps', async () => {
+    setupLocalStorage([testChapter, chapterTwo]);
+
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string }) => {
+        const autosave = useFlowAutosave(id);
+        const story = useStory();
+        return { autosave, story };
+      },
+      { wrapper, initialProps: { id: 'ch-1' } }
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    // Schedule and swap BEFORE the debounce fires.
+    act(() => {
+      result.current.autosave.scheduleAutosave('mid-flight edit');
+    });
+    act(() => {
+      rerender({ id: 'ch-2' });
+    });
+
+    // The pending content landed in chapter one (old closure)…
+    expect(
+      getPlainText(result.current.story.state.chapters.find(ch => ch.id === 'ch-1')?.content ?? '')
+    ).toBe('mid-flight edit');
+
+    // …and advancing time writes nothing into chapter two.
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(
+      getPlainText(result.current.story.state.chapters.find(ch => ch.id === 'ch-2')?.content ?? '')
+    ).toBe('Second chapter text');
+  });
 });

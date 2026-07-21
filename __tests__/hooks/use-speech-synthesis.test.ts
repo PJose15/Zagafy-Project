@@ -231,6 +231,40 @@ describe('useSpeechSynthesis', () => {
     );
   });
 
+  it('cancels any ongoing speech on unmount', () => {
+    const { result, unmount } = renderHook(() => useSpeechSynthesis());
+
+    act(() => {
+      result.current.speak('Long chapter text');
+    });
+    mockSpeechSynthesis.cancel.mockClear();
+
+    unmount();
+
+    expect(mockSpeechSynthesis.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores utterance callbacks that fire after unmount', () => {
+    const { result, unmount } = renderHook(() => useSpeechSynthesis());
+
+    act(() => {
+      result.current.speak('Some text');
+    });
+
+    const utterance = mockSpeechSynthesis.speak.mock.calls[0][0] as MockUtterance;
+    unmount();
+
+    // Late async callbacks from the browser must not setState on an
+    // unmounted hook.
+    expect(() => {
+      utterance.onstart?.();
+      utterance.onboundary?.({ name: 'word', charIndex: 5 });
+      utterance.onpause?.();
+      utterance.onresume?.();
+      utterance.onend?.();
+    }).not.toThrow();
+  });
+
   it('speak applies selected voice and rate to utterance', () => {
     const { result } = renderHook(() => useSpeechSynthesis());
 
