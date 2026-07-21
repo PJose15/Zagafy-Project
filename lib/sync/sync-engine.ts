@@ -137,7 +137,11 @@ export class SyncEngine {
     this.setStatus('pushing');
 
     try {
-      const queue = await readQueue();
+      // Bind the entire push cycle to one project: resolvePayload/getStoryTitle
+      // re-reading the active project mid-push would push the wrong story after
+      // a project switch.
+      const projectId = getActiveProjectId();
+      const { entries: queue, coveredIds } = await readQueue(projectId);
       if (queue.length === 0) {
         this.setStatus('idle');
         this.pushing = false;
@@ -145,10 +149,10 @@ export class SyncEngine {
       }
 
       // Resolve server story ID (create on first push)
-      let serverStoryId = await getServerStoryId();
+      let serverStoryId = await getServerStoryId(projectId);
       if (!serverStoryId) {
         serverStoryId = crypto.randomUUID();
-        await updateSyncMeta({ serverStoryId });
+        await updateSyncMeta({ serverStoryId }, projectId);
       }
 
       // Resolve payloads from Dexie for each queued entry
@@ -156,7 +160,7 @@ export class SyncEngine {
       for (const entry of queue) {
         const payload = entry.op === 'delete'
           ? null
-          : await resolvePayload(entry.entityType as SyncEntityType, entry.entityId);
+          : await resolvePayload(entry.entityType as SyncEntityType, entry.entityId, projectId);
 
         // Skip upserts where the entity no longer exists locally
         if (entry.op === 'upsert' && !payload) continue;
@@ -171,14 +175,14 @@ export class SyncEngine {
       }
 
       if (deltas.length === 0) {
-        await clearEntries(queue.map(q => q.id));
+        await clearEntries(coveredIds);
         this.setStatus('idle');
         this.pushing = false;
         return;
       }
 
       // Get story title for server-side story record
-      const storyTitle = await getStoryTitle();
+      const storyTitle = await getStoryTitle(projectId);
 
       const res = await fetch('/api/sync/push', {
         method: 'POST',
@@ -203,15 +207,23 @@ export class SyncEngine {
       const data = await res.json() as { data: PushResponse };
       const result = data.data;
 
-      // Clear pushed entries from queue
-      await clearEntries(queue.map(q => q.id));
-      await updateSyncMeta({ lastPushedAt: result.serverTimestamp });
+      // Clear ALL raw queue rows covered by the dedup — clearing only the
+      // deduped "latest" ids would leave superseded duplicates to resurface
+      // as latest on the next push and re-push stale content.
+      await clearEntries(coveredIds);
+      await updateSyncMeta({ lastPushedAt: result.serverTimestamp }, projectId);
+
+      // Adopt the server's post-push chapter versions so the next push
+      // round-trips them instead of re-sending a stale version forever.
+      await this.adoptPushedChapterVersions(deltas, result);
 
       if (result.conflicts.length > 0) {
         this.setStatus('conflict');
         this.emit({ type: 'push-complete', applied: result.applied, conflicts: result.conflicts });
         // Apply server versions for conflicted chapters
         await this.applyConflictResolutions(result.conflicts);
+        // The overwrite must reach this tab's in-memory store too.
+        this.broadcastStateUpdated();
       } else {
         this.setStatus('idle');
         this.emit({ type: 'push-complete', applied: result.applied, conflicts: [] });
@@ -280,6 +292,13 @@ export class SyncEngine {
       const counts = await this.applyPulledData(result);
 
       await updateSyncMeta({ lastPulledAt: result.serverTimestamp });
+
+      // The pull only wrote to Dexie; the current tab's in-memory store would
+      // clobber it with stale state on the next edit unless it re-hydrates.
+      if (Object.values(counts).some(n => n > 0)) {
+        this.broadcastStateUpdated();
+      }
+
       this.setStatus(prevStatus === 'conflict' ? 'conflict' : 'idle');
       this.emit({ type: 'pull-complete', counts });
     } catch (e) {
@@ -338,6 +357,9 @@ export class SyncEngine {
           updatedAt: ch.updatedAt
             ? new Date(ch.updatedAt as string).getTime()
             : Date.now(),
+          // Round-trip the server's optimistic-concurrency version — without it
+          // every subsequent push of this chapter conflicts forever.
+          version: typeof ch.version === 'number' ? ch.version : undefined,
         });
       }
       counts.chapters = data.chapters.length;
@@ -463,7 +485,38 @@ export class SyncEngine {
           updatedAt: sp.updatedAt
             ? new Date(sp.updatedAt as string).getTime()
             : Date.now(),
+          // Adopting the server's version alongside its content is what breaks
+          // the conflict loop — the next push sends a version the server accepts.
+          version: typeof sp.version === 'number' ? sp.version : undefined,
         });
+      }
+    }
+  }
+
+  /**
+   * Persist each successfully pushed chapter's new server version so the next
+   * push round-trips it. On success the server increments to clientVersion+1;
+   * an explicit map in the response wins when present. A payload pushed WITHOUT
+   * a version lands at server version 1 for a new row; a legacy local row whose
+   * server counterpart is ahead conflicts instead and self-heals through
+   * applyConflictResolutions.
+   */
+  private async adoptPushedChapterVersions(
+    deltas: SyncDelta[],
+    result: PushResponse,
+  ): Promise<void> {
+    const conflicted = new Set(
+      result.conflicts.filter(c => c.entityType === 'chapter').map(c => c.entityId),
+    );
+    for (const delta of deltas) {
+      if (delta.entityType !== 'chapter' || delta.op !== 'upsert') continue;
+      if (conflicted.has(delta.entityId)) continue;
+      const pushed = typeof delta.payload?.version === 'number' ? delta.payload.version : null;
+      const version = result.chapterVersions?.[delta.entityId] ?? (pushed !== null ? pushed + 1 : 1);
+      try {
+        await dexieDb.chapters.update(delta.entityId, { version });
+      } catch {
+        // Non-fatal — worst case the next push conflicts once and self-heals
       }
     }
   }
@@ -487,6 +540,24 @@ export class SyncEngine {
     return typeof navigator !== 'undefined' && !navigator.onLine;
   }
 
+  /**
+   * Post the store's cross-tab message so StoryProvider re-hydrates from Dexie.
+   * BroadcastChannel delivers to every other channel instance with the same
+   * name — including the store's instance in THIS tab — so a fresh channel here
+   * reaches the local store without tripping its echo guard (which is keyed on
+   * the applied state snapshot, not a sender id). Shape must match lib/store.tsx.
+   */
+  private broadcastStateUpdated(): void {
+    if (typeof BroadcastChannel === 'undefined') return;
+    try {
+      const channel = new BroadcastChannel('zagafy_sync');
+      channel.postMessage({ type: 'state-updated', at: Date.now() });
+      channel.close();
+    } catch {
+      // BroadcastChannel post failures are non-fatal
+    }
+  }
+
   private handleBeforeUnload = (): void => {
     // Best-effort flush using sendBeacon isn't practical for large payloads.
     // The sync queue persists in Dexie and will be flushed on next load.
@@ -502,10 +573,11 @@ export class SyncEngine {
 async function resolvePayload(
   entityType: SyncEntityType,
   entityId: string,
+  projectId: string,
 ): Promise<Record<string, unknown> | null> {
   switch (entityType) {
     case 'story': {
-      const row = await dexieDb.stories.get(getActiveProjectId());
+      const row = await dexieDb.stories.get(projectId);
       if (!row) return null;
       try {
         return JSON.parse(row.data) as Record<string, unknown>;
@@ -524,6 +596,9 @@ async function resolvePayload(
         canonStatus: row.canonStatus,
         source: row.source,
         updatedAt: row.updatedAt,
+        // Optimistic-concurrency version. Omitted (undefined → stripped by
+        // JSON.stringify) on legacy rows — the server treats missing as 1.
+        version: row.version,
       };
     }
     case 'chapterVersion': {
@@ -588,9 +663,9 @@ async function resolvePayload(
 }
 
 /** Read the story title from Dexie for the push request. */
-async function getStoryTitle(): Promise<string> {
+async function getStoryTitle(projectId: string): Promise<string> {
   try {
-    const row = await dexieDb.stories.get(getActiveProjectId());
+    const row = await dexieDb.stories.get(projectId);
     if (!row) return 'Untitled';
     const state = JSON.parse(row.data);
     return (state?.title as string) || 'Untitled';

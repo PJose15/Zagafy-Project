@@ -12,6 +12,9 @@ export interface DexieChapter {
   canonStatus?: string;
   source?: string;
   updatedAt: number;
+  /** Server optimistic-concurrency version (round-tripped through sync push/pull).
+   *  Absent on legacy rows — the server treats missing as 1. */
+  version?: number;
 }
 
 export interface DexieSession {
@@ -421,6 +424,9 @@ export async function putChapterContent(
   source?: string,
   projectId: string = getActiveProjectId(),
 ): Promise<void> {
+  // Carry the sync version across content saves — a plain put would strip it
+  // and reset the chapter to version 1 on the server's next push check.
+  const existing = await db.chapters.get(id);
   await db.chapters.put({
     id,
     projectId,
@@ -430,6 +436,7 @@ export async function putChapterContent(
     canonStatus,
     source,
     updatedAt: Date.now(),
+    version: existing?.version,
   });
 }
 
@@ -494,10 +501,14 @@ export async function putAllVersions(
     data: JSON.stringify(v),
   }));
   // Replace only this project's versions — other projects' history is untouched.
-  await db.chapterVersions.where('projectId').equals(projectId).delete();
-  if (rows.length > 0) {
-    await db.chapterVersions.bulkPut(rows);
-  }
+  // Transactional: a failure between delete and bulkPut must not destroy the
+  // project's entire version history.
+  await db.transaction('rw', db.chapterVersions, async () => {
+    await db.chapterVersions.where('projectId').equals(projectId).delete();
+    if (rows.length > 0) {
+      await db.chapterVersions.bulkPut(rows);
+    }
+  });
 }
 
 export async function deleteVersionById(id: string): Promise<void> {
@@ -571,7 +582,16 @@ export async function getStory(
     if (!row) return null;
     try {
       return JSON.parse(row.data);
-    } catch {
+    } catch (e) {
+      // Corrupt blob: callers treat null as "missing" and may overwrite the row
+      // with a fresh default state — preserve the raw data first so it can be
+      // recovered manually.
+      try {
+        localStorage.setItem(`zagafy_corrupt_story_${projectId}_${Date.now()}`, row.data);
+      } catch {
+        // Quota exceeded or no localStorage — backup is best-effort
+      }
+      console.error(`[dexie] Corrupt story blob for project "${projectId}" — backed up to localStorage`, e);
       return null;
     }
   } catch {

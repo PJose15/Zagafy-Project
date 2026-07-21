@@ -6,6 +6,7 @@ import {
   migrateFromLocalStorage,
   getAllChapterContents,
   putChapterContent,
+  deleteChapterContent,
   getStory,
   putStory,
 } from '@/lib/storage/dexie-db';
@@ -275,6 +276,13 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   // boolean flag closes an edge case where a second remote message arrived
   // before the persist effect ran and the flag had been consumed.
   const lastRemoteStateRef = useRef<StoryState | null>(null);
+  // The debounced save captured at scheduling time (state + target project) so
+  // a project switch can flush it to the OLD project id and beforeunload can
+  // fire it before the tab dies.
+  const pendingSaveRef = useRef<{ state: StoryState; projectId: string } | null>(null);
+  // Chapter id set from the last persist, per project — diffed on each persist
+  // to detect chapter deletions (Dexie row cleanup + sync delete delta).
+  const lastPersistedChaptersRef = useRef<{ projectId: string; ids: Set<string> } | null>(null);
 
   useEffect(() => {
     async function loadState() {
@@ -306,6 +314,10 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       }
 
       const loaded = await hydrateFromDexie(activeId);
+      lastPersistedChaptersRef.current = {
+        projectId: activeId,
+        ids: new Set(loaded.chapters.map(ch => ch.id)),
+      };
       setState(loaded);
       setIsLoaded(true);
     }
@@ -320,6 +332,22 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   // Dexie, record sync deltas, and notify other tabs. Shared by the debounced
   // autosave and the imperative saveNow().
   const persistState = useCallback(async (next: StoryState, projectId: string) => {
+    // Chapter deletions only mutate the in-memory array — diff against the
+    // last-persisted id set so removed chapters are deleted from Dexie and
+    // queued as sync deletes. Ref is swapped synchronously (before any await)
+    // so an interleaved project-switch flush never diffs the wrong project.
+    const prevChapters = lastPersistedChaptersRef.current;
+    const currentIds = new Set(next.chapters.map(ch => ch.id));
+    lastPersistedChaptersRef.current = { projectId, ids: currentIds };
+    if (prevChapters && prevChapters.projectId === projectId) {
+      for (const id of prevChapters.ids) {
+        if (!currentIds.has(id)) {
+          deleteChapterContent(id).catch(() => {});
+          recordDelta('chapter', id, 'delete').catch(() => {});
+        }
+      }
+    }
+
     const stateForStore = {
       ...next,
       chapters: next.chapters.map(ch => ({ ...ch, content: '' })),
@@ -332,11 +360,9 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       projectId,
       wordCount: totalWords,
     });
-    await Promise.all(
+    const chapterWrites = await Promise.allSettled(
       next.chapters.map(ch =>
-        putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source, projectId).catch(() => {
-          // Individual chapter write failed — content remains in memory
-        })
+        putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source, projectId)
       )
     );
     recordDelta('story', projectId, 'upsert').catch(() => {});
@@ -348,6 +374,13 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       channelRef.current?.postMessage({ type: 'state-updated', at: Date.now() });
     } catch {
       // BroadcastChannel post failures are non-fatal
+    }
+    // Surface chapter write failures the same way a putStory failure would —
+    // the stripped blob saved fine, so a swallowed chapter write means the
+    // chapter resolves to '' on next hydration (silent manuscript loss).
+    const failedWrites = chapterWrites.filter(r => r.status === 'rejected').length;
+    if (failedWrites > 0) {
+      throw new Error(`${failedWrites} chapter content write(s) failed`);
     }
   }, [notifySyncWrite]);
 
@@ -363,9 +396,15 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    // Bind the save to the project active at SCHEDULING time — reading the ref
+    // when the timer fires can write project A's state under project B's id if
+    // a switch happened mid-debounce.
+    const pid = activeProjectIdRef.current;
+    pendingSaveRef.current = { state, projectId: pid };
     saveTimerRef.current = setTimeout(async () => {
+      pendingSaveRef.current = null;
       try {
-        await persistState(state, activeProjectIdRef.current);
+        await persistState(state, pid);
         if (saveError) setSaveError(false);
       } catch {
         if (!saveError) setSaveError(true);
@@ -407,8 +446,15 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       if (hydrateTimer) clearTimeout(hydrateTimer);
       hydrateTimer = setTimeout(() => {
         hydrateTimer = null;
-        hydrateFromDexie(activeProjectIdRef.current).then(next => {
+        const pid = activeProjectIdRef.current;
+        hydrateFromDexie(pid).then(next => {
           lastRemoteStateRef.current = next;
+          // Adopt the hydrated chapter set as the deletion-diff baseline so a
+          // chapter removed elsewhere isn't re-deleted on the next local save.
+          lastPersistedChaptersRef.current = {
+            projectId: pid,
+            ids: new Set(next.chapters.map(ch => ch.id)),
+          };
           setState(next);
         }).catch(() => {
           // Ignore — remote rehydration failed
@@ -421,9 +467,25 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     // value (localStorage), so every tab follows the switch.
     const switchActive = () => {
       const id = getActiveProjectId();
+      // Flush any pending debounced save to the OLD project before re-binding —
+      // letting the timer fire after the ref moves would write the old
+      // project's state under the new project's id.
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      const pending = pendingSaveRef.current;
+      if (pending) {
+        pendingSaveRef.current = null;
+        persistState(pending.state, pending.projectId).catch(() => {});
+      }
       activeProjectIdRef.current = id;
       hydrateFromDexie(id).then(next => {
         lastRemoteStateRef.current = next;
+        lastPersistedChaptersRef.current = {
+          projectId: id,
+          ids: new Set(next.chapters.map(ch => ch.id)),
+        };
         setState(next);
       }).catch(() => {
         // Ignore — switch hydration failed
@@ -446,7 +508,26 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       channel.close();
       channelRef.current = null;
     };
-  }, []);
+    // persistState is referentially stable (its only dep is a stable context fn).
+  }, [persistState]);
+
+  // Flush the pending debounced save on tab close — best-effort: the async
+  // Dexie write is kicked off synchronously and usually completes before the
+  // page is torn down.
+  useEffect(() => {
+    const flushPending = () => {
+      const pending = pendingSaveRef.current;
+      if (!pending) return;
+      pendingSaveRef.current = null;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      persistState(pending.state, pending.projectId).catch(() => {});
+    };
+    window.addEventListener('beforeunload', flushPending);
+    return () => window.removeEventListener('beforeunload', flushPending);
+  }, [persistState]);
 
   const updateField = useCallback(<K extends keyof StoryState>(field: K, value: StoryState[K]) => {
     setState((prev) => ({ ...prev, [field]: value }));

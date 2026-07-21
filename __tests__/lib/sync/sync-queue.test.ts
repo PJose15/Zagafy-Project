@@ -88,27 +88,62 @@ describe('sync-queue', () => {
       syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
       syncQueueStore.set('q2', { id: 'q2', projectId: PROJECT_ID, entityType: 'session', entityId: 's-1', op: 'upsert', timestamp: 200 });
 
-      const result = await readQueue();
-      expect(result).toHaveLength(2);
+      const { entries } = await readQueue();
+      expect(entries).toHaveLength(2);
     });
 
     it('deduplicates by entityType+entityId keeping latest timestamp', async () => {
       syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
       syncQueueStore.set('q2', { id: 'q2', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'delete', timestamp: 200 });
 
-      const result = await readQueue();
-      expect(result).toHaveLength(1);
-      expect(result[0].op).toBe('delete');
-      expect(result[0].id).toBe('q2');
+      const { entries } = await readQueue();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].op).toBe('delete');
+      expect(entries[0].id).toBe('q2');
+    });
+
+    it('returns coveredIds for ALL raw rows including superseded duplicates', async () => {
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q2', { id: 'q2', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 200 });
+      syncQueueStore.set('q3', { id: 'q3', projectId: PROJECT_ID, entityType: 'session', entityId: 's-1', op: 'upsert', timestamp: 300 });
+
+      const { entries, coveredIds } = await readQueue();
+      // Dedup keeps only the latest chapter entry...
+      expect(entries).toHaveLength(2);
+      // ...but coveredIds must include the superseded q1 so a post-push clear
+      // removes it (otherwise it resurfaces as "latest" and re-pushes stale content).
+      expect(coveredIds.sort()).toEqual(['q1', 'q2', 'q3']);
+    });
+
+    it('clearing coveredIds after a push empties superseded rows too', async () => {
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q2', { id: 'q2', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 200 });
+
+      const { coveredIds } = await readQueue();
+      await clearEntries(coveredIds);
+
+      expect(syncQueueStore.size).toBe(0);
+      const { entries } = await readQueue();
+      expect(entries).toHaveLength(0);
     });
 
     it('excludes entries belonging to other projects', async () => {
       syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
       syncQueueStore.set('q2', { id: 'q2', projectId: 'other', entityType: 'chapter', entityId: 'ch-2', op: 'upsert', timestamp: 200 });
 
-      const result = await readQueue();
-      expect(result).toHaveLength(1);
-      expect(result[0].entityId).toBe('ch-1');
+      const { entries, coveredIds } = await readQueue();
+      expect(entries).toHaveLength(1);
+      expect(entries[0].entityId).toBe('ch-1');
+      expect(coveredIds).toEqual(['q1']);
+    });
+
+    it('scopes to an explicitly passed projectId', async () => {
+      syncQueueStore.set('q1', { id: 'q1', projectId: PROJECT_ID, entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: 100 });
+      syncQueueStore.set('q2', { id: 'q2', projectId: 'other', entityType: 'chapter', entityId: 'ch-2', op: 'upsert', timestamp: 200 });
+
+      const { entries } = await readQueue('other');
+      expect(entries).toHaveLength(1);
+      expect(entries[0].entityId).toBe('ch-2');
     });
   });
 
@@ -203,6 +238,13 @@ describe('sync-queue', () => {
       expect(stored.serverStoryId).toBe('story-abc');
       expect(stored.lastPushedAt).toBe('2026-01-01T00:00:00Z');
       expect(stored.lastPulledAt).toBeNull();
+    });
+
+    it('writes to an explicitly passed projectId (mid-push project switch safety)', async () => {
+      await updateSyncMeta({ serverStoryId: 'story-x' }, 'other');
+
+      expect(syncMetaStore.get('other')?.serverStoryId).toBe('story-x');
+      expect(syncMetaStore.get(PROJECT_ID)).toBeUndefined();
     });
   });
 });

@@ -82,6 +82,9 @@ export interface PushResponse {
   applied: number;
   conflicts: ConflictRecord[];
   serverTimestamp: string;
+  /** Optional: new server version per successfully applied chapter id. When
+   *  absent the client falls back to incrementing the version it pushed. */
+  chapterVersions?: Record<string, number>;
 }
 
 /** Sync engine events emitted to subscribers. */

@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // tests below exercise the normal bound path; unbound behavior is covered by a
 // dedicated test.
 vi.mock('@/lib/sync/sync-queue', () => ({
-  readQueue: vi.fn(async () => []),
+  readQueue: vi.fn(async () => ({ entries: [], coveredIds: [] })),
   clearEntries: vi.fn(async () => {}),
   updateSyncMeta: vi.fn(async () => {}),
   getServerStoryId: vi.fn(async () => null),
@@ -28,7 +28,7 @@ vi.mock('@/lib/storage/dexie-db', () => ({
       })),
       put: vi.fn(async () => {}),
     },
-    chapters: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
+    chapters: { get: vi.fn(async () => null), put: vi.fn(async () => {}), update: vi.fn(async () => 1) },
     chapterVersions: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
     storySnapshots: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
     sessions: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
@@ -96,7 +96,7 @@ describe('SyncEngine', () => {
       );
 
       // Start engine to trigger status changes (pull)
-      vi.mocked(readQueue).mockResolvedValue([]);
+      vi.mocked(readQueue).mockResolvedValue({ entries: [], coveredIds: [] });
       mockFetch.mockResolvedValueOnce(
         new Response(JSON.stringify({ data: { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }),
       );
@@ -169,7 +169,7 @@ describe('SyncEngine', () => {
       );
       await engine.start();
 
-      vi.mocked(readQueue).mockResolvedValue([]);
+      vi.mocked(readQueue).mockResolvedValue({ entries: [], coveredIds: [] });
 
       // Mock the pull fetch for syncNow's pull call
       mockFetch.mockResolvedValueOnce(
@@ -188,9 +188,10 @@ describe('SyncEngine', () => {
       );
       await engine.start();
 
-      vi.mocked(readQueue).mockResolvedValue([
-        { id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() },
-      ]);
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
       vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
 
       // Push fetch
@@ -216,16 +217,20 @@ describe('SyncEngine', () => {
       expect(Array.isArray(body.deltas)).toBe(true);
     });
 
-    it('clears queue entries on successful response', async () => {
+    it('clears ALL covered queue row ids (including superseded duplicates) on success', async () => {
       // Start the engine first
       mockFetch.mockResolvedValueOnce(
         new Response(JSON.stringify({ data: { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }),
       );
       await engine.start();
 
-      vi.mocked(readQueue).mockResolvedValue([
-        { id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() },
-      ]);
+      // q0 is a superseded duplicate of the same entity — the dedup dropped it
+      // from entries, but a successful push must clear it too or it resurfaces
+      // as "latest" on the next cycle and re-pushes stale content.
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q0', 'q1'],
+      });
       vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
 
       mockFetch.mockResolvedValueOnce(
@@ -237,7 +242,7 @@ describe('SyncEngine', () => {
 
       await engine.syncNow();
 
-      expect(clearEntries).toHaveBeenCalledWith(['q1']);
+      expect(clearEntries).toHaveBeenCalledWith(['q0', 'q1']);
     });
 
     it('sets status to conflict when server returns conflicts', async () => {
@@ -247,9 +252,10 @@ describe('SyncEngine', () => {
       );
       await engine.start();
 
-      vi.mocked(readQueue).mockResolvedValue([
-        { id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: Date.now() },
-      ]);
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
       vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
 
       // Mock chapter resolution
@@ -294,9 +300,10 @@ describe('SyncEngine', () => {
       await engine.start();
       events.length = 0; // clear start events
 
-      vi.mocked(readQueue).mockResolvedValue([
-        { id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() },
-      ]);
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
       vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
 
       // Both push and pull fail so error status persists
@@ -321,9 +328,10 @@ describe('SyncEngine', () => {
       await engine.start();
       events.length = 0;
 
-      vi.mocked(readQueue).mockResolvedValue([
-        { id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() },
-      ]);
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
       vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
 
       // Simulate offline
@@ -385,7 +393,7 @@ describe('SyncEngine', () => {
         lastPulledAt: null,
         lastPushedAt: null,
       });
-      vi.mocked(readQueue).mockResolvedValue([]);
+      vi.mocked(readQueue).mockResolvedValue({ entries: [], coveredIds: [] });
 
       await engine.start();
 
@@ -484,6 +492,156 @@ describe('SyncEngine', () => {
     });
   });
 
+  // ─── chapter version round-trip (C1) ───
+
+  describe('chapter version round-trip', () => {
+    async function startEngine() {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }),
+      );
+      await engine.start();
+    }
+
+    function queueChapterDelta() {
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
+      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+    }
+
+    function mockPushThenPull(pushData: Record<string, unknown>) {
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: pushData }), { status: 200 }),
+      );
+      mockFetch.mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }),
+      );
+    }
+
+    function getPushedChapterDelta() {
+      const pushCall = mockFetch.mock.calls.find(
+        (call) => typeof call[0] === 'string' && call[0] === '/api/sync/push',
+      );
+      expect(pushCall).toBeDefined();
+      const body = JSON.parse((pushCall![1] as RequestInit).body as string);
+      return body.deltas.find((d: any) => d.entityType === 'chapter');
+    }
+
+    it('includes the local Dexie version in the pushed chapter payload', async () => {
+      await startEngine();
+      queueChapterDelta();
+      vi.mocked(db.chapters.get).mockResolvedValueOnce({
+        id: 'ch-1', title: 'Chapter 1', content: 'content', summary: '', updatedAt: 1, version: 3,
+      } as any);
+      mockPushThenPull({ applied: 1, conflicts: [], serverTimestamp: new Date().toISOString() });
+
+      await engine.syncNow();
+
+      expect(getPushedChapterDelta().payload.version).toBe(3);
+    });
+
+    it('omits version for legacy rows without one (server treats missing as 1)', async () => {
+      await startEngine();
+      queueChapterDelta();
+      vi.mocked(db.chapters.get).mockResolvedValueOnce({
+        id: 'ch-1', title: 'Chapter 1', content: 'content', summary: '', updatedAt: 1,
+      } as any);
+      mockPushThenPull({ applied: 1, conflicts: [], serverTimestamp: new Date().toISOString() });
+
+      await engine.syncNow();
+
+      expect('version' in getPushedChapterDelta().payload).toBe(false);
+    });
+
+    it('adopts pushed version + 1 locally after a successful push', async () => {
+      await startEngine();
+      queueChapterDelta();
+      vi.mocked(db.chapters.get).mockResolvedValueOnce({
+        id: 'ch-1', title: 'Chapter 1', content: 'content', summary: '', updatedAt: 1, version: 3,
+      } as any);
+      mockPushThenPull({ applied: 1, conflicts: [], serverTimestamp: new Date().toISOString() });
+
+      await engine.syncNow();
+
+      expect(db.chapters.update).toHaveBeenCalledWith('ch-1', { version: 4 });
+    });
+
+    it('prefers the response chapterVersions map when present', async () => {
+      await startEngine();
+      queueChapterDelta();
+      vi.mocked(db.chapters.get).mockResolvedValueOnce({
+        id: 'ch-1', title: 'Chapter 1', content: 'content', summary: '', updatedAt: 1, version: 3,
+      } as any);
+      mockPushThenPull({
+        applied: 1,
+        conflicts: [],
+        serverTimestamp: new Date().toISOString(),
+        chapterVersions: { 'ch-1': 7 },
+      });
+
+      await engine.syncNow();
+
+      expect(db.chapters.update).toHaveBeenCalledWith('ch-1', { version: 7 });
+    });
+
+    it('does NOT bump the local version for a conflicted chapter', async () => {
+      await startEngine();
+      queueChapterDelta();
+      vi.mocked(db.chapters.get).mockResolvedValueOnce({
+        id: 'ch-1', title: 'Chapter 1', content: 'content', summary: '', updatedAt: 1, version: 3,
+      } as any);
+      mockPushThenPull({
+        applied: 0,
+        conflicts: [{
+          entityType: 'chapter',
+          entityId: 'ch-1',
+          localPayload: { id: 'ch-1' },
+          serverPayload: { id: 'ch-1', title: '', content: 'server', summary: '', version: 9, updatedAt: new Date().toISOString() },
+          serverUpdatedAt: new Date().toISOString(),
+          detectedAt: new Date().toISOString(),
+        }],
+        serverTimestamp: new Date().toISOString(),
+      });
+
+      await engine.syncNow();
+
+      expect(db.chapters.update).not.toHaveBeenCalled();
+      // The conflict resolution adopts the server's copy INCLUDING its version.
+      const conflictPut = vi.mocked(db.chapters.put).mock.calls.find(
+        (c) => (c[0] as any).content === 'server',
+      );
+      expect(conflictPut).toBeDefined();
+      expect((conflictPut![0] as any).version).toBe(9);
+    });
+
+    it('persists the server version when applying pulled chapters', async () => {
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({
+          data: {
+            storyId: 'server-story-1',
+            story: null,
+            chapters: [
+              { id: 'ch-1', title: 'Chapter One', content: 'Once', summary: '', version: 5, updatedAt: new Date().toISOString() },
+            ],
+            chapterVersions: [],
+            storySnapshots: [],
+            sessions: [],
+            chatMessages: [],
+            writerInsights: [],
+            serverTimestamp: new Date().toISOString(),
+          },
+        }), { status: 200 }),
+      );
+
+      await engine.start();
+
+      const putCall = vi.mocked(db.chapters.put).mock.calls[0][0] as any;
+      expect(putCall.id).toBe('ch-1');
+      expect(putCall.version).toBe(5);
+    });
+  });
+
   // ─── syncNow ───
 
   describe('syncNow', () => {
@@ -497,7 +655,7 @@ describe('SyncEngine', () => {
       mockFetch.mockClear();
 
       // SyncNow should call push (readQueue) and then pull (fetch /api/sync/pull)
-      vi.mocked(readQueue).mockResolvedValue([]);
+      vi.mocked(readQueue).mockResolvedValue({ entries: [], coveredIds: [] });
 
       mockFetch.mockResolvedValue(
         new Response(JSON.stringify({ data: { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }),

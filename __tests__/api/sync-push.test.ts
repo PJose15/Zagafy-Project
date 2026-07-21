@@ -226,6 +226,94 @@ describe('POST /api/sync/push', () => {
     }
   });
 
+  it('guards the writerInsight upsert with a storyId where-clause', async () => {
+    const req = makeRequest({
+      storyId: 'story-1',
+      storyTitle: 'Test',
+      deltas: [
+        {
+          entityType: 'writerInsight',
+          entityId: 'insight-1',
+          op: 'upsert',
+          payload: { category: 'voice', observation: 'test', lastObservedAt: Date.now() },
+          timestamp: Date.now(),
+        },
+      ],
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.applied).toBe(1);
+
+    // The insight onConflictDoUpdate must scope its update to the caller's
+    // story — mocked eq() returns its args, so where === ['storyId', 'story-1'].
+    const insightCall = mockOnConflictDoUpdate.mock.calls.find(
+      (c) => c[0]?.target === 'id' && Array.isArray(c[0]?.where),
+    );
+    expect(insightCall).toBeDefined();
+    expect(insightCall![0].where).toEqual(['storyId', 'story-1']);
+  });
+
+  it('first push creates the story with an ownership-guarded upsert', async () => {
+    // getStoryAccess lookup → null, existence check → null, post-upsert
+    // ownership re-check → row owned by the caller.
+    mockStoryFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ ownerId: 'user_test' });
+
+    const req = makeRequest({
+      storyId: 'story-new',
+      storyTitle: 'Brand New',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Brand New' }, timestamp: Date.now() },
+      ],
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+    expect(data.data.applied).toBe(1);
+
+    expect(mockInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'story-new', ownerId: 'user_test' }),
+    );
+    // The conflict update must be guarded so a colliding id owned by another
+    // user is never retitled: where === eq(stories.ownerId, userId).
+    const storyCall = mockOnConflictDoUpdate.mock.calls.find(
+      (c) => c[0]?.target === 'id' && Array.isArray(c[0]?.where),
+    );
+    expect(storyCall).toBeDefined();
+    expect(storyCall![0].where).toEqual(['ownerId', 'user_test']);
+  });
+
+  it('returns 403 when a first-push id collides with another user\'s story', async () => {
+    // Access lookup and existence check race past a concurrent insert; the
+    // post-upsert re-check reveals the row belongs to someone else.
+    mockStoryFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ ownerId: 'user_someone_else' });
+
+    const req = makeRequest({
+      storyId: 'story-collision',
+      storyTitle: 'Hijack Attempt',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Hijack' }, timestamp: Date.now() },
+      ],
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.message).toContain('own');
+    // No deltas may be applied to the foreign story
+    expect(mockUpdateSet).not.toHaveBeenCalled();
+  });
+
   it('returns 500 when database not configured', async () => {
     const { isDatabaseConfigured } = await import('@/db/client');
     vi.mocked(isDatabaseConfigured).mockReturnValueOnce(false);

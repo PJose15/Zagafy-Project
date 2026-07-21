@@ -88,11 +88,24 @@ export async function POST(req: NextRequest) {
         })
         .onConflictDoUpdate({
           target: schema.stories.id,
+          // Only update when the conflicting row already belongs to the
+          // caller — a colliding id owned by someone else must not be retitled.
+          where: eq(schema.stories.ownerId, userId),
           set: {
             title: storyTitle || 'Untitled',
             updatedAt: new Date(),
           },
         });
+      // Re-check ownership: if another user's story appeared between the
+      // access check and the insert, the guarded update matched nothing —
+      // refuse to write deltas into a story the caller does not own.
+      const created = await db().query.stories.findFirst({
+        where: eq(schema.stories.id, storyId),
+        columns: { ownerId: true },
+      });
+      if (!created || created.ownerId !== userId) {
+        return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
+      }
     } else if (access === 'owner' || access === 'editor') {
       // Story exists and the caller may write: update title/updatedAt only.
       // NEVER touches ownerId — editors cannot claim ownership.
@@ -110,6 +123,7 @@ export async function POST(req: NextRequest) {
 
     let applied = 0;
     const conflicts: ConflictRecord[] = [];
+    const chapterVersions: Record<string, number> = {};
 
     for (const delta of deltas) {
       try {
@@ -118,6 +132,9 @@ export async function POST(req: NextRequest) {
           conflicts.push(result.conflict);
         } else {
           applied++;
+          if (typeof result.newChapterVersion === 'number') {
+            chapterVersions[delta.entityId] = result.newChapterVersion;
+          }
         }
       } catch (deltaErr) {
         log.warn('delta apply failed', { entityType: delta.entityType, entityId: delta.entityId, err: String(deltaErr) });
@@ -134,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     const serverTimestamp = new Date().toISOString();
     log.info('push complete', { applied, conflicts: conflicts.length, deltas: deltas.length });
-    return ok({ applied, conflicts, serverTimestamp }, { requestId });
+    return ok({ applied, conflicts, chapterVersions, serverTimestamp }, { requestId });
   } catch (dbErr) {
     log.error('push failed', dbErr);
     return err('internal_error', 'Push failed', 500, undefined, { requestId });
@@ -145,6 +162,9 @@ export async function POST(req: NextRequest) {
 
 interface ApplyResult {
   conflict?: ConflictRecord;
+  /** New server version for accepted chapter upserts — echoed to the client
+   *  so its local copy tracks the server and later pushes don't false-conflict. */
+  newChapterVersion?: number;
 }
 
 async function applyDelta(
@@ -316,7 +336,7 @@ async function applyChapterUpsert(
       },
     });
 
-  return {};
+  return { newChapterVersion: newVersion };
 }
 
 async function applyChapterVersionUpsert(
@@ -429,6 +449,9 @@ async function applyInsightUpsert(
     })
     .onConflictDoUpdate({
       target: schema.writerInsights.id,
+      // Only update when the existing row belongs to the caller's story —
+      // blocks cross-tenant overwrite of an insight by guessing its ID.
+      where: eq(schema.writerInsights.storyId, storyId),
       set: {
         observation: (payload.observation as string) ?? '',
         evidenceCount: typeof payload.evidenceCount === 'number' ? payload.evidenceCount : 1,

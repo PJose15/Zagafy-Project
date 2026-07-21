@@ -27,6 +27,12 @@ const mockInsightsFindMany = vi.fn(async () => []);
 
 vi.mock('@/db/client', () => ({
   db: vi.fn(() => ({
+    // Subquery builder used by fetchChapterVersions (chapter ids for story)
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ['chapter-ids-subquery']),
+      })),
+    })),
     query: {
       stories: { findFirst: mockStoryFindFirst },
       storyCollaborators: { findFirst: mockCollabFindFirst },
@@ -56,6 +62,7 @@ vi.mock('drizzle-orm', () => ({
   eq: vi.fn((...args: any[]) => args),
   and: vi.fn((...args: any[]) => args),
   gte: vi.fn((...args: any[]) => args),
+  inArray: vi.fn((...args: any[]) => args),
 }));
 
 import { GET } from '@/app/api/sync/pull/route';
@@ -217,6 +224,65 @@ describe('GET /api/sync/pull', () => {
     const data = await res.json();
     expect(data.data.storyId).toBeNull();
     expect(data.data.story).toBeNull();
+  });
+
+  it('returns 400 for an invalid since timestamp', async () => {
+    const req = makeRequest({ since: 'not-a-date' });
+    const res = await GET(req);
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.message).toContain('since');
+    // Validation must reject before any story lookup happens
+    expect(mockStoryFindFirst).not.toHaveBeenCalled();
+  });
+
+  it('filters chapterVersions in SQL rather than fetching the whole table', async () => {
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'story-1',
+      ownerId: 'user_test',
+      title: 'My Story',
+      state: {},
+      updatedAt: new Date(),
+    });
+
+    const req = makeRequest({ since: '2026-01-01T00:00:00Z' });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+
+    // findMany must be called WITH a where clause (subquery scoping +
+    // createdAt filter), never as an unfiltered full-table scan.
+    expect(mockChapterVersionsFindMany).toHaveBeenCalledTimes(1);
+    const arg = (mockChapterVersionsFindMany.mock.calls[0] as unknown[])[0] as { where?: unknown } | undefined;
+    expect(arg?.where).toBeDefined();
+  });
+
+  it('captures the watermark before queries run (pre-query minus overlap)', async () => {
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'story-1',
+      ownerId: 'user_test',
+      title: 'My Story',
+      state: {},
+      updatedAt: new Date(),
+    });
+
+    let queryFinishedAt = 0;
+    mockChaptersFindMany.mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+      queryFinishedAt = Date.now();
+      return [];
+    });
+
+    const req = makeRequest();
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const watermark = new Date(data.data.serverTimestamp).getTime();
+
+    // Watermark must predate query completion by at least the ~2s overlap,
+    // so rows committed during the query window are re-pulled next time.
+    expect(queryFinishedAt).toBeGreaterThan(0);
+    expect(queryFinishedAt - watermark).toBeGreaterThanOrEqual(2000);
   });
 
   it('returns 500 when database not configured', async () => {

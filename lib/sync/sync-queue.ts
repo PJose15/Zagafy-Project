@@ -40,17 +40,28 @@ export async function recordDelta(
   }
 }
 
+export interface ReadQueueResult {
+  /** Latest entry per entityType:entityId — what gets pushed. */
+  entries: SyncQueueEntry[];
+  /** ALL raw row ids covered by the dedup, including superseded duplicates.
+   *  Clear these after a successful push — clearing only the deduped entry ids
+   *  leaves older duplicate rows to resurface as "latest" on the next push. */
+  coveredIds: string[];
+}
+
 /**
  * Read all queued entries, deduplicated by entityType+entityId.
  * For each unique entity, only the latest entry (by timestamp) is kept.
  * If the latest op is 'delete', earlier 'upsert' entries are discarded.
  */
-export async function readQueue(): Promise<SyncQueueEntry[]> {
+export async function readQueue(
+  projectId: string = getActiveProjectId(),
+): Promise<ReadQueueResult> {
   // Active-project-only sync: never push another project's queued deltas under
   // the active project's server story.
   const all = await db.syncQueue
     .where('projectId')
-    .equals(getActiveProjectId())
+    .equals(projectId)
     .sortBy('timestamp');
 
   // Deduplicate: keep the latest entry per entityType+entityId
@@ -60,7 +71,10 @@ export async function readQueue(): Promise<SyncQueueEntry[]> {
     map.set(key, entry as SyncQueueEntry);
   }
 
-  return Array.from(map.values());
+  return {
+    entries: Array.from(map.values()),
+    coveredIds: all.map(e => e.id),
+  };
 }
 
 /**
@@ -92,17 +106,19 @@ export async function getSyncMeta(): Promise<SyncMeta | null> {
   return (row as SyncMeta | undefined) ?? null;
 }
 
-/** Read the active project's server story ID, or null if first sync hasn't happened. */
-export async function getServerStoryId(): Promise<string | null> {
-  const row = await db.syncMeta.get(getActiveProjectId());
+/** Read a project's server story ID, or null if first sync hasn't happened. */
+export async function getServerStoryId(
+  projectId: string = getActiveProjectId(),
+): Promise<string | null> {
+  const row = await db.syncMeta.get(projectId);
   return row?.serverStoryId ?? null;
 }
 
-/** Initialize or update the active project's sync metadata. */
+/** Initialize or update a project's sync metadata (defaults to the active project). */
 export async function updateSyncMeta(
   updates: Partial<Omit<import('./types').SyncMeta, 'id'>>,
+  projectId: string = getActiveProjectId(),
 ): Promise<void> {
-  const projectId = getActiveProjectId();
   const existing = await db.syncMeta.get(projectId);
   await db.syncMeta.put({
     id: projectId,

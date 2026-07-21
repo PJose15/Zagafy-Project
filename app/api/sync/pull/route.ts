@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { eq, and, gte } from 'drizzle-orm';
+import { eq, and, gte, inArray } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
@@ -9,6 +9,11 @@ import { createRouteLogger } from '@/lib/logger';
 import { getStoryAccess } from '@/lib/collab';
 
 export const runtime = 'nodejs';
+
+// Watermark overlap: the returned serverTimestamp is backdated by this much so
+// rows committed while the pull queries were in flight are picked up by the
+// next incremental pull rather than falling into the gap.
+const WATERMARK_OVERLAP_MS = 2_000;
 
 /**
  * GET /api/sync/pull -- return all server data for the authenticated user,
@@ -40,6 +45,9 @@ export async function GET(req: NextRequest) {
   const sinceParam = req.nextUrl.searchParams.get('since');
   const storyIdParam = req.nextUrl.searchParams.get('storyId');
   const sinceDate = sinceParam ? new Date(sinceParam) : null;
+  if (sinceDate && isNaN(sinceDate.getTime())) {
+    return err('validation_failed', 'since must be a valid ISO timestamp', 400, undefined, { requestId });
+  }
 
   try {
     // Find the user's story. If storyId is provided, verify the caller has
@@ -78,6 +86,12 @@ export async function GET(req: NextRequest) {
 
     const storyId = story.id;
 
+    // Capture the watermark BEFORE running the queries (with a small overlap)
+    // so rows committed while the queries execute are re-delivered by the next
+    // since-pull instead of being skipped forever. Re-delivery is safe: pull
+    // consumers upsert by id, so overlap only costs a few duplicate rows.
+    const serverTimestamp = new Date(Date.now() - WATERMARK_OVERLAP_MS).toISOString();
+
     // Fetch all entities, optionally filtered by since timestamp
     const [chapters, chapterVersions, storySnapshots, sessions, chatMessages, writerInsights] =
       await Promise.all([
@@ -88,8 +102,6 @@ export async function GET(req: NextRequest) {
         fetchChatMessages(storyId, sinceDate),
         fetchInsights(storyId, sinceDate),
       ]);
-
-    const serverTimestamp = new Date().toISOString();
 
     // Only include the story state if it was updated since the timestamp
     const includeStory = !sinceDate || story.updatedAt >= sinceDate;
@@ -141,20 +153,19 @@ async function fetchChapters(storyId: string, since: Date | null) {
 }
 
 async function fetchChapterVersions(storyId: string, since: Date | null) {
-  // chapterVersions don't have updatedAt; use createdAt for filtering
-  const allChapters = await db().query.chapters.findMany({
-    where: eq(schema.chapters.storyId, storyId),
-    columns: { id: true },
-  });
-  const chapterIds = allChapters.map(c => c.id);
-  if (chapterIds.length === 0) return [];
-
-  const versions = await db().query.chapterVersions.findMany();
-  return versions.filter(v => {
-    if (!chapterIds.includes(v.chapterId)) return false;
-    if (since && v.createdAt < since) return false;
-    return true;
-  });
+  // chapterVersions has no storyId column — scope through a subquery of the
+  // story's chapter ids (same pattern as applyDelete in push). Versions are
+  // immutable, so createdAt stands in for updatedAt when filtering by since.
+  const inStory = inArray(
+    schema.chapterVersions.chapterId,
+    db().select({ id: schema.chapters.id }).from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
+  );
+  if (since) {
+    return db().query.chapterVersions.findMany({
+      where: and(inStory, gte(schema.chapterVersions.createdAt, since)),
+    });
+  }
+  return db().query.chapterVersions.findMany({ where: inStory });
 }
 
 async function fetchSnapshots(storyId: string, since: Date | null) {
