@@ -6,6 +6,7 @@ const originalEnv = { ...process.env };
 const mockRequireUser = vi.fn();
 vi.mock('@/lib/auth', () => ({
   requireUser: () => mockRequireUser(),
+  requireCloudUser: () => mockRequireUser(),
   isAuthError: (r: unknown) => r instanceof Response,
   isAuthEnabled: () => true,
 }));

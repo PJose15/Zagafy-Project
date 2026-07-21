@@ -46,3 +46,17 @@ export async function requireUser(): Promise<AuthResult> {
   }
   return { userId: session.userId, embedMode: false };
 }
+
+/**
+ * Like requireUser, but refuses the shared embed-mode stub identity.
+ * Database-backed routes (sync, collaborators, billing) must use this:
+ * with auth disabled, every anonymous visitor resolves to the same
+ * 'embed-mode' userId, which would merge all visitors into one tenant.
+ */
+export async function requireCloudUser(): Promise<AuthResult> {
+  const result = await requireUser();
+  if (!isAuthError(result) && result.embedMode) {
+    return err('forbidden', 'This feature requires a signed-in account', 403);
+  }
+  return result;
+}

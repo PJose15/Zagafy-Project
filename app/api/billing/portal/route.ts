@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server';
 import { eq } from 'drizzle-orm';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
-import { requireUser, isAuthError } from '@/lib/auth';
+import { requireCloudUser, isAuthError } from '@/lib/auth';
 import { stripe, isStripeConfigured } from '@/lib/stripe';
 import { db, isDatabaseConfigured } from '@/db/client';
 import { users } from '@/db/schema';
+import { resolveAppUrl } from '@/lib/billing';
 
 export const runtime = 'nodejs';
 
@@ -20,7 +21,7 @@ export async function POST(_req: NextRequest) {
   const requestId = makeRequestId();
   const log = createRouteLogger({ endpoint: '/api/billing/portal', requestId });
 
-  const auth = await requireUser();
+  const auth = await requireCloudUser();
   if (isAuthError(auth)) return auth;
 
   if (!isStripeConfigured()) {
@@ -48,7 +49,11 @@ export async function POST(_req: NextRequest) {
       return err('validation_failed', 'No billing account found. Subscribe to a plan first.', 400, undefined, { requestId });
     }
 
-    const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const appUrl = resolveAppUrl();
+    if (!appUrl) {
+      log.error('APP_URL / NEXT_PUBLIC_APP_URL not configured in production');
+      return err('internal_error', 'Billing not configured', 500, undefined, { requestId });
+    }
 
     const session = await stripe().billingPortal.sessions.create({
       customer: user.stripeCustomerId,

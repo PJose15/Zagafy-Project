@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
-import { requireUser, isAuthError } from '@/lib/auth';
+import { requireCloudUser, isAuthError } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const requestId = makeRequestId();
   const log = createRouteLogger({ endpoint: '/api/collaborators', requestId });
 
-  const authResult = await requireUser();
+  const authResult = await requireCloudUser();
   if (isAuthError(authResult)) return authResult;
   const { userId } = authResult;
 
@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
   const requestId = makeRequestId();
   const log = createRouteLogger({ endpoint: '/api/collaborators', requestId });
 
-  const authResult = await requireUser();
+  const authResult = await requireCloudUser();
   if (isAuthError(authResult)) return authResult;
   const { userId } = authResult;
 
@@ -182,7 +182,7 @@ export async function DELETE(req: NextRequest) {
   const requestId = makeRequestId();
   const log = createRouteLogger({ endpoint: '/api/collaborators', requestId });
 
-  const authResult = await requireUser();
+  const authResult = await requireCloudUser();
   if (isAuthError(authResult)) return authResult;
   const { userId } = authResult;
 

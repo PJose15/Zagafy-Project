@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 
 vi.mock('@/lib/auth', () => ({
   requireUser: vi.fn(async () => ({ userId: 'user_owner', embedMode: false })),
+  requireCloudUser: vi.fn(async () => ({ userId: 'user_owner', embedMode: false })),
   isAuthError: vi.fn((r: any) => r instanceof Response || (r && typeof r.status === 'number' && typeof r.json === 'function')),
 }));
 

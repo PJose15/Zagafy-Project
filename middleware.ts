@@ -23,6 +23,15 @@ const isApiRoute = createRouteMatcher(['/api/(.*)']);
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
+  // Marketing + legal pages must stay reachable signed-out (pricing before
+  // purchase; privacy/terms are a compliance requirement for a paid product).
+  '/about(.*)',
+  '/blog(.*)',
+  '/docs(.*)',
+  '/features(.*)',
+  '/pricing(.*)',
+  '/privacy(.*)',
+  '/terms(.*)',
   '/api/health(.*)',
   '/api/ai-status(.*)', // boolean-only config probe — must be readable when signed out
   '/api/webhooks/(.*)', // Clerk / Stripe webhooks — verified by HMAC signature
@@ -102,13 +111,20 @@ export function buildCsp(nonce: string, opts?: CspOptions): string {
   const frameAncestors = isEmbed
     ? "'self' https://ai.studio https://*.ai.studio https://aistudio.google.com https://*.google.com"
     : "'none'";
+  // Third-party allowances:
+  //  - Clerk frontend API (dev instances use *.clerk.accounts.dev; production
+  //    instances use clerk.<domain>) + avatar CDN + Cloudflare Turnstile.
+  //  - PostHog ingestion + static assets (session recorder runs in a blob:
+  //    worker). Without these, enabling auth/analytics hard-breaks sign-in.
   return [
     "default-src 'self'",
     `script-src ${scriptSrc}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://img.clerk.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://generativelanguage.googleapis.com",
+    "connect-src 'self' https://generativelanguage.googleapis.com https://*.clerk.accounts.dev https://clerk.zagafy.com https://us.i.posthog.com https://us-assets.i.posthog.com",
+    "worker-src 'self' blob:",
+    "frame-src 'self' https://challenges.cloudflare.com",
     `frame-ancestors ${frameAncestors}`,
   ].join('; ');
 }

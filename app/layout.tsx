@@ -28,6 +28,9 @@ const playfair = Playfair_Display({
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://zagafy.vercel.app',
+  ),
   title: 'Zagafy',
   description: 'Your antiquarian narrative workshop.',
   openGraph: {

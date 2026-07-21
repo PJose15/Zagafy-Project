@@ -150,3 +150,15 @@ export function getStripePriceId(
   const key = `STRIPE_PRICE_${plan.toUpperCase()}_${interval.toUpperCase()}`;
   return process.env[key] ?? null;
 }
+
+/**
+ * Base URL for Stripe success/cancel/return redirects.
+ * Returns null in production when neither APP_URL nor NEXT_PUBLIC_APP_URL is
+ * set — callers must treat that as a config error rather than silently
+ * redirecting paying customers to localhost.
+ */
+export function resolveAppUrl(): string | null {
+  const url = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+  if (url) return url;
+  return process.env.NODE_ENV === 'production' ? null : 'http://localhost:3000';
+}

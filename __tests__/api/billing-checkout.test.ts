@@ -6,6 +6,7 @@ const originalEnv = { ...process.env };
 const mockRequireUser = vi.fn();
 vi.mock('@/lib/auth', () => ({
   requireUser: () => mockRequireUser(),
+  requireCloudUser: () => mockRequireUser(),
   isAuthError: (r: unknown) => r instanceof Response,
   isAuthEnabled: () => true,
 }));
@@ -41,6 +42,7 @@ vi.mock('@/lib/billing', () => ({
   getStripePriceId: (plan: string, interval: string) =>
     plan === 'writer' && interval === 'monthly' ? 'price_writer_monthly' : null,
   isPlanId: (v: unknown) => typeof v === 'string' && ['free', 'writer', 'author', 'studio'].includes(v),
+  resolveAppUrl: () => 'http://localhost:3000',
 }));
 
 function makeRequest(body: Record<string, unknown>) {

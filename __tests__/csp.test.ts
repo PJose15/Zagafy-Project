@@ -54,6 +54,20 @@ describe('buildCsp', () => {
     );
   });
 
+  it('allows Clerk frontend API, avatars, and Turnstile so sign-in works under CSP', () => {
+    const csp = buildCsp(NONCE, { isDev: false, isEmbed: false });
+    expect(csp).toContain('https://*.clerk.accounts.dev');
+    expect(csp).toContain('https://img.clerk.com');
+    expect(csp).toContain("frame-src 'self' https://challenges.cloudflare.com");
+  });
+
+  it('allows PostHog ingestion/assets and blob workers for session recording', () => {
+    const csp = buildCsp(NONCE, { isDev: false, isEmbed: false });
+    expect(csp).toContain('https://us.i.posthog.com');
+    expect(csp).toContain('https://us-assets.i.posthog.com');
+    expect(csp).toContain("worker-src 'self' blob:");
+  });
+
   it('embeds different nonces verbatim', () => {
     const other = 'YW5vdGhlcg==';
     expect(buildCsp(other, { isDev: false, isEmbed: false })).toContain(
