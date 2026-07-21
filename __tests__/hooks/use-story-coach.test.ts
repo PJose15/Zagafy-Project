@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useStoryCoach } from '@/hooks/use-story-coach';
+import { useStoryCoach, clearCoachSessionCache } from '@/hooks/use-story-coach';
 import type { CoachingInsight } from '@/lib/story-coach/types';
 
 function mockInsights(count = 2): CoachingInsight[] {
@@ -31,8 +31,9 @@ function mockFetchError(status = 500) {
 describe('useStoryCoach', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    // Clear module-level sessionCache between tests by re-importing
-    // We reset fetch for each test
+    // The session cache is module-level (and now keyed per chapter+lens, so
+    // lens-scoped refreshes also cache) — clear it so tests stay independent.
+    clearCoachSessionCache();
   });
 
   afterEach(() => {
@@ -76,7 +77,12 @@ describe('useStoryCoach', () => {
         chapterTitle: 'My Chapter',
         storyContext: 'Fantasy world',
         focusLens: 'pacing',
-        heteronymVoice: { tone: 'poetic' },
+        // The heteronym slice buildVoiceDirective reads (name/voice/styleNote).
+        heteronymVoice: {
+          name: 'Álvaro',
+          voice: { tone: 'poetic', vocabulary: 'literary', pacing: 'flowing', freeformNote: '' },
+          styleNote: 'long sentences',
+        },
       });
     });
 
@@ -87,7 +93,11 @@ describe('useStoryCoach', () => {
     expect(body.chapterTitle).toBe('My Chapter');
     expect(body.storyContext).toBe('Fantasy world');
     expect(body.focusLens).toBe('pacing');
-    expect(body.heteronymVoice).toEqual({ tone: 'poetic' });
+    expect(body.heteronymVoice).toEqual({
+      name: 'Álvaro',
+      voice: { tone: 'poetic', vocabulary: 'literary', pacing: 'flowing', freeformNote: '' },
+      styleNote: 'long sentences',
+    });
   });
 
   it('forwards the story language so coaching matches the prose language', async () => {
@@ -113,7 +123,7 @@ describe('useStoryCoach', () => {
       result.current.refresh('ch-1', { focusLens: 'tension', chapterContent: 'x' });
     });
 
-    expect(result.current.error).toBe('Coach API error: 500');
+    expect(result.current.error).toBe('apiError');
     expect(result.current.insights).toEqual([]);
     expect(result.current.isLoading).toBe(false);
   });
@@ -127,7 +137,7 @@ describe('useStoryCoach', () => {
       result.current.refresh('ch-1', { focusLens: 'tension', chapterContent: 'x' });
     });
 
-    expect(result.current.error).toBe('Network error');
+    expect(result.current.error).toBe('networkError');
     expect(result.current.isLoading).toBe(false);
   });
 
@@ -248,9 +258,63 @@ describe('useStoryCoach', () => {
       result.current.refresh('ch-1', { chapterContent: 'Text', focusLens: 'tension' });
     });
 
-    // If caching works, fetch should still be called only once
-    // (hook implementation may vary — at minimum, insights should persist)
+    expect(fetchFn).toHaveBeenCalledTimes(1);
     expect(result.current.insights).toHaveLength(2);
+  });
+
+  it('force bypasses and replaces the cached session', async () => {
+    const fetchFn = mockFetchSuccess(mockInsights(2));
+    globalThis.fetch = fetchFn;
+
+    const { result } = renderHook(() => useStoryCoach());
+
+    await act(async () => {
+      result.current.refresh('ch-1', { chapterContent: 'Text' });
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    // Refresh button path — must refetch despite the cache…
+    const freshInsights = [{ ...mockInsights(1)[0], id: 'fresh-0' }];
+    globalThis.fetch = mockFetchSuccess(freshInsights);
+    await act(async () => {
+      result.current.refresh('ch-1', { chapterContent: 'Text', force: true });
+    });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(result.current.insights[0].id).toBe('fresh-0');
+
+    // …and the replaced cache entry serves the next non-forced refresh.
+    const thirdFetch = mockFetchSuccess([]);
+    globalThis.fetch = thirdFetch;
+    await act(async () => {
+      result.current.refresh('ch-1', { chapterContent: 'Text' });
+    });
+    expect(thirdFetch).not.toHaveBeenCalled();
+    expect(result.current.insights[0].id).toBe('fresh-0');
+  });
+
+  it('keys the cache per lens so lens results never poison the general entry', async () => {
+    const fetchFn = mockFetchSuccess(mockInsights(2));
+    globalThis.fetch = fetchFn;
+
+    const { result } = renderHook(() => useStoryCoach());
+
+    await act(async () => {
+      result.current.refresh('ch-1', { chapterContent: 'Text' });
+    });
+    await act(async () => {
+      result.current.refresh('ch-1', { chapterContent: 'Text', focusLens: 'pacing' });
+    });
+    // Different cache keys → two fetches
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+
+    // Both entries now cached: repeats of either hit the cache.
+    await act(async () => {
+      result.current.refresh('ch-1', { chapterContent: 'Text' });
+    });
+    await act(async () => {
+      result.current.refresh('ch-1', { chapterContent: 'Text', focusLens: 'pacing' });
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 
   it('cached insights exclude dismissed ones on subsequent access', async () => {

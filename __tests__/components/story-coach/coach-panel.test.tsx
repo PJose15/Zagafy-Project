@@ -43,6 +43,7 @@ vi.mock('@/components/story-coach/coach-lens-filter', () => ({
 }));
 
 import { CoachPanel } from '@/components/story-coach/coach-panel';
+import type { StoryCoachError } from '@/hooks/use-story-coach';
 
 function makeInsight(overrides: Partial<CoachingInsight> = {}): CoachingInsight {
   return {
@@ -59,7 +60,7 @@ describe('CoachPanel', () => {
   const defaultProps = {
     insights: [] as CoachingInsight[],
     isLoading: false,
-    error: null as string | null,
+    error: null as StoryCoachError | null,
     onRefresh: vi.fn(),
     onDismiss: vi.fn(),
     onClose: vi.fn(),
@@ -93,9 +94,14 @@ describe('CoachPanel', () => {
     expect(screen.getByText('Analyzing your chapter...')).toBeDefined();
   });
 
-  it('shows error message when error is present', () => {
-    render(<CoachPanel {...defaultProps} error="Something went wrong" />);
-    expect(screen.getByText('Something went wrong')).toBeDefined();
+  it('shows a translated error message when an error code is present', () => {
+    render(<CoachPanel {...defaultProps} error="apiError" />);
+    expect(screen.getByText("The coach couldn't analyze this chapter. Please try again.")).toBeDefined();
+  });
+
+  it('shows the network error copy for networkError', () => {
+    render(<CoachPanel {...defaultProps} error="networkError" />);
+    expect(screen.getByText("Couldn't reach the story coach. Check your connection and try again.")).toBeDefined();
   });
 
   it('renders insight cards for each insight', () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useTranslations } from 'next-intl';
 import { MessageSquareText, Users, BookOpen } from 'lucide-react';
@@ -27,12 +27,24 @@ export function QuestCard({ quest, onComplete }: QuestCardProps) {
   const [showDone, setShowDone] = useState(false);
 
   // M13: Prevent double-click; M7: Brief visual confirmation
+  const doneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+    };
+  }, []);
   const handleComplete = useCallback(() => {
     if (completing) return;
     setCompleting(true);
-    onComplete(quest.id);
+    try {
+      onComplete(quest.id);
+    } catch {
+      // Completion failed — re-arm the button instead of locking it.
+      setCompleting(false);
+      return;
+    }
     setShowDone(true);
-    setTimeout(() => setShowDone(false), 1000);
+    doneTimerRef.current = setTimeout(() => setShowDone(false), 1000);
   }, [completing, onComplete, quest.id]);
 
   return (

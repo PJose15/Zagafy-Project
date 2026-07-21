@@ -19,8 +19,22 @@ import {
   normalizeStateIndicator,
 } from '@/lib/types/character-chat';
 import { useStory, type CharacterState, type Character, type StoryState, type CanonItem } from '@/lib/store';
+import { getPlainText } from '@/lib/editor/serialization';
 
 export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limited' | 'upstream_error';
+
+// Stable send-failure codes — the hook has no t(); the rendering component
+// translates these (serverMessage, when present, is shown as-is).
+export type CharacterChatErrorCode = 'httpError' | 'emptyReply' | 'networkError';
+
+export interface CharacterChatError {
+  code: CharacterChatErrorCode;
+  status?: number;
+  /** Server-provided detail (already human-readable) — preferred over the code's generic copy. */
+  serverMessage?: string;
+  notConfigured: boolean;
+  lastInput: string;
+}
 
 /**
  * Narrow a full CharacterState down to the conversation-evolving slice.
@@ -67,7 +81,9 @@ function buildStoryContext(state: StoryState, character: Character): StoryContex
   } else {
     const excerpts: string[] = [];
     for (const ch of chapters) {
-      const text = ch.content || '';
+      // Chapter content may be Lexical JSON (CB-07) — decode so the model
+      // receives prose, not serialized editor nodes.
+      const text = getPlainText(ch.content || '');
       const idx = text.toLowerCase().indexOf(name);
       if (idx >= 0) {
         const slice = text.slice(Math.max(0, idx - 150), idx + 350).replace(/\s+/g, ' ').trim();
@@ -92,6 +108,11 @@ export function useCharacterChat(characterId: string | null) {
   const [messages, setMessages] = useState<CharacterChatMessage[]>([]);
   const [mode, setModeState] = useState<ChatMode>('exploration');
   const [isLoading, setIsLoading] = useState(false);
+  // True from send until the reply stream fully completes (or errors).
+  // isLoading drops on the first token to hide the "thinking" pulse, so the
+  // composer must gate on this too — a send mid-stream would abort stream 1
+  // and bake its partial reply into history as if it were complete.
+  const [isStreaming, setIsStreaming] = useState(false);
   const [insights, setInsights] = useState<CharacterInsight[]>([]);
   const [lastInsightError, setLastInsightError] = useState<CharacterInsightErrorReason | null>(null);
   // Canon contradictions detected in the most recent reply (Story-Brain check).
@@ -99,7 +120,7 @@ export function useCharacterChat(characterId: string | null) {
   // Surfaced when a send fails so the chat shows a clear message instead of the
   // user's message silently vanishing. `notConfigured` means the server is
   // missing ANTHROPIC_API_KEY; `lastInput` lets the UI offer a one-click retry.
-  const [error, setError] = useState<{ message: string; notConfigured: boolean; lastInput: string } | null>(null);
+  const [error, setError] = useState<CharacterChatError | null>(null);
   // Living state — the character's conversation-evolving emotional state, shown
   // as a live meter and fed back into the next prompt. Ref mirrors it for reads
   // inside sendMessage without adding a dependency.
@@ -116,6 +137,28 @@ export function useCharacterChat(characterId: string | null) {
   // sendMessage without a dependency; persisted on the session).
   const memoryRef = useRef<string | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
+  // Mirrors the current characterId so async continuations (stream loop,
+  // fire-and-forget callbacks) can detect a character switch and never write
+  // the old character's data into the new character's panels.
+  const characterIdRef = useRef<string | null>(characterId);
+
+  // Abort in-flight work when switching characters; reset transient send state
+  // that the load effect below doesn't own. (Kept separate from the load effect
+  // so re-runs on state.characters changes don't abort a healthy stream.)
+  useEffect(() => {
+    if (characterIdRef.current !== characterId) {
+      abortRef.current?.abort();
+      setIsLoading(false);
+      setIsStreaming(false);
+      setError(null);
+      setContradictions([]);
+      setLastInsightError(null);
+    }
+    characterIdRef.current = characterId;
+  }, [characterId]);
+
+  // Abort in-flight work on unmount.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Load or create session when characterId changes
   useEffect(() => {
@@ -200,6 +243,12 @@ export function useCharacterChat(characterId: string | null) {
     const character = state.characters.find(c => c.id === characterId);
     if (!character) return;
 
+    // Which character this send belongs to — every setState in the stream loop
+    // and the fire-and-forget callbacks below checks this against the ref so a
+    // mid-flight character switch can't bleed state across characters.
+    // (Persistence to the old session is still allowed to complete.)
+    const sentFor = characterId;
+
     const userMsg: CharacterChatMessage = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -211,6 +260,7 @@ export function useCharacterChat(characterId: string | null) {
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setIsLoading(true);
+    setIsStreaming(true);
     setError(null);
     setContradictions([]); // clear any flag from the previous reply
 
@@ -259,12 +309,15 @@ export function useCharacterChat(characterId: string | null) {
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         const reason = body?.details?.reason;
-        const message = typeof body?.message === 'string'
+        const serverMessage = typeof body?.message === 'string'
           ? body.message
           : typeof body?.error === 'string'
             ? body.error
-            : `The character couldn't respond (error ${res.status}).`;
-        const e = new Error(message) as Error & { notConfigured?: boolean };
+            : undefined;
+        const e = new Error(serverMessage ?? `character-chat error ${res.status}`) as Error & Partial<CharacterChatError>;
+        e.code = 'httpError';
+        e.status = res.status;
+        e.serverMessage = serverMessage;
         e.notConfigured = reason === 'ai_not_configured';
         throw e;
       }
@@ -288,6 +341,9 @@ export function useCharacterChat(characterId: string | null) {
           const { done, value } = await reader.read();
           if (done) break;
           acc += decoder.decode(value, { stream: true });
+          // A character switch aborts this stream, but a read already in
+          // flight can still resolve — never paint into the new chat.
+          if (characterIdRef.current !== sentFor) continue;
           if (!started) {
             started = true;
             setIsLoading(false); // first token arrived — drop the "thinking" pulse
@@ -299,11 +355,13 @@ export function useCharacterChat(characterId: string | null) {
       if (!acc.trim()) {
         // Empty stream (refusal / thinking-only / dropped connection) — surface
         // as a retryable error instead of leaving an empty bubble.
-        throw new Error("The character couldn't respond. Please try again.");
+        const e = new Error('empty character reply') as Error & Partial<CharacterChatError>;
+        e.code = 'emptyReply';
+        throw e;
       }
 
       const finalMessages = [...updatedMessages, { ...charMsg, content: acc }];
-      setMessages(finalMessages);
+      if (characterIdRef.current === sentFor) setMessages(finalMessages);
       updateChatSession(session.id, {
         messages: finalMessages,
         updatedAt: new Date().toISOString(),
@@ -327,12 +385,11 @@ export function useCharacterChat(characterId: string | null) {
               body: JSON.stringify({ characterName: character.name, transcript, language: state.language }),
             });
             if (!ires.ok) {
-              setLastInsightError('upstream_error');
+              if (characterIdRef.current === sentFor) setLastInsightError('upstream_error');
               return;
             }
             const idata = await ires.json();
             if (idata.insight) {
-              setLastInsightError(null);
               const newInsight: CharacterInsight = {
                 id: crypto.randomUUID(),
                 characterId,
@@ -341,13 +398,15 @@ export function useCharacterChat(characterId: string | null) {
                 savedAsCanon: false,
                 createdAt: new Date().toISOString(),
               };
-              addInsight(newInsight);
+              addInsight(newInsight); // persist even after a switch — it belongs to the old session
+              if (characterIdRef.current !== sentFor) return;
+              setLastInsightError(null);
               setInsights(prev => [...prev, newInsight]);
             } else if (idata.insightError) {
-              setLastInsightError(idata.insightError as CharacterInsightErrorReason);
+              if (characterIdRef.current === sentFor) setLastInsightError(idata.insightError as CharacterInsightErrorReason);
             }
           } catch {
-            setLastInsightError('upstream_error');
+            if (characterIdRef.current === sentFor) setLastInsightError('upstream_error');
           }
         })();
       }
@@ -376,7 +435,9 @@ export function useCharacterChat(characterId: string | null) {
             if (!sres.ok) return;
             const sdata = await sres.json();
             if (sdata.state) {
-              setLiveState(sdata.state as EvolvedState);
+              // Guard the live meter (and its ref) — persisting to the old
+              // session below is still correct after a switch.
+              if (characterIdRef.current === sentFor) setLiveState(sdata.state as EvolvedState);
               updateChatSession(session.id, {
                 evolvedState: sdata.state,
                 updatedAt: new Date().toISOString(),
@@ -405,6 +466,7 @@ export function useCharacterChat(characterId: string | null) {
             });
             if (!cres.ok) return;
             const cdata = await cres.json();
+            if (characterIdRef.current !== sentFor) return;
             if (Array.isArray(cdata.contradictions) && cdata.contradictions.length) {
               setContradictions(cdata.contradictions as ContradictionFlag[]);
             }
@@ -433,7 +495,9 @@ export function useCharacterChat(characterId: string | null) {
             if (!mres.ok) return;
             const mdata = await mres.json();
             if (typeof mdata.memory === 'string' && mdata.memory.trim()) {
-              memoryRef.current = mdata.memory;
+              // memoryRef belongs to whichever character is now active — only
+              // write it if we're still on the one this send was for.
+              if (characterIdRef.current === sentFor) memoryRef.current = mdata.memory;
               updateChatSession(session.id, { memory: mdata.memory, updatedAt: new Date().toISOString() });
             }
           } catch {
@@ -443,16 +507,27 @@ export function useCharacterChat(characterId: string | null) {
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
+      // Stale failure from before a character switch — the new chat owns the UI.
+      if (characterIdRef.current !== sentFor) return;
       // Revert the optimistic user message and surface a visible, retryable error
       // (instead of the message silently disappearing).
       setMessages(messages);
-      const message = err instanceof Error ? err.message : 'Something went wrong reaching the character.';
-      const notConfigured = !!(err as { notConfigured?: boolean })?.notConfigured;
-      setError({ message, notConfigured, lastInput: content.trim() });
+      const ex = err as Partial<CharacterChatError>;
+      setError({
+        code: ex.code ?? 'networkError',
+        status: ex.status,
+        serverMessage: ex.serverMessage,
+        notConfigured: !!ex.notConfigured,
+        lastInput: content.trim(),
+      });
     } finally {
       // A newer request may have aborted this one; if so, leave the spinner
       // up for the request still in flight instead of clearing it here.
-      if (!controller.signal.aborted) setIsLoading(false);
+      // Likewise, after a character switch these flags belong to the new chat.
+      if (!controller.signal.aborted && characterIdRef.current === sentFor) {
+        setIsLoading(false);
+        setIsStreaming(false);
+      }
     }
   }, [session, characterId, messages, mode, state, setLiveState]);
 
@@ -510,6 +585,7 @@ export function useCharacterChat(characterId: string | null) {
     setMode,
     sendMessage,
     isLoading,
+    isStreaming,
     insights,
     lastInsightError,
     saveInsightAsCanon,

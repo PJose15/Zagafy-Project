@@ -265,6 +265,17 @@ export default function ManuscriptPage() {
     [state.chapters]
   );
 
+  // Per-chapter plain text + word count, derived once per chapters change —
+  // each collapsed card otherwise re-parses its Lexical JSON (getPlainText +
+  // three wordCount calls) on every page render.
+  const chapterDerived = useMemo(() => {
+    const map = new Map<string, { plain: string; words: number }>();
+    for (const c of state.chapters) {
+      map.set(c.id, { plain: getPlainText(c.content), words: wordCount(c.content) });
+    }
+    return map;
+  }, [state.chapters]);
+
   // Phase 4.2 / MP-06 — find-and-replace dialog
   const [findOpen, setFindOpen] = useState(false);
 
@@ -395,7 +406,9 @@ export default function ManuscriptPage() {
         className="space-y-6"
       >
         <AnimatePresence>
-          {state.chapters.map((chapter, index) => (
+          {state.chapters.map((chapter, index) => {
+            const derived = chapterDerived.get(chapter.id) ?? { plain: '', words: 0 };
+            return (
             <DraggableChapter
               key={chapter.id}
               chapter={chapter}
@@ -517,18 +530,18 @@ export default function ManuscriptPage() {
                   </div>
                   {!compact && (
                     <div className="prose prose-sepia max-w-none font-serif text-sepia-700 leading-relaxed line-clamp-4 whitespace-pre-wrap">
-                      {getPlainText(chapter.content) || <span className="text-sepia-600 italic">{t('emptyChapter')}</span>}
+                      {derived.plain || <span className="text-sepia-600 italic">{t('emptyChapter')}</span>}
                     </div>
                   )}
                   <div className="mt-2 flex items-center gap-3 text-xs text-sepia-600 font-mono">
                     {/* M18: the ledger rolls to its new count when a save lands */}
                     <span>
                       {t.rich('words', {
-                        count: wordCount(chapter.content),
-                        n: () => <AnimatedNumber value={wordCount(chapter.content)} pulseOnChange />,
+                        count: derived.words,
+                        n: () => <AnimatedNumber value={derived.words} pulseOnChange />,
                       })}
                     </span>
-                    <span>{readingTime(wordCount(chapter.content))}</span>
+                    <span>{readingTime(derived.words)}</span>
                     <VersionCount chapterId={chapter.id} />
                   </div>
                   {!compact && chapter.summary && (
@@ -541,7 +554,8 @@ export default function ManuscriptPage() {
               )}
             </ParchmentCard>
             </DraggableChapter>
-          ))}
+            );
+          })}
         </AnimatePresence>
 
         {state.chapters.length === 0 && (

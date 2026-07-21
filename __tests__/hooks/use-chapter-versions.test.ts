@@ -272,6 +272,49 @@ describe('useChapterVersions', () => {
     expect(mod.readVersions).toHaveBeenCalledWith('ch-1');
   });
 
+  it('does not re-run ensureInitialVersion on content changes (per-keystroke guard)', async () => {
+    const mod = await import('@/lib/types/chapter-version') as any;
+    const useChapterVersions = await importHook();
+    const { result, rerender } = renderHook(
+      ({ content }) => useChapterVersions('ch-1', content),
+      { initialProps: { content: 'Hello world' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.versions).toHaveLength(1);
+    });
+    const callsAfterMount = mod.ensureInitialVersion.mock.calls.length;
+
+    // Typing: content changes, chapterId stays — no reload, no re-seed
+    rerender({ content: 'Hello world again' });
+    rerender({ content: 'Hello world again and again' });
+
+    expect(mod.ensureInitialVersion.mock.calls.length).toBe(callsAfterMount);
+  });
+
+  it('re-loads with the latest content when the chapter changes', async () => {
+    const mod = await import('@/lib/types/chapter-version') as any;
+    const useChapterVersions = await importHook();
+    const { result, rerender } = renderHook(
+      ({ chapterId, content }) => useChapterVersions(chapterId, content),
+      { initialProps: { chapterId: 'ch-1', content: 'First chapter text' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.versions).toHaveLength(1);
+    });
+
+    // Switch chapters — the ref must carry the CURRENT content for seeding
+    rerender({ chapterId: 'ch-2', content: 'Second chapter text' });
+
+    await waitFor(() => {
+      expect(mod.ensureInitialVersion).toHaveBeenCalledWith('ch-2', 'Second chapter text');
+    });
+    await waitFor(() => {
+      expect(result.current.versions[0]?.chapterId).toBe('ch-2');
+    });
+  });
+
   it('returns null activeVersion when no versions exist (empty content)', async () => {
     const useChapterVersions = await importHook();
     const { result } = renderHook(() => useChapterVersions('ch-1', ''));

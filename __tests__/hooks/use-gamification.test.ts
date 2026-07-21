@@ -321,6 +321,93 @@ describe('useGamification', () => {
     spy.mockRestore();
   });
 
+  // ── Fix 1: same-tab lost-update race (session tracker direct writes) ──
+
+  it('merges provider mutations over same-tab direct localStorage writes (no clobber)', async () => {
+    const { result } = renderHook(() => useGamification(), { wrapper });
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+    // Simulate the session tracker awarding XP with a direct write the
+    // provider's React state has NOT seen.
+    const blob = JSON.parse(store['zagafy_gamification']);
+    blob.xp.totalXP = 120;
+    store['zagafy_gamification'] = JSON.stringify(blob);
+
+    // The worst offender pre-fix: refreshFinishing wrote from stale React
+    // state and clobbered the just-awarded XP.
+    act(() => { result.current.refreshFinishing(); });
+    expect(JSON.parse(store['zagafy_gamification']).xp.totalXP).toBe(120);
+
+    // Every other mutation must merge too.
+    act(() => { result.current.awardXP('test', 5); });
+    expect(JSON.parse(store['zagafy_gamification']).xp.totalXP).toBe(125);
+  });
+
+  it('re-reads state and re-evaluates streak on the same-tab update event', async () => {
+    const { result } = renderHook(() => useGamification(), { wrapper });
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+    expect(result.current.streak.todayQualified).toBe(false);
+
+    try {
+      // A qualifying (30-min) session lands in the ledger, then the session
+      // tracker signals the same-tab event after its direct XP write.
+      const start = new Date();
+      start.setHours(10, 0, 0, 0);
+      const end = new Date(start.getTime() + 30 * 60_000);
+      mockSessions.push({
+        id: 's-today',
+        startedAt: start.toISOString(),
+        endedAt: end.toISOString(),
+        wordsAdded: 300,
+      });
+      const blob = JSON.parse(store['zagafy_gamification']);
+      blob.xp.totalXP = 40;
+      store['zagafy_gamification'] = JSON.stringify(blob);
+
+      act(() => {
+        window.dispatchEvent(new Event('zagafy:gamification-updated'));
+      });
+
+      // Streak flips without a reload AND the direct XP write survives.
+      await waitFor(() => expect(result.current.streak.todayQualified).toBe(true));
+      expect(result.current.streak.currentStreak).toBe(1);
+      expect(result.current.gamification.xp.totalXP).toBe(40);
+    } finally {
+      mockSessions.length = 0;
+    }
+  });
+
+  // ── Fix 2: day rollover in a long-lived tab ──
+
+  it('re-runs the daily evaluation on visibilitychange after a day rollover', async () => {
+    const { result } = renderHook(() => useGamification(), { wrapper });
+    await waitFor(() => expect(result.current.isLoaded).toBe(true));
+
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = fmt(yesterday);
+    const todayKey = fmt(new Date());
+
+    // Rewind the stored day key to yesterday, as if the tab slept past midnight.
+    const blob = JSON.parse(store['zagafy_gamification']);
+    blob.quests.currentDate = yKey;
+    blob.quests.quests = blob.quests.quests.map((q: { dateKey: string }) => ({ ...q, dateKey: yKey }));
+    store['zagafy_gamification'] = JSON.stringify(blob);
+
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    await waitFor(() => {
+      expect(result.current.gamification.quests.currentDate).toBe(todayKey);
+    });
+    expect(result.current.quests).toHaveLength(3);
+    expect(result.current.quests.every((q) => q.dateKey === todayKey)).toBe(true);
+  });
+
   // ── S5-G1: one-shot CHAPTER_FINISHED / STREAK_MILESTONE awards ──
 
   describe('one-shot awards (S5-G1)', () => {

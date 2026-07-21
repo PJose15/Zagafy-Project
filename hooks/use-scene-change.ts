@@ -10,6 +10,8 @@ import {
 } from '@/lib/types/scene-change';
 import type { SceneChangeState, SceneChangeReturn } from '@/lib/types/scene-change';
 import { addVersion, readVersions } from '@/lib/types/chapter-version';
+// Aliased — depart() takes a numeric `wordCount` parameter that would shadow it.
+import { wordCount as countWords } from '@/lib/editor/serialization';
 
 const DEFAULT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 const EXTENSION_MS = 10 * 60 * 1000; // 10 minutes
@@ -103,7 +105,8 @@ export function useSceneChange(nonDiscardedChapterCount: number): UseSceneChange
       const now = new Date();
       const returnAt = new Date(now.getTime() + DEFAULT_DURATION_MS);
 
-      const alternateWordCount = alternate.content.trim().split(/\s+/).filter(Boolean).length;
+      // CB-07: chapter.content is Lexical JSON — decode before counting
+      const alternateWordCount = countWords(alternate.content);
 
       const state: SceneChangeState = {
         active: true,

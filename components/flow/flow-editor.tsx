@@ -801,8 +801,11 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
             chapterContent: content,
             chapterTitle: chapter?.title,
             storyContext: storyContext.synopsis ?? '',
-            heteronymVoice: activeHeteronym?.voice,
+            // Same shape as the panel-open call — buildVoiceDirective needs the
+            // heteronym wrapper, not the inner voice object.
+            heteronymVoice: activeHeteronym ? { name: activeHeteronym.name, voice: activeHeteronym.voice, styleNote: activeHeteronym.styleNote } : undefined,
             language: state.language,
+            force: true,
           })}
           onDismiss={storyCoach.dismissInsight}
           onClose={() => setCoachPanelOpen(false)}

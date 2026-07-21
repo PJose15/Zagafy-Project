@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import type { CoachingInsight, CoachingSession, CoachingLens } from '@/lib/story-coach/types';
+import type { Heteronym } from '@/lib/types/heteronym';
 import {
   observe,
   topWriterInsights,
@@ -21,15 +22,34 @@ const LENS_TO_CATEGORY: Record<CoachingLens, WriterInsightCategory> = {
   motivation: 'voice',
 };
 
+// Same heteronym slice the flow editor sends (buildVoiceDirective reads
+// name/voice/styleNote — a bare voice object would silently produce '').
+export type CoachHeteronymVoice = Pick<Heteronym, 'name' | 'voice' | 'styleNote'>;
+
+// Stable error codes — translated by the rendering component (storyCoach.errors.*).
+export type StoryCoachError = 'apiError' | 'networkError';
+
+interface StoryCoachRefreshOptions {
+  focusLens?: string;
+  chapterContent?: string;
+  chapterTitle?: string;
+  storyContext?: string;
+  heteronymVoice?: CoachHeteronymVoice;
+  language?: string;
+  /** Bypass and replace the cached session (the panel's refresh button). */
+  force?: boolean;
+}
+
 interface UseStoryCoachReturn {
   insights: CoachingInsight[];
   isLoading: boolean;
-  error: string | null;
-  refresh: (chapterId: string, options?: { focusLens?: string; chapterContent?: string; chapterTitle?: string; storyContext?: string; heteronymVoice?: unknown; language?: string }) => void;
+  error: StoryCoachError | null;
+  refresh: (chapterId: string, options?: StoryCoachRefreshOptions) => void;
   dismissInsight: (insightId: string) => void;
 }
 
-// Per-chapter cache with LRU eviction (max 10 entries)
+// Per-chapter+lens cache with LRU eviction (max 10 entries). Keyed on the lens
+// too so a lens-scoped result never poisons the general (all-lens) entry.
 const MAX_CACHE_SIZE = 10;
 const sessionCache = new Map<string, CoachingSession>();
 function cacheSet(key: string, value: CoachingSession) {
@@ -40,27 +60,25 @@ function cacheSet(key: string, value: CoachingSession) {
   sessionCache.set(key, value);
 }
 
+/** Test-only: the cache is module-level, so suites must reset it between tests. */
+export function clearCoachSessionCache() {
+  sessionCache.clear();
+}
+
 export function useStoryCoach(): UseStoryCoachReturn {
   const [insights, setInsights] = useState<CoachingInsight[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<StoryCoachError | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const dismissedRef = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async (
     chapterId: string,
-    options?: {
-      focusLens?: string;
-      chapterContent?: string;
-      chapterTitle?: string;
-      storyContext?: string;
-      heteronymVoice?: unknown;
-      language?: string;
-    }
+    options?: StoryCoachRefreshOptions
   ) => {
-    // Check cache (unless explicit refresh with different options)
-    const cached = sessionCache.get(chapterId);
-    if (cached && !options?.focusLens) {
+    const cacheKey = `${chapterId}::${options?.focusLens ?? 'all'}`;
+    const cached = sessionCache.get(cacheKey);
+    if (cached && !options?.force) {
       const filtered = cached.insights.filter(i => !dismissedRef.current.has(i.id));
       setInsights(filtered);
       setError(null);
@@ -103,7 +121,11 @@ export function useStoryCoach(): UseStoryCoachReturn {
       signal: controller.signal,
     })
       .then(res => {
-        if (!res.ok) throw new Error(`Coach API error: ${res.status}`);
+        if (!res.ok) {
+          const e = new Error(`Coach API error: ${res.status}`);
+          e.name = 'CoachApiError';
+          throw e;
+        }
         return res.json();
       })
       .then(data => {
@@ -117,7 +139,7 @@ export function useStoryCoach(): UseStoryCoachReturn {
           insights: parsed,
           fetchedAt: new Date().toISOString(),
         };
-        cacheSet(chapterId, session);
+        cacheSet(cacheKey, session);
 
         // MP-11: fold each coach observation into the long-term writer
         // memory. observe() is idempotent on duplicate observations and
@@ -138,7 +160,7 @@ export function useStoryCoach(): UseStoryCoachReturn {
         if (controller.signal.aborted) return;
         if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('Story coach error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch coaching insights');
+        setError(err instanceof Error && err.name === 'CoachApiError' ? 'apiError' : 'networkError');
       })
       .finally(() => {
         if (!controller.signal.aborted) {

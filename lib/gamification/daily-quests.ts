@@ -45,6 +45,14 @@ interface QuestContext {
   hasStoryData: boolean;
 }
 
+/** Whether the story carries any data quest templates can personalize with. */
+export function storyHasQuestContext(story: StoryState | null): boolean {
+  const chars = Array.isArray(story?.characters) ? story.characters : [];
+  const conflicts = Array.isArray(story?.active_conflicts) ? story.active_conflicts : [];
+  const locs = Array.isArray(story?.locations) ? story.locations : [];
+  return chars.length > 0 || conflicts.length > 0 || locs.length > 0;
+}
+
 function getContext(story: StoryState | null, rng: () => number): QuestContext {
   // L4: Null-guard all arrays
   const chars = Array.isArray(story?.characters) ? story.characters : [];
@@ -155,6 +163,26 @@ export function refreshQuests(state: QuestsState, storyState: StoryState | null,
     currentDate: today,
     quests: newQuests,
     questHistory,
+    generatedWithoutStory: !storyHasQuestContext(storyState),
+  };
+}
+
+// ─── Regenerate Placeholder Quests ───
+
+/**
+ * If today's quests were generated from an empty (pre-hydration) story state
+ * and real story data has since arrived, regenerate them once with the real
+ * context. Never touches quests once any of them is completed, so progress is
+ * never wiped. Returns the same state object when nothing needs to change.
+ */
+export function regeneratePlaceholderQuests(state: QuestsState, storyState: StoryState | null): QuestsState {
+  if (!state.generatedWithoutStory) return state;
+  if (!storyHasQuestContext(storyState)) return state;
+  if (state.quests.some((q) => q.status !== 'active')) return state;
+  return {
+    ...state,
+    quests: generateDailyQuests(state.currentDate, storyState),
+    generatedWithoutStory: false,
   };
 }
 

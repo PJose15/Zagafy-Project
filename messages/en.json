@@ -583,6 +583,9 @@
     "oracleUnavailable": "The oracle could not see clearly this turn. Try again later.",
     "notConfigured": "Character Chat isn't configured on this deployment yet.",
     "noResponse": "The character couldn't respond.",
+    "errorHttp": "The character couldn't respond (error {status}).",
+    "errorEmptyReply": "The character couldn't respond. Please try again.",
+    "errorNetwork": "Something went wrong reaching the character.",
     "tryAgain": "Try again",
     "dismiss": "Dismiss",
     "inputPlaceholder": "Say something...",
@@ -1721,6 +1724,10 @@
       "high": "high",
       "medium": "medium",
       "low": "low"
+    },
+    "errors": {
+      "apiError": "The coach couldn't analyze this chapter. Please try again.",
+      "networkError": "Couldn't reach the story coach. Check your connection and try again."
     }
   },
   "findReplace": {

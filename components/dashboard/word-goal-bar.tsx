@@ -5,33 +5,38 @@ import { useTranslations } from 'next-intl';
 import { motion } from 'motion/react';
 import { Pencil, Target } from 'lucide-react';
 import { springs } from '@/lib/animations';
+import { useProjects } from '@/hooks/use-projects';
 
 const GOAL_KEY = 'zagafy_word_goal';
 
 /**
  * G16 — the project's word goal: a bar of ink filling toward the target.
- * Click the pencil to set or change the goal; it persists locally.
+ * Click the pencil to set or change the goal; it persists locally, scoped per
+ * project (same activeId keying as zagafy_milestones). The legacy unscoped
+ * key is read as a fallback so pre-existing goals aren't lost.
  */
 export function WordGoalBar({ totalWords }: { totalWords: number }) {
   const t = useTranslations('dashboard');
+  const { activeId } = useProjects();
+  const goalKey = `${GOAL_KEY}:${activeId || 'default'}`;
   const [goal, setGoal] = useState(0);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
   useEffect(() => {
     try {
-      const raw = Number(localStorage.getItem(GOAL_KEY) || '0');
+      const raw = Number(localStorage.getItem(goalKey) ?? localStorage.getItem(GOAL_KEY) ?? '0');
       // eslint-disable-next-line react-hooks/set-state-in-effect -- two-pass hydration-safe storage restore
-      if (Number.isFinite(raw) && raw > 0) setGoal(raw);
+      setGoal(Number.isFinite(raw) && raw > 0 ? raw : 0);
     } catch { /* stays unset */ }
-  }, []);
+  }, [goalKey]);
 
   const save = () => {
     const n = Math.max(0, Math.floor(Number(draft)));
     setGoal(n);
     setEditing(false);
     try {
-      localStorage.setItem(GOAL_KEY, String(n));
+      localStorage.setItem(goalKey, String(n));
     } catch { /* best effort */ }
   };
 

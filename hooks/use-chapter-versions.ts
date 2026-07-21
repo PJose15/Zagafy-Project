@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   readVersions,
   addVersion,
@@ -26,10 +26,23 @@ interface UseChapterVersionsReturn {
 export function useChapterVersions(chapterId: string, currentContent: string): UseChapterVersionsReturn {
   const [versions, setVersions] = useState<ChapterVersion[]>([]);
 
+  // currentContent is only needed to seed the FIRST version — keep it in a
+  // ref so the load effect below doesn't re-run (and race setVersions) on
+  // every keystroke. Declared before that effect so the ref is fresh when a
+  // chapter switch triggers both.
+  const contentRef = useRef(currentContent);
+  useEffect(() => {
+    contentRef.current = currentContent;
+  }, [currentContent]);
+
   // Load versions on mount / chapterId change
   useEffect(() => {
-    ensureInitialVersion(chapterId, currentContent).then(setVersions);
-  }, [chapterId, currentContent]);
+    let cancelled = false;
+    ensureInitialVersion(chapterId, contentRef.current).then((v) => {
+      if (!cancelled) setVersions(v);
+    });
+    return () => { cancelled = true; };
+  }, [chapterId]);
 
   const activeVersion = useMemo(() => {
     return versions.find(v => v.isCanonical) ?? versions[0] ?? null;

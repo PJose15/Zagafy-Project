@@ -9,23 +9,27 @@ import { BrassButton } from '@/components/antiquarian';
 interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading: boolean;
+  /** True while the reply is still streaming — sending then would abort the
+      stream and bake a partial reply into history, so the composer stays shut. */
+  isStreaming?: boolean;
 }
 
-export function ChatInput({ onSend, isLoading }: ChatInputProps) {
+export function ChatInput({ onSend, isLoading, isStreaming = false }: ChatInputProps) {
   const t = useTranslations('characterChat');
   const tCommon = useTranslations('common');
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const busy = isLoading || isStreaming;
 
   const handleSend = useCallback(() => {
     const trimmed = value.trim();
-    if (!trimmed || isLoading) return;
+    if (!trimmed || busy) return;
     onSend(trimmed);
     setValue('');
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
-  }, [value, isLoading, onSend]);
+  }, [value, busy, onSend]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -50,8 +54,8 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
         value={value}
         onChange={(e) => { setValue(e.target.value); handleInput(); }}
         onKeyDown={handleKeyDown}
-        disabled={isLoading}
-        placeholder={isLoading ? t('inputWaiting') : t('inputPlaceholder')}
+        disabled={busy}
+        placeholder={busy ? t('inputWaiting') : t('inputPlaceholder')}
         rows={1}
         className="flex-1 resize-none bg-parchment-50 border border-sepia-300/60 rounded-lg px-3 py-2 text-sm text-sepia-900 placeholder:text-sepia-500 focus:outline-none focus:ring-2 focus:ring-brass-400/40 focus:border-brass-500/60 disabled:opacity-50"
       />
@@ -59,7 +63,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
       <motion.div whileTap={{ y: 3, rotate: 6 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }} className="flex-shrink-0">
         <BrassButton
           onClick={handleSend}
-          disabled={isLoading || !value.trim()}
+          disabled={busy || !value.trim()}
           aria-label={t('sendAria')}
         >
           <Send size={16} aria-hidden="true" />

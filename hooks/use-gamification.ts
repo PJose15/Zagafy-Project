@@ -7,13 +7,15 @@ import {
   writeGamification,
   defaultGamificationState,
   defaultAwardsState,
+  GAMIFICATION_UPDATED_EVENT,
 } from '@/lib/types/gamification';
 import type { GamificationState, SprintTheme } from '@/lib/types/gamification';
 import { isGamificationState } from '@/lib/types/gamification';
 import { awardXP, xpToNextLevel, XP_RATES } from '@/lib/gamification/xp';
 import { evaluateChapterAward, evaluateStreakMilestone } from '@/lib/gamification/awards';
 import { updateStreak, getStreakWarning } from '@/lib/gamification/writing-streak';
-import { refreshQuests, completeQuest as completeQuestFn } from '@/lib/gamification/daily-quests';
+import { refreshQuests, completeQuest as completeQuestFn, regeneratePlaceholderQuests } from '@/lib/gamification/daily-quests';
+import { formatDateKey } from '@/lib/gamification/date-utils';
 import { startSprint as startSprintFn, endSprint as endSprintFn, abandonSprint as abandonSprintFn } from '@/lib/gamification/sprints';
 import type { SprintResult } from '@/lib/gamification/sprints';
 import { analyzeStory } from '@/lib/gamification/finishing-engine';
@@ -50,47 +52,67 @@ function useGamificationInternal(): GamificationAPI {
   const [isLoaded, setIsLoaded] = useState(false); // M15: track hydration
   const initializedRef = useRef(false);
 
+  // Every provider mutation merges over a fresh localStorage read (the
+  // endSprint pattern): the session tracker writes XP straight to
+  // localStorage in the same tab, so mutating from React state alone would
+  // clobber those awards. When `fn` returns its input unchanged we skip the
+  // setState too — readGamification() always allocates a new object, and
+  // churning identity would re-render on every story change.
+  const mutate = useCallback((fn: (current: GamificationState) => GamificationState) => {
+    const current = readGamification();
+    const next = fn(current);
+    if (next === current) return;
+    writeGamification(next);
+    setGamification(next);
+  }, []);
+
+  // Streak / quests / finishing / one-shot awards evaluation. Runs on mount,
+  // when the session tracker signals a completed session (same-tab event),
+  // and on day rollover — all merge over a fresh localStorage read.
+  const evaluateDaily = useCallback(async () => {
+    // readSessions is async (Dexie-backed); read the blob AFTER awaiting so
+    // any direct write that landed in the meantime is merged, not clobbered.
+    const sessions = await readSessions();
+    const todayKey = formatDateKey(new Date());
+    const current = readGamification();
+
+    const updatedStreak = updateStreak(current.streak, sessions);
+    const updatedQuests = regeneratePlaceholderQuests(
+      refreshQuests(current.quests, storyState, todayKey),
+      storyState,
+    );
+    const updatedFinishing = analyzeStory(storyState, current.finishing.milestones);
+
+    // S5-G1: award STREAK_MILESTONE (7/30/100 days) once per streak run.
+    // The marker persists in `awards` and resets when the streak breaks, so
+    // reloads never double-award and a rebuilt streak can earn it again.
+    const awards = current.awards ?? defaultAwardsState();
+    const streakResult = evaluateStreakMilestone(
+      updatedStreak.currentStreak,
+      awards.streakMilestoneAwarded,
+    );
+    const updatedXP = streakResult.milestone
+      ? awardXP(current.xp, 'streak', XP_RATES.STREAK_MILESTONE, `${streakResult.milestone}-day streak`)
+      : current.xp;
+
+    const updated: GamificationState = {
+      ...current,
+      xp: updatedXP,
+      streak: updatedStreak,
+      quests: updatedQuests,
+      finishing: updatedFinishing,
+      awards: { ...awards, streakMilestoneAwarded: streakResult.marker },
+    };
+
+    writeGamification(updated);
+    setGamification(updated);
+  }, [storyState]);
+
   // Read from localStorage on mount
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
-
-    const stored = readGamification();
-
-    // readSessions is async (Dexie-backed)
-    readSessions().then(sessions => {
-      const now = new Date();
-      const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-      const updatedStreak = updateStreak(stored.streak, sessions);
-      const updatedQuests = refreshQuests(stored.quests, storyState, todayKey);
-      const updatedFinishing = analyzeStory(storyState, stored.finishing.milestones);
-
-      // S5-G1: award STREAK_MILESTONE (7/30/100 days) once per streak run.
-      // The marker persists in `awards` and resets when the streak breaks, so
-      // reloads never double-award and a rebuilt streak can earn it again.
-      const awards = stored.awards ?? defaultAwardsState();
-      const streakResult = evaluateStreakMilestone(
-        updatedStreak.currentStreak,
-        awards.streakMilestoneAwarded,
-      );
-      const updatedXP = streakResult.milestone
-        ? awardXP(stored.xp, 'streak', XP_RATES.STREAK_MILESTONE, `${streakResult.milestone}-day streak`)
-        : stored.xp;
-
-      const updated: GamificationState = {
-        ...stored,
-        xp: updatedXP,
-        streak: updatedStreak,
-        quests: updatedQuests,
-        finishing: updatedFinishing,
-        awards: { ...awards, streakMilestoneAwarded: streakResult.marker },
-      };
-
-      setGamification(updated);
-      writeGamification(updated);
-      setIsLoaded(true);
-    });
+    evaluateDaily().then(() => setIsLoaded(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -114,25 +136,36 @@ function useGamificationInternal(): GamificationAPI {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  // Re-read from localStorage when tab regains focus (same-tab writes)
+  // Re-read from localStorage when tab regains focus (same-tab writes). If a
+  // long-lived tab crossed midnight while hidden, the stored day key no longer
+  // matches — run the full streak/quest evaluation (cheap date-key comparison
+  // keeps the common no-rollover path light).
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        setGamification(readGamification());
+      if (document.visibilityState !== 'visible') return;
+      const current = readGamification();
+      setGamification(current);
+      if (current.quests.currentDate !== formatDateKey(new Date())) {
+        evaluateDaily();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, []);
+  }, [evaluateDaily]);
+
+  // Same-tab writes from the session tracker (storage events are cross-tab
+  // only): re-read the just-awarded XP and re-evaluate streak/quests so
+  // todayQualified flips right after a qualifying session, not on next reload.
+  useEffect(() => {
+    const handleUpdated = () => { evaluateDaily(); };
+    window.addEventListener(GAMIFICATION_UPDATED_EVENT, handleUpdated);
+    return () => window.removeEventListener(GAMIFICATION_UPDATED_EVENT, handleUpdated);
+  }, [evaluateDaily]);
 
   // ─── XP ───
   const doAwardXP = useCallback((type: string, amount: number, metadata?: string) => {
-    setGamification((prev) => {
-      const next = { ...prev, xp: awardXP(prev.xp, type, amount, metadata) };
-      writeGamification(next);
-      return next;
-    });
-  }, []);
+    mutate((current) => ({ ...current, xp: awardXP(current.xp, type, amount, metadata) }));
+  }, [mutate]);
 
   const xpProgress = xpToNextLevel(gamification.xp.totalXP);
 
@@ -144,28 +177,22 @@ function useGamificationInternal(): GamificationAPI {
   const quests = gamification.quests.quests;
 
   const completeQuest = useCallback((questId: string) => {
-    setGamification((prev) => {
-      const quest = prev.quests.quests.find((q) => q.id === questId);
-      if (!quest || quest.status !== 'active') return prev;
+    mutate((current) => {
+      const quest = current.quests.quests.find((q) => q.id === questId);
+      if (!quest || quest.status !== 'active') return current;
 
-      const updatedQuests = completeQuestFn(prev.quests, questId);
-      const updatedXP = awardXP(prev.xp, 'quest', quest.xpReward, quest.title);
-      const next = { ...prev, quests: updatedQuests, xp: updatedXP };
-      writeGamification(next);
-      return next;
+      const updatedQuests = completeQuestFn(current.quests, questId);
+      const updatedXP = awardXP(current.xp, 'quest', quest.xpReward, quest.title);
+      return { ...current, quests: updatedQuests, xp: updatedXP };
     });
-  }, []);
+  }, [mutate]);
 
   // ─── Sprints ───
   const activeSprint = gamification.sprints.activeSprint;
 
   const startSprint = useCallback((theme: SprintTheme, wordsStart: number) => {
-    setGamification((prev) => {
-      const next = { ...prev, sprints: startSprintFn(prev.sprints, theme, wordsStart) };
-      writeGamification(next);
-      return next;
-    });
-  }, []);
+    mutate((current) => ({ ...current, sprints: startSprintFn(current.sprints, theme, wordsStart) }));
+  }, [mutate]);
 
   const endSprint = useCallback((wordsEnd: number): SprintResult | null => {
     // Read current state from localStorage for race-free computation
@@ -173,7 +200,9 @@ function useGamificationInternal(): GamificationAPI {
     const { newState, result } = endSprintFn(current.sprints, wordsEnd);
     if (!result) return null;
     // H9: Scale XP by completion — full XP if target met, proportional otherwise
-    const xpAmount = result.targetMet ? 75 : Math.max(5, Math.round(75 * (result.percentOfTarget / 100)));
+    const xpAmount = result.targetMet
+      ? XP_RATES.SPRINT_COMPLETE
+      : Math.max(5, Math.round(XP_RATES.SPRINT_COMPLETE * (result.percentOfTarget / 100)));
     const updatedXP = awardXP(current.xp, 'sprint', xpAmount, `Sprint: ${result.wordsWritten} words`);
     const next = { ...current, sprints: newState, xp: updatedXP };
     persist(next);
@@ -181,23 +210,15 @@ function useGamificationInternal(): GamificationAPI {
   }, [persist]);
 
   const abandonSprint = useCallback(() => {
-    setGamification((prev) => {
-      const next = { ...prev, sprints: abandonSprintFn(prev.sprints) };
-      writeGamification(next);
-      return next;
-    });
-  }, []);
+    mutate((current) => ({ ...current, sprints: abandonSprintFn(current.sprints) }));
+  }, [mutate]);
 
   // ─── Finishing Engine ───
   const finishing = gamification.finishing;
 
   const refreshFinishing = useCallback(() => {
-    setGamification((prev) => {
-      const next = { ...prev, finishing: analyzeStory(storyState, prev.finishing.milestones) };
-      writeGamification(next);
-      return next;
-    });
-  }, [storyState]);
+    mutate((current) => ({ ...current, finishing: analyzeStory(storyState, current.finishing.milestones) }));
+  }, [mutate, storyState]);
 
   // REG-7: keep the finishing analysis in sync with the story. The mount effect
   // seeds `finishing` once, but milestone progress and novel-completion detection
@@ -218,26 +239,34 @@ function useGamificationInternal(): GamificationAPI {
   // late Dexie hydration.
   useEffect(() => {
     if (!isLoaded) return;
-    setGamification((prev) => {
-      const awards = prev.awards ?? defaultAwardsState();
+    mutate((current) => {
+      const awards = current.awards ?? defaultAwardsState();
       const result = evaluateChapterAward(storyState.chapters ?? [], awards.chapterHighWater);
-      if (result.newlyFinished === 0 && result.newHighWater === awards.chapterHighWater) return prev;
-      const next: GamificationState = {
-        ...prev,
+      if (result.newlyFinished === 0 && result.newHighWater === awards.chapterHighWater) return current;
+      return {
+        ...current,
         xp: result.newlyFinished > 0
           ? awardXP(
-              prev.xp,
+              current.xp,
               'chapter',
               result.newlyFinished * XP_RATES.CHAPTER_FINISHED,
               result.newlyFinished === 1 ? 'Chapter finished' : `${result.newlyFinished} chapters finished`,
             )
-          : prev.xp,
+          : current.xp,
         awards: { ...awards, chapterHighWater: result.newHighWater },
       };
-      writeGamification(next);
-      return next;
     });
-  }, [isLoaded, storyState.chapters]);
+  }, [isLoaded, storyState.chapters, mutate]);
+
+  // Fix 3: if today's quests were generated before the story hydrated (generic
+  // placeholder context), regenerate them once real story data arrives.
+  useEffect(() => {
+    if (!isLoaded) return;
+    mutate((current) => {
+      const quests = regeneratePlaceholderQuests(current.quests, storyState);
+      return quests === current.quests ? current : { ...current, quests };
+    });
+  }, [isLoaded, storyState, mutate]);
 
   return {
     gamification,

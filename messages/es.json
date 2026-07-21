@@ -583,6 +583,9 @@
     "oracleUnavailable": "El oráculo no pudo ver con claridad este turno. Inténtalo más tarde.",
     "notConfigured": "El Chat de Personajes aún no está configurado en este despliegue.",
     "noResponse": "El personaje no pudo responder.",
+    "errorHttp": "El personaje no pudo responder (error {status}).",
+    "errorEmptyReply": "El personaje no pudo responder. Inténtalo de nuevo.",
+    "errorNetwork": "Algo salió mal al contactar con el personaje.",
     "tryAgain": "Intentar de nuevo",
     "dismiss": "Descartar",
     "inputPlaceholder": "Di algo...",
@@ -1721,6 +1724,10 @@
       "high": "alta",
       "medium": "media",
       "low": "baja"
+    },
+    "errors": {
+      "apiError": "El entrenador no pudo analizar este capítulo. Inténtalo de nuevo.",
+      "networkError": "No se pudo contactar con el entrenador de la historia. Comprueba tu conexión e inténtalo de nuevo."
     }
   },
   "findReplace": {

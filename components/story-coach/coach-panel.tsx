@@ -7,11 +7,12 @@ import { CoachingInsightCard } from './coaching-insight-card';
 import { CoachLensFilter } from './coach-lens-filter';
 import { useState } from 'react';
 import type { CoachingInsight, CoachingLens } from '@/lib/story-coach/types';
+import type { StoryCoachError } from '@/hooks/use-story-coach';
 
 interface CoachPanelProps {
   insights: CoachingInsight[];
   isLoading: boolean;
-  error: string | null;
+  error: StoryCoachError | null;
   onRefresh: () => void;
   onDismiss: (insightId: string) => void;
   onClose: () => void;
@@ -96,7 +97,7 @@ export function CoachPanel({ insights, isLoading, error, onRefresh, onDismiss, o
           )}
 
           {error && (
-            <div className="text-sm text-wax-600 bg-wax-500/10 rounded-lg p-3">{error}</div>
+            <div className="text-sm text-wax-600 bg-wax-500/10 rounded-lg p-3">{t(`errors.${error}`)}</div>
           )}
 
           {!isLoading && sorted.length === 0 && !error && (

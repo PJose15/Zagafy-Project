@@ -267,9 +267,11 @@ export default function Dashboard() {
   const { finishing, isLoaded } = useGamification();
   const { novelJustCompleted, completionStats, dismissCompletion } = useNovelCompletion(finishing, isLoaded);
 
-  const totalWords = state.chapters.reduce(
-    (sum, ch) => sum + (ch.content ? countWords(ch.content) : 0),
-    0
+  // Single memoized manuscript total — countWords parses Lexical JSON, so an
+  // unmemoized reduce per render (and its duplicate below) got expensive.
+  const totalWords = React.useMemo(
+    () => state.chapters.reduce((sum, ch) => sum + (ch.content ? countWords(ch.content) : 0), 0),
+    [state.chapters]
   );
   const activeConflicts = state.active_conflicts.filter(c => c.status === 'active').length;
   const resolvedConflicts = state.active_conflicts.filter(c => c.status === 'resolved').length;
@@ -349,7 +351,7 @@ export default function Dashboard() {
 
       {/* G16: the project's word goal */}
       <motion.div {...fadeUp}>
-        <WordGoalBar totalWords={state.chapters.reduce((s, c) => s + countWords(c.content), 0)} />
+        <WordGoalBar totalWords={totalWords} />
       </motion.div>
 
       {/* ── Gamification ── */}

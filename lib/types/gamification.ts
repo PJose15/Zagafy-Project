@@ -2,6 +2,13 @@
 export const STORAGE_KEY = 'zagafy_gamification';
 const STATE_VERSION = 1;
 
+/**
+ * Same-tab notification fired after a direct localStorage write to
+ * STORAGE_KEY (e.g. the session tracker awarding XP). Storage events only
+ * fire cross-tab, so GamificationProvider listens for this to re-read state.
+ */
+export const GAMIFICATION_UPDATED_EVENT = 'zagafy:gamification-updated';
+
 // ─── XP Types ───
 
 export interface XPEvent {
@@ -52,6 +59,12 @@ export interface QuestsState {
   currentDate: string; // YYYY-MM-DD
   quests: DailyQuest[];
   questHistory: DailyQuest[];
+  /**
+   * True when today's quests were generated before the story hydrated (empty
+   * context → generic placeholder prompts). Lets the provider regenerate them
+   * once the real story data arrives. Optional for pre-existing blobs.
+   */
+  generatedWithoutStory?: boolean;
 }
 
 // ─── Sprint Types ───

@@ -43,6 +43,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     setMode,
     sendMessage,
     isLoading,
+    isStreaming,
     insights,
     lastInsightError,
     saveInsightAsCanon,
@@ -231,7 +232,15 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
                   ? t('notConfigured')
                   : t('noResponse')}
               </p>
-              <p className="text-xs text-sepia-600 mt-0.5">{error.message}</p>
+              <p className="text-xs text-sepia-600 mt-0.5">
+                {error.serverMessage ?? (
+                  error.code === 'httpError'
+                    ? t('errorHttp', { status: error.status ?? 0 })
+                    : error.code === 'emptyReply'
+                      ? t('errorEmptyReply')
+                      : t('errorNetwork')
+                )}
+              </p>
               <div className="flex items-center gap-3 mt-2">
                 {!error.notConfigured && (
                   <button
@@ -254,7 +263,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
       )}
 
       {/* Input */}
-      <ChatInput onSend={sendMessage} isLoading={isLoading} />
+      <ChatInput onSend={sendMessage} isLoading={isLoading} isStreaming={isStreaming} />
     </div>
   );
 }

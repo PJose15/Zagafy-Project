@@ -27,7 +27,7 @@ import {
   Send,
   Library,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatedNumber } from './animated-number';
 import { useStory } from '@/lib/store';
@@ -37,6 +37,7 @@ import { XPBar } from '@/components/gamification/xp-bar';
 import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { ProfileBadge } from '@/components/profile/profile-badge';
 import { CatalogHint } from '@/components/catalog/card-catalog';
+import { wordCount } from '@/lib/editor/serialization';
 
 export const navItems = [
   { key: 'dashboard', href: '/', icon: LayoutDashboard },
@@ -79,12 +80,18 @@ export function ParchmentSidebar() {
     setPrevLevel(level);
     if (level > prevLevel) {
       setBurstId(burstId + 1);
-      // G5: let the shell stage the full ceremony as well.
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('zagafy:level-up', { detail: { level } }));
-      }
     }
   }
+  // G5: let the shell stage the full ceremony as well. Dispatching during
+  // render can fire mid-render of subscribers — do it in an effect keyed on
+  // the level crossing (ref guards against re-dispatch when only `level`
+  // changes, e.g. a level DOWN after an XP reset).
+  const dispatchedBurstRef = useRef(0);
+  useEffect(() => {
+    if (burstId === 0 || dispatchedBurstRef.current === burstId) return;
+    dispatchedBurstRef.current = burstId;
+    window.dispatchEvent(new CustomEvent('zagafy:level-up', { detail: { level } }));
+  }, [burstId, level]);
 
   // G9: words written today, from the session ledger (async read, best effort).
   const [todayWords, setTodayWords] = useState(0);
@@ -105,7 +112,12 @@ export function ParchmentSidebar() {
       cancelled = true;
     };
   }, [state.chapters]);
-  const totalWords = state.chapters.reduce((s, c) => s + (c.content ? c.content.split(/\s+/).filter(Boolean).length : 0), 0);
+  // CB-07: chapter.content is Lexical JSON — wordCount() decodes it. Memoized:
+  // the sidebar re-renders on every navigation/gamification change.
+  const totalWords = useMemo(
+    () => state.chapters.reduce((s, c) => s + wordCount(c.content), 0),
+    [state.chapters],
+  );
 
   return (
     <>

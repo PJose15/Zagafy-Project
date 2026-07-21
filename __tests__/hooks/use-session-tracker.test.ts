@@ -301,6 +301,71 @@ describe('useSessionTracker', () => {
     expect(session.heteronymName).toBeNull();
   });
 
+  it('awards XP to localStorage and signals same-tab listeners on session end', async () => {
+    localStorage.removeItem('zagafy_gamification');
+    const updated = vi.fn();
+    window.addEventListener('zagafy:gamification-updated', updated);
+
+    try {
+      const { rerender } = renderHook(() => useSessionTracker());
+
+      // Establish baseline
+      mockChapters.mockReturnValue([
+        { id: 'ch-1', title: 'Chapter 1', content: 'word '.repeat(5).trim(), summary: '' },
+      ]);
+      rerender();
+
+      // Add 145 words — enough for word XP (+10 per full 100)
+      mockChapters.mockReturnValue([
+        { id: 'ch-1', title: 'Chapter 1', content: 'word '.repeat(150).trim(), summary: '' },
+      ]);
+      rerender();
+
+      // Idle timeout ends the session; async advance flushes the addSession
+      // promise chain so the .finally() event dispatch fires.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
+      });
+
+      expect(mockAddSession).toHaveBeenCalledTimes(1);
+      const stored = JSON.parse(localStorage.getItem('zagafy_gamification')!);
+      expect(stored.xp.totalXP).toBe(10);
+      // Same-tab notification fired exactly once, after the session settled
+      expect(updated).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('zagafy:gamification-updated', updated);
+      localStorage.removeItem('zagafy_gamification');
+    }
+  });
+
+  it('signals same-tab listeners even when the session commit rejects', async () => {
+    mockAddSession.mockImplementationOnce(() => Promise.reject(new Error('dexie down')));
+    const updated = vi.fn();
+    window.addEventListener('zagafy:gamification-updated', updated);
+
+    try {
+      const { rerender } = renderHook(() => useSessionTracker());
+
+      mockChapters.mockReturnValue([
+        { id: 'ch-1', title: 'Chapter 1', content: 'word '.repeat(5).trim(), summary: '' },
+      ]);
+      rerender();
+      mockChapters.mockReturnValue([
+        { id: 'ch-1', title: 'Chapter 1', content: 'word '.repeat(20).trim(), summary: '' },
+      ]);
+      rerender();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
+      });
+
+      expect(updated).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('zagafy:gamification-updated', updated);
+      localStorage.removeItem('zagafy_gamification');
+    }
+  });
+
   it('resets idle timer on continued writing', () => {
     const { rerender } = renderHook(() => useSessionTracker());
 

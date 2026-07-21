@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useStory } from '@/lib/store';
 import { useToast } from '@/components/toast';
@@ -33,7 +33,12 @@ export function useWordMilestones() {
   const t = useTranslations('milestones');
   const prevRef = useRef<number | null>(null);
 
-  const total = state.chapters.reduce((sum, c) => sum + wordCount(c.content), 0);
+  // Memoized — this hook lives in the app shell, so an unmemoized reduce
+  // would re-parse every chapter's Lexical JSON on each shell render.
+  const total = useMemo(
+    () => state.chapters.reduce((sum, c) => sum + wordCount(c.content), 0),
+    [state.chapters],
+  );
 
   useEffect(() => {
     const prev = prevRef.current;

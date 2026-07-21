@@ -42,6 +42,15 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     [state.chapters],
   );
 
+  // Per-chapter export word counts, memoized — manuscriptWordCount runs the
+  // full paragraph parser, and typing in the author fields re-renders the
+  // dialog per keystroke.
+  const chapterWords = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of exportableChapters) map.set(c.id, manuscriptWordCount(c.content));
+    return map;
+  }, [exportableChapters]);
+
   const [format, setFormat] = useState<Format>('docx');
   const [titlePage, setTitlePage] = useState(true);
   const [authorName, setAuthorName] = useState(state.author_name);
@@ -86,7 +95,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
   };
 
   const selectedChapters = exportableChapters.filter(c => selected.has(c.id));
-  const totalWords = selectedChapters.reduce((sum, c) => sum + manuscriptWordCount(c.content), 0);
+  const totalWords = selectedChapters.reduce((sum, c) => sum + (chapterWords.get(c.id) ?? 0), 0);
   const canExport = selectedChapters.length > 0 && totalWords > 0 && !busy;
 
   const handleExport = async () => {
@@ -268,7 +277,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                           />
                           <span className="flex-1 text-sm text-sepia-800 truncate">{c.title || t('untitled')}</span>
                           <span className="text-xs text-sepia-600 font-mono">
-                            {t('wordsShort', { count: manuscriptWordCount(c.content) })}
+                            {t('wordsShort', { count: chapterWords.get(c.id) ?? 0 })}
                           </span>
                         </label>
                       </li>

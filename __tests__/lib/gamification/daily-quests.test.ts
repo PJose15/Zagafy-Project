@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { generateDailyQuests, refreshQuests, completeQuest } from '@/lib/gamification/daily-quests';
+import { generateDailyQuests, refreshQuests, completeQuest, regeneratePlaceholderQuests, storyHasQuestContext } from '@/lib/gamification/daily-quests';
 import type { QuestsState } from '@/lib/types/gamification';
 import type { StoryState } from '@/lib/store';
 
@@ -215,6 +215,55 @@ describe('refreshQuests edge cases', () => {
     // History should contain expired quests from previous days
     // Days 1-4 had 3 quests each = 12 total in history
     expect(state.questHistory.length).toBe(12);
+  });
+});
+
+describe('regeneratePlaceholderQuests', () => {
+  it('storyHasQuestContext distinguishes empty from populated stories', () => {
+    expect(storyHasQuestContext(null)).toBe(false);
+    expect(storyHasQuestContext(emptyStory)).toBe(false);
+    expect(storyHasQuestContext(mockStory)).toBe(true);
+  });
+
+  it('refreshQuests flags quest sets generated without story context', () => {
+    const placeholder = refreshQuests(emptyQuests, emptyStory, '2025-01-15');
+    expect(placeholder.generatedWithoutStory).toBe(true);
+    const withData = refreshQuests(emptyQuests, mockStory, '2025-01-15');
+    expect(withData.generatedWithoutStory).toBe(false);
+  });
+
+  it('regenerates placeholder quests once story context arrives, then no-ops', () => {
+    const placeholder = refreshQuests(emptyQuests, emptyStory, '2025-01-15');
+    const regen = regeneratePlaceholderQuests(placeholder, mockStory);
+    expect(regen).not.toBe(placeholder);
+    expect(regen.generatedWithoutStory).toBe(false);
+    expect(regen.currentDate).toBe('2025-01-15');
+    expect(regen.quests).toHaveLength(3);
+    expect(regen.quests.every((q) => q.dateKey === '2025-01-15')).toBe(true);
+    // Second pass with the flag cleared is identity — no churn
+    expect(regeneratePlaceholderQuests(regen, mockStory)).toBe(regen);
+  });
+
+  it('does not regenerate while the story is still empty', () => {
+    const placeholder = refreshQuests(emptyQuests, emptyStory, '2025-01-15');
+    expect(regeneratePlaceholderQuests(placeholder, emptyStory)).toBe(placeholder);
+    expect(regeneratePlaceholderQuests(placeholder, null)).toBe(placeholder);
+  });
+
+  it('never wipes progress — no regeneration once a quest is completed', () => {
+    const placeholder = refreshQuests(emptyQuests, emptyStory, '2025-01-15');
+    const completed = completeQuest(placeholder, placeholder.quests[0].id);
+    expect(regeneratePlaceholderQuests(completed, mockStory)).toBe(completed);
+  });
+
+  it('leaves quest sets generated with real context untouched', () => {
+    const withData = refreshQuests(emptyQuests, mockStory, '2025-01-15');
+    expect(regeneratePlaceholderQuests(withData, mockStory)).toBe(withData);
+  });
+
+  it('treats legacy states without the flag as non-placeholder', () => {
+    const legacy: QuestsState = { currentDate: '2025-01-15', quests: [], questHistory: [] };
+    expect(regeneratePlaceholderQuests(legacy, mockStory)).toBe(legacy);
   });
 });
 

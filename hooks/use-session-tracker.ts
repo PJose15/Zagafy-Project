@@ -13,8 +13,9 @@ import {
 import type { WritingSession, FlowScore } from '@/lib/types/writing-session';
 import { getActiveHeteronymId, readHeteronyms } from '@/lib/types/heteronym';
 import type { MetricsCollector } from '@/lib/flow-metrics';
-import { readGamification, writeGamification } from '@/lib/types/gamification';
+import { readGamification, writeGamification, GAMIFICATION_UPDATED_EVENT } from '@/lib/types/gamification';
 import { awardXP, XP_RATES } from '@/lib/gamification/xp';
+import { wordCount } from '@/lib/editor/serialization';
 
 const MIN_WORDS_TO_START = 10;
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
@@ -38,13 +39,10 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
 
   const [pendingFlowScore, setPendingFlowScore] = useState<{ sessionId: string } | null>(null);
 
-  // Compute total word count across all chapters
-   
+  // Compute total word count across all chapters (CB-07: chapter.content is
+  // Lexical JSON — wordCount() decodes it instead of splitting raw JSON)
   const totalWordCount = useMemo(() => {
-    return state.chapters.reduce((sum, ch) => {
-      const words = ch.content.trim().split(/\s+/).filter(Boolean).length;
-      return sum + words;
-    }, 0);
+    return state.chapters.reduce((sum, ch) => sum + wordCount(ch.content), 0);
   }, [state.chapters]);
 
   // Refs for session tracking
@@ -120,8 +118,6 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       flowMoments: flowMoments && flowMoments.length > 0 ? flowMoments : null,
     };
 
-    addSession(session).catch(() => { /* best effort */ });
-
     // Award gamification XP for words and session completion
     try {
       let gam = readGamification();
@@ -138,6 +134,15 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
     } catch {
       // Best effort — gamification XP should not block session tracking
     }
+
+    // Notify the same-tab GamificationProvider (storage events are cross-tab
+    // only). Dispatched after the session commit settles so the provider's
+    // re-evaluation sees both the new session and the XP written above.
+    addSession(session)
+      .catch(() => { /* best effort */ })
+      .finally(() => {
+        window.dispatchEvent(new Event(GAMIFICATION_UPDATED_EVENT));
+      });
 
     // Only show flow score modal for sessions longer than 3 minutes
     if (durationMinutes > MIN_FLOW_SCORE_MINUTES) {
