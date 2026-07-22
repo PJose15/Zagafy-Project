@@ -122,7 +122,7 @@ export function buildCsp(nonce: string, opts?: CspOptions): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://img.clerk.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://generativelanguage.googleapis.com https://*.clerk.accounts.dev https://clerk.zagafy.com https://us.i.posthog.com https://us-assets.i.posthog.com",
+    "connect-src 'self' https://generativelanguage.googleapis.com https://*.clerk.accounts.dev https://clerk.zagafy.com https://clerk-telemetry.com https://us.i.posthog.com https://us-assets.i.posthog.com",
     "worker-src 'self' blob:",
     "frame-src 'self' https://challenges.cloudflare.com",
     `frame-ancestors ${frameAncestors}`,

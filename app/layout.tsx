@@ -1,4 +1,5 @@
 import type {Metadata} from 'next';
+import { headers } from 'next/headers';
 import { Inter, JetBrains_Mono, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { isAuthEnabled } from '@/lib/auth';
@@ -49,7 +50,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default async function RootLayout({children}: {children: React.ReactNode}) {
+  // Under 'strict-dynamic' CSP, parser-inserted scripts need the per-request
+  // nonce; ClerkProvider stamps it on the clerk-js script tag it injects.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   const tree = (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${playfair.variable}`}>
       <head>
@@ -75,5 +79,5 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     </html>
   );
 
-  return isAuthEnabled() ? <ClerkProvider>{tree}</ClerkProvider> : tree;
+  return isAuthEnabled() ? <ClerkProvider nonce={nonce}>{tree}</ClerkProvider> : tree;
 }
