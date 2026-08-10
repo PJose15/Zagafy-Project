@@ -27,7 +27,7 @@
     "@google/genai": "1.43.0",
     "@lexical/clipboard": "0.47.0",
     "@lexical/html": "0.47.0",
-    "@lexical/link": "0.47.0",
+    "@lexical/link": "0.48.0",
     "@lexical/list": "0.47.0",
     "@lexical/markdown": "0.47.0",
     "@lexical/react": "0.47.0",
