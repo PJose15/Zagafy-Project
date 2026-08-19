@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenAI, FinishReason } from '@google/genai';
 import { rateLimit } from '@/lib/rate-limit';
 import { getErrorStatus } from '@/lib/api-error';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
-import { ANTHROPIC_MODEL, ANTHROPIC_API_URL, ANTHROPIC_VERSION } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, THINKING_CONFIG, AI_CONFIG, GEMINI_TIMEOUT_MS } from '@/lib/ai-config';
 import type { Character, CharacterState } from '@/lib/store';
 import type { ChatMode } from '@/lib/types/character-chat';
 
-// Budget: main reply (MAIN_TIMEOUT_MS) + optional insight (INSIGHT_TIMEOUT_MS)
-// run sequentially, so maxDuration must exceed their sum or the function is killed
-// mid-request and the reply/insight is lost.
+// Main reply + optional insight run sequentially, so keep maxDuration above the
+// sum of their individual timeouts.
 export const maxDuration = 45;
+
+const INSIGHT_TIMEOUT_MS = 15_000;
 
 const VALID_MODES: ChatMode[] = ['exploration', 'scene', 'confrontation'];
 const VALID_PRESSURE = ['Low', 'Medium', 'High', 'Critical'] as const;
@@ -19,8 +21,6 @@ const VALID_INDICATOR = ['stable', 'shifting', 'under pressure', 'emotionally co
 const MAX_HISTORY_TURNS = 30;
 const MAX_HISTORY_CHARS = 30_000;
 const MAX_HISTORY_MSG_CHARS = 5_000;
-const MAIN_TIMEOUT_MS = 25_000;
-const INSIGHT_TIMEOUT_MS = 15_000;
 
 // Field caps for the sanitized character payload
 const MAX_NAME = 200;
@@ -85,6 +85,11 @@ function sanitizeCharacter(input: unknown): Character | null {
   };
 }
 
+interface GeminiContent {
+  role: 'user' | 'model';
+  parts: { text: string }[];
+}
+
 export async function POST(req: NextRequest) {
   const limited = await rateLimit(req, { maxRequests: 15, windowMs: 60000 });
   if (limited) return limited;
@@ -125,15 +130,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    // Uses the app's primary Gemini key (same as every other AI route) so the
+    // feature works without a second provider key.
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'Anthropic API key not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
     }
 
     const systemPrompt = buildSystemPrompt(sanitized, mode as ChatMode);
 
-    // Build conversation history with caps to prevent abuse
-    const apiMessages: Array<{ role: string; content: string }> = [];
+    // Build multi-turn Gemini history with caps to prevent abuse. Gemini uses
+    // 'model' for the assistant/character turns.
+    const contents: GeminiContent[] = [];
     let historyChars = 0;
     if (Array.isArray(messages)) {
       const recent = messages.slice(-MAX_HISTORY_TURNS);
@@ -143,98 +151,71 @@ export async function POST(req: NextRequest) {
         const content = m.content.slice(0, MAX_HISTORY_MSG_CHARS);
         if (historyChars + content.length > MAX_HISTORY_CHARS) break;
         historyChars += content.length;
-        apiMessages.push({
-          role: m.role === 'character' ? 'assistant' : 'user',
-          content,
+        contents.push({
+          role: m.role === 'character' ? 'model' : 'user',
+          parts: [{ text: content }],
         });
       }
     }
-    apiMessages.push({ role: 'user', content: message.trim() });
+    contents.push({ role: 'user', parts: [{ text: message.trim() }] });
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), MAIN_TIMEOUT_MS);
+    const ai = new GoogleGenAI({ apiKey });
 
-    let response: Response;
-    try {
-      response = await fetch(ANTHROPIC_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': ANTHROPIC_VERSION,
-        },
-        body: JSON.stringify({
-          model: ANTHROPIC_MODEL,
-          max_tokens: 2048,
-          temperature: 0.6,
-          system: systemPrompt,
-          messages: apiMessages,
-        }),
-        signal: controller.signal,
+    const response = await ai.models.generateContent({
+      model: AI_MODEL,
+      contents,
+      config: {
+        systemInstruction: systemPrompt,
+        safetySettings: SAFETY_SETTINGS,
+        thinkingConfig: THINKING_CONFIG,
+        temperature: AI_CONFIG.characterChat.temperature,
+        maxOutputTokens: AI_CONFIG.characterChat.maxOutputTokens,
+        abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+      },
+    });
+
+    const candidate = response.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    if (
+      finishReason === FinishReason.SAFETY ||
+      finishReason === FinishReason.PROHIBITED_CONTENT ||
+      finishReason === FinishReason.BLOCKLIST
+    ) {
+      return NextResponse.json({
+        reply: "I can't bring myself to answer that right now. Ask me something else.",
+        blocked: true,
       });
-    } catch (fetchError: unknown) {
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        return NextResponse.json({ error: 'Chat request timed out' }, { status: 504 });
-      }
-      throw fetchError;
-    } finally {
-      clearTimeout(timeout);
     }
 
-    if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
-        return NextResponse.json({ error: 'Rate limited by AI provider' }, { status: 429 });
-      }
-      return NextResponse.json({ error: 'AI provider error' }, { status });
-    }
-
-    const data = await response.json();
-    const reply = data.content?.[0]?.text?.trim() || '';
+    const reply = response.text?.trim() || '';
 
     const result: { reply: string; insight?: string } = { reply };
 
     // Generate insight if requested and enough messages
     if (generateInsight && Array.isArray(messages) && messages.length >= 5) {
-      const insightController = new AbortController();
-      const insightTimeout = setTimeout(() => insightController.abort(), INSIGHT_TIMEOUT_MS);
       try {
         // Build a capped transcript for the insight prompt
-        const transcript = apiMessages
-          .map(m => `${m.role}: ${m.content}`)
+        const transcript = contents
+          .map(c => `${c.role}: ${c.parts[0]?.text ?? ''}`)
           .join('\n')
           .slice(0, MAX_HISTORY_CHARS);
 
-        const insightResponse = await fetch(ANTHROPIC_API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': ANTHROPIC_VERSION,
-          },
-          body: JSON.stringify({
-            model: ANTHROPIC_MODEL,
-            max_tokens: 256,
+        const insightResponse = await ai.models.generateContent({
+          model: AI_MODEL,
+          contents: `Analyze this conversation and extract ONE key insight about the character "${sanitized.name}":\n\n${transcript}\nmodel: ${reply}`,
+          config: {
+            systemInstruction: 'You are a literary analyst. Extract character insights from conversations. Respond with ONLY the insight, no preamble.',
+            safetySettings: SAFETY_SETTINGS,
+            thinkingConfig: THINKING_CONFIG,
             temperature: 0.3,
-            system: 'You are a literary analyst. Extract character insights from conversations.',
-            messages: [
-              {
-                role: 'user',
-                content: `Analyze this conversation and extract ONE key insight about the character "${sanitized.name}":\n\n${transcript}\nassistant: ${reply}`,
-              },
-            ],
-          }),
-          signal: insightController.signal,
+            maxOutputTokens: 256,
+            abortSignal: AbortSignal.timeout(INSIGHT_TIMEOUT_MS),
+          },
         });
-
-        if (insightResponse.ok) {
-          const insightData = await insightResponse.json();
-          result.insight = insightData.content?.[0]?.text?.trim() || undefined;
-        }
+        const insightText = insightResponse.text?.trim();
+        if (insightText) result.insight = insightText;
       } catch {
         // Insight generation is optional — don't fail the main response
-      } finally {
-        clearTimeout(insightTimeout);
       }
     }
 
