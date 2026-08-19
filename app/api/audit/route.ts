@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, Type, FinishReason } from '@google/genai';
 import { buildWritingAssistantPrompt } from '@/lib/prompts/writing-assistant';
 import { rateLimit } from '@/lib/rate-limit';
-import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG, THINKING_CONFIG, GEMINI_TIMEOUT_MS } from '@/lib/ai-config';
+import { safeParseGeminiResponse } from '@/lib/ai/safe-json-parse';
 import { getErrorStatus } from '@/lib/api-error';
 
 export const maxDuration = 60;
@@ -62,6 +63,7 @@ For each risk found, explain which specific story element it contradicts and why
       config: {
         systemInstruction: systemPrompt,
         safetySettings: SAFETY_SETTINGS,
+        thinkingConfig: THINKING_CONFIG,
         temperature: AI_CONFIG.audit.temperature,
         maxOutputTokens: AI_CONFIG.audit.maxOutputTokens,
         responseMimeType: 'application/json',
@@ -84,7 +86,8 @@ For each risk found, explain which specific story element it contradicts and why
             suggestedCorrections: { type: Type.ARRAY, items: { type: Type.STRING } },
             safeVersion: { type: Type.STRING, description: 'A version that respects canon while preserving the user\'s creative intent as closely as possible' }
           }
-        }
+        },
+        abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       }
     });
 
@@ -104,13 +107,11 @@ For each risk found, explain which specific story element it contradicts and why
     if (!rawText) {
       return NextResponse.json({ status: 'Clear', risks: [], suggestedCorrections: [], safeVersion: '' });
     }
-    let result;
-    try {
-      result = JSON.parse(rawText);
-    } catch {
-      console.error('Audit: Gemini returned invalid JSON:', rawText.slice(0, 500));
-      return NextResponse.json({ error: 'AI returned an invalid response. Please try again.' }, { status: 502 });
-    }
+    // Repair fenced/partial JSON; fall back to a clear result rather than a hard
+    // 502 on a single truncated or fence-wrapped response.
+    const result = safeParseGeminiResponse<Record<string, unknown>>(rawText, {
+      status: 'Clear', risks: [], suggestedCorrections: [], safeVersion: '',
+    });
     // Ensure expected shape so the client doesn't crash
     return NextResponse.json({
       status: typeof result.status === 'string' ? result.status : 'Clear',
