@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, FinishReason, Content } from '@google/genai';
 import { buildWritingAssistantPrompt } from '@/lib/prompts/writing-assistant';
 import { rateLimit } from '@/lib/rate-limit';
-import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG, THINKING_CONFIG, GEMINI_TIMEOUT_MS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 import { safeParseGeminiResponse } from '@/lib/ai/safe-json-parse';
 import {
@@ -72,10 +72,14 @@ export async function POST(req: NextRequest) {
       config: {
         systemInstruction: systemPrompt,
         safetySettings: SAFETY_SETTINGS,
+        // Thinking disabled so the full maxOutputTokens goes to the JSON answer
+        // rather than being truncated by thinking tokens on large contexts.
+        thinkingConfig: THINKING_CONFIG,
         temperature: config.temperature,
         maxOutputTokens: config.maxOutputTokens,
         responseMimeType: 'application/json',
         responseSchema,
+        abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       },
     });
 
@@ -130,12 +134,12 @@ export async function POST(req: NextRequest) {
     if (isBlocked) {
       const blockedResponse = ensureBlockedShape(parsed as ChatResponseBlocked);
       validated = entities.characters.length > 0
-        ? validateBlockedResponse(blockedResponse, entities)
+        ? validateBlockedResponse(blockedResponse, entities, language)
         : { ...blockedResponse, validationWarnings: [] };
     } else {
       const normalResponse = ensureNormalShape(parsed as ChatResponseNormal);
       validated = entities.characters.length > 0
-        ? validateNormalResponse(normalResponse, entities)
+        ? validateNormalResponse(normalResponse, entities, language)
         : normalResponse;
     }
 
