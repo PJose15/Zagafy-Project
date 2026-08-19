@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { rateLimit } from '@/lib/rate-limit';
-import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, THINKING_CONFIG, AI_CONFIG, GEMINI_TIMEOUT_MS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 
 const FALLBACK_QUESTIONS = [
@@ -49,10 +49,14 @@ export async function POST(req: NextRequest) {
     const response = await ai.models.generateContent({
       model: AI_MODEL,
       config: {
-        temperature: 0.7,
-        maxOutputTokens: 80,
+        temperature: AI_CONFIG.closingQuestion.temperature,
+        // Thinking disabled + a real output budget so the model actually returns
+        // the question instead of spending 80 tokens thinking and returning empty.
+        thinkingConfig: THINKING_CONFIG,
+        maxOutputTokens: AI_CONFIG.closingQuestion.maxOutputTokens,
         safetySettings: SAFETY_SETTINGS,
         systemInstruction: systemPrompt,
+        abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       },
       contents: userMessage,
     });

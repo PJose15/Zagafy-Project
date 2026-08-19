@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI, FinishReason } from '@google/genai';
 import { buildCharacterAnalysisSystemPrompt, buildCharacterAnalysisPrompt } from '@/lib/prompts/character-analysis';
 import { rateLimit } from '@/lib/rate-limit';
-import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG, THINKING_CONFIG, GEMINI_TIMEOUT_MS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 
 export const maxDuration = 60;
@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
       config: {
         systemInstruction: systemPrompt,
         safetySettings: SAFETY_SETTINGS,
+        thinkingConfig: THINKING_CONFIG,
+        temperature: AI_CONFIG.characterAnalysis.temperature,
+        maxOutputTokens: AI_CONFIG.characterAnalysis.maxOutputTokens,
+        abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       },
     });
 
