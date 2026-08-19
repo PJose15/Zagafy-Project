@@ -25,9 +25,13 @@ export function analyzeText(text: string): ProseIssue[] {
   if (!text.trim()) return [];
   const issues: ProseIssue[] = [];
 
+  // Lowercase the text once and reuse it, instead of re-lowercasing the entire
+  // chapter on every phrase and every occurrence (was O(phrases·occurrences·len)).
+  const lower = text.toLowerCase();
+
   // Awkward phrases
   for (const phrase of WEAK_PHRASES) {
-    let idx = text.toLowerCase().indexOf(phrase);
+    let idx = lower.indexOf(phrase);
     while (idx !== -1) {
       issues.push({
         category: 'awkward-phrase',
@@ -38,7 +42,7 @@ export function analyzeText(text: string): ProseIssue[] {
         endIndex: idx + phrase.length,
         text: text.slice(idx, idx + phrase.length),
       });
-      idx = text.toLowerCase().indexOf(phrase, idx + 1);
+      idx = lower.indexOf(phrase, idx + 1);
     }
   }
 
