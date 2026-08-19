@@ -307,9 +307,12 @@ describe('buildContext — character detail formatting', () => {
             emotionalState: 'Anxious',
             visibleGoal: 'Find truth',
             currentFear: 'Betrayal',
-            pressureLevel: 8,
+            pressureLevel: 'High',
             hiddenNeed: 'Acceptance',
             currentKnowledge: 'The artifact is cursed',
+            dominantBelief: 'Trust no one',
+            emotionalWound: 'Abandoned as a child',
+            indicator: 'under pressure',
           },
         },
       ],
@@ -398,7 +401,7 @@ describe('buildContext — scenes under chapters', () => {
   it('includes scenes in chapter block', () => {
     const state = makeState({
       chapters: [{ id: 'ch1', title: 'The Discovery', content: 'text', summary: 'start', canonStatus: 'confirmed' }],
-      scenes: [{ id: 's1', chapterId: 'ch1', title: 'Opening', summary: 'The door opens', canonStatus: 'confirmed' }],
+      scenes: [{ id: 's1', chapterId: 'ch1', title: 'Opening', content: '', summary: 'The door opens', canonStatus: 'confirmed' }],
     });
     const { context } = buildContext(state, { userInput: 'test', isBlockedMode: false });
     expect(context).toContain('Scenes: Opening: The door opens');
@@ -431,7 +434,7 @@ describe('buildContext — ambiguities and canon_items', () => {
   it('includes ambiguities with affected section and confidence', () => {
     const state = makeState({
       ambiguities: [
-        { id: 'a1', issue: 'Timeline conflict', affectedSection: 'Chapter 2', confidence: 0.3 },
+        { id: 'a1', issue: 'Timeline conflict', affectedSection: 'Chapter 2', confidence: '0.3', recommendedReview: '' },
       ],
     });
     const { context } = buildContext(state, { userInput: 'test', isBlockedMode: false });
@@ -441,7 +444,7 @@ describe('buildContext — ambiguities and canon_items', () => {
   it('includes canon_items with category and status', () => {
     const state = makeState({
       canon_items: [
-        { id: 'ci1', category: 'plot', description: 'Elena finds the map', status: 'confirmed' },
+        { id: 'ci1', category: 'plot', description: 'Elena finds the map', status: 'confirmed', sourceReference: '' },
       ],
     });
     const { context } = buildContext(state, { userInput: 'test', isBlockedMode: false });
