@@ -90,6 +90,11 @@ export async function migrateFromLocalStorage(): Promise<void> {
     const existing = await db.meta.get('migration');
     if (existing) return; // already migrated
 
+    // localStorage is not transactional, so we must not delete the source keys
+    // until the Dexie transaction has committed — otherwise a rollback would
+    // destroy the source and leave nothing. Collect keys, delete after commit.
+    const keysToClear: string[] = [];
+
     await db.transaction('rw', [db.chapters, db.chapterVersions, db.sessions, db.meta, db.stories], async () => {
       // 1. Migrate chapters with content from zagafy_state and the whole state blob
       const stateRaw = localStorage.getItem('zagafy_state');
@@ -126,8 +131,8 @@ export async function migrateFromLocalStorage(): Promise<void> {
             updatedAt: Date.now(),
           });
 
-          // Remove legacy localStorage key now that data lives in Dexie
-          localStorage.removeItem('zagafy_state');
+          // Queue removal for after the transaction commits.
+          keysToClear.push('zagafy_state');
         } catch {
           // Parse error — leave localStorage intact
         }
@@ -151,7 +156,7 @@ export async function migrateFromLocalStorage(): Promise<void> {
               await db.chapterVersions.bulkPut(dexieVersions);
             }
           }
-          localStorage.removeItem('zagafy_chapter_versions');
+          keysToClear.push('zagafy_chapter_versions');
         } catch {
           // Parse error — leave localStorage intact
         }
@@ -178,7 +183,7 @@ export async function migrateFromLocalStorage(): Promise<void> {
               await db.sessions.bulkPut(dexieSessions);
             }
           }
-          localStorage.removeItem('zagafy_sessions');
+          keysToClear.push('zagafy_sessions');
         } catch {
           // Parse error — leave localStorage intact
         }
@@ -187,6 +192,12 @@ export async function migrateFromLocalStorage(): Promise<void> {
       // 4. Mark migration complete
       await db.meta.put({ id: 'migration', completedAt: new Date().toISOString() });
     });
+
+    // Transaction committed successfully — now it is safe to delete the legacy
+    // localStorage source keys.
+    for (const key of keysToClear) {
+      try { localStorage.removeItem(key); } catch { /* best effort */ }
+    }
   } catch (e) {
     console.error('[dexie] Migration failed, falling back to localStorage', e);
   }
@@ -258,10 +269,14 @@ export async function putAllVersions(versions: Record<string, unknown>[]): Promi
     createdAt: (v.createdAt as string) || new Date().toISOString(),
     data: JSON.stringify(v),
   }));
-  await db.chapterVersions.clear();
-  if (rows.length > 0) {
-    await db.chapterVersions.bulkPut(rows);
-  }
+  // Atomic: a crash/throw between clear() and bulkPut() must not leave the table
+  // empty. Dexie rolls the whole transaction back on failure.
+  await db.transaction('rw', db.chapterVersions, async () => {
+    await db.chapterVersions.clear();
+    if (rows.length > 0) {
+      await db.chapterVersions.bulkPut(rows);
+    }
+  });
 }
 
 export async function deleteVersionById(id: string): Promise<void> {
@@ -300,10 +315,13 @@ export async function putAllSessions(sessions: Record<string, unknown>[]): Promi
     heteronymId: (s.heteronymId as string) ?? null,
     data: JSON.stringify(s),
   }));
-  await db.sessions.clear();
-  if (rows.length > 0) {
-    await db.sessions.bulkPut(rows);
-  }
+  // Atomic: never leave the sessions table wiped if the repopulate step fails.
+  await db.transaction('rw', db.sessions, async () => {
+    await db.sessions.clear();
+    if (rows.length > 0) {
+      await db.sessions.bulkPut(rows);
+    }
+  });
 }
 
 // ─── Story state CRUD ───
