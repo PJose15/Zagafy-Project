@@ -48,10 +48,20 @@ function validateImportShape(data: unknown): { ok: true } | { ok: false; reason:
     }
   }
   // Cap common scalar string fields
-  for (const k of ['genre', 'synopsis', 'author_intent', 'language'] as const) {
+  for (const k of ['synopsis', 'author_intent', 'language'] as const) {
     const v = data[k];
     if (v !== undefined && (typeof v !== 'string' || v.length > MAX_STRING_FIELD)) {
       return { ok: false, reason: `${k} must be a string under ${MAX_STRING_FIELD} chars` };
+    }
+  }
+  // `genre` is a string[] in StoryState — validate it as an array so exported
+  // projects (which serialize genre as an array) can be re-imported.
+  if (data.genre !== undefined) {
+    if (!Array.isArray(data.genre) || data.genre.length > MAX_ARRAY_ITEMS) {
+      return { ok: false, reason: `genre must be an array with at most ${MAX_ARRAY_ITEMS} items` };
+    }
+    if (data.genre.some(g => typeof g !== 'string' || g.length > MAX_STRING_FIELD)) {
+      return { ok: false, reason: `each genre must be a string under ${MAX_STRING_FIELD} chars` };
     }
   }
   // Cap remaining arrays to prevent balloon state

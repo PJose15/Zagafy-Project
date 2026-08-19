@@ -296,3 +296,18 @@
   background: var(--color-forest-700);
   color: var(--color-cream-50);
 }
+
+/* ─── Reduced Motion ───
+   MotionConfig(reducedMotion="user") only governs motion/react animations. The
+   hand-written @keyframes above (several `infinite`) run regardless, so honor the
+   OS preference here for users with vestibular sensitivity. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
