@@ -31,6 +31,8 @@ vi.mock('@google/genai', () => {
 vi.mock('@/lib/ai-config', () => ({
   AI_MODEL: 'test-model',
   SAFETY_SETTINGS: [],
+  THINKING_CONFIG: { thinkingBudget: 0 },
+  GEMINI_TIMEOUT_MS: 25000,
   AI_CONFIG: {
     worldBible: { temperature: 0.1, maxOutputTokens: 8192 },
   },
@@ -157,7 +159,7 @@ describe('POST /api/extract-world-bible', () => {
     expect(body.sections).toEqual([]);
   });
 
-  it('returns 502 on invalid JSON from Gemini', async () => {
+  it('degrades to empty sections (not a hard 502) on unrepairable JSON from Gemini', async () => {
     mockGenerateContent.mockResolvedValue({
       candidates: [{ finishReason: 'STOP' }],
       text: 'not valid json {{{',
@@ -166,7 +168,9 @@ describe('POST /api/extract-world-bible', () => {
     const res = await POST(
       makeRequest({ chapters: [{ title: 'Ch1', content: 'Some text...' }] }),
     );
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.sections).toEqual([]);
   });
 
   it('returns empty sections when response text is empty', async () => {

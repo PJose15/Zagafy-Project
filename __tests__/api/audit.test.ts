@@ -31,6 +31,8 @@ vi.mock('@google/genai', () => {
 vi.mock('@/lib/ai-config', () => ({
   AI_MODEL: 'test-model',
   SAFETY_SETTINGS: [],
+  THINKING_CONFIG: { thinkingBudget: 0 },
+  GEMINI_TIMEOUT_MS: 25000,
   AI_CONFIG: {
     chat: { temperature: 0.3, maxOutputTokens: 4096 },
     chatBlocked: { temperature: 0.5, maxOutputTokens: 4096 },
@@ -119,7 +121,7 @@ describe('POST /api/audit', () => {
     expect(typeof body.safeVersion).toBe('string');
   });
 
-  it('returns 502 when Gemini returns invalid JSON', async () => {
+  it('degrades to a clear result (not a hard 502) when Gemini returns invalid JSON', async () => {
     mockGenerateContent.mockResolvedValue({
       candidates: [{ finishReason: 'STOP' }],
       text: 'not valid json {{{',
@@ -132,7 +134,10 @@ describe('POST /api/audit', () => {
         storyContext: '',
       })
     );
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe('Clear');
+    expect(body.risks).toEqual([]);
   });
 
   it('sends prompt with CHARACTER LOGIC and FORESHADOWING COHERENCE dimensions', async () => {
