@@ -31,6 +31,9 @@ export function BreathingGuide({ onComplete }: BreathingGuideProps) {
   }, [done, onComplete]);
 
   useEffect(() => {
+    // Stop advancing once the ritual is complete.
+    if (done) return;
+
     const advancePhase = () => {
       setCurrentPhase(prev => {
         const nextPhase = (prev + 1) % phases.length;
@@ -53,7 +56,9 @@ export function BreathingGuide({ onComplete }: BreathingGuideProps) {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [currentPhase, cycle, onComplete]);
+    // Intentionally excludes onComplete: an inline parent callback would otherwise
+    // recreate this 4s timer on every parent render and stall the breathing.
+  }, [currentPhase, cycle, done]);
 
   const phase = phases[currentPhase];
   const scale = phase.phase === 'inhale' ? 1.4 : phase.phase === 'hold' ? 1.4 : 1;

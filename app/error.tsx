@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { EmptyState, ParchmentCard } from '@/components/antiquarian';
 
 export default function Error({
@@ -9,6 +10,12 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // Log the error (incl. digest) so production failures leave a diagnostic trail
+  // instead of being silently swallowed.
+  useEffect(() => {
+    console.error('App error boundary:', error);
+  }, [error]);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
       <ParchmentCard variant="translucent">

@@ -55,7 +55,14 @@ export default function FlowPage() {
 
   return (
     <FeatureErrorBoundary title="Flow Editor">
-      <FlowEditor chapterId={session.flowChapterId} onExit={handleExit} />
+      {/* key remounts the editor when the chapter changes (e.g. Scene Change),
+          so `content` and per-chapter state reseed from the new chapter instead
+          of leaking the previous chapter's text into autosave. */}
+      <FlowEditor
+        key={session.flowChapterId}
+        chapterId={session.flowChapterId}
+        onExit={handleExit}
+      />
     </FeatureErrorBoundary>
   );
 }
