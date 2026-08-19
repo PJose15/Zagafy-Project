@@ -24,6 +24,10 @@ const MIN_FLOW_SCORE_MINUTES = 3; // minimum session length to show flow score m
 
 interface SessionTrackerOptions {
   metricsCollectorRef?: React.RefObject<MetricsCollector | null>;
+  // Called after a session ends and its XP has been written to storage, so a
+  // GamificationProvider in the same tab can re-read and reflect the new XP
+  // (the provider otherwise only re-reads on cross-tab events / tab blur).
+  onXpAwarded?: () => void;
 }
 
 interface SessionTrackerState {
@@ -36,10 +40,17 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
   const { state } = useStory();
   const pathname = usePathname();
 
+  // Latest onXpAwarded held in a ref so endSession (empty deps) always calls the
+  // current callback without being recreated.
+  const onXpAwardedRef = useRef(options?.onXpAwarded);
+  useEffect(() => {
+    onXpAwardedRef.current = options?.onXpAwarded;
+  });
+
   const [pendingFlowScore, setPendingFlowScore] = useState<{ sessionId: string } | null>(null);
 
   // Compute total word count across all chapters
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+   
   const totalWordCount = useMemo(() => {
     return state.chapters.reduce((sum, ch) => {
       const words = ch.content.trim().split(/\s+/).filter(Boolean).length;
@@ -61,6 +72,10 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
   const lastWordCountRef = useRef(totalWordCount);
   const pathnameRef = useRef(pathname);
 
+  // endSession reads only refs (all stable), so it is intentionally created once
+  // with empty deps; the compiler's inferred `metricsRef.current` dependency is
+  // a stable ref access and does not require recreation.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const endSession = useCallback(() => {
     if (!isActiveRef.current || !sessionIdRef.current || !sessionStartRef.current) return;
 
@@ -130,6 +145,8 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
         gam = { ...gam, xp: awardXP(gam.xp, 'session', XP_RATES.SESSION_COMPLETE, `${Math.round(durationMinutes)}min session`) };
       }
       writeGamification(gam);
+      // Notify the provider (same tab) so the XP bar updates immediately.
+      onXpAwardedRef.current?.();
     } catch {
       // Best effort — gamification XP should not block session tracking
     }
@@ -246,7 +263,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       }
       clearWipSession();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // beforeunload — save WIP
