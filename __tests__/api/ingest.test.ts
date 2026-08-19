@@ -34,6 +34,10 @@ vi.mock('@google/genai', () => {
 vi.mock('@/lib/ai-config', () => ({
   AI_MODEL: 'test-model',
   SAFETY_SETTINGS: [],
+  THINKING_CONFIG: { thinkingBudget: 0 },
+  AI_CONFIG: {
+    ingest: { temperature: 0.1, maxOutputTokens: 8192 },
+  },
 }));
 
 // Mock pdf-parse and mammoth with per-test controllable fns
@@ -51,10 +55,10 @@ vi.mock('mammoth', () => ({
 
 const { POST } = await import('@/app/api/ingest/route');
 
-// ─── Constants ───────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────
 const CHUNK_SIZE = 200_000;
 
-// ─── Helpers ─────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────
 function makeExtractedData(overrides: Partial<ExtractedData> = {}): ExtractedData {
   return {
     project: { title: 'Test', genre: ['fiction'] },
@@ -99,7 +103,7 @@ function makeFormRequest(
   });
 }
 
-// ─── Tests ───────────────────────────────────────────────────────
+// ─── Tests ───────────────────────────────────
 describe('POST /api/ingest', () => {
   beforeEach(() => {
     vi.stubEnv('GEMINI_API_KEY', 'test-key');
@@ -108,7 +112,7 @@ describe('POST /api/ingest', () => {
     mockMammoth.mockReset().mockResolvedValue({ value: 'Parsed DOCX text' });
   });
 
-  // ── Existing validation tests ──────────────────────────────────
+  // ── Existing validation tests ──────────────────────────
   it('rejects request with no files', async () => {
     const formData = new FormData();
     formData.set('language', 'English');
@@ -190,7 +194,7 @@ describe('POST /api/ingest', () => {
     expect(body.fileParsingStatus[0].status).toBe('success');
   });
 
-  // ── Group A: Text chunking ─────────────────────────────────────
+  // ── Group A: Text chunking ──────────────────────────────
   describe('text chunking', () => {
     it('sends 1 AI call for text under chunk size', async () => {
       mockGenerateContent.mockResolvedValue(mockSuccessResponse(makeExtractedData()));
@@ -219,7 +223,7 @@ describe('POST /api/ingest', () => {
     });
   });
 
-  // ── Group B: Result merging & dedup ────────────────────────────
+  // ── Group B: Result merging & dedup ───────────────────────
   describe('result merging & deduplication', () => {
     function makeBigText() {
       return 'a'.repeat(CHUNK_SIZE + 50000);
@@ -249,6 +253,57 @@ describe('POST /api/ingest', () => {
       const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
       const body = await res.json();
       expect(body.extractedData.chapters).toHaveLength(2);
+    });
+
+    it('namespaces colliding IDs across chunks and keeps scene→chapter links valid (M-6)', async () => {
+      // Both chunks independently emit the same ids — a collision without namespacing.
+      const chunk1 = makeExtractedData({
+        chapters: [{ chapter_id: 'chapter_1', title: 'One' }],
+        scenes: [{ scene_id: 'scene_1', chapter_id: 'chapter_1', summary: 'a' }],
+      });
+      const chunk2 = makeExtractedData({
+        chapters: [{ chapter_id: 'chapter_1', title: 'Two' }],
+        scenes: [{ scene_id: 'scene_1', chapter_id: 'chapter_1', summary: 'b' }],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk1))
+        .mockResolvedValueOnce(mockSuccessResponse(chunk2));
+
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      const chapterIds = body.extractedData.chapters.map((c: { chapter_id: string }) => c.chapter_id);
+      // IDs are now globally unique...
+      expect(new Set(chapterIds).size).toBe(chapterIds.length);
+      expect(chapterIds).toHaveLength(2);
+      // ...and every scene still references an existing chapter.
+      const chapterIdSet = new Set(chapterIds);
+      for (const s of body.extractedData.scenes) {
+        expect(chapterIdSet.has(s.chapter_id)).toBe(true);
+      }
+    });
+
+    it('re-points character_states to the canonical character after dedup (M-6)', async () => {
+      const chunk1 = makeExtractedData({
+        characters: [{ character_id: 'char_1', name: 'Alice', role: 'protagonist' }],
+        character_states: [{ character_id: 'char_1', name: 'Alice', current_emotional_state: 'calm' }],
+      });
+      const chunk2 = makeExtractedData({
+        characters: [{ character_id: 'char_1', name: 'Alice', role: 'protagonist' }],
+        character_states: [{ character_id: 'char_1', name: 'Alice', current_emotional_state: 'afraid' }],
+      });
+      mockGenerateContent
+        .mockResolvedValueOnce(mockSuccessResponse(chunk1))
+        .mockResolvedValueOnce(mockSuccessResponse(chunk2));
+
+      const res = await POST(makeFormRequest([{ name: 'big.txt', content: makeBigText() }]));
+      const body = await res.json();
+      // Alice is deduped to one canonical record...
+      expect(body.extractedData.characters).toHaveLength(1);
+      const canonicalId = body.extractedData.characters[0].character_id;
+      // ...and every state points at that surviving character (no orphans).
+      for (const st of body.extractedData.character_states) {
+        expect(st.character_id).toBe(canonicalId);
+      }
     });
 
     it('deduplicates characters by name (case-insensitive, first wins)', async () => {
@@ -394,7 +449,7 @@ describe('POST /api/ingest', () => {
     });
   });
 
-  // ── Group C: Chunk processing edge cases ───────────────────────
+  // ── Group C: Chunk processing edge cases ────────────────────
   describe('chunk processing edge cases', () => {
     function makeBigText() {
       return 'a'.repeat(CHUNK_SIZE + 50000);
@@ -454,7 +509,7 @@ describe('POST /api/ingest', () => {
     });
   });
 
-  // ── Group D: File parsing errors ───────────────────────────────
+  // ── Group D: File parsing errors ──────────────────────────
   describe('file parsing errors', () => {
     it('reports PDF parse failure in fileParsingStatus', async () => {
       mockPdfParse.mockRejectedValueOnce(new Error('Corrupt PDF'));
@@ -470,7 +525,9 @@ describe('POST /api/ingest', () => {
       const body = await res.json();
       const pdfStatus = body.fileParsingStatus.find((f: { name: string }) => f.name === 'bad.pdf');
       expect(pdfStatus.status).toBe('failed');
-      expect(pdfStatus.error).toBe('Corrupt PDF');
+      // The raw library error must not leak to the client — a generic message only.
+      expect(pdfStatus.error).toBe('Could not parse this file');
+      expect(pdfStatus.error).not.toContain('Corrupt PDF');
     });
 
     it('handles mixed files: one fails, one succeeds → 200 with partial status', async () => {
@@ -492,7 +549,7 @@ describe('POST /api/ingest', () => {
     });
   });
 
-  // ── Group E: Outer catch block ─────────────────────────────────
+  // ── Group E: Outer catch block ──────────────────────────
   describe('outer catch block', () => {
     it('returns status from error with { status: 503 }', async () => {
       mockGenerateContent.mockRejectedValue({ status: 503, message: 'Service Unavailable' });
