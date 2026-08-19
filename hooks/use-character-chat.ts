@@ -22,7 +22,17 @@ export function useCharacterChat(characterId: string | null) {
   const [mode, setModeState] = useState<ChatMode>('exploration');
   const [isLoading, setIsLoading] = useState(false);
   const [insights, setInsights] = useState<CharacterInsight[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Latest characters held in a ref so the session-load effect can look up a
+  // character's name without depending on `state.characters` — otherwise any
+  // character edit (or cross-tab store sync) would re-run the effect and reset
+  // the live conversation mid-chat.
+  const charactersRef = useRef(state.characters);
+  useEffect(() => {
+    charactersRef.current = state.characters;
+  }, [state.characters]);
 
   // Load or create session when characterId changes
   useEffect(() => {
@@ -40,7 +50,7 @@ export function useCharacterChat(characterId: string | null) {
       setMessages(existing.messages);
       setModeState(existing.mode);
     } else {
-      const character = state.characters.find(c => c.id === characterId);
+      const character = charactersRef.current.find(c => c.id === characterId);
       const newSession: CharacterChatSession = {
         id: crypto.randomUUID(),
         characterId,
@@ -62,7 +72,12 @@ export function useCharacterChat(characterId: string | null) {
       return s?.characterId === characterId;
     });
     setInsights(allInsights);
-  }, [characterId, state.characters]);
+    // Only re-run when the selected character changes — character catalog updates
+    // are read via charactersRef above.
+  }, [characterId]);
+
+  // Abort any in-flight send on unmount so it can't call setState afterward.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   // Cross-tab sync
   useEffect(() => {
@@ -112,6 +127,7 @@ export function useCharacterChat(characterId: string | null) {
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setIsLoading(true);
+    setError(null);
 
     // Cancel any in-flight request
     if (abortRef.current) abortRef.current.abort();
@@ -181,10 +197,12 @@ export function useCharacterChat(characterId: string | null) {
         addInsight(newInsight);
         setInsights(prev => [...prev, newInsight]);
       }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') return;
-      // Remove the optimistic user message on failure
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      // Remove the optimistic user message on failure and surface an error so the
+      // panel can show it (and let the writer retry) instead of it vanishing.
       setMessages(messages);
+      setError('Message failed to send. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -209,6 +227,7 @@ export function useCharacterChat(characterId: string | null) {
     setMode,
     sendMessage,
     isLoading,
+    error,
     insights,
     saveInsightAsCanon,
     clearSession,
