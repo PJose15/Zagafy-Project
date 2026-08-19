@@ -5,8 +5,8 @@ import { enforceAiQuota } from '@/lib/ai-quota';
 import { getErrorStatus } from '@/lib/api-error';
 import { err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
-import { anthropicConfig } from '@/lib/ai-config';
-import { streamAnthropicText } from '@/lib/ai/anthropic';
+import { AI_CONFIG } from '@/lib/ai-config';
+import { streamGeminiText } from '@/lib/ai/gemini';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
 import type { Character, CharacterState } from '@/lib/store';
 import type { ChatMode, StoryContext } from '@/lib/types/character-chat';
@@ -154,13 +154,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    // Character chat runs on the app's primary Gemini key (same as every other
+    // AI route) so it works without a separate Anthropic key/model.
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return err(
         'internal_error',
-        'Character Chat is not configured. Set ANTHROPIC_API_KEY in this environment to enable it.',
+        'Character Chat is not configured. Set GEMINI_API_KEY in this environment to enable it.',
         500,
-        { reason: 'ai_not_configured', provider: 'anthropic' },
+        { reason: 'ai_not_configured', provider: 'gemini' },
       );
     }
 
@@ -195,12 +197,12 @@ export async function POST(req: NextRequest) {
     // usual JSON error envelope, so the client branches on res.ok. (An empty
     // stream is treated as an error client-side, where the accumulated text is
     // known.)
-    const streamResult = await streamAnthropicText({
+    const streamResult = await streamGeminiText({
       apiKey,
       system: systemPrompt,
       messages: apiMessages,
-      maxTokens: 2048,
-      temperature: anthropicConfig.temperatures.characterChat,
+      maxTokens: AI_CONFIG.characterChat.maxOutputTokens,
+      temperature: AI_CONFIG.characterChat.temperature,
       deadlineMs: CHAT_DEADLINE_MS,
     });
 
