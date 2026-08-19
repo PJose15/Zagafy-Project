@@ -18,7 +18,10 @@ interface BuildContextOptions {
  * Returns both the context string and a list of known entities for validation.
  */
 export function buildContext(state: StoryState, options: BuildContextOptions): ContextResult {
-  const { userInput, isBlockedMode, writerBlockType, maxLength = 500000 } = options;
+  // Default budget is kept strictly below the /api/chat reject threshold (500KB)
+  // so the assembled context plus the user's input and chat history still fits —
+  // otherwise a large story fills the context to the cap and every request 413s.
+  const { userInput, isBlockedMode, writerBlockType, maxLength = 350000 } = options;
   const inputLower = userInput.toLowerCase();
 
   const notDiscarded = <T extends { canonStatus?: string }>(items: T[]) =>
