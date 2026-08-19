@@ -23,10 +23,10 @@ vi.mock('@/lib/store', () => ({
 }));
 
 // Mock writing-session module
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mockAddSession = vi.fn((_session: any) => Promise.resolve());
 const mockReadWipSession = vi.fn((): { id: string; projectId: string; projectName: string; startedAt: string; wordsStart: number; currentWords: number; heteronymId?: string | null; heteronymName?: string | null } | null => null);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mockSaveWipSession = vi.fn((_wip: any) => {});
 const mockClearWipSession = vi.fn();
 const mockGetProjectId = vi.fn(() => 'proj-1');
@@ -78,9 +78,9 @@ describe('useSessionTracker STRESS', () => {
     vi.unstubAllGlobals();
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // WORD COUNT BOUNDARIES (MIN_WORDS_TO_START = 10)
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('word count start threshold', () => {
     it('exactly 9 new words → does NOT start session', () => {
       const { rerender } = renderHook(() => useSessionTracker());
@@ -115,9 +115,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // MIN_SESSION_WORDS (= 5) BOUNDARY
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('minimum session words to save', () => {
     it('4 words added → session NOT saved', () => {
       const { rerender } = renderHook(() => useSessionTracker());
@@ -136,9 +136,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // 3-MINUTE FLOW SCORE GATE (EXACT BOUNDARIES)
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('3-minute flow score gate boundaries', () => {
     function startSession(rerender: () => void) {
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(3), summary: '' }]);
@@ -187,9 +187,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // HETERONYM EDGE CASES
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('heteronym edge cases', () => {
     it('captures heteronym when active', () => {
       const { rerender } = renderHook(() => useSessionTracker());
@@ -247,9 +247,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // WIP RECOVERY EDGE CASES
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('WIP recovery edge cases', () => {
     it('recovers WIP with heteronym data', () => {
       mockReadWipSession.mockReturnValue({
@@ -298,9 +298,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // IDLE TIMER BEHAVIOR
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('idle timer behavior', () => {
     it('continuous writing for 15 minutes keeps session alive', () => {
       const { rerender } = renderHook(() => useSessionTracker());
@@ -333,9 +333,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // MULTIPLE CHAPTERS
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('multiple chapters', () => {
     it('counts words across multiple chapters', () => {
       const { rerender } = renderHook(() => useSessionTracker());
@@ -378,9 +378,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // PATHNAME CHANGES
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('pathname changes', () => {
     it('same pathname rerender does not end session', () => {
       const { rerender } = renderHook(() => useSessionTracker());
@@ -414,9 +414,9 @@ describe('useSessionTracker STRESS', () => {
     });
   });
 
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   // DISMISS FLOW SCORE
-  // ──────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────
   describe('dismissFlowScore', () => {
     it('clears pendingFlowScore', () => {
       const { result, rerender } = renderHook(() => useSessionTracker());
