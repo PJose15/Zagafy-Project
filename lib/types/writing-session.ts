@@ -154,10 +154,12 @@ export async function addSession(session: WritingSession): Promise<void> {
 export async function updateSessionFlowScore(sessionId: string, score: FlowScore): Promise<void> {
   try {
     const sessions = await readSessions();
-    const idx = sessions.findIndex(s => s.id === sessionId);
-    if (idx === -1) return;
-    sessions[idx] = { ...sessions[idx], flowScore: score };
-    await writeSessions(sessions);
+    const target = sessions.find(s => s.id === sessionId);
+    if (!target) return;
+    // Write only the single updated row rather than clearing and rewriting the
+    // entire sessions table (which races concurrent updates and inherits the
+    // non-atomic clear+bulkPut loss window).
+    await dexiePutSession({ ...target, flowScore: score } as unknown as Record<string, unknown>);
   } catch {
     // Fallback: update in localStorage
     const sessions = readSessionsSync();

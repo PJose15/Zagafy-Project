@@ -12,7 +12,8 @@ export interface KnownEntities {
  */
 export function validateNormalResponse(
   response: ChatResponseNormal,
-  entities: KnownEntities
+  entities: KnownEntities,
+  language = 'English'
 ): ChatResponseNormal {
   const warnings: string[] = [];
 
@@ -32,7 +33,7 @@ export function validateNormalResponse(
   }
 
   // Scan recommendation for character names not in story data
-  const unknownInRecommendation = findUnknownNames(response.recommendation, entities);
+  const unknownInRecommendation = findUnknownNames(response.recommendation, entities, language);
   for (const name of unknownInRecommendation) {
     warnings.push(`[Validation] Recommendation mentions "${name}" which is not a known character.`);
   }
@@ -50,7 +51,7 @@ export function validateNormalResponse(
 
   // Scan alternatives for unknown character names
   for (const alt of response.alternatives) {
-    const unknownInAlt = findUnknownNames(alt, entities);
+    const unknownInAlt = findUnknownNames(alt, entities, language);
     for (const name of unknownInAlt) {
       warnings.push(`[Validation] Alternative mentions "${name}" which is not a known character.`);
     }
@@ -68,19 +69,20 @@ export function validateNormalResponse(
  */
 export function validateBlockedResponse(
   response: ChatResponseBlocked,
-  entities: KnownEntities
+  entities: KnownEntities,
+  language = 'English'
 ): ChatResponseBlocked & { validationWarnings: string[] } {
   const warnings: string[] = [];
 
   // Check that diagnosis references real story elements
-  const unknownInDiagnosis = findUnknownNames(response.diagnosis, entities);
+  const unknownInDiagnosis = findUnknownNames(response.diagnosis, entities, language);
   for (const name of unknownInDiagnosis) {
     warnings.push(`[Validation] Diagnosis mentions "${name}" which is not a known character.`);
   }
 
   // Check nextPaths reference real elements
   for (const path of response.nextPaths) {
-    const unknownInPath = findUnknownNames(path.description, entities);
+    const unknownInPath = findUnknownNames(path.description, entities, language);
     for (const name of unknownInPath) {
       warnings.push(`[Validation] Path "${path.label}" mentions "${name}" which is not a known character.`);
     }
@@ -93,8 +95,15 @@ export function validateBlockedResponse(
  * Find character names referenced in text that aren't in known entities.
  * Uses a simple proper-noun heuristic: capitalized words that appear to be names.
  */
-function findUnknownNames(text: string, entities: KnownEntities): string[] {
+function isEnglish(language: string): boolean {
+  return /^en(g|glish)?\b/i.test(language.trim()) || language.trim().toLowerCase() === 'english';
+}
+
+function findUnknownNames(text: string, entities: KnownEntities, language = 'English'): string[] {
   if (!text || entities.characters.length === 0) return [];
+  // The proper-noun heuristic and its stopword list are English/Latin-only; on
+  // other languages it sprays false-positive warnings, so only run it for English.
+  if (!isEnglish(language)) return [];
 
   const knownLower = new Set(entities.characters.map(n => n.toLowerCase()));
   // Extract capitalized multi-word sequences that look like names (2+ chars, not start of sentence after period)

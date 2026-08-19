@@ -7,6 +7,11 @@ import {
 
 const VERSIONS_KEY = 'zagafy_chapter_versions';
 
+// Cap versions kept per chapter. Without this the table grows without bound —
+// e.g. an auto-snapshot on every version switch — eventually exhausting storage
+// quota and slowing every full-table rewrite.
+const MAX_VERSIONS_PER_CHAPTER = 50;
+
 export type VersionSource = 'manual' | 'scene-change' | 'auto-snapshot';
 
 export interface ChapterVersion {
@@ -101,6 +106,14 @@ export async function addVersion(
 ): Promise<ChapterVersion> {
   const all = await readAllVersions();
 
+  // Dedup: an auto-snapshot whose content is byte-identical to an existing
+  // version for this chapter adds nothing — return the existing one instead of
+  // piling up duplicates (this fires on every version switch).
+  if (source === 'auto-snapshot') {
+    const duplicate = all.find(v => v.chapterId === chapterId && v.content === content);
+    if (duplicate) return duplicate;
+  }
+
   // If marking as canonical, unmark existing canonical for this chapter
   if (isCanonical) {
     for (const v of all) {
@@ -122,8 +135,29 @@ export async function addVersion(
   };
 
   all.push(version);
-  await writeAllVersions(all);
+  await writeAllVersions(pruneChapterVersions(all, chapterId));
   return version;
+}
+
+/**
+ * Enforce MAX_VERSIONS_PER_CHAPTER for one chapter by dropping the oldest
+ * non-canonical versions. The canonical version and versions of other chapters
+ * are always kept.
+ */
+function pruneChapterVersions(all: ChapterVersion[], chapterId: string): ChapterVersion[] {
+  const forChapter = all.filter(v => v.chapterId === chapterId);
+  if (forChapter.length <= MAX_VERSIONS_PER_CHAPTER) return all;
+
+  // Oldest first; canonical is protected from pruning.
+  const prunable = forChapter
+    .filter(v => !v.isCanonical)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  const removeCount = forChapter.length - MAX_VERSIONS_PER_CHAPTER;
+  const toRemove = new Set(prunable.slice(0, removeCount).map(v => v.id));
+  if (toRemove.size === 0) return all;
+
+  return all.filter(v => !toRemove.has(v.id));
 }
 
 export async function setCanonical(versionId: string): Promise<void> {
