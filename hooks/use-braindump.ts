@@ -271,9 +271,17 @@ export function useBraindump({
 
   const rePolishFromHistory = useCallback(async (entryId: string) => {
     const entry = history.find(e => e.id === entryId);
-    if (!entry) return;
+    if (!entry || isPolishingRef.current) return;
+
+    // Cancel any previous in-flight polish and guard against re-entry, matching
+    // polishAndInsert — so concurrent re-polishes don't race and unmount/close
+    // during the request cancels it instead of leaking.
+    polishAbortRef.current?.abort();
+    const abortController = new AbortController();
+    polishAbortRef.current = abortController;
 
     setIsPolishing(true);
+    isPolishingRef.current = true;
     setPolishError(null);
     startPolishMessages();
 
@@ -282,6 +290,7 @@ export function useBraindump({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript: entry.rawTranscript }),
+        signal: abortController.signal,
       });
 
       if (!res.ok) {
@@ -296,10 +305,13 @@ export function useBraindump({
       refreshHistory();
       toast('History entry polished!', 'success');
     } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return; // cancelled
       const message = err instanceof Error ? err.message : 'Failed to polish';
       toast(message, 'error');
     } finally {
       setIsPolishing(false);
+      isPolishingRef.current = false;
+      polishAbortRef.current = null;
       stopPolishMessages();
     }
   }, [history, refreshHistory, toast, startPolishMessages, stopPolishMessages]);
