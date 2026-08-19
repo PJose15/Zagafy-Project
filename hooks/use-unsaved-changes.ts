@@ -12,6 +12,8 @@ export function useUnsavedChanges(hasUnsavedChanges: boolean) {
 
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
+      // Chromium requires returnValue to be set for the leave-site prompt to show.
+      e.returnValue = '';
     };
 
     window.addEventListener('beforeunload', handler);

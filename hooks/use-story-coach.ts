@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { CoachingInsight, CoachingSession } from '@/lib/story-coach/types';
 
 interface UseStoryCoachReturn {
@@ -22,6 +22,18 @@ function cacheSet(key: string, value: CoachingSession) {
   sessionCache.set(key, value);
 }
 
+// Cheap, stable content fingerprint (djb2). Combined with the chapterId, it keys
+// the cache so that after editing a chapter the coach re-analyzes the new text
+// instead of returning insights for the stale content.
+function contentHash(text: string): string {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return `${text.length}:${h >>> 0}`;
+}
+function cacheKey(chapterId: string, content: string): string {
+  return `${chapterId}:${contentHash(content)}`;
+}
+
 export function useStoryCoach(): UseStoryCoachReturn {
   const [insights, setInsights] = useState<CoachingInsight[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,8 +51,10 @@ export function useStoryCoach(): UseStoryCoachReturn {
       heteronymVoice?: unknown;
     }
   ) => {
-    // Check cache (unless explicit refresh with different options)
-    const cached = sessionCache.get(chapterId);
+    // Check cache (unless explicit refresh with different options). Keyed on
+    // chapter id + content fingerprint so edited chapters aren't served stale.
+    const key = cacheKey(chapterId, options?.chapterContent || '');
+    const cached = sessionCache.get(key);
     if (cached && !options?.focusLens) {
       const filtered = cached.insights.filter(i => !dismissedRef.current.has(i.id));
       setInsights(filtered);
@@ -84,7 +98,7 @@ export function useStoryCoach(): UseStoryCoachReturn {
           insights: parsed,
           fetchedAt: new Date().toISOString(),
         };
-        cacheSet(chapterId, session);
+        cacheSet(key, session);
 
         // Filter dismissed
         const filtered = parsed.filter(i => !dismissedRef.current.has(i.id));
@@ -107,6 +121,9 @@ export function useStoryCoach(): UseStoryCoachReturn {
     dismissedRef.current.add(insightId);
     setInsights(prev => prev.filter(i => i.id !== insightId));
   }, []);
+
+  // Abort any in-flight request on unmount so it can't call setState afterward.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   return {
     insights,
