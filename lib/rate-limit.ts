@@ -3,11 +3,50 @@ import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
 function getClientIP(req: NextRequest): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    'unknown'
-  );
+  // Prefer platform-set headers. On Vercel, x-vercel-forwarded-for and x-real-ip
+  // are written by the edge and overwrite any client-supplied value, so they are
+  // not spoofable by the caller.
+  const vercel = req.headers.get('x-vercel-forwarded-for');
+  if (vercel) {
+    const first = vercel.split(',')[0]?.trim();
+    if (first) return first;
+  }
+
+  const real = req.headers.get('x-real-ip')?.trim();
+  if (real) return real;
+
+  // Fall back to the RIGHT-most x-forwarded-for entry. That hop is appended by the
+  // nearest trusted proxy; the LEFT-most value is fully client-controlled and can be
+  // rotated per request to mint a fresh rate-limit bucket every time (the bypass).
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    const parts = xff.split(',').map(p => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1]!;
+  }
+
+  return 'unknown';
+}
+
+// Global, IP-independent ceiling per route+window. Backstops two failure modes the
+// per-IP limiter cannot cover on its own: (1) a client spoofing X-Forwarded-For to
+// rotate per-IP buckets, and (2) the in-memory limiter silently no-opping when
+// Upstash is unconfigured in production. This bounds worst-case AI spend per
+// serverless instance regardless of the client's claimed identity.
+const GLOBAL_CEILING_MULTIPLIER = 50;
+const globalStore = new Map<string, number[]>();
+
+function globalCeilingExceeded(pathname: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const key = `${pathname}:${windowMs}`;
+  const limit = maxRequests * GLOBAL_CEILING_MULTIPLIER;
+  const timestamps = (globalStore.get(key) || []).filter(t => now - t < windowMs);
+  if (timestamps.length >= limit) {
+    globalStore.set(key, timestamps);
+    return true;
+  }
+  timestamps.push(now);
+  globalStore.set(key, timestamps);
+  return false;
 }
 
 function rateLimitResponse() {
@@ -119,6 +158,13 @@ export async function rateLimit(
 ): Promise<NextResponse | null> {
   const ip = getClientIP(req);
   const key = `${ip}:${req.nextUrl.pathname}`;
+
+  // IP-independent backstop: enforce an absolute per-instance ceiling before the
+  // per-IP check, so a spoofed/rotated IP (or a disabled Upstash limiter) still
+  // cannot drive unbounded requests to an expensive route.
+  if (globalCeilingExceeded(req.nextUrl.pathname, maxRequests, windowMs)) {
+    return rateLimitResponse();
+  }
 
   if (hasUpstash) {
     const limiter = getUpstashLimiter(maxRequests, windowMs);
