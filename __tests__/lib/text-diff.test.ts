@@ -81,4 +81,29 @@ describe('diffWords', () => {
     expect(removed).toContain('quick');
     expect(added).toContain('slow');
   });
+
+  it('diffs very large texts without allocating a huge matrix (CR-4 guard)', () => {
+    // Two ~12k-word versions differing only in the middle. The old O(n·m) path
+    // would allocate a ~140M-cell matrix; the prefix/suffix trim + fallback must
+    // keep this fast and bounded.
+    const big = (marker: string) =>
+      Array.from({ length: 12000 }, (_, i) => (i === 6000 ? marker : `word${i}`)).join(' ');
+    const start = Date.now();
+    const result = diffWords(big('ALPHA'), big('OMEGA'));
+    expect(Date.now() - start).toBeLessThan(2000);
+    expect(result.some(s => s.type === 'removed' && s.text.includes('ALPHA'))).toBe(true);
+    expect(result.some(s => s.type === 'added' && s.text.includes('OMEGA'))).toBe(true);
+    // The unchanged bulk collapses into equal segments.
+    expect(result.some(s => s.type === 'equal' && s.text.includes('word0'))).toBe(true);
+  });
+
+  it('falls back to a block replace for two large, fully-different texts', () => {
+    const oldText = Array.from({ length: 3000 }, (_, i) => `alpha${i}`).join(' ');
+    const newText = Array.from({ length: 3000 }, (_, i) => `omega${i}`).join(' ');
+    const result = diffWords(oldText, newText);
+    const removed = result.filter(s => s.type !== 'added').map(s => s.text).join('');
+    const added = result.filter(s => s.type !== 'removed').map(s => s.text).join('');
+    expect(removed).toContain('alpha0');
+    expect(added).toContain('omega0');
+  });
 });
