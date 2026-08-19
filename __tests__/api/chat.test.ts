@@ -29,6 +29,8 @@ vi.mock('@google/genai', () => {
 vi.mock('@/lib/ai-config', () => ({
   AI_MODEL: 'test-model',
   SAFETY_SETTINGS: [],
+  THINKING_CONFIG: { thinkingBudget: 0 },
+  GEMINI_TIMEOUT_MS: 25000,
   AI_CONFIG: {
     chat: { temperature: 0.3, maxOutputTokens: 4096 },
     chatBlocked: { temperature: 0.5, maxOutputTokens: 4096 },
