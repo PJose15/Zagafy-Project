@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   readVersions,
   addVersion,
@@ -26,10 +26,19 @@ interface UseChapterVersionsReturn {
 export function useChapterVersions(chapterId: string, currentContent: string): UseChapterVersionsReturn {
   const [versions, setVersions] = useState<ChapterVersion[]>([]);
 
-  // Load versions on mount / chapterId change
+  // Seed value for the initial-version write. Held in a ref so that ordinary
+  // content edits (autosave updates `currentContent` ~every 5s) do NOT re-run the
+  // load effect and clobber the in-memory version list. Kept fresh in an effect
+  // rather than during render (React 19 forbids ref writes during render).
+  const currentContentRef = useRef(currentContent);
   useEffect(() => {
-    ensureInitialVersion(chapterId, currentContent).then(setVersions);
-  }, [chapterId, currentContent]);
+    currentContentRef.current = currentContent;
+  }, [currentContent]);
+
+  // Load versions on mount / chapterId change only.
+  useEffect(() => {
+    ensureInitialVersion(chapterId, currentContentRef.current).then(setVersions);
+  }, [chapterId]);
 
   const activeVersion = useMemo(() => {
     return versions.find(v => v.isCanonical) ?? versions[0] ?? null;

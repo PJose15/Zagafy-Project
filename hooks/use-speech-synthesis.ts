@@ -65,6 +65,13 @@ export function useSpeechSynthesis(): UseSpeechSynthesisReturn {
 
   const setVoice = useCallback((voice: SpeechSynthesisVoice) => setSelectedVoice(voice), []);
 
+  // Stop any in-progress speech when the hook unmounts — speechSynthesis is a
+  // global singleton, so without this it keeps reading after the view is gone.
+  useEffect(() => {
+    if (!isSupported) return;
+    return () => { speechSynthesis.cancel(); };
+  }, [isSupported]);
+
   return {
     isSupported, isSpeaking, isPaused, voices, selectedVoice, rate, currentIndex,
     speak, pause, resume, cancel, setVoice, setRate,

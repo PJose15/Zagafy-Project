@@ -23,10 +23,23 @@ export function useFlowAutosave(chapterId: string | null) {
     (content: string) => {
       contentRef.current = content;
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(save, 5000);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        save();
+      }, 5000);
     },
     [save]
   );
+
+  // Flush the latest typed content to the store immediately (used on tab
+  // hide / navigation so the newest prose isn't lost in the autosave window).
+  const flush = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    save();
+  }, [save]);
 
   // Save on unmount
   useEffect(() => {
@@ -56,5 +69,5 @@ export function useFlowAutosave(chapterId: string | null) {
     ? state.chapters.find(ch => ch.id === chapterId)?.content || ''
     : '';
 
-  return { scheduleAutosave, saveNow, initialContent };
+  return { scheduleAutosave, saveNow, flush, initialContent };
 }
