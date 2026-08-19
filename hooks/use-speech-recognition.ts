@@ -171,6 +171,10 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     if (!recognition) return;
 
     recognitionRef.current = recognition;
+    // Set the ref synchronously so onend's auto-restart guard sees the correct
+    // state without waiting for the state→ref sync effect.
+    isRecordingRef.current = true;
+    isPausedRef.current = false;
     setIsRecording(true);
     setIsPaused(false);
     startTimers();
@@ -185,6 +189,12 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
   }, [isSupported, language, createRecognition, startTimers, clearTimers]);
 
   const stop = useCallback(() => {
+    // Update the ref synchronously (the state→ref sync effect runs only after
+    // render). The browser fires `onend` on a later tick and reads isRecordingRef
+    // to decide whether to auto-restart — if the ref were still true, a stopped
+    // session would resurrect itself.
+    isRecordingRef.current = false;
+    isPausedRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* already stopped */ }
       recognitionRef.current = null;
@@ -197,6 +207,9 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
 
   const pause = useCallback(() => {
     if (!isRecording || isPaused) return;
+    // Set the ref synchronously so onend (fired by the stop below) does not
+    // auto-restart before the state→ref sync effect runs.
+    isPausedRef.current = true;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* ok */ }
     }
