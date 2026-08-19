@@ -21,6 +21,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     setMode,
     sendMessage,
     isLoading,
+    error,
     insights,
     saveInsightAsCanon,
     clearSession,
@@ -71,6 +72,13 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
           <div className="flex justify-start mb-3">
             <div className="px-4 py-2.5 rounded-xl bg-cream-100/10 border border-cream-200/10">
               <span className="text-cream-400/60 text-sm animate-pulse">Thinking...</span>
+            </div>
+          </div>
+        )}
+        {error && (
+          <div className="flex justify-start mb-3" role="alert">
+            <div className="px-4 py-2.5 rounded-xl bg-wax-600/15 border border-wax-500/30 text-wax-300 text-sm">
+              {error} <span className="text-cream-400/50">Resend your last message to retry.</span>
             </div>
           </div>
         )}
