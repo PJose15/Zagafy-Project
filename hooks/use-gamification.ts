@@ -35,6 +35,8 @@ interface GamificationAPI {
   abandonSprint: () => void;
   finishing: GamificationState['finishing'];
   refreshFinishing: () => void;
+  refreshFromStorage: () => void;
+  persistError: boolean;
 }
 
 // ─── Context ───
@@ -79,11 +81,21 @@ function useGamificationInternal(): GamificationAPI {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist on every mutation
+  const [persistError, setPersistError] = useState(false);
+
+  // Persist on every mutation, capturing quota failures so they aren't silent.
   const persist = useCallback((next: GamificationState) => {
     setGamification(next);
-    writeGamification(next);
+    const ok = writeGamification(next);
+    setPersistError(!ok);
   }, []);
+
+  // Race-safe read-modify-write: read the latest state from storage (not the
+  // possibly-stale React snapshot) before applying the mutation, so a concurrent
+  // write from another tab isn't clobbered. Surfaces quota failures via persist.
+  const mutate = useCallback((fn: (current: GamificationState) => GamificationState) => {
+    persist(fn(readGamification()));
+  }, [persist]);
 
   // Sync state from cross-tab localStorage writes
   useEffect(() => {
@@ -112,12 +124,8 @@ function useGamificationInternal(): GamificationAPI {
 
   // ─── XP ───
   const doAwardXP = useCallback((type: string, amount: number, metadata?: string) => {
-    setGamification((prev) => {
-      const next = { ...prev, xp: awardXP(prev.xp, type, amount, metadata) };
-      writeGamification(next);
-      return next;
-    });
-  }, []);
+    mutate((prev) => ({ ...prev, xp: awardXP(prev.xp, type, amount, metadata) }));
+  }, [mutate]);
 
   const xpProgress = xpToNextLevel(gamification.xp.totalXP);
 
@@ -129,28 +137,21 @@ function useGamificationInternal(): GamificationAPI {
   const quests = gamification.quests.quests;
 
   const completeQuest = useCallback((questId: string) => {
-    setGamification((prev) => {
+    mutate((prev) => {
       const quest = prev.quests.quests.find((q) => q.id === questId);
       if (!quest || quest.status !== 'active') return prev;
-
       const updatedQuests = completeQuestFn(prev.quests, questId);
       const updatedXP = awardXP(prev.xp, 'quest', quest.xpReward, quest.title);
-      const next = { ...prev, quests: updatedQuests, xp: updatedXP };
-      writeGamification(next);
-      return next;
+      return { ...prev, quests: updatedQuests, xp: updatedXP };
     });
-  }, []);
+  }, [mutate]);
 
   // ─── Sprints ───
   const activeSprint = gamification.sprints.activeSprint;
 
   const startSprint = useCallback((theme: SprintTheme, wordsStart: number) => {
-    setGamification((prev) => {
-      const next = { ...prev, sprints: startSprintFn(prev.sprints, theme, wordsStart) };
-      writeGamification(next);
-      return next;
-    });
-  }, []);
+    mutate((prev) => ({ ...prev, sprints: startSprintFn(prev.sprints, theme, wordsStart) }));
+  }, [mutate]);
 
   const endSprint = useCallback((wordsEnd: number): SprintResult | null => {
     // Read current state from localStorage for race-free computation
@@ -166,23 +167,22 @@ function useGamificationInternal(): GamificationAPI {
   }, [persist]);
 
   const abandonSprint = useCallback(() => {
-    setGamification((prev) => {
-      const next = { ...prev, sprints: abandonSprintFn(prev.sprints) };
-      writeGamification(next);
-      return next;
-    });
-  }, []);
+    mutate((prev) => ({ ...prev, sprints: abandonSprintFn(prev.sprints) }));
+  }, [mutate]);
 
   // ─── Finishing Engine ───
   const finishing = gamification.finishing;
 
   const refreshFinishing = useCallback(() => {
-    setGamification((prev) => {
-      const next = { ...prev, finishing: analyzeStory(storyState, prev.finishing.milestones) };
-      writeGamification(next);
-      return next;
-    });
-  }, [storyState]);
+    mutate((prev) => ({ ...prev, finishing: analyzeStory(storyState, prev.finishing.milestones) }));
+  }, [mutate, storyState]);
+
+  // Re-read gamification state from storage on demand. Used after code paths that
+  // write XP directly to localStorage outside this provider (e.g. session-tracker
+  // end-of-session awards), so the UI reflects them without waiting for a tab blur.
+  const refreshFromStorage = useCallback(() => {
+    setGamification(readGamification());
+  }, []);
 
   return {
     gamification,
@@ -204,6 +204,8 @@ function useGamificationInternal(): GamificationAPI {
     // Finishing
     finishing,
     refreshFinishing,
+    refreshFromStorage,
+    persistError,
   };
 }
 
@@ -211,7 +213,19 @@ function useGamificationInternal(): GamificationAPI {
 
 export function GamificationProvider({ children }: { children: React.ReactNode }) {
   const api = useGamificationInternal();
-  return React.createElement(GamificationContext.Provider, { value: api }, children);
+  const banner = api.persistError
+    ? React.createElement(
+        'div',
+        {
+          role: 'alert',
+          'aria-live': 'polite',
+          className:
+            'fixed bottom-0 left-0 right-0 z-[100] bg-amber-900/90 text-amber-100 text-xs text-center px-4 py-1.5 backdrop-blur',
+        },
+        'Progress (XP, streaks, quests) could not be saved — your storage may be full.'
+      )
+    : null;
+  return React.createElement(GamificationContext.Provider, { value: api }, banner, children);
 }
 
 // ─── Public hook ───
