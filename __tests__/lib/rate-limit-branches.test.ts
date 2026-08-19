@@ -69,7 +69,7 @@ describe('rate-limit branch coverage', () => {
       expect(blocked?.status).toBe(429);
     });
 
-    it('uses first IP from comma-separated x-forwarded-for', async () => {
+    it('uses the right-most (trusted-hop) IP from x-forwarded-for, not the spoofable left-most', async () => {
       const { NextRequest } = require('next/server');
       const req = new NextRequest('http://localhost:3000/api/chat', {
         method: 'POST',
@@ -78,13 +78,56 @@ describe('rate-limit branch coverage', () => {
       const result = await rateLimit(req, { maxRequests: 1, windowMs: 60000 });
       expect(result).toBeNull();
 
-      // A request from the same first IP should be blocked
+      // Same trusted right-most hop (3.3.3.3) but a *different* spoofed left-most
+      // value must still land in the same bucket and be blocked — otherwise a
+      // caller could rotate the left-most value to bypass the limit entirely.
       const req2 = new NextRequest('http://localhost:3000/api/chat', {
         method: 'POST',
-        headers: { 'x-forwarded-for': '1.1.1.1' },
+        headers: { 'x-forwarded-for': '9.9.9.9, 8.8.8.8, 3.3.3.3' },
       });
       const blocked = await rateLimit(req2, { maxRequests: 1, windowMs: 60000 });
       expect(blocked?.status).toBe(429);
+    });
+
+    it('prefers the platform x-vercel-forwarded-for header over client x-forwarded-for', async () => {
+      const { NextRequest } = require('next/server');
+      const req = new NextRequest('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: {
+          'x-vercel-forwarded-for': '5.5.5.5',
+          'x-forwarded-for': '1.1.1.1',
+        },
+      });
+      const result = await rateLimit(req, { maxRequests: 1, windowMs: 60000 });
+      expect(result).toBeNull();
+
+      // A second request that changes the spoofable x-forwarded-for but keeps the
+      // platform header must remain in the same (platform-identified) bucket.
+      const req2 = new NextRequest('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: {
+          'x-vercel-forwarded-for': '5.5.5.5',
+          'x-forwarded-for': '7.7.7.7',
+        },
+      });
+      const blocked = await rateLimit(req2, { maxRequests: 1, windowMs: 60000 });
+      expect(blocked?.status).toBe(429);
+    });
+
+    it('enforces a global per-route ceiling regardless of client IP (anti-spoof backstop)', async () => {
+      const { NextRequest } = require('next/server');
+      // maxRequests=1 → global ceiling = 1 * 50 = 50. Rotate a fresh IP each time
+      // so the per-IP limiter never trips; only the global ceiling can stop this.
+      let blockedAt = -1;
+      for (let i = 0; i < 60; i++) {
+        const req = new NextRequest('http://localhost:3000/api/chat', {
+          method: 'POST',
+          headers: { 'x-forwarded-for': `10.0.0.${i}` },
+        });
+        const res = await rateLimit(req, { maxRequests: 1, windowMs: 60000 });
+        if (res?.status === 429) { blockedAt = i; break; }
+      }
+      expect(blockedAt).toBe(50);
     });
   });
 

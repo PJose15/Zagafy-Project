@@ -2,11 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import React from 'react';
 
-const { mockFetchPrompt, mockClearPrompt, mockScheduleAutosave, mockSaveNow } = vi.hoisted(() => ({
+const { mockFetchPrompt, mockClearPrompt, mockScheduleAutosave, mockSaveNow, mockFlush } = vi.hoisted(() => ({
   mockFetchPrompt: vi.fn(),
   mockClearPrompt: vi.fn(),
   mockScheduleAutosave: vi.fn(),
   mockSaveNow: vi.fn(),
+  mockFlush: vi.fn(),
 }));
 
 vi.mock('motion/react', () => {
@@ -34,6 +35,7 @@ vi.mock('@/hooks/use-flow-autosave', () => ({
   useFlowAutosave: vi.fn().mockReturnValue({
     scheduleAutosave: mockScheduleAutosave,
     saveNow: mockSaveNow,
+    flush: mockFlush,
     initialContent: 'Initial text',
   }),
 }));
@@ -198,6 +200,7 @@ describe('FlowEditor', () => {
     vi.mocked(useFlowAutosave).mockReturnValueOnce({
       scheduleAutosave: mockScheduleAutosave,
       saveNow: mockSaveNow,
+      flush: mockFlush,
       initialContent: '',
     });
     const onExit = vi.fn();
