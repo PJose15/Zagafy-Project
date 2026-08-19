@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getErrorStatus } from '@/lib/api-error';
+import { ANTHROPIC_MODEL, ANTHROPIC_API_URL, ANTHROPIC_VERSION } from '@/lib/ai-config';
 
 export const maxDuration = 30;
 
@@ -41,15 +42,15 @@ export async function POST(req: NextRequest) {
 
     let response: Response;
     try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
+      response = await fetch(ANTHROPIC_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+          'anthropic-version': ANTHROPIC_VERSION,
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: ANTHROPIC_MODEL,
           max_tokens: 4096,
           system: POLISH_SYSTEM_PROMPT,
           messages: [{ role: 'user', content: transcript.trim() }],

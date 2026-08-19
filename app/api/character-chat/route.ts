@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { getErrorStatus } from '@/lib/api-error';
 import { buildSystemPrompt } from '@/lib/prompts/character-chat';
+import { ANTHROPIC_MODEL, ANTHROPIC_API_URL, ANTHROPIC_VERSION } from '@/lib/ai-config';
 import type { Character, CharacterState } from '@/lib/store';
 import type { ChatMode } from '@/lib/types/character-chat';
 
-export const maxDuration = 30;
+// Budget: main reply (MAIN_TIMEOUT_MS) + optional insight (INSIGHT_TIMEOUT_MS)
+// run sequentially, so maxDuration must exceed their sum or the function is killed
+// mid-request and the reply/insight is lost.
+export const maxDuration = 45;
 
 const VALID_MODES: ChatMode[] = ['exploration', 'scene', 'confrontation'];
 const VALID_PRESSURE = ['Low', 'Medium', 'High', 'Critical'] as const;
@@ -15,6 +19,7 @@ const VALID_INDICATOR = ['stable', 'shifting', 'under pressure', 'emotionally co
 const MAX_HISTORY_TURNS = 30;
 const MAX_HISTORY_CHARS = 30_000;
 const MAX_HISTORY_MSG_CHARS = 5_000;
+const MAIN_TIMEOUT_MS = 25_000;
 const INSIGHT_TIMEOUT_MS = 15_000;
 
 // Field caps for the sanitized character payload
@@ -147,19 +152,19 @@ export async function POST(req: NextRequest) {
     apiMessages.push({ role: 'user', content: message.trim() });
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), MAIN_TIMEOUT_MS);
 
     let response: Response;
     try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
+      response = await fetch(ANTHROPIC_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+          'anthropic-version': ANTHROPIC_VERSION,
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: ANTHROPIC_MODEL,
           max_tokens: 2048,
           temperature: 0.6,
           system: systemPrompt,
@@ -200,15 +205,15 @@ export async function POST(req: NextRequest) {
           .join('\n')
           .slice(0, MAX_HISTORY_CHARS);
 
-        const insightResponse = await fetch('https://api.anthropic.com/v1/messages', {
+        const insightResponse = await fetch(ANTHROPIC_API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
+            'anthropic-version': ANTHROPIC_VERSION,
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
+            model: ANTHROPIC_MODEL,
             max_tokens: 256,
             temperature: 0.3,
             system: 'You are a literary analyst. Extract character insights from conversations.',
