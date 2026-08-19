@@ -213,11 +213,24 @@ interface StoryContextType {
 
 const StoryContext = createContext<StoryContextType | undefined>(undefined);
 
+// Coerce a persisted (possibly corrupt or older-schema) blob into a valid
+// StoryState: every array field falls back to its default when the stored value
+// isn't an array, so a single bad row can't crash the app on hydration.
+function coerceStoryState(saved: Partial<StoryState>): StoryState {
+  const merged = { ...defaultState, ...saved } as Record<string, unknown>;
+  for (const key of Object.keys(defaultState) as (keyof StoryState)[]) {
+    if (Array.isArray(defaultState[key]) && !Array.isArray(merged[key as string])) {
+      merged[key as string] = defaultState[key];
+    }
+  }
+  return merged as unknown as StoryState;
+}
+
 async function hydrateFromDexie(): Promise<StoryState> {
   const saved = await getStory();
   let loadedState: StoryState = defaultState;
   if (saved) {
-    loadedState = { ...defaultState, ...(saved as Partial<StoryState>) };
+    loadedState = coerceStoryState(saved as Partial<StoryState>);
   }
 
   // Load chapter contents from Dexie and merge back
@@ -249,6 +262,10 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   // boolean flag closes an edge case where a second remote message arrived
   // before the persist effect ran and the flag had been consumed.
   const lastRemoteStateRef = useRef<StoryState | null>(null);
+  // True while this tab has local edits that haven't been persisted yet. When a
+  // remote (other-tab) snapshot arrives, we refuse to overwrite our own unsaved
+  // work with it — the pending local save will broadcast and other tabs converge.
+  const localDirtyRef = useRef(false);
 
   useEffect(() => {
     async function loadState() {
@@ -271,7 +288,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       }
 
       const loaded = await hydrateFromDexie();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setState(loaded);
       setIsLoaded(true);
     }
@@ -281,6 +298,12 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveError, setSaveError] = useState(false);
+  // Read saveError via a ref inside the persist effect so toggling it doesn't
+  // re-run the effect (which would schedule one redundant re-save after recovery).
+  const saveErrorRef = useRef(saveError);
+  useEffect(() => {
+    saveErrorRef.current = saveError;
+  }, [saveError]);
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -292,26 +315,50 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Genuine local change → this tab now holds unsaved edits.
+    localDirtyRef.current = true;
+
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        // Save full state (minus chapter content) to Dexie stories table
-        const stateForStore = {
-          ...state,
-          chapters: state.chapters.map(ch => ({ ...ch, content: '' })),
-        };
-        await putStory(stateForStore as unknown as Record<string, unknown>);
-
-        // Save chapter contents to Dexie (separate table, best-effort)
+        // Save chapter contents to Dexie (separate table) FIRST, tracking which
+        // writes fail. Content is the large payload, so it's what fails under
+        // quota pressure — we must know the failures before we decide whether it
+        // is safe to strip content from the story blob.
+        const failedChapterIds = new Set<string>();
         await Promise.all(
           state.chapters.map(ch =>
             putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source).catch(() => {
-              // Individual chapter write failed — content remains in memory
+              // This chapter's dedicated content write failed — remember it so we
+              // keep its content inline in the blob below instead of losing it.
+              failedChapterIds.add(ch.id);
             })
           )
         );
 
-        if (saveError) setSaveError(false);
+        // Save full state to the Dexie stories table. Strip content ONLY for
+        // chapters whose dedicated content write succeeded; for any that failed,
+        // keep the content inline in the blob so a reload can still recover it.
+        const stateForStore = {
+          ...state,
+          chapters: state.chapters.map(ch =>
+            failedChapterIds.has(ch.id) ? { ...ch } : { ...ch, content: '' }
+          ),
+        };
+        await putStory(stateForStore as unknown as Record<string, unknown>);
+
+        // Local edits are now durable — this tab is no longer "dirty", so an
+        // incoming remote snapshot may safely be applied again.
+        localDirtyRef.current = false;
+
+        // If any chapter content failed to persist to its own table, surface the
+        // save-error banner even though the blob write itself succeeded — the
+        // user's newest prose is at risk and they must know.
+        if (failedChapterIds.size > 0) {
+          if (!saveErrorRef.current) setSaveError(true);
+        } else if (saveErrorRef.current) {
+          setSaveError(false);
+        }
 
         // Notify other tabs
         try {
@@ -320,14 +367,14 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
           // BroadcastChannel post failures are non-fatal
         }
       } catch {
-        if (!saveError) setSaveError(true);
+        if (!saveErrorRef.current) setSaveError(true);
       }
     }, 500);
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [state, isLoaded, saveError]);
+  }, [state, isLoaded]);
 
   // Cross-tab sync via BroadcastChannel (Dexie writes don't fire storage events)
   useEffect(() => {
@@ -348,6 +395,9 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       if (hydrateTimer) clearTimeout(hydrateTimer);
       hydrateTimer = setTimeout(() => {
         hydrateTimer = null;
+        // Don't overwrite our own unsaved local edits with another tab's snapshot.
+        // The pending local save will broadcast and other tabs will converge to it.
+        if (localDirtyRef.current) return;
         hydrateFromDexie().then(next => {
           lastRemoteStateRef.current = next;
           setState(next);
@@ -382,7 +432,11 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   return (
     <StoryContext.Provider value={{ state, setState, updateField }}>
       {saveError && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-red-900/90 text-red-100 text-sm text-center px-4 py-2 backdrop-blur">
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed top-0 left-0 right-0 z-[100] bg-red-900/90 text-red-100 text-sm text-center px-4 py-2 backdrop-blur"
+        >
           Storage quota exceeded — your changes may not be saved. Export your project from Settings.
         </div>
       )}
