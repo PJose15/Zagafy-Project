@@ -45,7 +45,11 @@ export function useStoryBrain(): UseStoryBrainReturn {
         entityCountByType: { character: 0, location: 0, event: 0, conflict: 0 },
       };
     }
-  }, [state]);
+    // Depend only on the fields analyzeStoryState reads, so unrelated store
+    // updates (e.g. chat_messages, autosave content churn on other pages) don't
+    // re-run this analysis. `state` itself is intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.characters, state.chapters, state.scenes, state.timeline_events, state.active_conflicts, state.locations]);
 
   // Memoize inconsistencies — IDs are now deterministic from data
   const inconsistencies = useMemo<Inconsistency[]>(() => {
@@ -57,7 +61,8 @@ export function useStoryBrain(): UseStoryBrainReturn {
       }
       return [];
     }
-  }, [state, analysis]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.characters, state.chapters, state.scenes, state.timeline_events, state.active_conflicts, analysis]);
 
   // Memoize plot holes — IDs are now deterministic from data
   const plotHoles = useMemo<PlotHole[]>(() => {
@@ -69,7 +74,8 @@ export function useStoryBrain(): UseStoryBrainReturn {
       }
       return [];
     }
-  }, [state, analysis]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.chapters, state.characters, state.active_conflicts, state.foreshadowing_elements, state.open_loops, analysis]);
 
   // Filter out resolved items
   const resolvedIds = useMemo(

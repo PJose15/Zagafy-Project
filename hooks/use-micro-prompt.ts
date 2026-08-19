@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { MicroPromptStoryContext } from '@/lib/prompts/micro-prompt';
 import type { Heteronym } from '@/lib/types/heteronym';
 import { getLocalMicroPrompt } from '@/lib/prompts/micro-prompt-bank';
@@ -73,6 +73,9 @@ export function useMicroPrompt(): UseMicroPromptReturn {
     setPrompt(null);
     setIsLoading(false);
   }, []);
+
+  // Abort any in-flight request on unmount so it can't call setState afterward.
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   return { prompt, isLoading, fetchPrompt, clearPrompt };
 }
