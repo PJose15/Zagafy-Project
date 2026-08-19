@@ -3,7 +3,11 @@ import { GoogleGenAI, Type, FinishReason } from '@google/genai';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
 import { rateLimit } from '@/lib/rate-limit';
-import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG, THINKING_CONFIG } from '@/lib/ai-config';
+
+// Per-chunk Gemini timeout — ingest may process up to 20 chunks sequentially, so
+// bound each call well under maxDuration rather than sharing one budget.
+const INGEST_CHUNK_TIMEOUT_MS = 60_000;
 import { getErrorStatus, getErrorMessage } from '@/lib/api-error';
 import type { ExtractedData, ExtractedCharacter, ExtractedLocation, ExtractedConflict, ExtractedTimelineEvent, ExtractedWorldRule, ExtractedTheme, ExtractedOpenLoop } from '@/lib/types/extracted-data';
 
@@ -361,6 +365,41 @@ function splitTextIntoChunks(text: string): string[] {
   return chunks;
 }
 
+// Each chunk is extracted independently, so the model reuses IDs across chunks
+// (e.g. two chunks both emit "chapter_1"). Prefix every ID with the chunk index
+// to make them globally unique while keeping intra-chunk references (scene→chapter,
+// state→character) valid — both the definition and the reference get the same
+// prefix. Relationship endpoints use names, not IDs, so they are left alone.
+const CHUNK_ID_FIELDS: Record<string, string[]> = {
+  chapters: ['chapter_id'],
+  scenes: ['scene_id', 'chapter_id'],
+  characters: ['character_id'],
+  character_states: ['character_id'],
+  active_conflicts: ['conflict_id'],
+  timeline_events: ['timeline_event_id'],
+  world_rules: ['world_rule_id'],
+  locations: ['location_id'],
+  themes: ['theme_id'],
+  canon_items: ['canon_item_id'],
+  ambiguities: ['ambiguity_id'],
+  open_loops: ['loop_id'],
+  foreshadowing_elements: ['foreshadowing_id'],
+};
+
+function namespaceChunkIds(parsed: Record<string, unknown>, chunkIndex: number): void {
+  const prefix = `c${chunkIndex}_`;
+  const p = (v: unknown) => (typeof v === 'string' && v ? prefix + v : v);
+  for (const [key, fields] of Object.entries(CHUNK_ID_FIELDS)) {
+    const arr = parsed[key];
+    if (!Array.isArray(arr)) continue;
+    for (const item of arr as Record<string, unknown>[]) {
+      if (item && typeof item === 'object') {
+        for (const f of fields) item[f] = p(item[f]);
+      }
+    }
+  }
+}
+
 function mergeResults(results: ExtractedData[]): ExtractedData {
   const merged: ExtractedData = {
     project: results[0]?.project || {},
@@ -401,6 +440,19 @@ function mergeResults(results: ExtractedData[]): ExtractedData {
     }
   }
   merged.characters = Array.from(seenCharacters.values());
+
+  // A character appearing in multiple chunks is collapsed to its first (canonical)
+  // record above, but its per-chunk character_states still point at the dropped
+  // duplicates' ids. Re-point each state at the surviving character by name so the
+  // links aren't orphaned.
+  const canonicalCharIdByName = new Map<string, string>();
+  for (const char of merged.characters!) {
+    if (char.name && char.character_id) canonicalCharIdByName.set(char.name.toLowerCase(), char.character_id);
+  }
+  for (const st of merged.character_states!) {
+    const canonical = st.name ? canonicalCharIdByName.get(st.name.toLowerCase()) : undefined;
+    if (canonical) st.character_id = canonical;
+  }
 
   // Deduplicate locations by name
   const seenLocations = new Map<string, ExtractedLocation>();
@@ -486,12 +538,23 @@ const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md'];
 // hundreds of MB of combined text (which would split into thousands of Gemini chunks).
 const MAX_TOTAL_TEXT = 2_000_000; // ~2M chars (~10 large chunks)
 const MAX_CHUNKS = 20;
+// Reject oversized uploads by Content-Length before buffering the whole body into
+// memory (MAX_FILES × MAX_FILE_SIZE, plus a little multipart overhead).
+const MAX_REQUEST_BYTES = MAX_FILES * MAX_FILE_SIZE + 1_000_000;
 
 export async function POST(req: NextRequest) {
   const limited = await rateLimit(req, { maxRequests: 5, windowMs: 60000 });
   if (limited) return limited;
 
   try {
+    const contentLength = Number(req.headers.get('content-length') || 0);
+    if (contentLength > MAX_REQUEST_BYTES) {
+      return NextResponse.json(
+        { error: 'Upload too large.' },
+        { status: 413 }
+      );
+    }
+
     let formData: FormData;
     try {
       formData = await req.formData();
@@ -552,8 +615,10 @@ export async function POST(req: NextRequest) {
         combinedText += `\n\n--- FILE: ${file.name} ---\n\n${text}`;
         fileParsingStatus.push({ name: file.name, status: 'success' });
       } catch (err: unknown) {
+        // Log the real parser error server-side, but return a generic message to
+        // the client — library errors can leak internal paths / dependency details.
         console.error(`Error parsing ${file.name}:`, err);
-        fileParsingStatus.push({ name: file.name, status: 'failed', error: getErrorMessage(err, 'Unknown parse error') });
+        fileParsingStatus.push({ name: file.name, status: 'failed', error: 'Could not parse this file' });
       }
     }
 
@@ -594,6 +659,9 @@ export async function POST(req: NextRequest) {
     console.log(`Processing ${chunks.length} chunk(s), total ${combinedText.length} characters`);
 
     const results: ExtractedData[] = [];
+    // Track chunks that produced no usable data so we can tell the user their
+    // ingested manuscript is incomplete instead of silently dropping sections.
+    const skippedChunks: { chunk: number; reason: string }[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
       const chunkLabel = chunks.length > 1
@@ -610,8 +678,14 @@ export async function POST(req: NextRequest) {
         config: {
           systemInstruction: systemPrompt,
           safetySettings: SAFETY_SETTINGS,
+          // Disable thinking + set an explicit output cap so a data-dense chunk
+          // isn't truncated mid-JSON (which would drop the whole chunk below).
+          thinkingConfig: THINKING_CONFIG,
+          temperature: AI_CONFIG.ingest.temperature,
+          maxOutputTokens: AI_CONFIG.ingest.maxOutputTokens,
           responseMimeType: 'application/json',
           responseSchema,
+          abortSignal: AbortSignal.timeout(INGEST_CHUNK_TIMEOUT_MS),
         }
       });
 
@@ -619,12 +693,17 @@ export async function POST(req: NextRequest) {
       const finishReason = candidate?.finishReason;
       if (finishReason === FinishReason.SAFETY || finishReason === FinishReason.PROHIBITED_CONTENT || finishReason === FinishReason.BLOCKLIST) {
         console.warn(`Chunk ${i + 1} was blocked by safety filters, skipping.`);
+        skippedChunks.push({ chunk: i + 1, reason: 'blocked' });
         continue;
+      }
+      if (finishReason === FinishReason.MAX_TOKENS) {
+        console.warn(`Chunk ${i + 1} hit the output token limit; extraction may be truncated.`);
       }
 
       const rawText = response.text;
       if (!rawText) {
         console.warn(`Chunk ${i + 1} returned empty response, skipping.`);
+        skippedChunks.push({ chunk: i + 1, reason: 'empty' });
         continue;
       }
       let parsed;
@@ -632,7 +711,13 @@ export async function POST(req: NextRequest) {
         parsed = JSON.parse(rawText);
       } catch {
         console.error(`Chunk ${i + 1}: Gemini returned invalid JSON:`, rawText.slice(0, 500));
+        skippedChunks.push({ chunk: i + 1, reason: finishReason === FinishReason.MAX_TOKENS ? 'truncated' : 'invalid-json' });
         continue;
+      }
+      // Namespace IDs per chunk so cross-chunk collisions don't corrupt the merged
+      // graph (only meaningful with multiple chunks).
+      if (chunks.length > 1 && parsed && typeof parsed === 'object') {
+        namespaceChunkIds(parsed as Record<string, unknown>, i);
       }
       results.push(parsed);
       console.log(`Chunk ${i + 1} done.`);
@@ -649,7 +734,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       fileParsingStatus,
-      extractedData
+      extractedData,
+      // Present only on partial extraction — lets the client warn that some
+      // sections of the manuscript could not be ingested.
+      ...(skippedChunks.length > 0
+        ? { partial: true, skippedChunks, totalChunks: chunks.length }
+        : {}),
     });
 
   } catch (error: unknown) {
