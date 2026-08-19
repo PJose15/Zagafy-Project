@@ -3,7 +3,7 @@ import { GoogleGenAI, FinishReason } from '@google/genai';
 import { buildMicroPromptSystemPrompt, buildMicroPromptContent, validateMicroPromptResponse } from '@/lib/prompts/micro-prompt';
 import { buildVoiceDirective } from '@/lib/heteronym-voice';
 import { rateLimit } from '@/lib/rate-limit';
-import { AI_MODEL, SAFETY_SETTINGS } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, THINKING_CONFIG, GEMINI_TIMEOUT_MS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 
 export const maxDuration = 15;
@@ -22,6 +22,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'recentText must be at least 20 characters' },
         { status: 400 }
+      );
+    }
+
+    // Cap total payload size: this route has the most permissive rate limit
+    // (60/min), and storyContext is otherwise interpolated into the prompt
+    // unbounded — guard against cost-amplification via a huge context.
+    if (JSON.stringify(body).length > 500_000) {
+      return NextResponse.json(
+        { error: 'Request payload too large (max 500KB of text)' },
+        { status: 413 }
       );
     }
 
@@ -54,8 +64,12 @@ export async function POST(req: NextRequest) {
       config: {
         systemInstruction: systemPrompt,
         safetySettings: SAFETY_SETTINGS,
-        maxOutputTokens: 150,
+        // Thinking disabled so the whole (small) budget goes to the prompt text —
+        // otherwise gemini-2.5-flash spends it all "thinking" and returns nothing.
+        thinkingConfig: THINKING_CONFIG,
+        maxOutputTokens: 256,
         temperature: 0.7,
+        abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       },
     });
 

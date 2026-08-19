@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI, FinishReason } from '@google/genai';
+import { GoogleGenAI, FinishReason, Type } from '@google/genai';
 import { buildStoryCoachPrompt, buildStoryCoachContent } from '@/lib/prompts/story-coach';
 import { rateLimit } from '@/lib/rate-limit';
-import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG } from '@/lib/ai-config';
+import { AI_MODEL, SAFETY_SETTINGS, AI_CONFIG, THINKING_CONFIG, GEMINI_TIMEOUT_MS } from '@/lib/ai-config';
 import { getErrorStatus } from '@/lib/api-error';
 import type { CoachingInsight, CoachingLens, CoachingPriority } from '@/lib/story-coach/types';
 
@@ -50,9 +50,26 @@ export async function POST(req: NextRequest) {
       config: {
         systemInstruction: systemPrompt,
         safetySettings: SAFETY_SETTINGS,
+        thinkingConfig: THINKING_CONFIG,
         temperature: config.temperature,
         maxOutputTokens: config.maxOutputTokens,
         responseMimeType: 'application/json',
+        // Constrain the model to the insight array shape (matches isValidInsight)
+        // so structured output is reliable rather than prompt-only.
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              lens: { type: Type.STRING, enum: [...VALID_LENSES] },
+              observation: { type: Type.STRING },
+              suggestion: { type: Type.STRING },
+              priority: { type: Type.STRING, enum: [...VALID_PRIORITIES] },
+            },
+            required: ['lens', 'observation', 'suggestion', 'priority'],
+          },
+        },
+        abortSignal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
       },
     });
 
