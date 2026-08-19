@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { BrassButton } from '@/components/antiquarian';
 import { Flame, Save } from 'lucide-react';
+import { useModalA11y } from '@/hooks/use-modal-a11y';
 
 interface SessionStats {
   wordsWritten: number;
@@ -24,6 +25,8 @@ function formatDuration(ms: number): string {
 }
 
 export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndModalProps) {
+  // Escape resolves to Save — the non-destructive default (never Burn).
+  const dialogRef = useModalA11y<HTMLDivElement>(open, onSave);
   return (
     <AnimatePresence>
       {open && (
@@ -37,6 +40,7 @@ export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndM
           aria-labelledby="no-retreat-end-title"
         >
           <motion.div
+            ref={dialogRef}
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}

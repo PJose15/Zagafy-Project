@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 import { useStory } from '@/lib/store';
 import { BookOpen, X } from 'lucide-react';
+import { useModalA11y } from '@/hooks/use-modal-a11y';
 
 interface ChapterSelectModalProps {
   onSelect: (chapterId: string) => void;
@@ -11,6 +12,7 @@ interface ChapterSelectModalProps {
 
 export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProps) {
   const { state } = useStory();
+  const dialogRef = useModalA11y<HTMLDivElement>(true, onClose);
 
   return (
     <div
@@ -22,6 +24,7 @@ export function ChapterSelectModal({ onSelect, onClose }: ChapterSelectModalProp
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       <motion.div
+        ref={dialogRef}
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-lg w-full p-6 max-h-[70vh] flex flex-col texture-parchment"

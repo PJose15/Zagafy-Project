@@ -1,5 +1,7 @@
 'use client';
 
+import { useModalA11y } from '@/hooks/use-modal-a11y';
+
 interface SceneChangeRecoveryModalProps {
   originalChapterTitle: string;
   onReturn: () => void;
@@ -11,6 +13,8 @@ export function SceneChangeRecoveryModal({
   onReturn,
   onStayHere,
 }: SceneChangeRecoveryModalProps) {
+  // Escape resolves to "stay here" — the non-navigating default.
+  const dialogRef = useModalA11y<HTMLDivElement>(true, onStayHere);
   return (
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center p-4"
@@ -20,7 +24,7 @@ export function SceneChangeRecoveryModal({
       aria-describedby="recovery-message"
     >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-md w-full p-6 texture-parchment">
+      <div ref={dialogRef} className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-md w-full p-6 texture-parchment">
         <div className="space-y-4">
           <div className="text-center">
             <span className="text-3xl" aria-hidden="true">&#x1F500;</span>
