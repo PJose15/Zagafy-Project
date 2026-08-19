@@ -186,7 +186,7 @@ describe('braindump types', () => {
     });
   });
 
-  // ─── Additional comprehensive tests ────────────────────────────────
+  // ─── Additional comprehensive tests ────────────────────
 
   describe('isBraindumpEntry edge cases', () => {
     it('returns true for empty string polishedText', () => {
@@ -211,25 +211,25 @@ describe('braindump types', () => {
 
     it('returns false when a required field is undefined', () => {
       const entry = makeEntry();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (entry as any).rawTranscript = undefined;
       expect(isBraindumpEntry(entry)).toBe(false);
     });
 
     it('returns false when polishedText is undefined instead of null', () => {
       const entry = makeEntry();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (entry as any).polishedText = undefined;
       expect(isBraindumpEntry(entry)).toBe(false);
     });
 
     it('returns false when wasPolished is a truthy non-boolean (1)', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       expect(isBraindumpEntry(makeEntry({ wasPolished: 1 as any }))).toBe(false);
     });
 
     it('returns false when wasPolished is a truthy non-boolean ("true")', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       expect(isBraindumpEntry(makeEntry({ wasPolished: 'true' as any }))).toBe(false);
     });
 
@@ -255,7 +255,7 @@ describe('braindump types', () => {
     });
 
     it('returns false when id is a number instead of string', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       expect(isBraindumpEntry(makeEntry({ id: 123 as any }))).toBe(false);
     });
   });
@@ -345,14 +345,14 @@ describe('braindump types', () => {
     it('handles unicode and special characters in rawTranscript and projectName', () => {
       const entry = makeEntry({
         id: 'unicode-1',
-        rawTranscript: 'Hola mundo! \u{1F680} \u00E9\u00E8\u00EA \u4F60\u597D \u0410\u0411\u0412 \u2603\uFE0F \u2764\uFE0F\u200D\u{1F525}',
-        projectName: 'Projet \u00C9t\u00E9 \u2014 \u201CLa R\u00E9alit\u00E9\u201D',
+        rawTranscript: 'Hola mundo! \u{1F680} éèê 你好 АБВ ☃️ ❤️‍\u{1F525}',
+        projectName: 'Projet Été — “La Réalité”',
       });
       addBraindump(entry);
       const result = readBraindumps();
       expect(result).toHaveLength(1);
-      expect(result[0].rawTranscript).toBe('Hola mundo! \u{1F680} \u00E9\u00E8\u00EA \u4F60\u597D \u0410\u0411\u0412 \u2603\uFE0F \u2764\uFE0F\u200D\u{1F525}');
-      expect(result[0].projectName).toBe('Projet \u00C9t\u00E9 \u2014 \u201CLa R\u00E9alit\u00E9\u201D');
+      expect(result[0].rawTranscript).toBe('Hola mundo! \u{1F680} éèê 你好 АБВ ☃️ ❤️‍\u{1F525}');
+      expect(result[0].projectName).toBe('Projet Été — “La Réalité”');
     });
 
     it('handles very long rawTranscript (1000 chars)', () => {
