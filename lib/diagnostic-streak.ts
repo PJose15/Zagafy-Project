@@ -30,7 +30,11 @@ function readStreak(): StreakData {
 }
 
 function writeStreak(data: StreakData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Quota exceeded / storage unavailable — best effort, never crash the caller.
+  }
 }
 
 export function incrementStreak(): number {
