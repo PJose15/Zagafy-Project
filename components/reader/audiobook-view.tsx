@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Play, Pause, Square } from 'lucide-react';
 import { useSpeechSynthesis } from '@/hooks/use-speech-synthesis';
 import { estimateReadingTime } from '@/lib/reader-utils';
@@ -13,6 +13,13 @@ interface AudiobookViewProps {
 export function AudiobookView({ title, content }: AudiobookViewProps) {
   const tts = useSpeechSynthesis();
   const readingTime = useMemo(() => estimateReadingTime(content), [content]);
+
+  // Stop playback when the chapter content changes so the narrator doesn't keep
+  // reading the previous chapter's text against the newly displayed one.
+  const { cancel } = tts;
+  useEffect(() => {
+    return () => { cancel(); };
+  }, [content, cancel]);
 
   if (!tts.isSupported) {
     return (

@@ -6,10 +6,14 @@ import { incrementStreak, getStreak } from '@/lib/diagnostic-streak';
 import { BlockCard, blockCards } from './block-card';
 import type { BlockType } from '@/lib/session';
 import { getAdaptiveConfig } from '@/lib/adaptive-experience';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export function DiagnosticOverlay() {
   const { setBlockType, completeDiagnostic } = useSession();
+  const prepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Clear the preparation timeout on unmount so it can't fire setState after the
+  // overlay is gone.
+  useEffect(() => () => { if (prepTimerRef.current) clearTimeout(prepTimerRef.current); }, []);
   const [streak, setStreak] = useState(() => {
     // Read streak on initial render (client-side only)
     if (typeof window !== 'undefined') {
@@ -27,7 +31,7 @@ export function DiagnosticOverlay() {
     // Show preparation message for 3 seconds
     const config = getAdaptiveConfig(type);
     setPreparationMessage(config.preparationMessage);
-    setTimeout(() => {
+    prepTimerRef.current = setTimeout(() => {
       setPreparationMessage(null);
       completeDiagnostic(false);
     }, 3000);
