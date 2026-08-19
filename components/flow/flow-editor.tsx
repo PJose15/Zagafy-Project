@@ -8,7 +8,7 @@ import { useStory } from '@/lib/store';
 import { useSceneChange } from '@/hooks/use-scene-change';
 import { useToast } from '@/components/toast';
 import { useConfirm } from '@/components/confirm-dialog';
-import { MomentumGlow } from './momentum-glow';
+import { MomentumGlow, type MomentumHandle } from './momentum-glow';
 import { MicroPromptDisplay } from './micro-prompt-display';
 import { SceneChangeBanner } from './scene-change-banner';
 import { SceneChangeOverlay } from './scene-change-overlay';
@@ -39,6 +39,7 @@ import { NoRetreatEndModal } from './no-retreat-end-modal';
 import { createMetricsCollector } from '@/lib/flow-metrics';
 import type { MetricsCollector } from '@/lib/flow-metrics';
 import { useChapterVersions } from '@/hooks/use-chapter-versions';
+import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
 import { VersionSwitcher } from './version-switcher';
 import { VersionCompare } from './version-compare';
 import { useBlockDetector } from '@/hooks/use-block-detector';
@@ -50,9 +51,6 @@ import { getAdaptiveConfig } from '@/lib/adaptive-experience';
 import { ClosingRitual } from './closing-ritual';
 
 const PAUSE_TIMEOUT = 30000; // 30 seconds
-const MOMENTUM_DECAY_INTERVAL = 100; // ms
-const MOMENTUM_INCREMENT = 0.02;
-const MOMENTUM_DECAY = 0.01;
 
 interface FlowEditorProps {
   chapterId: string;
@@ -62,15 +60,14 @@ interface FlowEditorProps {
 export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
   const { session, setFlowChapterId } = useSession();
   const { state } = useStory();
-  const { scheduleAutosave, saveNow, initialContent } = useFlowAutosave(chapterId);
+  const { scheduleAutosave, saveNow, flush, initialContent } = useFlowAutosave(chapterId);
   const { prompt, isLoading, fetchPrompt, clearPrompt } = useMicroPrompt();
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
   const [content, setContent] = useState(initialContent);
-  const [momentum, setMomentum] = useState(0);
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const momentumTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const momentumRef = useRef<MomentumHandle>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const metricsCollectorRef = useRef<MetricsCollector>(createMetricsCollector());
   const lastKeystrokeTimeRef = useRef<number>(Date.now());
@@ -94,11 +91,39 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
 
   const chapter = state.chapters.find(ch => ch.id === chapterId);
 
-  // Derive word count from content
-  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+  // Derive word count from content (memoized so the momentum/countdown ticks
+  // don't re-scan the whole chapter on every render).
+  const wordCount = useMemo(
+    () => content.trim().split(/\s+/).filter(Boolean).length,
+    [content]
+  );
+
+  // Warn before leaving with un-persisted keystrokes. `initialContent` is derived
+  // from the store, which updates the instant autosave flushes, so this is true
+  // only during the brief window where the newest prose isn't saved yet.
+  const hasUnsavedChanges = content !== initialContent;
+  useUnsavedChanges(hasUnsavedChanges);
+
+  // Flush the latest content the moment the tab is hidden or the page is being
+  // unloaded — closes the ~5s autosave-debounce data-loss window on tab close.
+  useEffect(() => {
+    const handleHide = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    const handlePageHide = () => flush();
+    document.addEventListener('visibilitychange', handleHide);
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', handleHide);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [flush]);
 
   // Scene Change state
-  const nonDiscardedChapters = state.chapters.filter(ch => ch.canonStatus !== 'discarded');
+  const nonDiscardedChapters = useMemo(
+    () => state.chapters.filter(ch => ch.canonStatus !== 'discarded'),
+    [state.chapters]
+  );
   const sceneChange = useSceneChange(nonDiscardedChapters.length);
   const [overlayConfig, setOverlayConfig] = useState<{
     message: string;
@@ -303,14 +328,34 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     setNoRetreatEndOpen(false);
   }, []);
 
-  const handleNoRetreatBurn = useCallback(() => {
-    // Revert to content at session start
+  const handleNoRetreatBurn = useCallback(async () => {
+    // Burning discards everything written this session — require a deliberate
+    // confirmation so an accidental click next to "Save" can't destroy the work.
+    const confirmed = await confirm({
+      title: 'Burn this session?',
+      message: 'This permanently discards everything you wrote during this No-Retreat session. This cannot be undone.',
+      confirmLabel: 'Burn it',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     const originalContent = content.slice(0, sessionStartOffsetRef.current);
     setContent(originalContent);
     scheduleAutosave(originalContent);
     setNoRetreatMode(false);
     setNoRetreatEndOpen(false);
-  }, [content, scheduleAutosave]);
+  }, [confirm, content, scheduleAutosave]);
+
+  const handleVersionDelete = useCallback(async (versionId: string) => {
+    // A version is a full saved draft of the chapter — confirm before destroying
+    // it, consistent with every other delete action in the app.
+    const confirmed = await confirm({
+      title: 'Delete Version',
+      message: 'This permanently deletes this saved draft of the chapter. This cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (confirmed) chapterVersions.remove(versionId);
+  }, [confirm, chapterVersions]);
 
   const genre = state.genre.join(', ');
   const protagonist = state.characters.find(c => c.role === 'protagonist' || c.role === 'Protagonist');
@@ -385,16 +430,6 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
     return ctx;
   }, [state.title, state.synopsis, state.characters, state.chapters, state.active_conflicts, state.open_loops, chapter?.title, chapterId]);
 
-  // Momentum decay
-  useEffect(() => {
-    momentumTimerRef.current = setInterval(() => {
-      setMomentum(prev => Math.max(0, prev - MOMENTUM_DECAY));
-    }, MOMENTUM_DECAY_INTERVAL);
-    return () => {
-      if (momentumTimerRef.current) clearInterval(momentumTimerRef.current);
-    };
-  }, []);
-
   const triggerMicroPrompt = useCallback(() => {
     if (content.trim().length < 20) return;
 
@@ -464,9 +499,11 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
       clearPrompt();
     }
 
-    // Increase momentum on typing + record keystroke
+    // Increase momentum on typing + record keystroke. Momentum lives in the glow
+    // leaf component (bumped imperatively) so its 10 Hz decay doesn't re-render
+    // this editor on every tick.
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-      setMomentum(prev => Math.min(1, prev + MOMENTUM_INCREMENT));
+      momentumRef.current?.bump();
       const now = Date.now();
       metricsCollectorRef.current.recordKeystroke(now);
       lastKeystrokeTimeRef.current = now;
@@ -484,7 +521,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
 
   return (
     <div className="fixed inset-0 z-[150] bg-parchment-200 flex flex-col">
-      <MomentumGlow momentum={momentum} />
+      <MomentumGlow ref={momentumRef} />
 
       {/* Voice banner */}
       {guestHeteronym && (
@@ -540,7 +577,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
                 }}
                 onRename={chapterVersions.rename}
                 onMarkCanonical={chapterVersions.markCanonical}
-                onDelete={chapterVersions.remove}
+                onDelete={handleVersionDelete}
                 onCreate={() => {
                   chapterVersions.createVersion(content, `Version ${String.fromCharCode(65 + chapterVersions.versionCount)}`, 'manual');
                   setVersionPanelOpen(false);
@@ -657,6 +694,7 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           autoFocus
+          aria-label={chapter?.title ? `Draft of ${chapter.title}` : 'Chapter draft'}
           placeholder="Start writing... no backspace, no delete, just forward."
           className="w-full max-w-3xl flex-1 bg-transparent text-sepia-900 text-lg leading-relaxed font-serif placeholder-sepia-400 focus:outline-none resize-none"
           spellCheck={false}
