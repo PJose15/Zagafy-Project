@@ -14,7 +14,7 @@ import { updateSessionFlowScore } from '@/lib/types/writing-session';
 import type { FlowScore } from '@/lib/types/writing-session';
 import { readGamification } from '@/lib/types/gamification';
 import { getStreakWarning } from '@/lib/gamification/writing-streak';
-import { GamificationProvider } from '@/hooks/use-gamification';
+import { GamificationProvider, useGamification } from '@/hooks/use-gamification';
 
 function StreakWarningToast() {
   const { toast } = useToast();
@@ -32,7 +32,8 @@ function StreakWarningToast() {
 }
 
 function LibraryShellInner({ children }: { children: React.ReactNode }) {
-  const { pendingFlowScore, dismissFlowScore } = useSessionTracker();
+  const { refreshFromStorage } = useGamification();
+  const { pendingFlowScore, dismissFlowScore } = useSessionTracker({ onXpAwarded: refreshFromStorage });
 
   const handleFlowSubmit = useCallback((sessionId: string, score: FlowScore) => {
     updateSessionFlowScore(sessionId, score).catch(() => { /* best effort */ });

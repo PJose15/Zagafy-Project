@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { springs } from '@/lib/animations';
 import { InkStampButton } from '@/components/antiquarian';
+import { useModalA11y } from '@/hooks/use-modal-a11y';
 import { CATEGORY_META, type WorldBibleSection, type WorldBibleCategory } from '@/lib/types/world-bible';
 
 interface WorldBibleMergeModalProps {
@@ -17,6 +18,7 @@ interface WorldBibleMergeModalProps {
 
 export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConfirm }: WorldBibleMergeModalProps) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(incoming.map((s) => s.id)));
+  const dialogRef = useModalA11y<HTMLDivElement>(open, onClose);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -56,6 +58,7 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
           <div className="absolute inset-0 bg-sepia-900/60 backdrop-blur-sm" onClick={onClose} />
 
           <motion.div
+            ref={dialogRef}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
