@@ -26,6 +26,8 @@ vi.mock('@google/genai', () => {
 vi.mock('@/lib/ai-config', () => ({
   AI_MODEL: 'test-model',
   SAFETY_SETTINGS: [],
+  THINKING_CONFIG: { thinkingBudget: 0 },
+  GEMINI_TIMEOUT_MS: 25000,
 }));
 
 vi.mock('@/lib/prompts/micro-prompt', async () => {
@@ -125,7 +127,7 @@ describe('POST /api/micro-prompt', () => {
     expect(body.prompt).toBe('');
   });
 
-  it('passes maxOutputTokens of 150 in the API call', async () => {
+  it('passes an output-token budget and disables thinking so the prompt is not starved', async () => {
     mockGenerateContent.mockResolvedValue({
       candidates: [{ finishReason: 'STOP' }],
       text: 'What does she feel as her footsteps echo through the dark corridor?',
@@ -139,7 +141,10 @@ describe('POST /api/micro-prompt', () => {
 
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     const callArgs = mockGenerateContent.mock.calls[0][0];
-    expect(callArgs.config.maxOutputTokens).toBe(150);
+    expect(callArgs.config.maxOutputTokens).toBe(256);
+    // Thinking must be disabled — otherwise gemini-2.5-flash spends the budget
+    // thinking and returns an empty prompt.
+    expect(callArgs.config.thinkingConfig).toEqual({ thinkingBudget: 0 });
   });
 
   it('returns empty prompt silently on Gemini 429 rate limit', async () => {

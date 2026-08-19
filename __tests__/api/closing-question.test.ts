@@ -29,7 +29,11 @@ vi.mock('@google/genai', () => ({
 vi.mock('@/lib/ai-config', () => ({
   AI_MODEL: 'gemini-2.5-flash',
   SAFETY_SETTINGS: [],
-  AI_CONFIG: {},
+  THINKING_CONFIG: { thinkingBudget: 0 },
+  GEMINI_TIMEOUT_MS: 25000,
+  AI_CONFIG: {
+    closingQuestion: { temperature: 0.7, maxOutputTokens: 256 },
+  },
 }));
 
 import { POST } from '@/app/api/closing-question/route';
