@@ -116,6 +116,8 @@ export interface DexieSyncMeta {
   serverStoryId: string | null;
   lastPulledAt: string | null;
   lastPushedAt: string | null;
+  /** Server optimistic-concurrency version of the story `state` blob. */
+  serverStoryVersion?: number | null;
 }
 
 class ZagafyDB extends Dexie {

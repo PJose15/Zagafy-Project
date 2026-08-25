@@ -10,6 +10,7 @@
 
 import { db as dexieDb } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
+import { wordCount } from '@/lib/editor/serialization';
 import type {
   SyncDelta,
   SyncStatus,
@@ -155,6 +156,12 @@ export class SyncEngine {
         await updateSyncMeta({ serverStoryId }, projectId);
       }
 
+      // Base version for the story blob's optimistic-concurrency check. The
+      // server compares this against its stored version and rejects a stale
+      // overwrite as a conflict instead of clobbering bible edits made elsewhere.
+      const bindMeta = await getSyncMeta();
+      const baseStoryVersion = bindMeta?.serverStoryVersion ?? 0;
+
       // Resolve payloads from Dexie for each queued entry
       const deltas: SyncDelta[] = [];
       for (const entry of queue) {
@@ -164,6 +171,11 @@ export class SyncEngine {
 
         // Skip upserts where the entity no longer exists locally
         if (entry.op === 'upsert' && !payload) continue;
+
+        // Stamp the story delta with the base version the server will check.
+        if (entry.entityType === 'story' && payload) {
+          payload.version = baseStoryVersion;
+        }
 
         deltas.push({
           entityType: entry.entityType as SyncEntityType,
@@ -216,6 +228,12 @@ export class SyncEngine {
       // Adopt the server's post-push chapter versions so the next push
       // round-trips them instead of re-sending a stale version forever.
       await this.adoptPushedChapterVersions(deltas, result);
+
+      // Adopt the story blob's new server version so the next story push is
+      // based on it and doesn't false-conflict.
+      if (typeof result.storyVersion === 'number') {
+        await updateSyncMeta({ serverStoryVersion: result.storyVersion }, projectId);
+      }
 
       if (result.conflicts.length > 0) {
         this.setStatus('conflict');
@@ -320,8 +338,22 @@ export class SyncEngine {
     // All pulled rows belong to the active project (active-project-only sync).
     const projectId = getActiveProjectId();
 
-    // Apply story state
-    if (data.story?.state) {
+    // Dirty guard: an entity with a pending (unpushed) local write must NOT be
+    // overwritten by a background pull — that silently discards live edits. Its
+    // queued delta will push on the next cycle, where server-side version checks
+    // reconcile it. Applies to the blind-put paths (story blob, chapters,
+    // insights); the other tables already skip rows that exist locally.
+    const { entries: pending } = await readQueue(projectId);
+    const pendingChapterIds = new Set(
+      pending.filter(e => e.entityType === 'chapter').map(e => e.entityId),
+    );
+    const pendingInsightIds = new Set(
+      pending.filter(e => e.entityType === 'writerInsight').map(e => e.entityId),
+    );
+    const storyDirty = pending.some(e => e.entityType === 'story');
+
+    // Apply story state (skip if a local story edit is pending — see dirty guard)
+    if (data.story?.state && !storyDirty) {
       const state = data.story.state as Record<string, unknown>;
       // Merge server state into local Dexie story blob
       const existingStory = await dexieDb.stories.get(projectId);
@@ -340,12 +372,20 @@ export class SyncEngine {
         createdAt: existingStory?.createdAt ?? Date.now(),
         updatedAt: Date.now(),
       });
+      // Track the server blob version so the next story push bases its
+      // optimistic-concurrency check on what we just adopted.
+      const pulledVersion = (data.story as { version?: unknown }).version;
+      if (typeof pulledVersion === 'number') {
+        await updateSyncMeta({ serverStoryVersion: pulledVersion }, projectId);
+      }
       counts.story = 1;
     }
 
-    // Apply chapters
+    // Apply chapters (skip any with a pending local edit — dirty guard)
     if (data.chapters.length > 0) {
+      let appliedChapters = 0;
       for (const ch of data.chapters) {
+        if (pendingChapterIds.has(ch.id as string)) continue;
         await dexieDb.chapters.put({
           id: ch.id as string,
           projectId,
@@ -361,8 +401,9 @@ export class SyncEngine {
           // every subsequent push of this chapter conflicts forever.
           version: typeof ch.version === 'number' ? ch.version : undefined,
         });
+        appliedChapters++;
       }
-      counts.chapters = data.chapters.length;
+      counts.chapters = appliedChapters;
     }
 
     // Apply chapter versions
@@ -440,9 +481,11 @@ export class SyncEngine {
       counts.chatMessages = data.chatMessages.length;
     }
 
-    // Apply writer insights
+    // Apply writer insights (skip any with a pending local edit — dirty guard)
     if (data.writerInsights.length > 0) {
+      let appliedInsights = 0;
       for (const i of data.writerInsights) {
+        if (pendingInsightIds.has(i.id as string)) continue;
         await dexieDb.writerInsights.put({
           id: i.id as string,
           projectId,
@@ -453,8 +496,9 @@ export class SyncEngine {
           confidence: (i.confidence as number) ?? 50,
           pinned: (i.pinned as number) ?? 0,
         });
+        appliedInsights++;
       }
-      counts.writerInsights = data.writerInsights.length;
+      counts.writerInsights = appliedInsights;
     }
 
     return counts;
@@ -474,6 +518,11 @@ export class SyncEngine {
     for (const c of conflicts) {
       if (c.entityType === 'chapter' && c.serverPayload) {
         const sp = c.serverPayload;
+        // C3: preserve the losing local edit before adopting the server copy so a
+        // reconnect conflict never silently discards offline work. The current
+        // local content is snapshotted into chapterVersions, recoverable from the
+        // manuscript versions UI.
+        await this.backupLosingChapterEdit(sp.id as string, (sp.content as string) ?? '', projectId);
         await dexieDb.chapters.put({
           id: sp.id as string,
           projectId,
@@ -489,7 +538,100 @@ export class SyncEngine {
           // the conflict loop — the next push sends a version the server accepts.
           version: typeof sp.version === 'number' ? sp.version : undefined,
         });
+      } else if (c.entityType === 'story' && c.serverPayload) {
+        await this.resolveStoryConflict(c, projectId);
       }
+    }
+  }
+
+  /**
+   * C3 — snapshot the current local chapter content as a recovery version before
+   * a conflict overwrites it with the server's copy. Best-effort: recovery must
+   * never block conflict resolution. No-op when local content matches the server
+   * or the chapter isn't present locally.
+   */
+  private async backupLosingChapterEdit(
+    chapterId: string,
+    serverContent: string,
+    projectId: string,
+  ): Promise<void> {
+    try {
+      const local = await dexieDb.chapters.get(chapterId);
+      if (!local || !local.content || local.content === serverContent) return;
+      const id = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+      // Shape matches ChapterVersion so it renders in the versions UI.
+      const recovery = {
+        id,
+        chapterId,
+        label: 'Conflict backup (local edit)',
+        content: local.content,
+        createdAt,
+        isCanonical: false,
+        source: 'auto-snapshot',
+        wordCount: wordCount(local.content),
+      };
+      await dexieDb.chapterVersions.put({
+        id,
+        projectId,
+        chapterId,
+        createdAt,
+        data: JSON.stringify(recovery),
+      });
+    } catch {
+      // best-effort recovery snapshot
+    }
+  }
+
+  /**
+   * C1 — resolve a story-blob conflict without destroying local data. The server
+   * rejected our push because its blob advanced past our base version. Preserve
+   * the losing local blob (characters/canon/world-bible) to a recovery key, then
+   * adopt the server state and track its version so the next push is based on it.
+   */
+  private async resolveStoryConflict(c: ConflictRecord, projectId: string): Promise<void> {
+    const sp = (c.serverPayload ?? {}) as Record<string, unknown>;
+    const { version: serverVersion, ...serverState } = sp;
+
+    // 1. Back up the losing local blob so no bible data is silently destroyed.
+    //    Mirrors the corrupt-blob recovery pattern in dexie-db.getStory().
+    try {
+      const localRow = await dexieDb.stories.get(projectId);
+      if (localRow?.data && typeof localStorage !== 'undefined') {
+        localStorage.setItem(
+          `zagafy_sync_conflict_story_${projectId}_${Date.now()}`,
+          localRow.data,
+        );
+      }
+    } catch {
+      // Quota exceeded / no localStorage — backup is best-effort.
+    }
+
+    // 2. Adopt the server blob into Dexie so later edits build on it.
+    try {
+      const existingStory = await dexieDb.stories.get(projectId);
+      const stateChapters = (serverState as { chapters?: unknown[] }).chapters;
+      await dexieDb.stories.put({
+        id: projectId,
+        data: JSON.stringify(serverState),
+        title: typeof (serverState as { title?: unknown }).title === 'string'
+          ? (serverState as { title: string }).title
+          : existingStory?.title ?? 'Untitled Project',
+        chapterCount: Array.isArray(stateChapters)
+          ? stateChapters.length
+          : existingStory?.chapterCount ?? 0,
+        wordCount: existingStory?.wordCount ?? 0,
+        status: existingStory?.status ?? 'draft',
+        createdAt: existingStory?.createdAt ?? Date.now(),
+        updatedAt: Date.now(),
+      });
+    } catch {
+      // best-effort adopt
+    }
+
+    // 3. Track the server version so the next push doesn't immediately re-conflict.
+    if (typeof serverVersion === 'number') {
+      await updateSyncMeta({ serverStoryVersion: serverVersion }, projectId);
     }
   }
 

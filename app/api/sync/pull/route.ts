@@ -139,6 +139,7 @@ export async function GET(req: NextRequest) {
         id: story.id,
         title: story.title,
         state: story.state,
+        version: story.version,
         updatedAt: story.updatedAt.toISOString(),
       } : null,
       chapters: chapters.map(serializeChapter),

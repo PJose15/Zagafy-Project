@@ -48,6 +48,10 @@ export interface SyncMeta {
   lastPulledAt: string | null;
   /** ISO timestamp of the last successful push. */
   lastPushedAt: string | null;
+  /** Server optimistic-concurrency version of the story `state` blob. Sent as
+   *  the base version on the next story push so a stale overwrite is detected as
+   *  a conflict rather than silently clobbering server-side bible edits. */
+  serverStoryVersion?: number | null;
 }
 
 /** A conflict detected during push (server version wins). */
@@ -85,6 +89,9 @@ export interface PushResponse {
   /** Optional: new server version per successfully applied chapter id. When
    *  absent the client falls back to incrementing the version it pushed. */
   chapterVersions?: Record<string, number>;
+  /** New server version of the story `state` blob after an accepted story
+   *  upsert. The client adopts it as the base version for the next push. */
+  storyVersion?: number;
 }
 
 /** Sync engine events emitted to subscribers. */
