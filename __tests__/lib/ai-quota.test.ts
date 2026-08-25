@@ -3,9 +3,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // ── Mocks ──
 const mockIncr = vi.fn(async (): Promise<number> => 1);
 const mockExpire = vi.fn(async (): Promise<number> => 1);
+const mockGet = vi.fn(async (): Promise<number | null> => 0);
 vi.mock('@upstash/redis', () => ({
   Redis: {
-    fromEnv: vi.fn(() => ({ incr: mockIncr, expire: mockExpire })),
+    fromEnv: vi.fn(() => ({ incr: mockIncr, expire: mockExpire, get: mockGet })),
   },
 }));
 
@@ -16,7 +17,7 @@ vi.mock('@/lib/get-user-plan', () => ({
   getUserPlan: (userId: unknown) => mockGetUserPlan(userId),
 }));
 
-import { checkAiQuota, enforceAiQuota } from '@/lib/ai-quota';
+import { checkAiQuota, enforceAiQuota, peekAiQuota, enforceAiQuotaPeek } from '@/lib/ai-quota';
 
 function stubUpstashEnv() {
   vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://example.upstash.io');
@@ -28,6 +29,7 @@ describe('lib/ai-quota', () => {
     vi.clearAllMocks();
     mockIncr.mockResolvedValue(1);
     mockExpire.mockResolvedValue(1);
+    mockGet.mockResolvedValue(0);
     mockGetUserPlan.mockResolvedValue('free');
   });
 
@@ -125,6 +127,88 @@ describe('lib/ai-quota', () => {
       expect(body.ok).toBe(false);
       expect(body.code).toBe('quota_exceeded');
       expect(body.message).toMatch(/allowance/i);
+    });
+  });
+
+  // A1 — sidecar peek: read-only check that never increments the counter.
+  describe('peekAiQuota', () => {
+    it('fails open when Upstash is not configured (no read)', async () => {
+      const result = await peekAiQuota('user-1');
+      expect(result.allowed).toBe(true);
+      expect(mockGet).not.toHaveBeenCalled();
+    });
+
+    it('fails closed without Upstash in production strict mode', async () => {
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('RATE_LIMIT_STRICT', 'true');
+      const result = await peekAiQuota('user-1');
+      expect(result.allowed).toBe(false);
+    });
+
+    it('allows when under the limit and NEVER increments', async () => {
+      stubUpstashEnv();
+      mockGetUserPlan.mockResolvedValue('free'); // 100/month
+      mockGet.mockResolvedValue(40);
+
+      const result = await peekAiQuota('user-1');
+      expect(result.allowed).toBe(true);
+      expect(mockGet).toHaveBeenCalledWith(expect.stringMatching(/^aiq:user-1:\d{4}-\d{2}$/));
+      // Peeking must not consume quota.
+      expect(mockIncr).not.toHaveBeenCalled();
+    });
+
+    it('blocks when already at/over the limit', async () => {
+      stubUpstashEnv();
+      mockGetUserPlan.mockResolvedValue('free'); // 100/month
+      mockGet.mockResolvedValue(100);
+
+      const result = await peekAiQuota('user-1');
+      expect(result.allowed).toBe(false);
+      expect(mockIncr).not.toHaveBeenCalled();
+    });
+
+    it('treats a missing counter as zero usage', async () => {
+      stubUpstashEnv();
+      mockGet.mockResolvedValue(null);
+      const result = await peekAiQuota('user-1');
+      expect(result.allowed).toBe(true);
+    });
+
+    it('fails open when Redis is unreachable', async () => {
+      stubUpstashEnv();
+      mockGet.mockRejectedValue(new Error('ECONNREFUSED'));
+      const result = await peekAiQuota('user-1');
+      expect(result.allowed).toBe(true);
+    });
+  });
+
+  describe('enforceAiQuotaPeek', () => {
+    it('never meters embed-mode deployments', async () => {
+      stubUpstashEnv();
+      const res = await enforceAiQuotaPeek({ userId: 'embed-mode', embedMode: true });
+      expect(res).toBeNull();
+      expect(mockGet).not.toHaveBeenCalled();
+    });
+
+    it('returns null while the allowance holds (no increment)', async () => {
+      stubUpstashEnv();
+      mockGet.mockResolvedValue(5);
+      const res = await enforceAiQuotaPeek({ userId: 'user-1', embedMode: false });
+      expect(res).toBeNull();
+      expect(mockIncr).not.toHaveBeenCalled();
+    });
+
+    it('returns a 429 when the user is already over quota', async () => {
+      stubUpstashEnv();
+      mockGetUserPlan.mockResolvedValue('free');
+      mockGet.mockResolvedValue(150);
+
+      const res = await enforceAiQuotaPeek({ userId: 'user-1', embedMode: false });
+      expect(res).not.toBeNull();
+      expect(res!.status).toBe(429);
+      const body = await res!.json();
+      expect(body.code).toBe('quota_exceeded');
+      expect(mockIncr).not.toHaveBeenCalled();
     });
   });
 });

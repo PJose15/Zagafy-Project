@@ -91,7 +91,7 @@ Reveal the ending — this is a synopsis, not a blurb.`;
         ai.models.generateContent({
           model: AI_MODEL,
           contents: prompt,
-          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.7, maxOutputTokens: length === '5-page' ? 4096 : 2048 },
+          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.7, maxOutputTokens: length === '5-page' ? 4096 : 2048, thinkingConfig: { thinkingBudget: 0 } },
         }),
       {
         onAttempt: ({ attempt, willRetry, nextDelayMs, err: attemptErr }) => {

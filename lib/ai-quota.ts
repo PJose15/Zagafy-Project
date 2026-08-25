@@ -81,6 +81,39 @@ export async function checkAiQuota(
 }
 
 /**
+ * Read-only quota check: reports whether the user is ALREADY over their monthly
+ * allowance WITHOUT incrementing the counter. Used by the character-chat
+ * sidecars (state/insight/contradiction/memory) — they each make a real paid
+ * Anthropic call but must not each count as a separate AI call (that would bill
+ * one visible turn up to 4x). Peeking lets an exhausted user be blocked from
+ * looping the sidecars for uncapped spend while a legitimate turn still costs 1.
+ */
+export async function peekAiQuota(
+  userId: string,
+): Promise<{ allowed: boolean }> {
+  if (!isUpstashConfigured()) {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      process.env.RATE_LIMIT_STRICT === 'true'
+    ) {
+      return { allowed: false };
+    }
+    return { allowed: true };
+  }
+  try {
+    const plan = await getUserPlan(userId);
+    const limit = getLimits(plan).aiCallsPerMonth;
+    if (!Number.isFinite(limit)) return { allowed: true };
+    const redis = Redis.fromEnv();
+    const current = Number(await redis.get(quotaKey(userId))) || 0;
+    return { allowed: current < limit };
+  } catch {
+    // Upstash unreachable — fail open, matching the rate limiter's posture.
+    return { allowed: true };
+  }
+}
+
+/**
  * Route helper: returns a 429 response when the user's monthly AI allowance is
  * used up, or null when the call may proceed. Call AFTER auth + rate limiting.
  * Embed mode (self-hosted, no billing) is never metered.
@@ -92,6 +125,24 @@ export async function enforceAiQuota(
   if (user.embedMode) return null;
   const { allowed } = await checkAiQuota(user.userId);
   if (allowed) return null;
+  return quotaExceeded(init);
+}
+
+/**
+ * Sidecar helper: returns a 429 when the user is ALREADY over quota, without
+ * counting this call. `null` means proceed. Embed mode is never metered.
+ */
+export async function enforceAiQuotaPeek(
+  user: AuthedUser,
+  init?: { requestId?: string },
+): Promise<NextResponse | null> {
+  if (user.embedMode) return null;
+  const { allowed } = await peekAiQuota(user.userId);
+  if (allowed) return null;
+  return quotaExceeded(init);
+}
+
+function quotaExceeded(init?: { requestId?: string }): NextResponse {
   return err(
     'quota_exceeded',
     'Your monthly AI allowance is used up. Upgrade your plan for a higher limit, or wait until next month when your quota resets.',

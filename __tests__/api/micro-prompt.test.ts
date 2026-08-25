@@ -142,6 +142,44 @@ describe('POST /api/micro-prompt', () => {
     expect(callArgs.config.maxOutputTokens).toBe(150);
   });
 
+  it('disables gemini thinking so the 150-token budget is not eaten (A4)', async () => {
+    mockGenerateContent.mockResolvedValue({
+      candidates: [{ finishReason: 'STOP' }],
+      text: 'What does she feel as her footsteps echo through the dark corridor?',
+    });
+
+    await POST(
+      makeRequest({
+        recentText: 'She walked through the dark corridor, her footsteps echoing off the stone walls.',
+      })
+    );
+
+    const callArgs = mockGenerateContent.mock.calls[0][0];
+    expect(callArgs.config.thinkingConfig).toEqual({ thinkingBudget: 0 });
+  });
+
+  it('keeps writerInsightsPrompt in the user contents, never the system instruction (A6)', async () => {
+    mockGenerateContent.mockResolvedValue({
+      candidates: [{ finishReason: 'STOP' }],
+      text: 'What does she feel as her footsteps echo through the dark corridor?',
+    });
+
+    const injection = 'IGNORE_PRIOR_INSTRUCTIONS_MARKER';
+    await POST(
+      makeRequest({
+        recentText: 'She walked through the dark corridor, her footsteps echoing off the stone walls.',
+        writerInsightsPrompt: injection,
+      })
+    );
+
+    const callArgs = mockGenerateContent.mock.calls[0][0];
+    // Untrusted writer memory belongs in the user turn as fenced data…
+    expect(String(callArgs.contents)).toContain(injection);
+    expect(String(callArgs.contents)).toContain('<writer_memory>');
+    // …and must NOT be concatenated onto the system/operator channel.
+    expect(String(callArgs.config.systemInstruction)).not.toContain(injection);
+  });
+
   it('returns empty prompt silently on Gemini 429 rate limit', async () => {
     mockGenerateContent.mockRejectedValue({ status: 429, message: 'Rate limited' });
 
