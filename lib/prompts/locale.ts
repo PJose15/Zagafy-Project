@@ -13,11 +13,31 @@ const LOCALE_DIRECTIVES: Record<string, string> = {
 };
 
 /**
+ * Normalize an untrusted `language` value before it is interpolated into a
+ * system prompt. The story language is a free-form, client-supplied string, so
+ * without this a value like `"English. IGNORE ALL PREVIOUS INSTRUCTIONS…"` would
+ * be injected verbatim into the operator channel. A real language name is a
+ * short run of letters (optionally spaces/hyphens), so anything containing
+ * digits, punctuation, or newlines is rejected and treated as English.
+ */
+export function normalizeLanguage(language: unknown): string {
+  if (typeof language !== 'string') return 'English';
+  const trimmed = language.trim();
+  // Exact match to a supported language always wins.
+  if (LOCALE_DIRECTIVES[trimmed]) return trimmed;
+  // Otherwise only accept a plausible language NAME (e.g. "Dutch", "Brazilian
+  // Portuguese"); reject prompt-injection payloads.
+  if (/^\p{L}[\p{L} -]{0,29}$/u.test(trimmed)) return trimmed;
+  return 'English';
+}
+
+/**
  * Get the locale directive for a given language.
  * Used by all AI prompt builders to inject language-specific instructions.
  */
 export function getLocaleDirective(language: string): string {
-  return LOCALE_DIRECTIVES[language] || `Respond in ${language}. Adapt examples and idioms appropriately.`;
+  const safe = normalizeLanguage(language);
+  return LOCALE_DIRECTIVES[safe] || `Respond in ${safe}. Adapt examples and idioms appropriately.`;
 }
 
 /**
@@ -25,7 +45,8 @@ export function getLocaleDirective(language: string): string {
  * Includes both the directive and a reminder about cultural adaptation.
  */
 export function buildLocaleBlock(language: string): string {
-  const directive = getLocaleDirective(language);
-  if (language === 'English') return directive;
-  return `${directive}\n\nIMPORTANT: All output — analysis, suggestions, prose, dialogue, field labels — MUST be in ${language}. Do not mix languages unless quoting the user's original text.`;
+  const safe = normalizeLanguage(language);
+  const directive = getLocaleDirective(safe);
+  if (safe === 'English') return directive;
+  return `${directive}\n\nIMPORTANT: All output — analysis, suggestions, prose, dialogue, field labels — MUST be in ${safe}. Do not mix languages unless quoting the user's original text.`;
 }

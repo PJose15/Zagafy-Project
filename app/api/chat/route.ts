@@ -32,9 +32,6 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
-  const quotaResponse = await enforceAiQuota(authResult, { requestId });
-  if (quotaResponse) return quotaResponse;
-
   try {
     const body = await req.json();
     const { userInput, isBlockedRequest, language, chatHistory, knownEntities, blockType } = body;
@@ -69,6 +66,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Meter AFTER validation + config checks so a malformed request or a
+    // server misconfig never burns the user's monthly AI allowance.
+    const quotaResponse = await enforceAiQuota(authResult, { requestId });
+    if (quotaResponse) return quotaResponse;
+
     const ai = new GoogleGenAI({ apiKey });
     const isBlocked = !!isBlockedRequest;
     const systemPrompt = buildWritingAssistantPrompt(language, blockType, heteronym ?? null);
@@ -92,6 +94,10 @@ export async function POST(req: NextRequest) {
         safetySettings: SAFETY_SETTINGS,
         temperature: config.temperature,
         maxOutputTokens: config.maxOutputTokens,
+        // Disable gemini-2.5-flash "thinking": reasoning tokens bill against
+        // maxOutputTokens and can consume the whole budget, truncating the JSON.
+        // This route wants structured output, not chain-of-thought.
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: 'application/json',
         responseSchema,
       },

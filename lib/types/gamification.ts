@@ -153,11 +153,28 @@ export interface AwardsState {
    */
   streakMilestoneAwarded: number;
   /**
-   * High-water mark of finished chapters (>= CHAPTER_FINISHED_MIN_WORDS) that
-   * have already been awarded XP. Prevents re-awarding on reload and blocks
-   * delete/re-add farming (count must exceed the high-water to award again).
+   * LEGACY global high-water of finished chapters. Superseded by
+   * `chapterHighWaterByProject` (chapter awards are per-novel). Kept on the
+   * interface so old blobs stay valid through the deep-merge; no longer read.
    */
   chapterHighWater: number;
+  /**
+   * Per-project high-water of finished chapters (>= CHAPTER_FINISHED_MIN_WORDS)
+   * already awarded XP. Keyed by project id because a finished-chapter count is
+   * per-novel — a single global mark let one project's count suppress another's
+   * CHAPTER_FINISHED awards. On a project's first evaluation the mark is
+   * grandfathered to its current finished count so pre-existing chapters don't
+   * re-award; only genuinely new finishes earn XP thereafter.
+   */
+  chapterHighWaterByProject?: Record<string, number>;
+  /**
+   * Per-project high-water mark of total words that have already earned word-XP.
+   * Keyed by project id because gamification is a single global blob — a global
+   * mark would suppress legit XP when writing in a second project. Blocks
+   * delete-and-rewrite word-XP farming: words only earn XP once they push the
+   * project's total past this mark (advanced in whole-100 increments as awarded).
+   */
+  wordHighWaterByProject?: Record<string, number>;
 }
 
 // ─── Root State ───
@@ -168,8 +185,18 @@ export interface GamificationState {
   streak: WritingStreakState;
   quests: QuestsState;
   sprints: SprintsState;
+  /** The ACTIVE project's finishing state — a view of `finishingByProject`,
+   *  kept top-level for consumers that read `gamification.finishing`. */
   finishing: FinishingEngineState;
   awards?: AwardsState;
+  /**
+   * Per-project finishing-engine state. The finishing engine is per-novel
+   * (milestones, overall progress, current phase), but was stored globally —
+   * `analyzeStory` latches "once completed, stays completed", so a global seed
+   * made a switched-to project inherit the previous novel's completed
+   * milestones. Keyed by project id so each novel tracks its own completion.
+   */
+  finishingByProject?: Record<string, FinishingEngineState>;
 }
 
 // ─── Defaults ───
@@ -206,7 +233,12 @@ export function defaultFinishingState(): FinishingEngineState {
 }
 
 export function defaultAwardsState(): AwardsState {
-  return { streakMilestoneAwarded: 0, chapterHighWater: 0 };
+  return {
+    streakMilestoneAwarded: 0,
+    chapterHighWater: 0,
+    chapterHighWaterByProject: {},
+    wordHighWaterByProject: {},
+  };
 }
 
 export function defaultGamificationState(): GamificationState {
@@ -218,6 +250,7 @@ export function defaultGamificationState(): GamificationState {
     sprints: defaultSprintsState(),
     finishing: defaultFinishingState(),
     awards: defaultAwardsState(),
+    finishingByProject: {},
   };
 }
 
@@ -281,25 +314,39 @@ export function isGamificationState(v: unknown): v is GamificationState {
 
 // ─── LocalStorage CRUD ───
 
+/**
+ * Salvage a stored (structurally-valid) gamification blob onto the current
+ * defaults. Used for BOTH the current version and any past/unknown version:
+ * previously a `version !== STATE_VERSION` mismatch hard-RESET to defaults,
+ * silently destroying every user's XP/streak/level the moment STATE_VERSION was
+ * ever bumped. Deep-merging instead preserves progress across version changes;
+ * unrecognized-but-valid sub-fields are kept, missing ones are defaulted, and
+ * the version is stamped forward. Genuinely un-salvageable input (corrupt JSON
+ * or failing isGamificationState) still falls back to defaults upstream.
+ */
+export function migrateGamification(parsed: GamificationState): GamificationState {
+  return {
+    ...defaultGamificationState(),
+    ...parsed,
+    version: STATE_VERSION,
+    xp: { ...defaultXPState(), ...(parsed.xp || {}) },
+    streak: { ...defaultStreakState(), ...(parsed.streak || {}) },
+    quests: { ...defaultQuestsState(), ...(parsed.quests || {}) },
+    sprints: { ...defaultSprintsState(), ...(parsed.sprints || {}) },
+    finishing: { ...defaultFinishingState(), ...(parsed.finishing || {}) },
+    awards: { ...defaultAwardsState(), ...(parsed.awards || {}) },
+    finishingByProject: { ...(parsed.finishingByProject || {}) },
+  };
+}
+
 export function readGamification(): GamificationState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultGamificationState();
     const parsed = JSON.parse(raw);
     if (!isGamificationState(parsed)) return defaultGamificationState();
-    // M10: Version check — reset on incompatible version changes
-    if (parsed.version !== STATE_VERSION) return defaultGamificationState();
-    // Deep-merge each sub-object for forward compatibility
-    return {
-      ...defaultGamificationState(),
-      ...parsed,
-      xp: { ...defaultXPState(), ...(parsed.xp || {}) },
-      streak: { ...defaultStreakState(), ...(parsed.streak || {}) },
-      quests: { ...defaultQuestsState(), ...(parsed.quests || {}) },
-      sprints: { ...defaultSprintsState(), ...(parsed.sprints || {}) },
-      finishing: { ...defaultFinishingState(), ...(parsed.finishing || {}) },
-      awards: { ...defaultAwardsState(), ...(parsed.awards || {}) },
-    };
+    // Migrate (never wipe) across version changes — see migrateGamification.
+    return migrateGamification(parsed);
   } catch {
     return defaultGamificationState();
   }

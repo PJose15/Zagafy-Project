@@ -178,14 +178,21 @@ describe('readGamification', () => {
     expect(state.version).toBe(1);
   });
 
-  it('returns defaults on version mismatch (version: 999)', () => {
+  it('migrates (does NOT wipe) on version mismatch, preserving XP/streak', () => {
+    // A future STATE_VERSION bump must never destroy a user's progress. The old
+    // behavior hard-reset to defaults on any mismatch; now we salvage and stamp
+    // the version forward.
     const saved = defaultGamificationState();
     saved.xp.totalXP = 5000;
+    saved.xp.level = 12;
+    saved.streak.currentStreak = 30;
     (saved as any).version = 999;
     store['zagafy_gamification'] = JSON.stringify(saved);
     const state = readGamification();
-    expect(state.version).toBe(1);
-    expect(state.xp.totalXP).toBe(0);
+    expect(state.version).toBe(1); // stamped to the current STATE_VERSION
+    expect(state.xp.totalXP).toBe(5000); // progress preserved, not wiped
+    expect(state.xp.level).toBe(12);
+    expect(state.streak.currentStreak).toBe(30);
   });
 
   it('deep-merges missing nested keys with defaults', () => {

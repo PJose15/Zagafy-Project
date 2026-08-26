@@ -51,6 +51,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
+// Deterministic active project so per-project gamification keys are stable.
+vi.mock('@/lib/projects/active-project', () => ({
+  getActiveProjectId: () => 'proj-test',
+}));
+
 // Mutable so individual tests can seed sessions (e.g. to build a streak).
 const mockSessions: unknown[] = [];
 vi.mock('@/lib/types/writing-session', () => ({
@@ -417,23 +422,51 @@ describe('useGamification', () => {
       mockSessions.length = 0;
     });
 
-    it('awards CHAPTER_FINISHED once per finished chapter, idempotent across remounts', async () => {
-      const words = Array.from({ length: 520 }, (_, i) => `w${i}`).join(' ');
-      (mockStoryState.chapters as unknown[]).push({ id: 'ch1', title: 'One', content: words, summary: '' });
+    it('awards CHAPTER_FINISHED when a chapter crosses the bar in-app, idempotent across remounts', async () => {
+      const shortWords = Array.from({ length: 100 }, (_, i) => `w${i}`).join(' ');
+      const longWords = Array.from({ length: 520 }, (_, i) => `w${i}`).join(' ');
+      // Start BELOW the bar so this project's high-water grandfathers to 0 (a
+      // chapter already finished at first load is pre-existing, not a new finish).
+      mockStoryState.chapters = [{ id: 'ch1', title: 'One', content: shortWords, summary: '' }] as never;
 
       const first = renderHook(() => useGamification(), { wrapper });
       await waitFor(() => expect(first.result.current.isLoaded).toBe(true));
+      expect(first.result.current.gamification.xp.totalXP).toBe(0);
+
+      // Grow the chapter past 500 words — a genuine in-app finish → award.
+      mockStoryState.chapters = [{ id: 'ch1', title: 'One', content: longWords, summary: '' }] as never;
+      first.rerender();
       await waitFor(() => expect(first.result.current.gamification.xp.totalXP).toBe(100));
       expect(first.result.current.gamification.xp.events.some((e) => e.type === 'chapter')).toBe(true);
-      expect(first.result.current.gamification.awards?.chapterHighWater).toBe(1);
+      expect(first.result.current.gamification.awards?.chapterHighWaterByProject?.['proj-test']).toBe(1);
       first.unmount();
 
-      // Same localStorage, fresh mount — the high-water blocks a double award.
+      // Same localStorage + same finished chapter, fresh mount — the per-project
+      // high-water blocks a double award.
       const second = renderHook(() => useGamification(), { wrapper });
       await waitFor(() => expect(second.result.current.isLoaded).toBe(true));
-      await waitFor(() => expect(second.result.current.gamification.awards?.chapterHighWater).toBe(1));
+      await waitFor(() =>
+        expect(second.result.current.gamification.awards?.chapterHighWaterByProject?.['proj-test']).toBe(1),
+      );
       expect(second.result.current.gamification.xp.totalXP).toBe(100);
       second.unmount();
+    });
+
+    it('grandfathers a chapter already finished at first load (no award) — blocks project-switch bleed', async () => {
+      const longWords = Array.from({ length: 520 }, (_, i) => `w${i}`).join(' ');
+      // Chapter is ALREADY finished when gamification first evaluates this
+      // project (e.g. imported, or switching into an existing novel). It must
+      // NOT award — that count belongs to work done before, not a new finish.
+      mockStoryState.chapters = [{ id: 'ch1', title: 'One', content: longWords, summary: '' }] as never;
+
+      const { result, unmount } = renderHook(() => useGamification(), { wrapper });
+      await waitFor(() => expect(result.current.isLoaded).toBe(true));
+      // Grandfathered: high-water seeded to 1, but no XP awarded.
+      await waitFor(() =>
+        expect(result.current.gamification.awards?.chapterHighWaterByProject?.['proj-test']).toBe(1),
+      );
+      expect(result.current.gamification.xp.totalXP).toBe(0);
+      unmount();
     });
 
     it('does not award for chapters under the finished bar', async () => {

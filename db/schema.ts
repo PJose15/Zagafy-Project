@@ -47,6 +47,14 @@ export const stories = pgTable(
     // chapter contents). Holds characters / conflicts / timeline / world
     // bible / genesis data until we normalize them.
     state: jsonb('state'),
+    // Optimistic-concurrency version for the state blob (mirrors chapters.version).
+    // Guards the single-blob upsert against silent last-write-wins loss: a push
+    // whose base version is behind the server's is rejected as a conflict instead
+    // of blindly overwriting characters / canon / world-bible edited elsewhere.
+    // Defaults to 0 (= "no confirmed server version yet") so existing clients —
+    // whose base version is 0 until their first post-upgrade pull — don't trip a
+    // spurious conflict on rollout; the first accepted story upsert bumps it to 1.
+    version: integer('version').notNull().default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },

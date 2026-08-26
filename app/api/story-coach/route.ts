@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { GoogleGenAI, FinishReason } from '@google/genai';
 import { buildStoryCoachPrompt, buildStoryCoachContent } from '@/lib/prompts/story-coach';
+import { normalizeLanguage } from '@/lib/prompts/locale';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
 import { enforceAiQuota } from '@/lib/ai-quota';
@@ -25,13 +26,10 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
-  const quotaResponse = await enforceAiQuota(authResult, { requestId });
-  if (quotaResponse) return quotaResponse;
-
   try {
     const body = await req.json();
     const { chapterContent, chapterTitle, storyContext, focusLens, heteronymVoice, language } = body;
-    const coachLanguage = typeof language === 'string' && language.trim() ? language.trim() : 'English';
+    const coachLanguage = normalizeLanguage(language);
     // MP-11/MP-12: optional writer-memory fragment (capped to keep context lean).
     const writerInsightsPrompt =
       typeof body.writerInsightsPrompt === 'string'
@@ -47,18 +45,26 @@ export async function POST(req: NextRequest) {
       return err('internal_error', 'API key not configured', 500);
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-    const baseSystemPrompt = buildStoryCoachPrompt(coachLanguage, heteronymVoice);
-    const systemPrompt = writerInsightsPrompt
-      ? `${baseSystemPrompt}\n\n${writerInsightsPrompt}`
-      : baseSystemPrompt;
+    // Meter AFTER validation + config checks so a malformed request or a
+    // server misconfig never burns the user's monthly AI allowance.
+    const quotaResponse = await enforceAiQuota(authResult, { requestId });
+    if (quotaResponse) return quotaResponse;
 
-    const content = buildStoryCoachContent({
+    const ai = new GoogleGenAI({ apiKey });
+    const systemPrompt = buildStoryCoachPrompt(coachLanguage, heteronymVoice);
+
+    let content = buildStoryCoachContent({
       chapterContent: chapterContent.slice(0, 15000), // Cap at ~15K chars
       chapterTitle,
       storyContext: typeof storyContext === 'string' ? storyContext.slice(0, 5000) : undefined,
       focusLens: typeof focusLens === 'string' ? focusLens : undefined,
     });
+    // MP-11/MP-12 writer memory is untrusted request-body text — keep it in the
+    // USER turn as fenced reference data, never concatenated onto the system
+    // instruction (that would be an operator-channel prompt-injection vector).
+    if (writerInsightsPrompt) {
+      content += `\n\n<writer_memory>\n${writerInsightsPrompt}\n</writer_memory>`;
+    }
 
     const config = AI_CONFIG.storyCoach ?? { temperature: 0.3, maxOutputTokens: 4096 };
 
@@ -71,6 +77,9 @@ export async function POST(req: NextRequest) {
           safetySettings: SAFETY_SETTINGS,
           temperature: config.temperature,
           maxOutputTokens: config.maxOutputTokens,
+          // Disable gemini-2.5-flash "thinking": reasoning tokens bill against
+          // maxOutputTokens and can truncate/empty the JSON insights body.
+          thinkingConfig: { thinkingBudget: 0 },
           responseMimeType: 'application/json',
         },
       }),

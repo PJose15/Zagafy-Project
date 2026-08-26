@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
     let applied = 0;
     const conflicts: ConflictRecord[] = [];
     const chapterVersions: Record<string, number> = {};
+    let storyVersion: number | undefined;
 
     for (const delta of deltas) {
       try {
@@ -156,6 +157,9 @@ export async function POST(req: NextRequest) {
           applied++;
           if (typeof result.newChapterVersion === 'number') {
             chapterVersions[delta.entityId] = result.newChapterVersion;
+          }
+          if (typeof result.newStoryVersion === 'number') {
+            storyVersion = result.newStoryVersion;
           }
         }
       } catch (deltaErr) {
@@ -173,7 +177,7 @@ export async function POST(req: NextRequest) {
 
     const serverTimestamp = new Date().toISOString();
     log.info('push complete', { applied, conflicts: conflicts.length, deltas: deltas.length });
-    return ok({ applied, conflicts, chapterVersions, serverTimestamp }, { requestId });
+    return ok({ applied, conflicts, chapterVersions, storyVersion, serverTimestamp }, { requestId });
   } catch (dbErr) {
     log.error('push failed', dbErr);
     return err('internal_error', 'Push failed', 500, undefined, { requestId });
@@ -187,6 +191,9 @@ interface ApplyResult {
   /** New server version for accepted chapter upserts — echoed to the client
    *  so its local copy tracks the server and later pushes don't false-conflict. */
   newChapterVersion?: number;
+  /** New server version for an accepted story-blob upsert — echoed so the
+   *  client adopts it as the base version for its next story push. */
+  newStoryVersion?: number;
 }
 
 async function applyDelta(
@@ -278,14 +285,47 @@ async function applyStoryUpsert(
   storyId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
+  // The client injects the base version it last saw from the server as
+  // `payload.version`; the rest of the payload is the StoryState blob. Strip the
+  // version key so it isn't persisted inside `state`.
+  const baseVersion = typeof payload.version === 'number' ? payload.version : 0;
+  const { version: _clientVersion, ...state } = payload;
+
+  const existing = await db().query.stories.findFirst({
+    where: eq(schema.stories.id, storyId),
+    columns: { version: true, state: true, updatedAt: true },
+  });
+
+  // Optimistic concurrency: if the server blob has advanced past the base the
+  // client pushed from, reject rather than overwrite. Returning the server copy
+  // lets the client preserve its losing edits (as a recovery snapshot) and adopt
+  // the server state instead of silently destroying characters/canon/world-bible.
+  if (existing && existing.version > baseVersion) {
+    return {
+      conflict: {
+        entityType: 'story',
+        entityId: storyId,
+        localPayload: payload,
+        serverPayload: {
+          ...(existing.state as Record<string, unknown> | null ?? {}),
+          version: existing.version,
+        },
+        serverUpdatedAt: existing.updatedAt.toISOString(),
+        detectedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  const newVersion = (existing?.version ?? 0) + 1;
   await db()
     .update(schema.stories)
     .set({
-      state: payload,
+      state,
+      version: newVersion,
       updatedAt: new Date(),
     })
     .where(eq(schema.stories.id, storyId));
-  return {};
+  return { newStoryVersion: newVersion };
 }
 
 async function applyChapterUpsert(

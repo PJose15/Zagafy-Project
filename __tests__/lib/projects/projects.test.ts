@@ -115,4 +115,50 @@ describe('projects registry', () => {
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe(next);
   });
+
+  // A9 — deleting a synced project must also delete the server story.
+  it('deleteProject calls DELETE /api/stories for a bound project', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const aId = await ensureActiveProject();
+    const bId = await createProject('Bound Novel');
+    // Simulate a server binding (created on first push).
+    await db.syncMeta.put({ id: bId, serverStoryId: 'server-xyz', lastPulledAt: null, lastPushedAt: null });
+
+    setActiveProjectId(bId);
+    await deleteProject(bId);
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/stories', expect.objectContaining({ method: 'DELETE' }));
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.storyId).toBe('server-xyz');
+    // Local delete still completes even though we mocked the server call.
+    expect(getActiveProjectId()).toBe(aId);
+  });
+
+  it('deleteProject completes locally even if the server delete fails (offline)', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('offline'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await ensureActiveProject();
+    const bId = await createProject('Bound Novel');
+    await db.syncMeta.put({ id: bId, serverStoryId: 'server-xyz', lastPulledAt: null, lastPushedAt: null });
+
+    setActiveProjectId(bId);
+    await expect(deleteProject(bId)).resolves.toBeTruthy();
+    const list = await listProjects();
+    expect(list.map(p => p.id)).not.toContain(bId);
+  });
+
+  it('deleteProject does not call the server for an unbound project', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await ensureActiveProject();
+    const bId = await createProject('Local Only');
+    setActiveProjectId(bId);
+    await deleteProject(bId);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

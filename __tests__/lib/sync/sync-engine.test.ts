@@ -41,7 +41,7 @@ const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 import { SyncEngine } from '@/lib/sync/sync-engine';
-import { readQueue, clearEntries, getServerStoryId, getSyncMeta } from '@/lib/sync/sync-queue';
+import { readQueue, clearEntries, getServerStoryId, getSyncMeta, updateSyncMeta } from '@/lib/sync/sync-queue';
 import { db } from '@/lib/storage/dexie-db';
 
 describe('SyncEngine', () => {
@@ -59,6 +59,10 @@ describe('SyncEngine', () => {
       lastPulledAt: null,
       lastPushedAt: null,
     });
+    // applyPulledData now reads the queue for its dirty-guard, so a leaked
+    // per-test readQueue implementation could wrongly mark pulled entities dirty.
+    // Reset to the empty default each test (dirty-guard tests re-mock explicitly).
+    vi.mocked(readQueue).mockResolvedValue({ entries: [], coveredIds: [] });
     engine = new SyncEngine({ pushDebounceMs: 100, pullIntervalMs: 60000 });
   });
 
@@ -639,6 +643,183 @@ describe('SyncEngine', () => {
       const putCall = vi.mocked(db.chapters.put).mock.calls[0][0] as any;
       expect(putCall.id).toBe('ch-1');
       expect(putCall.version).toBe(5);
+    });
+  });
+
+  // ─── Phase 1 data-loss fixes (C1/C2/C3) ───
+
+  function emptyPull() {
+    return { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() };
+  }
+  function pullResponse(over: Record<string, unknown>) {
+    return new Response(JSON.stringify({ data: { ...emptyPull(), ...over } }), { status: 200 });
+  }
+  function pushResponse(data: Record<string, unknown>) {
+    return new Response(JSON.stringify({ data }), { status: 200 });
+  }
+
+  describe('story blob optimistic concurrency (C1)', () => {
+    async function startEngine() {
+      mockFetch.mockResolvedValueOnce(pullResponse({}));
+      await engine.start();
+    }
+    function queueStoryDelta() {
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
+      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+    }
+    function pushedStoryDelta() {
+      const pushCall = mockFetch.mock.calls.find(
+        (c) => typeof c[0] === 'string' && c[0] === '/api/sync/push',
+      );
+      const body = JSON.parse((pushCall![1] as RequestInit).body as string);
+      return body.deltas.find((d: any) => d.entityType === 'story');
+    }
+
+    it('stamps the pushed story delta with the base serverStoryVersion', async () => {
+      vi.mocked(getSyncMeta).mockResolvedValue({
+        id: 'current', serverStoryId: 'server-story-1', lastPulledAt: null, lastPushedAt: null, serverStoryVersion: 4,
+      });
+      await startEngine();
+      queueStoryDelta();
+      mockFetch.mockResolvedValueOnce(pushResponse({ applied: 1, conflicts: [], serverTimestamp: new Date().toISOString(), storyVersion: 5 }));
+      mockFetch.mockResolvedValueOnce(pullResponse({}));
+
+      await engine.syncNow();
+
+      expect(pushedStoryDelta().payload.version).toBe(4);
+    });
+
+    it('adopts the returned storyVersion into sync meta after a successful push', async () => {
+      vi.mocked(getSyncMeta).mockResolvedValue({
+        id: 'current', serverStoryId: 'server-story-1', lastPulledAt: null, lastPushedAt: null, serverStoryVersion: 4,
+      });
+      await startEngine();
+      queueStoryDelta();
+      mockFetch.mockResolvedValueOnce(pushResponse({ applied: 1, conflicts: [], serverTimestamp: new Date().toISOString(), storyVersion: 5 }));
+      mockFetch.mockResolvedValueOnce(pullResponse({}));
+
+      await engine.syncNow();
+
+      expect(updateSyncMeta).toHaveBeenCalledWith({ serverStoryVersion: 5 }, expect.anything());
+    });
+
+    it('on a story conflict: backs up local blob, adopts server state, tracks server version', async () => {
+      await startEngine();
+      queueStoryDelta();
+      vi.mocked(db.stories.get).mockResolvedValue({
+        id: 'current', data: JSON.stringify({ title: 'Local', characters: [{ id: 'c1' }] }), updatedAt: Date.now(),
+      } as any);
+      const conflict = {
+        entityType: 'story',
+        entityId: 'server-story-1',
+        localPayload: { title: 'Local' },
+        serverPayload: { title: 'Server', characters: [{ id: 'c2' }], version: 9 },
+        serverUpdatedAt: new Date().toISOString(),
+        detectedAt: new Date().toISOString(),
+      };
+      mockFetch.mockResolvedValueOnce(pushResponse({ applied: 0, conflicts: [conflict], serverTimestamp: new Date().toISOString() }));
+      mockFetch.mockResolvedValueOnce(pullResponse({}));
+      localStorage.clear();
+
+      await engine.syncNow();
+
+      // Adopted the server state into Dexie.
+      const adopt = vi.mocked(db.stories.put).mock.calls.find((c) => (c[0] as any).data?.includes('Server'));
+      expect(adopt).toBeDefined();
+      // Backed up the losing local blob under a recovery key.
+      const backupKey = Object.keys(localStorage).find((k) => k.startsWith('zagafy_sync_conflict_story_'));
+      expect(backupKey).toBeDefined();
+      expect(localStorage.getItem(backupKey!)).toContain('Local');
+      // Tracked the server version so the next push doesn't re-conflict.
+      expect(updateSyncMeta).toHaveBeenCalledWith({ serverStoryVersion: 9 }, expect.anything());
+    });
+  });
+
+  describe('pull dirty guard (C2)', () => {
+    it('does NOT overwrite a chapter that has a pending local edit', async () => {
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
+      mockFetch.mockResolvedValue(pullResponse({
+        storyId: 'server-story-1',
+        chapters: [{ id: 'ch-1', title: 'Server', content: 'server', summary: '', updatedAt: new Date().toISOString() }],
+      }));
+
+      await engine.start();
+
+      const put = vi.mocked(db.chapters.put).mock.calls.find((c) => (c[0] as any).id === 'ch-1');
+      expect(put).toBeUndefined();
+    });
+
+    it('DOES apply a chapter that has no pending local edit', async () => {
+      vi.mocked(readQueue).mockResolvedValue({ entries: [], coveredIds: [] });
+      mockFetch.mockResolvedValue(pullResponse({
+        storyId: 'server-story-1',
+        chapters: [{ id: 'ch-2', title: 'Server', content: 'server', summary: '', updatedAt: new Date().toISOString() }],
+      }));
+
+      await engine.start();
+
+      const put = vi.mocked(db.chapters.put).mock.calls.find((c) => (c[0] as any).id === 'ch-2');
+      expect(put).toBeDefined();
+    });
+
+    it('does NOT overwrite the story blob when a story edit is pending', async () => {
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
+      mockFetch.mockResolvedValue(pullResponse({
+        storyId: 'server-story-1',
+        story: { id: 'server-story-1', title: 'Server', state: { title: 'Server' }, version: 3, updatedAt: new Date().toISOString() },
+      }));
+
+      await engine.start();
+
+      expect(db.stories.put).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('chapter conflict backup (C3)', () => {
+    it('snapshots the losing local chapter content before adopting the server copy', async () => {
+      mockFetch.mockResolvedValueOnce(pullResponse({}));
+      await engine.start();
+
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
+      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+      vi.mocked(db.chapters.get).mockResolvedValue({
+        id: 'ch-1', title: '', content: 'my local edit', summary: '', updatedAt: 1, version: 2,
+      } as any);
+
+      const conflict = {
+        entityType: 'chapter',
+        entityId: 'ch-1',
+        localPayload: { id: 'ch-1', content: 'my local edit' },
+        serverPayload: { id: 'ch-1', title: '', content: 'server content', summary: '', version: 9, updatedAt: new Date().toISOString() },
+        serverUpdatedAt: new Date().toISOString(),
+        detectedAt: new Date().toISOString(),
+      };
+      mockFetch.mockResolvedValueOnce(pushResponse({ applied: 0, conflicts: [conflict], serverTimestamp: new Date().toISOString() }));
+      mockFetch.mockResolvedValueOnce(pullResponse({}));
+
+      await engine.syncNow();
+
+      // A recovery chapterVersion was written carrying the local content.
+      const backup = vi.mocked(db.chapterVersions.put).mock.calls.find(
+        (c) => (c[0] as any).data?.includes('my local edit'),
+      );
+      expect(backup).toBeDefined();
+      expect((backup![0] as any).data).toContain('Conflict backup');
+      // The server copy was still adopted.
+      const adopt = vi.mocked(db.chapters.put).mock.calls.find((c) => (c[0] as any).content === 'server content');
+      expect(adopt).toBeDefined();
     });
   });
 

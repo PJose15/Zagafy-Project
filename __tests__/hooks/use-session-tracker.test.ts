@@ -338,6 +338,43 @@ describe('useSessionTracker', () => {
     }
   });
 
+  it('does not re-award word XP for re-typed words (delete/rewrite farming guard)', async () => {
+    localStorage.removeItem('zagafy_gamification');
+    try {
+      const { rerender } = renderHook(() => useSessionTracker());
+
+      // Session 1: baseline 5 → 150 words, then navigate away to end it.
+      mockChapters.mockReturnValue([{ id: 'ch-1', title: 'C', content: 'word '.repeat(5).trim(), summary: '' }]);
+      rerender();
+      mockChapters.mockReturnValue([{ id: 'ch-1', title: 'C', content: 'word '.repeat(150).trim(), summary: '' }]);
+      rerender();
+      mockPathname.mockReturnValue('/other'); // navigation ends the session
+      rerender();
+      await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+
+      let stored = JSON.parse(localStorage.getItem('zagafy_gamification')!);
+      expect(stored.xp.totalXP).toBe(10);
+      // High-water mark advanced to the awarded 100 words for this project.
+      expect(stored.awards.wordHighWaterByProject['proj-1']).toBe(100);
+
+      // "Delete" back down, then re-type up to 150 again in a fresh session.
+      mockPathname.mockReturnValue('/manuscript'); // resets baseline (the farm vector)
+      mockChapters.mockReturnValue([{ id: 'ch-1', title: 'C', content: 'word '.repeat(6).trim(), summary: '' }]);
+      rerender();
+      mockChapters.mockReturnValue([{ id: 'ch-1', title: 'C', content: 'word '.repeat(150).trim(), summary: '' }]);
+      rerender();
+      mockPathname.mockReturnValue('/other'); // end session 2
+      rerender();
+      await act(async () => { await vi.advanceTimersByTimeAsync(100); });
+
+      stored = JSON.parse(localStorage.getItem('zagafy_gamification')!);
+      // No additional word XP — the re-typed words sit below the high-water mark.
+      expect(stored.xp.totalXP).toBe(10);
+    } finally {
+      localStorage.removeItem('zagafy_gamification');
+    }
+  });
+
   it('signals same-tab listeners even when the session commit rejects', async () => {
     mockAddSession.mockImplementationOnce(() => Promise.reject(new Error('dexie down')));
     const updated = vi.fn();

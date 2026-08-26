@@ -125,6 +125,7 @@ export async function updateSyncMeta(
     serverStoryId: existing?.serverStoryId ?? null,
     lastPulledAt: existing?.lastPulledAt ?? null,
     lastPushedAt: existing?.lastPushedAt ?? null,
+    serverStoryVersion: existing?.serverStoryVersion ?? null,
     ...updates,
   });
 }

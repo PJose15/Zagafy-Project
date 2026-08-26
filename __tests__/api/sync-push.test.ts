@@ -364,6 +364,68 @@ describe('POST /api/sync/push', () => {
     expect(mockUpdateSet).not.toHaveBeenCalled();
   });
 
+  it('rejects a stale story-blob push as a conflict instead of overwriting (C1)', async () => {
+    // Server blob is at version 5; the client pushes from base version 2 → the
+    // server must reject rather than clobber bible edits made elsewhere.
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'story-1',
+      ownerId: 'user_test',
+      version: 5,
+      state: { title: 'Server Title', characters: [{ id: 'c1' }] },
+      updatedAt: new Date('2026-08-25T00:00:00Z'),
+    });
+
+    const res = await POST(makeRequest({
+      storyId: 'story-1',
+      storyTitle: 'Test',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Local Title', version: 2 }, timestamp: Date.now() },
+      ],
+    }));
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.applied).toBe(0);
+    expect(data.data.conflicts).toHaveLength(1);
+    const conflict = data.data.conflicts[0];
+    expect(conflict.entityType).toBe('story');
+    expect(conflict.serverPayload.version).toBe(5);
+    expect(conflict.serverPayload.title).toBe('Server Title');
+    // The stale blob must NOT be written to the state column.
+    for (const call of mockUpdateSet.mock.calls) {
+      expect(call[0]).not.toHaveProperty('state');
+    }
+  });
+
+  it('accepts a story push at the current version and echoes the new storyVersion (C1)', async () => {
+    mockStoryFindFirst.mockResolvedValue({
+      id: 'story-1',
+      ownerId: 'user_test',
+      version: 3,
+      state: { title: 'Server' },
+      updatedAt: new Date('2026-08-25T00:00:00Z'),
+    });
+
+    const res = await POST(makeRequest({
+      storyId: 'story-1',
+      storyTitle: 'Test',
+      deltas: [
+        { entityType: 'story', entityId: 'current', op: 'upsert', payload: { title: 'Local', version: 3 }, timestamp: Date.now() },
+      ],
+    }));
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.applied).toBe(1);
+    expect(data.data.conflicts).toHaveLength(0);
+    expect(data.data.storyVersion).toBe(4);
+    // The persisted state must NOT carry the transport-only `version` key.
+    const stateWrite = mockUpdateSet.mock.calls.find((c) => c[0] && 'state' in c[0]);
+    expect(stateWrite).toBeDefined();
+    expect(stateWrite![0].state).not.toHaveProperty('version');
+    expect(stateWrite![0].version).toBe(4);
+  });
+
   it('returns 500 when database not configured', async () => {
     const { isDatabaseConfigured } = await import('@/db/client');
     vi.mocked(isDatabaseConfigured).mockReturnValueOnce(false);

@@ -84,6 +84,9 @@ export async function POST(req: NextRequest) {
           maxOutputTokens: 80,
           safetySettings: SAFETY_SETTINGS,
           systemInstruction: systemPrompt,
+          // Disable gemini-2.5-flash "thinking": with only 80 output tokens,
+          // reasoning tokens would consume the whole budget and return nothing.
+          thinkingConfig: { thinkingBudget: 0 },
         },
         contents: userMessage,
       }),

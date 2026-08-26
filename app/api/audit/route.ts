@@ -21,9 +21,6 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
-  const quotaResponse = await enforceAiQuota(authResult, { requestId });
-  if (quotaResponse) return quotaResponse;
-
   try {
     const body = await req.json();
     const { userInput, language } = body;
@@ -45,6 +42,11 @@ export async function POST(req: NextRequest) {
     if (!apiKey) {
       return err('internal_error', 'API key not configured', 500);
     }
+
+    // Meter AFTER validation + config checks so a malformed request or a
+    // server misconfig never burns the user's monthly AI allowance.
+    const quotaResponse = await enforceAiQuota(authResult, { requestId });
+    if (quotaResponse) return quotaResponse;
 
     const ai = new GoogleGenAI({ apiKey });
     const systemPrompt = buildWritingAssistantPrompt(language);
@@ -78,6 +80,10 @@ For each risk found, explain which specific story element it contradicts and why
         safetySettings: SAFETY_SETTINGS,
         temperature: AI_CONFIG.audit.temperature,
         maxOutputTokens: AI_CONFIG.audit.maxOutputTokens,
+        // Disable gemini-2.5-flash "thinking": reasoning tokens bill against
+        // maxOutputTokens and can empty the JSON body — which this route would
+        // otherwise mis-report as a clean audit (see the empty-text guard below).
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: 'application/json',
         responseSchema: {
           type: Type.OBJECT,
@@ -115,9 +121,17 @@ For each risk found, explain which specific story element it contradicts and why
       });
     }
 
+    // A truncated or empty upstream response must NEVER be reported as a clean
+    // continuity audit — that silently tells the writer "no problems found" when
+    // the audit never actually ran. Surface it as an upstream failure instead.
+    if (finishReason === FinishReason.MAX_TOKENS) {
+      log.error('audit response hit MAX_TOKENS; truncated output');
+      return err('upstream_unavailable', 'The audit response was cut off. Please try again with a shorter idea.', 502);
+    }
     const rawText = response.text;
     if (!rawText) {
-      return ok({ status: 'Clear', risks: [], suggestedCorrections: [], safeVersion: '' });
+      log.error('audit returned empty response', undefined, { finishReason });
+      return err('upstream_unavailable', 'The audit could not be completed right now. Please try again.', 502);
     }
     let result;
     try {

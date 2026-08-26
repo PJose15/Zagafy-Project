@@ -81,7 +81,7 @@ Write 120-180 words of compelling, market-ready copy that hooks the reader and c
         ai.models.generateContent({
           model: AI_MODEL,
           contents: prompt,
-          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.8, maxOutputTokens: 1024 },
+          config: { safetySettings: SAFETY_SETTINGS, temperature: 0.8, maxOutputTokens: 1024, thinkingConfig: { thinkingBudget: 0 } },
         }),
       {
         onAttempt: ({ attempt, willRetry, nextDelayMs, err: attemptErr }) => {

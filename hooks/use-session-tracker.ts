@@ -121,10 +121,27 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
     // Award gamification XP for words and session completion
     try {
       let gam = readGamification();
-      // XP for words: +10 per 100 words
-      const wordXP = Math.floor(wordsAdded / 100) * XP_RATES.WORDS_100;
-      if (wordXP > 0) {
-        gam = { ...gam, xp: awardXP(gam.xp, 'words', wordXP, `${wordsAdded} words written`) };
+      // XP for words: +10 per 100 words, but only for words that push this
+      // project's total past its high-water mark. Awarding on raw session
+      // `wordsAdded` let a writer farm XP by deleting then re-typing the same
+      // words (the baseline resets on navigation); gating on a persistent
+      // per-project high-water blocks that while still rewarding real new words.
+      const projectId = getProjectId();
+      const awards = gam.awards ?? { streakMilestoneAwarded: 0, chapterHighWater: 0, wordHighWaterByProject: {} };
+      const hwByProject = awards.wordHighWaterByProject ?? {};
+      const highWater = hwByProject[projectId] ?? 0;
+      const newWords = Math.max(0, wordsEnd - highWater);
+      const awardedWords = Math.floor(newWords / 100) * 100;
+      if (awardedWords > 0) {
+        const wordXP = (awardedWords / 100) * XP_RATES.WORDS_100;
+        gam = {
+          ...gam,
+          xp: awardXP(gam.xp, 'words', wordXP, `${awardedWords} words written`),
+          awards: {
+            ...awards,
+            wordHighWaterByProject: { ...hwByProject, [projectId]: highWater + awardedWords },
+          },
+        };
       }
       // XP for session completion (≥10 min)
       if (durationMinutes >= 10) {

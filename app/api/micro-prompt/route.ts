@@ -22,9 +22,6 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
-  const quotaResponse = await enforceAiQuota(authResult, { requestId });
-  if (quotaResponse) return quotaResponse;
-
   try {
     const body = await req.json();
     const { recentText, genre, protagonistName, blockType, storyContext } = body;
@@ -45,11 +42,13 @@ export async function POST(req: NextRequest) {
       return err('internal_error', 'API key not configured', 500);
     }
 
+    // Meter AFTER validation + config checks so a malformed request or a
+    // server misconfig never burns the user's monthly AI allowance.
+    const quotaResponse = await enforceAiQuota(authResult, { requestId });
+    if (quotaResponse) return quotaResponse;
+
     const ai = new GoogleGenAI({ apiKey });
-    const baseSystemPrompt = buildMicroPromptSystemPrompt();
-    const systemPrompt = writerInsightsPrompt
-      ? `${baseSystemPrompt}\n\n${writerInsightsPrompt}`
-      : baseSystemPrompt;
+    const systemPrompt = buildMicroPromptSystemPrompt();
 
     // Send last 600 words for better scene context
     const words = recentText.trim().split(/\s+/);
@@ -57,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     const voiceDirective = heteronym ? buildVoiceDirective(heteronym) : undefined;
 
-    const prompt = buildMicroPromptContent({
+    let prompt = buildMicroPromptContent({
       recentText: truncatedText,
       storyContext,
       genre,
@@ -65,6 +64,11 @@ export async function POST(req: NextRequest) {
       blockType,
       voiceDirective,
     });
+    // MP-11/MP-12 writer memory is untrusted request-body text — keep it in the
+    // USER turn as fenced reference data, never on the system instruction.
+    if (writerInsightsPrompt) {
+      prompt += `\n\n<writer_memory>\n${writerInsightsPrompt}\n</writer_memory>`;
+    }
 
     const response = await withRetry(() =>
       ai.models.generateContent({
@@ -75,6 +79,9 @@ export async function POST(req: NextRequest) {
           safetySettings: SAFETY_SETTINGS,
           maxOutputTokens: 150,
           temperature: 0.7,
+          // Disable gemini-2.5-flash "thinking": with only 150 output tokens,
+          // reasoning tokens would consume the entire budget and return nothing.
+          thinkingConfig: { thinkingBudget: 0 },
         },
       }),
     );
