@@ -14,9 +14,9 @@ import {
   deleteProjectData,
   type DexieStory,
 } from '@/lib/storage/dexie-db';
-import { listSnapshots, deleteSnapshot } from '@/lib/snapshot';
 import { defaultState, type StoryState } from '@/lib/store';
 import { getActiveProjectId, setActiveProjectId } from '@/lib/projects/active-project';
+import { getServerStoryId } from '@/lib/sync/sync-queue';
 
 export interface ProjectSummary {
   id: string;
@@ -108,10 +108,20 @@ export function switchProject(id: string): void {
  * has an active project. Returns the now-active project id.
  */
 export async function deleteProject(id: string): Promise<string> {
-  // Remove this project's snapshots (separate table keyed by storyId == project id).
-  const snaps = await listSnapshots(id);
-  for (const s of snaps) await deleteSnapshot(s.id);
+  // Best-effort cloud cleanup FIRST — read the server binding before
+  // deleteProjectData drops the syncMeta row. Deleting the server story (owner
+  // only; cascades to all children) stops the "deleted" manuscript from
+  // persisting in the cloud or resurrecting on another device. Never block the
+  // local delete on an offline/server failure — that only reverts to the prior
+  // behavior (server copy lingers) rather than trapping the user.
+  try {
+    const serverStoryId = await getServerStoryId(id);
+    if (serverStoryId) await deleteServerStory(serverStoryId);
+  } catch {
+    // Offline or server error — proceed with the local delete regardless.
+  }
 
+  // Snapshots are cleaned up inside deleteProjectData's transaction (atomic).
   await deleteProjectData(id);
 
   const wasActive = getActiveProjectId() === id;
@@ -125,4 +135,21 @@ export async function deleteProject(id: string): Promise<string> {
   }
   const fresh = await createProject();
   return fresh;
+}
+
+/**
+ * Best-effort DELETE of the server-side story. Treats 404 as success (already
+ * gone). Throws on other failures so the caller's catch can swallow it without
+ * blocking the local delete.
+ */
+async function deleteServerStory(serverStoryId: string): Promise<void> {
+  if (typeof fetch === 'undefined') return;
+  const res = await fetch('/api/stories', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ storyId: serverStoryId }),
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`Delete story failed: ${res.status}`);
+  }
 }

@@ -643,7 +643,7 @@ export async function getProjectRows(): Promise<DexieStory[]> {
 export async function deleteProjectData(projectId: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.chapterAnalysis, db.writerInsights, db.syncQueue, db.syncMeta, db.comments],
+    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.chapterAnalysis, db.writerInsights, db.storySnapshots, db.syncQueue, db.syncMeta, db.comments],
     async () => {
       await db.stories.delete(projectId);
       await db.comments.where('projectId').equals(projectId).delete();
@@ -653,6 +653,10 @@ export async function deleteProjectData(projectId: string): Promise<void> {
       await db.chatMessages.where('projectId').equals(projectId).delete();
       await db.chapterAnalysis.where('projectId').equals(projectId).delete();
       await db.writerInsights.where('projectId').equals(projectId).delete();
+      // Snapshots are keyed by storyId (== projectId). Including them here makes
+      // project deletion atomic (previously the caller looped deleteSnapshot
+      // outside any transaction, so a mid-loop failure orphaned snapshots).
+      await db.storySnapshots.where('storyId').equals(projectId).delete();
       await db.syncQueue.where('projectId').equals(projectId).delete();
       await db.syncMeta.delete(projectId);
     }

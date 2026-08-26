@@ -158,6 +158,14 @@ export interface AwardsState {
    * delete/re-add farming (count must exceed the high-water to award again).
    */
   chapterHighWater: number;
+  /**
+   * Per-project high-water mark of total words that have already earned word-XP.
+   * Keyed by project id because gamification is a single global blob — a global
+   * mark would suppress legit XP when writing in a second project. Blocks
+   * delete-and-rewrite word-XP farming: words only earn XP once they push the
+   * project's total past this mark (advanced in whole-100 increments as awarded).
+   */
+  wordHighWaterByProject?: Record<string, number>;
 }
 
 // ─── Root State ───
@@ -206,7 +214,7 @@ export function defaultFinishingState(): FinishingEngineState {
 }
 
 export function defaultAwardsState(): AwardsState {
-  return { streakMilestoneAwarded: 0, chapterHighWater: 0 };
+  return { streakMilestoneAwarded: 0, chapterHighWater: 0, wordHighWaterByProject: {} };
 }
 
 export function defaultGamificationState(): GamificationState {
