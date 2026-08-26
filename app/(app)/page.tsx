@@ -85,7 +85,7 @@ function StoryAnatomyBar({ chapters, characters, events, conflicts }: {
     <motion.div {...fadeUp}>
       <div className="flex items-center gap-3 mb-3">
         <Flame aria-hidden="true" size={16} className="text-brass-600" />
-        <h2 className="text-sm font-serif font-semibold text-sepia-400 uppercase tracking-wider">{t('anatomy.heading')}</h2>
+        <h2 className="text-sm font-serif font-semibold text-sepia-600 uppercase tracking-wider">{t('anatomy.heading')}</h2>
         <DecorativeDivider variant="section" className="flex-1" />
       </div>
       <div className="flex h-3 rounded-full overflow-hidden bg-parchment-200/50 border border-sepia-300/20">
