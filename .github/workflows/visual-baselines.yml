@@ -1,7 +1,10 @@
 # Regenerates the visual-regression baseline screenshots on linux (the CI
-# platform — Playwright snapshots are platform-specific) and commits them to
-# master. Manual-only: run after intentional UI changes via
-#   gh workflow run visual-baselines.yml
+# platform — Playwright snapshots are platform-specific) and commits them back
+# to the dispatched branch. Manual-only: run after intentional UI changes via
+#   gh workflow run visual-baselines.yml                 # regenerates on master
+#   gh workflow run visual-baselines.yml --ref my-branch # or on a PR branch,
+#                                                        # so the PR can go green
+#                                                        # before merge.
 # See docs/E2E.md ("Visual regression baselines").
 name: Visual Baselines
 
@@ -15,9 +18,11 @@ jobs:
   update-baselines:
     runs-on: ubuntu-latest
     steps:
+      # Check out (and later push to) the branch the workflow was dispatched on,
+      # so baselines can be regenerated on a feature branch — not only master.
       - uses: actions/checkout@v7
         with:
-          ref: master
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-node@v6
         with:

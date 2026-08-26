@@ -88,3 +88,5 @@ baselines are stale, not that the app is broken.
 Once the first successful run has committed linux baselines, the CI `e2e` job
 can drop its `--grep-invert "Visual regression"` filter and include the
 visual spec.
+
+<!-- ci: baselines regenerated chore/dep-audit-remediation -->

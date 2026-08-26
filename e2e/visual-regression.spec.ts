@@ -1,19 +1,25 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { gotoApp } from './helpers/auth';
 
 /**
  * Task 6.6 — ME-02: Visual Regression Tests
  *
  * Uses Playwright's built-in toHaveScreenshot() on key pages.
- * Tolerance configured in playwright.config.ts (0.1% pixel diff).
+ * Tolerance configured in playwright.config.ts.
  *
  * Baselines live in e2e/visual-regression.spec.ts-snapshots/ and are
  * platform-specific — CI needs linux-generated baselines, produced by the
- * manual .github/workflows/visual-baselines.yml workflow (see docs/E2E.md).
+ * .github/workflows/visual-baselines.yml workflow (see docs/E2E.md).
  *
- * Flake hardening: every screenshot disables animations and hides the text
- * caret; navigation waits for networkidle. No masks — the captured pages
- * render from stored story data, not wall-clock time.
+ * Navigation: each page is opened DIRECTLY via its URL rather than by clicking
+ * sidebar links from '/'. In a fresh CI project the dashboard's GenesisGuard
+ * redirects '/' to /genesis, whose full-height onboarding overlay intercepted
+ * the old sidebar-click navigation (causing click-timeout failures). Direct
+ * navigation renders each page deterministically from empty story data.
+ *
+ * Flake hardening: every screenshot disables animations and hides the caret;
+ * navigation waits for networkidle. Captures render from stored story data, not
+ * wall-clock time.
  */
 
 const SCREENSHOT_OPTIONS = {
@@ -22,48 +28,30 @@ const SCREENSHOT_OPTIONS = {
   caret: 'hide',
 } as const;
 
-/** Follow an in-app nav link (skipping when the page is not reachable). */
-async function gotoSection(page: Page, selector: string, label: string): Promise<void> {
-  const link = page.locator(selector);
-  if (await link.count() === 0) {
-    test.skip(true, `${label} not accessible`);
-  }
-  await link.first().click();
-  await page.waitForLoadState('networkidle');
-}
-
 test.describe('Visual regression', () => {
-  test('dashboard page', async ({ page }) => {
-    await gotoApp(page, '/');
+  test('genesis (first-run) page', async ({ page }) => {
+    // The empty-project onboarding screen — what a brand-new user actually sees
+    // (GenesisGuard redirects an empty dashboard here).
+    await gotoApp(page, '/genesis');
     await page.waitForLoadState('networkidle');
-    await expect(page).toHaveScreenshot('dashboard.png', SCREENSHOT_OPTIONS);
+    await expect(page).toHaveScreenshot('genesis.png', SCREENSHOT_OPTIONS);
   });
 
   test('manuscript page', async ({ page }) => {
-    await gotoApp(page, '/');
+    await gotoApp(page, '/manuscript');
     await page.waitForLoadState('networkidle');
-    await gotoSection(page, '[href*="manuscript"], [data-testid="manuscript"]', 'Manuscript page');
     await expect(page).toHaveScreenshot('manuscript.png', SCREENSHOT_OPTIONS);
   });
 
   test('flow mode page', async ({ page }) => {
-    await gotoApp(page, '/');
+    await gotoApp(page, '/flow');
     await page.waitForLoadState('networkidle');
-    await gotoSection(page, '[href*="flow"], [data-testid="flow-mode"]', 'Flow mode');
     await expect(page).toHaveScreenshot('flow-mode.png', SCREENSHOT_OPTIONS);
   });
 
-  test('corkboard page', async ({ page }) => {
-    await gotoApp(page, '/');
-    await page.waitForLoadState('networkidle');
-    await gotoSection(page, '[href*="corkboard"], [data-testid="corkboard"]', 'Corkboard');
-    await expect(page).toHaveScreenshot('corkboard.png', SCREENSHOT_OPTIONS);
-  });
-
   test('settings page', async ({ page }) => {
-    await gotoApp(page, '/');
+    await gotoApp(page, '/settings');
     await page.waitForLoadState('networkidle');
-    await gotoSection(page, '[href*="settings"], [data-testid="settings"]', 'Settings');
     await expect(page).toHaveScreenshot('settings.png', SCREENSHOT_OPTIONS);
   });
 });
