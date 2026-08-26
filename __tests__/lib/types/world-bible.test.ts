@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   WORLD_BIBLE_CATEGORIES,
   isWorldBibleSection,
+  worldBibleDedupKey,
   CATEGORY_META,
   type WorldBibleCategory,
 } from '@/lib/types/world-bible';
@@ -50,6 +51,26 @@ describe('world-bible types', () => {
 
     it('returns false for invalid source', () => {
       expect(isWorldBibleSection({ ...valid, source: 'unknown' })).toBe(false);
+    });
+  });
+
+  describe('worldBibleDedupKey (M-4)', () => {
+    it('is stable across differing ids (the re-extraction case)', () => {
+      const a = { category: 'geography', title: 'The Northern Reach' };
+      const b = { category: 'geography', title: 'The Northern Reach' };
+      expect(worldBibleDedupKey(a)).toBe(worldBibleDedupKey(b));
+    });
+
+    it('normalizes case and surrounding whitespace', () => {
+      expect(worldBibleDedupKey({ category: 'history', title: '  The War  ' }))
+        .toBe(worldBibleDedupKey({ category: 'history', title: 'the war' }));
+    });
+
+    it('distinguishes different titles and different categories', () => {
+      expect(worldBibleDedupKey({ category: 'history', title: 'The War' }))
+        .not.toBe(worldBibleDedupKey({ category: 'history', title: 'The Peace' }));
+      expect(worldBibleDedupKey({ category: 'history', title: 'Trade' }))
+        .not.toBe(worldBibleDedupKey({ category: 'economy', title: 'Trade' }));
     });
   });
 });

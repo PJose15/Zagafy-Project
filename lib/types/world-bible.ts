@@ -23,6 +23,17 @@ export interface WorldBibleSection {
   canonStatus: CanonStatus;
 }
 
+/**
+ * Content-identity key for a world-bible section (M-4). AI extraction mints a
+ * fresh `crypto.randomUUID()` for every section on every run, so re-extracting
+ * the same manuscript can't be deduped by id — it would append the same lore
+ * again. This key (category + normalized title) identifies "the same entry"
+ * across extraction runs so duplicates can be detected and skipped at merge.
+ */
+export function worldBibleDedupKey(section: { category: string; title: string }): string {
+  return `${section.category}::${section.title.trim().toLowerCase()}`;
+}
+
 export function isWorldBibleSection(value: unknown): value is WorldBibleSection {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
