@@ -20,7 +20,9 @@ import { formatDateKey } from '@/lib/gamification/date-utils';
 import { startSprint as startSprintFn, endSprint as endSprintFn, abandonSprint as abandonSprintFn } from '@/lib/gamification/sprints';
 import type { SprintResult } from '@/lib/gamification/sprints';
 import { analyzeStory } from '@/lib/gamification/finishing-engine';
+import { countFinishedChapters } from '@/lib/gamification/awards';
 import { readSessions } from '@/lib/types/writing-session';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 
 // ─── Return type ───
 
@@ -82,7 +84,12 @@ function useGamificationInternal(): GamificationAPI {
       refreshQuests(current.quests, storyState, todayKey),
       storyState,
     );
-    const updatedFinishing = analyzeStory(storyState, current.finishing.milestones);
+    // Finishing is per-novel: seed from THIS project's stored milestones (not the
+    // global blob), so a switched-to project never inherits another novel's
+    // completed milestones. Absent slot → undefined seed → computed fresh.
+    const activeId = getActiveProjectId();
+    const prevMilestones = current.finishingByProject?.[activeId]?.milestones;
+    const updatedFinishing = analyzeStory(storyState, prevMilestones);
 
     // S5-G1: award STREAK_MILESTONE (7/30/100 days) once per streak run.
     // The marker persists in `awards` and resets when the streak breaks, so
@@ -102,6 +109,7 @@ function useGamificationInternal(): GamificationAPI {
       streak: updatedStreak,
       quests: updatedQuests,
       finishing: updatedFinishing,
+      finishingByProject: { ...(current.finishingByProject ?? {}), [activeId]: updatedFinishing },
       awards: { ...awards, streakMilestoneAwarded: streakResult.marker },
     };
 
@@ -218,7 +226,16 @@ function useGamificationInternal(): GamificationAPI {
   const finishing = gamification.finishing;
 
   const refreshFinishing = useCallback(() => {
-    mutate((current) => ({ ...current, finishing: analyzeStory(storyState, current.finishing.milestones) }));
+    mutate((current) => {
+      const activeId = getActiveProjectId();
+      const prevMilestones = current.finishingByProject?.[activeId]?.milestones;
+      const finishing = analyzeStory(storyState, prevMilestones);
+      return {
+        ...current,
+        finishing,
+        finishingByProject: { ...(current.finishingByProject ?? {}), [activeId]: finishing },
+      };
+    });
   }, [mutate, storyState]);
 
   // REG-7: keep the finishing analysis in sync with the story. The mount effect
@@ -242,8 +259,17 @@ function useGamificationInternal(): GamificationAPI {
     if (!isLoaded) return;
     mutate((current) => {
       const awards = current.awards ?? defaultAwardsState();
-      const result = evaluateChapterAward(storyState.chapters ?? [], awards.chapterHighWater);
-      if (result.newlyFinished === 0 && result.newHighWater === awards.chapterHighWater) return current;
+      const activeId = getActiveProjectId();
+      const byProject = awards.chapterHighWaterByProject ?? {};
+      const hasSlot = Object.prototype.hasOwnProperty.call(byProject, activeId);
+      const chapters = storyState.chapters ?? [];
+      // Grandfather a project's FIRST evaluation to its current finished count so
+      // pre-existing finished chapters (or a project switch) never re-award; only
+      // genuinely new finishes beyond this project's own mark earn XP.
+      const currentHW = hasSlot ? byProject[activeId] : countFinishedChapters(chapters);
+      const result = evaluateChapterAward(chapters, currentHW);
+      const slotUnchanged = hasSlot && result.newHighWater === currentHW;
+      if (result.newlyFinished === 0 && slotUnchanged) return current;
       return {
         ...current,
         xp: result.newlyFinished > 0
@@ -254,7 +280,10 @@ function useGamificationInternal(): GamificationAPI {
               result.newlyFinished === 1 ? 'Chapter finished' : `${result.newlyFinished} chapters finished`,
             )
           : current.xp,
-        awards: { ...awards, chapterHighWater: result.newHighWater },
+        awards: {
+          ...awards,
+          chapterHighWaterByProject: { ...byProject, [activeId]: result.newHighWater },
+        },
       };
     });
   }, [isLoaded, storyState.chapters, mutate]);
