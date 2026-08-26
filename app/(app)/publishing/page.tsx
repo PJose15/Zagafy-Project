@@ -521,7 +521,7 @@ export default function PublishingPage() {
                 <div key={i} className="p-4 bg-parchment-200 rounded-lg border border-sepia-300/50">
                   <h4 className="font-serif text-sepia-900 font-semibold">
                     {ct.title} <span className="text-brass-700 font-normal">{t('comp.by')} {ct.author}</span>
-                    {ct.year > 0 && <span className="text-sepia-500 text-sm ml-2">({ct.year})</span>}
+                    {ct.year > 0 && <span className="text-sepia-600 text-sm ml-2">({ct.year})</span>}
                   </h4>
                   <p className="text-sepia-700 text-sm mt-2">{ct.rationale}</p>
                 </div>
@@ -703,7 +703,7 @@ export default function PublishingPage() {
                 ))}
                 {submissions.length === 0 && !showAddRow && (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-sepia-500">
+                    <td colSpan={6} className="py-8 text-center text-sepia-600">
                       {t('tracker.empty')}
                     </td>
                   </tr>

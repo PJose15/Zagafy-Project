@@ -97,7 +97,7 @@ export function HeteronymModal({ heteronym, onSave, onClose }: HeteronymModalPro
         aria-modal="true"
         aria-label={isEditing ? t('editAria') : t('createAria')}
       >
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div className="absolute inset-0 bg-sepia-900/60 backdrop-blur-sm" onClick={onClose} />
 
         <motion.div
           ref={panelRef}

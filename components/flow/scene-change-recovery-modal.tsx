@@ -27,7 +27,7 @@ export function SceneChangeRecoveryModal({
       aria-labelledby="recovery-title"
       aria-describedby="recovery-message"
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-sepia-900/60 backdrop-blur-sm" />
       <div ref={panelRef} className="relative bg-parchment-100 border border-sepia-300/40 rounded-xl shadow-2xl max-w-md w-full p-6 texture-parchment">
         <div className="space-y-4">
           <div className="text-center">

@@ -21,6 +21,11 @@ export function useProjects() {
       const list = await listProjects();
       setProjects(list);
       setActiveId(getActiveProjectId());
+    } catch (e) {
+      // A Dexie read failure previously rejected this promise unhandled and left
+      // the UI showing an empty state indistinguishable from "no projects". Log
+      // and keep the prior list so a transient storage error doesn't blank the page.
+      console.error('[use-projects] failed to load projects', e);
     } finally {
       setLoading(false);
     }

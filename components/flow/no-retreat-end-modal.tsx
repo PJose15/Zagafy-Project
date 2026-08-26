@@ -50,7 +50,7 @@ export function NoRetreatEndModal({ open, stats, onSave, onBurn }: NoRetreatEndM
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[250] bg-black/60 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[250] bg-sepia-900/60 flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="no-retreat-end-title"
