@@ -27,6 +27,7 @@ import { WorldBibleMergeModal } from '@/components/bible/WorldBibleMergeModal';
 import { WorldBibleReviewQueue } from '@/components/bible/WorldBibleReviewQueue';
 import {
   WORLD_BIBLE_CATEGORIES,
+  worldBibleDedupKey,
   type WorldBibleSection, type WorldBibleCategory,
 } from '@/lib/types/world-bible';
 import type { LucideIcon } from 'lucide-react';
@@ -152,7 +153,20 @@ export default function BiblePage() {
   }, [state.chapters, t]);
 
   const handleMergeConfirm = useCallback((selected: WorldBibleSection[]) => {
-    updateField('world_bible', [...state.world_bible, ...selected]);
+    // M-4 defense-in-depth: skip any accepted section that duplicates an
+    // existing entry (or another accepted one) by content key, so re-extraction
+    // never appends the same lore twice even if a duplicate was ticked.
+    const seen = new Set(state.world_bible.map(worldBibleDedupKey));
+    const deduped: WorldBibleSection[] = [];
+    for (const s of selected) {
+      const key = worldBibleDedupKey(s);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(s);
+    }
+    if (deduped.length > 0) {
+      updateField('world_bible', [...state.world_bible, ...deduped]);
+    }
     setIncomingSections([]);
   }, [state.world_bible, updateField]);
 

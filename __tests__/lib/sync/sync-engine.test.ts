@@ -34,6 +34,7 @@ vi.mock('@/lib/storage/dexie-db', () => ({
     sessions: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
     chatMessages: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
     writerInsights: { put: vi.fn(async () => {}) },
+    comments: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
   },
 }));
 
@@ -649,7 +650,7 @@ describe('SyncEngine', () => {
   // ─── Phase 1 data-loss fixes (C1/C2/C3) ───
 
   function emptyPull() {
-    return { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: new Date().toISOString() };
+    return { storyId: null, story: null, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], comments: [], serverTimestamp: new Date().toISOString() };
   }
   function pullResponse(over: Record<string, unknown>) {
     return new Response(JSON.stringify({ data: { ...emptyPull(), ...over } }), { status: 200 });
@@ -766,6 +767,43 @@ describe('SyncEngine', () => {
 
       const put = vi.mocked(db.chapters.put).mock.calls.find((c) => (c[0] as any).id === 'ch-2');
       expect(put).toBeDefined();
+    });
+
+    it('applies a pulled comment (A7) and re-stamps the active projectId', async () => {
+      vi.mocked(readQueue).mockResolvedValue({ entries: [], coveredIds: [] });
+      mockFetch.mockResolvedValue(pullResponse({
+        storyId: 'server-story-1',
+        comments: [{
+          id: 'cm-1', chapterId: 'ch-1', startOffset: 3, endOffset: 8, quote: 'quote',
+          prefix: '', suffix: '', text: 'a note', replies: [], resolved: false, orphaned: false,
+          createdAt: '2026-08-26T00:00:00Z', updatedAt: '2026-08-26T00:00:00Z',
+        }],
+      }));
+
+      await engine.start();
+
+      const put = vi.mocked(db.comments.put).mock.calls.find((c) => (c[0] as any).id === 'cm-1');
+      expect(put).toBeDefined();
+      // Re-stamped with the active project (server scopes by storyId, not projectId).
+      expect(typeof (put![0] as any).projectId).toBe('string');
+      expect((put![0] as any).projectId.length).toBeGreaterThan(0);
+      expect((put![0] as any).text).toBe('a note');
+    });
+
+    it('does NOT overwrite a comment that has a pending local edit (A7 dirty guard)', async () => {
+      vi.mocked(readQueue).mockResolvedValue({
+        entries: [{ id: 'q1', entityType: 'comment', entityId: 'cm-1', op: 'upsert', timestamp: Date.now() }],
+        coveredIds: ['q1'],
+      });
+      mockFetch.mockResolvedValue(pullResponse({
+        storyId: 'server-story-1',
+        comments: [{ id: 'cm-1', chapterId: 'ch-1', text: 'server version', replies: [], createdAt: '', updatedAt: '' }],
+      }));
+
+      await engine.start();
+
+      const put = vi.mocked(db.comments.put).mock.calls.find((c) => (c[0] as any).id === 'cm-1');
+      expect(put).toBeUndefined();
     });
 
     it('does NOT overwrite the story blob when a story edit is pending', async () => {

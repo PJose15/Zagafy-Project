@@ -33,6 +33,7 @@ const mockSnapshotsFindMany = vi.fn(async () => []);
 const mockSessionsFindMany = vi.fn(async () => []);
 const mockChatMessagesFindMany = vi.fn(async () => []);
 const mockInsightsFindMany = vi.fn(async () => []);
+const mockCommentsFindMany = vi.fn(async () => []);
 
 vi.mock('@/db/client', () => ({
   db: vi.fn(() => ({
@@ -51,6 +52,7 @@ vi.mock('@/db/client', () => ({
       sessions: { findMany: mockSessionsFindMany },
       chatMessages: { findMany: mockChatMessagesFindMany },
       writerInsights: { findMany: mockInsightsFindMany },
+      comments: { findMany: mockCommentsFindMany },
     },
   })),
   isDatabaseConfigured: vi.fn(() => true),
@@ -65,6 +67,7 @@ vi.mock('@/db/schema', () => ({
   sessions: { id: 'id', storyId: 'storyId', startedAt: 'startedAt' },
   chatMessages: { id: 'id', storyId: 'storyId', timestamp: 'timestamp' },
   writerInsights: { id: 'id', storyId: 'storyId', lastObservedAt: 'lastObservedAt' },
+  comments: { id: 'id', storyId: 'storyId', chapterId: 'chapterId', updatedAt: 'updatedAt' },
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -93,6 +96,7 @@ describe('GET /api/sync/pull', () => {
     mockSessionsFindMany.mockResolvedValue([]);
     mockChatMessagesFindMany.mockResolvedValue([]);
     mockInsightsFindMany.mockResolvedValue([]);
+    mockCommentsFindMany.mockResolvedValue([]);
     mockGetUserPlan.mockResolvedValue('writer');
   });
 

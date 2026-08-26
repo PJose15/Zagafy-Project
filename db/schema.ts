@@ -200,6 +200,28 @@ export const writerInsights = pgTable(
   }),
 );
 
+// comments — A7 / MP-05 margin comments, synced so they survive device switches
+// and reach collaborators. The full ManuscriptComment (offsets, quote, prefix/
+// suffix, replies, resolved/orphaned flags) rides in `data` — same jsonb-blob
+// pattern as sessions/snapshots — so the anchoring schema can evolve without a
+// column migration. Scoped by storyId for tenant isolation like the other
+// per-story entities; chapterId is stored for query/re-anchor locality.
+export const comments = pgTable(
+  'comments',
+  {
+    id: text('id').primaryKey(),
+    storyId: text('story_id')
+      .references(() => stories.id, { onDelete: 'cascade' })
+      .notNull(),
+    chapterId: text('chapter_id').notNull(),
+    updatedAt: timestamp('updated_at').notNull(),
+    data: jsonb('data').notNull(), // full ManuscriptComment
+  },
+  (t) => ({
+    storyChapterIdx: index('comments_story_chapter_idx').on(t.storyId, t.chapterId),
+  }),
+);
+
 // stripe_events — Phase 5.7 webhook idempotency guard
 export const stripeEvents = pgTable('stripe_events', {
   id: text('id').primaryKey(), // Stripe event ID (evt_xxx)

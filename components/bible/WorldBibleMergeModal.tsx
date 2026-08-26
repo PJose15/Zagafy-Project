@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { springs } from '@/lib/animations';
 import { InkStampButton } from '@/components/antiquarian';
-import { type WorldBibleSection, type WorldBibleCategory } from '@/lib/types/world-bible';
+import { type WorldBibleSection, type WorldBibleCategory, worldBibleDedupKey } from '@/lib/types/world-bible';
 
 interface WorldBibleMergeModalProps {
   open: boolean;
@@ -19,14 +19,25 @@ interface WorldBibleMergeModalProps {
 export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConfirm }: WorldBibleMergeModalProps) {
   const t = useTranslations('bible');
   const tCommon = useTranslations('common');
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(incoming.map((s) => s.id)));
+
+  // M-4: sections whose (category + title) already exists are duplicates of a
+  // prior extraction. They are marked and DESELECTED by default so re-extracting
+  // a manuscript doesn't silently re-add the same lore. The user can still tick
+  // one to force-overwrite intent, but the merge itself skips exact duplicates.
+  const existingKeys = new Set(existing.map(worldBibleDedupKey));
+  const isDuplicate = (s: WorldBibleSection) => existingKeys.has(worldBibleDedupKey(s));
+
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(incoming.filter((s) => !isDuplicate(s)).map((s) => s.id)),
+  );
 
   // The modal stays mounted (visibility is driven by `open`), so the lazy
-  // initializer above only runs once. Re-seed the selection with all incoming
-  // sections whenever the modal opens or a fresh extraction changes `incoming`,
+  // initializer above only runs once. Re-seed the selection (non-duplicates
+  // only) whenever the modal opens or a fresh extraction changes `incoming`,
   // otherwise a second extraction's sections would render unselected.
   useEffect(() => {
-    if (open) setSelected(new Set(incoming.map((s) => s.id)));
+    if (open) setSelected(new Set(incoming.filter((s) => !isDuplicate(s)).map((s) => s.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, incoming]);
 
   const toggle = (id: string) => {
@@ -121,7 +132,15 @@ export function WorldBibleMergeModal({ open, onClose, incoming, existing, onConf
                             {selected.has(s.id) ? <CheckSquare size={18} /> : <Square size={18} />}
                           </span>
                           <div className="min-w-0">
-                            <p className="font-serif font-semibold text-sm text-sepia-900">{s.title}</p>
+                            <p className="font-serif font-semibold text-sm text-sepia-900 flex items-center gap-1.5">
+                              {s.title}
+                              {isDuplicate(s) && (
+                                <span className="flex items-center gap-1 text-[10px] text-brass-700 bg-brass-500/10 px-1.5 py-0.5 rounded-full shrink-0">
+                                  <AlertTriangle size={10} />
+                                  {t('hasExisting')}
+                                </span>
+                              )}
+                            </p>
                             <p className="text-xs text-sepia-600 mt-0.5 line-clamp-2">{s.content}</p>
                           </div>
                         </button>

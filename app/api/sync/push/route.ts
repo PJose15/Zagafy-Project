@@ -228,6 +228,8 @@ async function applyDelta(
       return applyChatMessageUpsert(storyId, entityId, payload);
     case 'writerInsight':
       return applyInsightUpsert(storyId, entityId, payload);
+    case 'comment':
+      return applyCommentUpsert(storyId, entityId, payload);
     default:
       log.warn('unknown entity type', { entityType });
       return {};
@@ -276,6 +278,11 @@ async function applyDelete(
     case 'writerInsight':
       await db().delete(schema.writerInsights).where(
         and(eq(schema.writerInsights.id, entityId), eq(schema.writerInsights.storyId, storyId)),
+      );
+      break;
+    case 'comment':
+      await db().delete(schema.comments).where(
+        and(eq(schema.comments.id, entityId), eq(schema.comments.storyId, storyId)),
       );
       break;
   }
@@ -522,6 +529,39 @@ async function applyInsightUpsert(
           : new Date(),
         confidence: typeof payload.confidence === 'number' ? payload.confidence : 50,
         pinned: typeof payload.pinned === 'number' ? payload.pinned : 0,
+      },
+    });
+  return {};
+}
+
+async function applyCommentUpsert(
+  storyId: string,
+  entityId: string,
+  payload: Record<string, unknown>,
+): Promise<ApplyResult> {
+  // The full ManuscriptComment rides in `payload`. Comments are per-user
+  // annotations with no version — last-write-wins is acceptable — so this is a
+  // straight upsert scoped to the caller's story (the onConflict guard blocks
+  // cross-tenant overwrite of a comment id belonging to another user's story).
+  const updatedAt = payload.updatedAt
+    ? new Date(payload.updatedAt as string)
+    : new Date();
+  await db()
+    .insert(schema.comments)
+    .values({
+      id: entityId,
+      storyId,
+      chapterId: (payload.chapterId as string) ?? '',
+      updatedAt,
+      data: payload,
+    })
+    .onConflictDoUpdate({
+      target: schema.comments.id,
+      where: eq(schema.comments.storyId, storyId),
+      set: {
+        chapterId: (payload.chapterId as string) ?? '',
+        updatedAt,
+        data: payload,
       },
     });
   return {};

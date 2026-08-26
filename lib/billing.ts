@@ -23,7 +23,14 @@ export interface PlanLimits {
   customHeteronyms: boolean;
   /** Whether API access is available. */
   apiAccess: boolean;
-  /** Maximum cloud snapshots per story. */
+  /**
+   * Maximum snapshots retained per story. The snapshot store enforces a single
+   * UNIVERSAL cap (DEFAULT_SNAPSHOT_CAP in lib/snapshot.ts, auto-pruning the
+   * oldest) for every tier, so all plans share the same value here to keep this
+   * table truthful. (Previously this advertised per-tier numbers — 3/25/100/∞ —
+   * that nothing enforced; making snapshots a paid differentiator is a pricing
+   * decision, deliberately not taken.)
+   */
   maxSnapshotsPerStory: number;
 }
 
@@ -36,7 +43,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxCollaborators: 0,
     customHeteronyms: false,
     apiAccess: false,
-    maxSnapshotsPerStory: 3,
+    maxSnapshotsPerStory: 30, // universal cap — see DEFAULT_SNAPSHOT_CAP
   },
   writer: {
     maxStories: Infinity,
@@ -46,7 +53,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxCollaborators: 0,
     customHeteronyms: false,
     apiAccess: false,
-    maxSnapshotsPerStory: 25,
+    maxSnapshotsPerStory: 30,
   },
   author: {
     maxStories: Infinity,
@@ -56,7 +63,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxCollaborators: 1,
     customHeteronyms: false,
     apiAccess: false,
-    maxSnapshotsPerStory: 100,
+    maxSnapshotsPerStory: 30,
   },
   studio: {
     maxStories: Infinity,
@@ -66,7 +73,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxCollaborators: 5,
     customHeteronyms: true,
     apiAccess: true,
-    maxSnapshotsPerStory: Infinity,
+    maxSnapshotsPerStory: 30,
   },
 };
 

@@ -13,7 +13,8 @@ export type SyncEntityType =
   | 'storySnapshot'
   | 'session'
   | 'chatMessage'
-  | 'writerInsight';
+  | 'writerInsight'
+  | 'comment';
 
 /** A recorded local mutation waiting to be pushed to the server. */
 export interface SyncQueueEntry {
@@ -111,5 +112,6 @@ export interface PullResponse {
   sessions: Record<string, unknown>[];
   chatMessages: Record<string, unknown>[];
   writerInsights: Record<string, unknown>[];
+  comments: Record<string, unknown>[];
   serverTimestamp: string;
 }

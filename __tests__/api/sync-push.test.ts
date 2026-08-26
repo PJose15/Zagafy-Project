@@ -74,6 +74,7 @@ vi.mock('@/db/schema', () => ({
   sessions: { id: 'id', storyId: 'storyId' },
   chatMessages: { id: 'id', storyId: 'storyId' },
   writerInsights: { id: 'id', storyId: 'storyId' },
+  comments: { id: 'id', storyId: 'storyId' },
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -424,6 +425,45 @@ describe('POST /api/sync/push', () => {
     expect(stateWrite).toBeDefined();
     expect(stateWrite![0].state).not.toHaveProperty('version');
     expect(stateWrite![0].version).toBe(4);
+  });
+
+  it('applies a comment upsert scoped to the caller story (A7)', async () => {
+    const res = await POST(makeRequest({
+      storyId: 'story-1',
+      storyTitle: 'Test',
+      deltas: [
+        {
+          entityType: 'comment',
+          entityId: 'cm-1',
+          op: 'upsert',
+          payload: { id: 'cm-1', chapterId: 'ch-1', text: 'note', quote: 'q', updatedAt: '2026-08-26T00:00:00Z' },
+          timestamp: Date.now(),
+        },
+      ],
+    }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.applied).toBe(1);
+    // The comment upsert is guarded to the caller's story.
+    const commentCall = mockOnConflictDoUpdate.mock.calls.find(
+      (c) => c[0]?.target === 'id' && Array.isArray(c[0]?.where) && c[0]?.set?.chapterId === 'ch-1',
+    );
+    expect(commentCall).toBeDefined();
+    expect(commentCall![0].where).toEqual(['storyId', 'story-1']);
+  });
+
+  it('applies a comment delete scoped to the caller story (A7)', async () => {
+    const res = await POST(makeRequest({
+      storyId: 'story-1',
+      storyTitle: 'Test',
+      deltas: [
+        { entityType: 'comment', entityId: 'cm-1', op: 'delete', payload: null, timestamp: Date.now() },
+      ],
+    }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.applied).toBe(1);
+    expect(mockDeleteWhere).toHaveBeenCalled();
   });
 
   it('returns 500 when database not configured', async () => {
