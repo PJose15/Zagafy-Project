@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
     const serverTimestamp = new Date(Date.now() - WATERMARK_OVERLAP_MS).toISOString();
 
     // Fetch all entities, optionally filtered by since timestamp
-    const [chapters, chapterVersions, storySnapshots, sessions, chatMessages, writerInsights] =
+    const [chapters, chapterVersions, storySnapshots, sessions, chatMessages, writerInsights, comments] =
       await Promise.all([
         fetchChapters(storyId, sinceDate),
         fetchChapterVersions(storyId, sinceDate),
@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
         fetchSessions(storyId, sinceDate),
         fetchChatMessages(storyId, sinceDate),
         fetchInsights(storyId, sinceDate),
+        fetchComments(storyId, sinceDate),
       ]);
 
     // Only include the story state if it was updated since the timestamp
@@ -130,6 +131,7 @@ export async function GET(req: NextRequest) {
       sessions: sessions.length,
       chatMessages: chatMessages.length,
       writerInsights: writerInsights.length,
+      comments: comments.length,
       since: sinceParam ?? 'full',
     });
 
@@ -148,6 +150,7 @@ export async function GET(req: NextRequest) {
       sessions: sessions.map(serializeSession),
       chatMessages: chatMessages.map(serializeChatMessage),
       writerInsights: writerInsights.map(serializeInsight),
+      comments: comments.map(serializeComment),
       serverTimestamp,
     }, { requestId });
   } catch (dbErr) {
@@ -229,6 +232,17 @@ async function fetchInsights(storyId: string, since: Date | null) {
   });
 }
 
+async function fetchComments(storyId: string, since: Date | null) {
+  if (since) {
+    return db().query.comments.findMany({
+      where: and(eq(schema.comments.storyId, storyId), gte(schema.comments.updatedAt, since)),
+    });
+  }
+  return db().query.comments.findMany({
+    where: eq(schema.comments.storyId, storyId),
+  });
+}
+
 // ─── Serialization (Postgres → JSON) ───
 
 function serializeChapter(c: typeof schema.chapters.$inferSelect): Record<string, unknown> {
@@ -300,4 +314,11 @@ function serializeInsight(i: typeof schema.writerInsights.$inferSelect): Record<
     confidence: i.confidence,
     pinned: i.pinned,
   };
+}
+
+function serializeComment(c: typeof schema.comments.$inferSelect): Record<string, unknown> {
+  // The full ManuscriptComment lives in `data`; return it directly so the
+  // client applies it verbatim (offsets, quote, prefix/suffix, replies, flags).
+  const data = (c.data ?? {}) as Record<string, unknown>;
+  return { ...data, id: c.id, chapterId: c.chapterId };
 }

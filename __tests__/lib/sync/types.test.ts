@@ -177,6 +177,7 @@ describe('sync types', () => {
         sessions: [],
         chatMessages: [],
         writerInsights: [],
+        comments: [],
         serverTimestamp: '2026-01-01T00:00:00Z',
       };
 
@@ -188,6 +189,7 @@ describe('sync types', () => {
       expect(Array.isArray(response.sessions)).toBe(true);
       expect(Array.isArray(response.chatMessages)).toBe(true);
       expect(Array.isArray(response.writerInsights)).toBe(true);
+      expect(Array.isArray(response.comments)).toBe(true);
       expect(response.serverTimestamp).toBe('2026-01-01T00:00:00Z');
     });
   });

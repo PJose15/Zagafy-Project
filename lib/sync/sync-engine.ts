@@ -11,6 +11,7 @@
 import { db as dexieDb } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 import { wordCount } from '@/lib/editor/serialization';
+import type { ManuscriptComment } from '@/lib/types/comment';
 import type {
   SyncDelta,
   SyncStatus,
@@ -350,6 +351,9 @@ export class SyncEngine {
     const pendingInsightIds = new Set(
       pending.filter(e => e.entityType === 'writerInsight').map(e => e.entityId),
     );
+    const pendingCommentIds = new Set(
+      pending.filter(e => e.entityType === 'comment').map(e => e.entityId),
+    );
     const storyDirty = pending.some(e => e.entityType === 'story');
 
     // Apply story state (skip if a local story edit is pending — see dirty guard)
@@ -499,6 +503,38 @@ export class SyncEngine {
         appliedInsights++;
       }
       counts.writerInsights = appliedInsights;
+    }
+
+    // Apply comments (A7). Skip any with a pending local edit (dirty guard). The
+    // pulled payload is a full ManuscriptComment minus projectId (the server
+    // scopes by storyId), so re-stamp the active projectId. Offsets were computed
+    // against the (also-synced) chapter text; the manuscript editor re-anchors on
+    // load, so a small drift self-heals without special handling here.
+    const pulledComments = Array.isArray(data.comments) ? data.comments : [];
+    if (pulledComments.length > 0) {
+      let appliedComments = 0;
+      for (const c of pulledComments) {
+        const id = c.id as string;
+        if (!id || pendingCommentIds.has(id)) continue;
+        await dexieDb.comments.put({
+          id,
+          projectId,
+          chapterId: (c.chapterId as string) ?? '',
+          startOffset: typeof c.startOffset === 'number' ? c.startOffset : 0,
+          endOffset: typeof c.endOffset === 'number' ? c.endOffset : 0,
+          quote: (c.quote as string) ?? '',
+          prefix: (c.prefix as string) ?? '',
+          suffix: (c.suffix as string) ?? '',
+          text: (c.text as string) ?? '',
+          replies: Array.isArray(c.replies) ? (c.replies as ManuscriptComment['replies']) : [],
+          resolved: c.resolved === true,
+          orphaned: c.orphaned === true,
+          createdAt: (c.createdAt as string) ?? new Date().toISOString(),
+          updatedAt: (c.updatedAt as string) ?? new Date().toISOString(),
+        });
+        appliedComments++;
+      }
+      counts.comments = appliedComments;
     }
 
     return counts;
@@ -798,6 +834,12 @@ async function resolvePayload(
         confidence: row.confidence,
         pinned: row.pinned,
       };
+    }
+    case 'comment': {
+      // The whole ManuscriptComment is the payload (offsets, quote, replies…).
+      const row = await dexieDb.comments.get(entityId);
+      if (!row) return null;
+      return row as unknown as Record<string, unknown>;
     }
     default:
       return null;
