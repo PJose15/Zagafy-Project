@@ -58,6 +58,10 @@ export default function ReaderPage() {
         setIssues([]);
         setAnalyzedAt(null);
       }
+    }).catch(() => {
+      // A cache-read failure shouldn't crash the reader — fall back to no cached
+      // analysis (the user can re-run it manually).
+      if (!cancelled) { setIssues([]); setAnalyzedAt(null); }
     });
     return () => { cancelled = true; };
   }, [chapterId, plainContent]);
