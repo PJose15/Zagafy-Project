@@ -64,6 +64,21 @@ export const navItems = [
 export function ParchmentSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  // On desktop (md+) the sidebar is always visible (md:translate-x-0); on mobile
+  // it slides off-screen (-translate-x-full) when closed but stays in the DOM,
+  // leaving its nav links tab-focusable. Track the breakpoint (lazy-init to avoid
+  // a first-paint flash on desktop) so the off-screen drawer can be `inert`.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const drawerHidden = !isOpen && !isDesktop;
   const t = useTranslations('nav');
   const tSide = useTranslations('sidebar');
   const tApp = useTranslations('app');
@@ -135,6 +150,10 @@ export function ParchmentSidebar() {
         className={`print:hidden fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-[380ms] ease-[cubic-bezier(0.34,1.25,0.64,1)] md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        // When slid off-screen on mobile, take it out of the tab order and the
+        // a11y tree so keyboard/AT users don't land on hidden nav links.
+        inert={drawerHidden}
+        aria-hidden={drawerHidden || undefined}
       >
         <div className="p-6 hidden md:block">
           <p className="font-serif text-xl font-semibold text-cream-50 tracking-tight letterpress">
