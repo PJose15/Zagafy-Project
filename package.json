@@ -35,7 +35,7 @@
     "@lexical/rich-text": "0.47.0",
     "@lexical/selection": "^0.48.0",
     "@lexical/utils": "0.47.0",
-    "@react-pdf/renderer": "^4.5.1",
+    "@react-pdf/renderer": "^4.9.0",
     "@reactour/tour": "^3.7.0",
     "@sentry/nextjs": "10.64.0",
     "@upstash/ratelimit": "2.0.8",
