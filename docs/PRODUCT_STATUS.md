@@ -59,6 +59,12 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
   committed writes notify sync, and startup/periodic cycles retry durable entries.
   Insight confidence translates between local fractions and database percentages.
   Initial store hydration no longer creates an autosave/upload echo.
+- Before the first cloud binding, sync atomically queues the complete stored
+  project, including its manuscript and history. A snapshot/session-only trigger
+  cannot create an empty cloud manuscript. Metadata and chapter parents precede
+  history in bounded batches; incomplete local manuscripts block initial upload.
+  An embedded Postgres round trip verifies reopening every supported entity type
+  in a clean local workspace without duplicate uploads.
 - Stripe event claims and entitlement writes commit together. Failures roll back
   claims for retry. Per-customer locking and fresh subscription lookup prevent old
   event metadata from controlling the current entitlement.

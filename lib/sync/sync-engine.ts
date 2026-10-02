@@ -11,6 +11,7 @@
 import { db as dexieDb } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 import { wordCount } from '@/lib/editor/serialization';
+import { prepareInitialUpload } from './initial-upload';
 import { LOCAL_MUTATION_EVENT } from './local-mutation';
 import { applyCloudData } from './apply-cloud-data';
 import type {
@@ -148,27 +149,27 @@ export class SyncEngine {
       // re-reading the active project mid-push would push the wrong story after
       // a project switch.
       const projectId = getActiveProjectId();
-      const pending = await readQueue(projectId);
-      // The API accepts 500 deltas. Keep the rest queued for the next cycle,
-      // including superseded raw rows for every unpushed entity.
-      const queue = pending.entries.slice(0, 500);
+      let pending = await readQueue(projectId);
+      if (pending.entries.length === 0) {
+        this.setStatus('idle');
+        return;
+      }
+      // An existing manuscript must accompany a first history/session upload.
+      // Seed all scoped rows and the binding in one transaction, then re-read
+      // the queue so even a failed network request retains the complete upload.
+      let serverStoryId = await getServerStoryId(projectId);
+      if (!serverStoryId) {
+        serverStoryId = await prepareInitialUpload(projectId);
+        pending = await readQueue(projectId);
+      }
+      // Send story metadata and chapter parents before history in bounded batches.
+      const priority = (type: string) => type === 'story' ? 0 : type === 'chapter' ? 1 : 2;
+      const queue = [...pending.entries].sort((a, b) => priority(a.entityType) - priority(b.entityType)).slice(0, 500);
       if (pending.entries.length > 500 && !pending.coveredIdsByEntity) {
         throw new Error('Cannot safely batch sync queue');
       }
       const coveredIds = pending.entries.length <= 500 ? pending.coveredIds :
         queue.flatMap(entry => pending.coveredIdsByEntity![`${entry.entityType}:${entry.entityId}`] ?? []);
-      if (queue.length === 0) {
-        this.setStatus('idle');
-        this.pushing = false;
-        return;
-      }
-
-      // Resolve server story ID (create on first push)
-      let serverStoryId = await getServerStoryId(projectId);
-      if (!serverStoryId) {
-        serverStoryId = crypto.randomUUID();
-        await updateSyncMeta({ serverStoryId }, projectId);
-      }
 
       // Base version for the story blob's optimistic-concurrency check. The
       // server compares this against its stored version and rejects a stale
@@ -648,7 +649,7 @@ async function resolvePayload(
         observation: row.observation,
         evidenceCount: row.evidenceCount,
         lastObservedAt: row.lastObservedAt,
-        confidence: Math.round(Math.min(1, Math.max(0, row.confidence)) * 100),
+        confidence: Math.round(Math.min(1, Math.max(0, row.confidence > 1 ? row.confidence / 100 : row.confidence)) * 100),
         pinned: row.pinned,
       };
     }

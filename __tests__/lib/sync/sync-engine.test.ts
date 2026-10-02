@@ -7,6 +7,8 @@ vi.mock('@/lib/projects/active-project', () => ({ getActiveProjectId: () => acti
 // getSyncMeta defaults to a BOUND project (serverStoryId set) so the pull-apply
 // tests below exercise the normal bound path; unbound behavior is covered by a
 // dedicated test.
+vi.mock('@/lib/sync/initial-upload', () => ({ prepareInitialUpload: vi.fn(async () => 'new-server-story') }));
+
 vi.mock('@/lib/sync/sync-queue', () => ({
   readQueue: vi.fn(async () => ({ entries: [], coveredIds: [] })),
   clearEntries: vi.fn(async () => {}),
@@ -90,6 +92,26 @@ describe('SyncEngine', () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(mockFetch).toHaveBeenCalledWith('/api/sync/push', expect.objectContaining({ method: 'POST' }));
     expect(clearEntries).not.toHaveBeenCalled();
+  });
+
+  it('sends manuscript metadata and chapter parents before history in a bounded batch', async () => {
+    const entries = Array.from({ length: 500 }, (_, i) => ({ id: `q_v${i}`, entityType: 'chapterVersion' as const, entityId: `v${i}`, op: 'upsert' as const, timestamp: 1 }));
+    const all = [...entries, { id: 'q_story', entityType: 'story' as const, entityId: 'current', op: 'upsert' as const, timestamp: 2 }, { id: 'q_chapter', entityType: 'chapter' as const, entityId: 'ch_parent', op: 'upsert' as const, timestamp: 2 }];
+    vi.mocked(readQueue).mockResolvedValue({ entries: all, coveredIds: all.map(e => e.id), coveredIdsByEntity: Object.fromEntries(all.map(e => [`${e.entityType}:${e.entityId}`, [e.id]])) });
+    vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+    vi.mocked(db.chapterVersions.get).mockImplementation((async (id: string) => ({ id, chapterId: 'ch_parent', projectId: 'current', createdAt: '2026-10-02T10:00:00Z', data: '{}' })) as any);
+    vi.mocked(db.chapters.get).mockResolvedValue({ id: 'ch_parent', projectId: 'current', title: 'Opening', content: 'Writing', summary: '', updatedAt: 1 } as any);
+    mockFetch.mockResolvedValue(new Response('', { status: 503 }));
+    try {
+      await engine.start();
+      const sent = JSON.parse(mockFetch.mock.calls[0][1].body).deltas;
+      expect(sent).toHaveLength(500);
+      expect(sent.slice(0, 2)).toEqual([expect.objectContaining({ entityType: 'story' }), expect.objectContaining({ entityType: 'chapter', entityId: 'ch_parent' })]);
+      expect(clearEntries).not.toHaveBeenCalled();
+    } finally {
+      vi.mocked(db.chapterVersions.get).mockResolvedValue(null as any);
+      vi.mocked(db.chapters.get).mockResolvedValue(null as any);
+    }
   });
 
   // ─── Constructor / getStatus ───

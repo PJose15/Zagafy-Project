@@ -178,10 +178,26 @@ removal delivery and simultaneous initial checkouts remain explicit implementati
 gaps in PRODUCT_STATUS.md. Local tests do not establish live authenticated
 second-device access, provider integration or deployment readiness.
 
-Verified local result for this continuation: **218 suites / 3,000 tests passed**.
+Verified local result for this continuation: **220 suites / 3,008 tests passed**.
 The production build and type checking pass; repository lint has six existing
 warnings and no errors. All four production-build browser journeys pass again:
 chapter save/reload, real DOCX/PDF downloads and parsing, and JSON backup restore.
 These browser checks use the local embed runtime and do not establish authenticated
 hosted cloud acceptance. No hosted migration, live payment, merge or deployment
 was performed.
+
+
+A final first-upload regression found that a history-only queued mutation could
+create a cloud story without an existing local manuscript. Initial binding now
+commits a complete project upload seed and binding together; invalid/incomplete
+manuscripts or failed queue storage leave no new binding. Metadata and chapter
+parents precede history even when more than 500 entities are queued. Concurrent
+preparations share one binding and seed.
+
+The regression runs the real client engine against the sync route handlers and
+migrated embedded Postgres, then clears IndexedDB and reopens the cloud project.
+The manuscript, author metadata, chapter versions, snapshots, sessions, chat,
+insights and comments survive, with local scopes restored and no upload echo.
+Insight confidence round trips correctly for both fractional local values and
+older percentage values. This is an embedded two-workspace test, not a hosted
+Clerk/browser or multi-process acceptance result.

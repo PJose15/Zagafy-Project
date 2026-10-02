@@ -52,7 +52,7 @@ function rowToInsight(row: DexieWriterInsight): WriterInsight | null {
     observation: row.observation,
     evidenceCount: row.evidenceCount,
     lastObservedAt: row.lastObservedAt,
-    confidence: row.confidence,
+    confidence: Math.min(1, Math.max(0, row.confidence > 1 ? row.confidence / 100 : row.confidence)),
     pinned: row.pinned === 1,
   };
 }
