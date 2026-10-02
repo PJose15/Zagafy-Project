@@ -19,10 +19,14 @@ vi.mock('@/lib/rate-limit', () => ({
 // Mock Stripe
 const mockCheckoutCreate = vi.fn();
 const mockCustomerCreate = vi.fn();
+const mockSubscriptionsList = vi.fn();
+const mockPortalCreate = vi.fn();
 vi.mock('@/lib/stripe', () => ({
   stripe: () => ({
     checkout: { sessions: { create: mockCheckoutCreate } },
     customers: { create: mockCustomerCreate },
+    subscriptions: { list: mockSubscriptionsList },
+    billingPortal: { sessions: { create: mockPortalCreate } },
   }),
   isStripeConfigured: () => true,
 }));
@@ -66,6 +70,8 @@ describe('POST /api/billing/checkout', () => {
       DATABASE_URL: 'postgresql://test',
     };
     mockRequireUser.mockResolvedValue({ userId: 'user_abc', embedMode: false });
+    mockSubscriptionsList.mockReset().mockResolvedValue({ data: [], has_more: false });
+    mockPortalCreate.mockReset().mockResolvedValue({ url: "https://billing.stripe.com/manage" });
     mockCheckoutCreate.mockReset();
     mockCustomerCreate.mockReset();
     mockSelectLimit.mockReset();
@@ -193,4 +199,26 @@ describe('POST /api/billing/checkout', () => {
     const res = await POST(makeRequest({ plan: 'author' }));
     expect(res.status).toBe(500);
   });
+
+it.each(['active', 'trialing', 'past_due', 'unpaid', 'paused', 'incomplete'])('manages an existing %s subscription instead of creating a second one', async status => {
+  mockSelectLimit.mockResolvedValue([{ stripeCustomerId: 'cus_existing', email: 'test@example.com' }]);
+  mockSubscriptionsList.mockResolvedValue({ data: [{ status }], has_more: false });
+  const { POST } = await import('@/app/api/billing/checkout/route');
+  const response = await POST(makeRequest({ plan: 'writer' }));
+  expect(response.status).toBe(200);
+  expect((await response.json()).url).toBe('https://billing.stripe.com/manage');
+  expect(mockCheckoutCreate).not.toHaveBeenCalled();
+});
+it('refuses checkout when subscription lookup is incomplete', async () => {
+  mockSelectLimit.mockResolvedValue([{ stripeCustomerId: 'cus_existing', email: 'test@example.com' }]);
+  mockSubscriptionsList.mockResolvedValue({ data: [], has_more: true });
+  const { POST } = await import('@/app/api/billing/checkout/route');
+  expect((await POST(makeRequest({ plan: 'writer' }))).status).toBe(500);
+  expect(mockCheckoutCreate).not.toHaveBeenCalled();
+});
+it('rejects a null JSON body', async () => {
+  const { POST } = await import('@/app/api/billing/checkout/route');
+  expect((await POST(makeRequest(null as unknown as Record<string, unknown>))).status).toBe(400);
+});
+
 });

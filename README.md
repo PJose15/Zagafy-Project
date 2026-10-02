@@ -37,7 +37,7 @@ A continuity-aware writing application that helps authors craft consistent, deep
 
 ### Prerequisites
 
-- Node.js ≥ 20
+- Node.js `>=20.16.0 <21 || >=22.3.0` (CI uses Node 22)
 - A [Google AI Studio](https://aistudio.google.com/) API key (Gemini)
 
 ### Setup
@@ -54,6 +54,11 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) and start with the Genesis wizard.
 
 ### Environment Variables
+
+The table below describes local development. Production SaaS requires Clerk,
+Postgres and Redis; billing and AI also require their service configuration.
+Use [launch readiness](docs/LAUNCH_READINESS.md) for the complete checklist and
+[product status](docs/PRODUCT_STATUS.md) for shipped features and remaining gaps.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -106,7 +111,7 @@ graph TB
 
 ```
 app/                  # Next.js App Router pages
-  api/                # Server-side API endpoints (14 routes)
+  api/                # Server-side API endpoints
   (auth)/             # Clerk sign-in/sign-up
   (marketing)/        # Marketing site (home, features, pricing)
   genesis/            # Story creation wizard

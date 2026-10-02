@@ -64,5 +64,54 @@ guard work, and prior migration columns remain present. This is local SQL eviden
 not proof of the hosted database schema or real Stripe deliveries.
 
 Apply the registered migration to verified staging before enabling billing. No
-hosted migration was run. Out-of-order delivery and process-crash handling remain
-release gates.
+hosted migration was run. The subsequent reconciliation tests below cover local out-of-order delivery
+and transactional retry. Real provider delivery and process termination remain
+staging release gates.
+
+
+## Data integrity and billing continuation
+
+The next audit followed the author workflow and found a reproducible save race:
+“Save Chapter” reported success before the debounced storage write finished.
+Immediate reload lost the chapter; immediate navigation exported an empty backup.
+The action now awaits the local transaction and keeps the editor open on failure.
+Explicit saves cancel older pending debounce work.
+
+Manuscript metadata, all chapter contents, deletions and queued manuscript sync
+mutations now commit atomically. Storage read failures and corrupt project records
+block editing and empty default overwrites; retry and a project-scoped raw recovery
+download preserve the stored records. Recovery files include full local chapter
+text and do not parse or modify corrupt blobs.
+
+Cloud push now validates its input, serializes writes per story, and rolls back
+failed batches. Queue batching is limited to 500 entities, with exact covered-row
+acknowledgement. Incomplete acknowledgements and failed conflict backups retain
+pending mutations. Story conflicts create full local snapshots visible in Versions;
+chapter conflicts retain a version before overwriting the losing text.
+
+Stripe webhook claims and entitlement writes now share a Postgres transaction.
+Provider or database failures roll back the claim so the same event can be retried;
+notification email is best-effort after commit. A per-customer lock serializes
+reconciliation. Current subscription state and exact configured prices determine
+access, including annual billing and replacement subscriptions; stale event
+metadata and delayed cancellation events do not control the tier. Unknown active
+prices and incomplete subscription listings fail for retry.
+
+Settings now loads the authenticated plan, suppresses stale responses when accounts
+change, shows lookup failures instead of Free, and offers monthly/yearly upgrades.
+Checkout routes customers with ongoing subscriptions to manage their existing one.
+Simultaneous first checkouts still require the remaining safeguards and hosted
+Stripe configuration verification recorded in PRODUCT_STATUS.md.
+
+Local regression evidence: 215 suites and 2,945 tests passed, including actual
+registered Postgres migrations, atomic rollback, duplicate deliveries, same-event
+retry, delayed cancellation, annual pricing, concurrent version checks and failed
+recovery storage. TypeScript and the production build pass. Repository lint has
+existing warnings and no errors. Dependency audit reports zero vulnerabilities.
+These are local checks, not live payment, multi-instance load or hosted migration
+proof. See PRODUCT_STATUS.md for the prioritized implementation gaps.
+
+The production-build browser rerun passed all four required local journeys:
+chapter save/reload, independently parsed DOCX/PDF downloads, and JSON change/
+restore/reload. The earlier failing save-race checks passed after the fix. Local
+runtime had no authenticated Clerk session; hosted acceptance remains required.

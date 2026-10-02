@@ -579,26 +579,15 @@ export const RESERVED_STORY_IDS = new Set(['backup', 'current']);
 export async function getStory(
   projectId: string = getActiveProjectId(),
 ): Promise<Record<string, unknown> | null> {
-  try {
-    const row = await db.stories.get(projectId);
-    if (!row) return null;
-    try {
-      return JSON.parse(row.data);
-    } catch (e) {
-      // Corrupt blob: callers treat null as "missing" and may overwrite the row
-      // with a fresh default state — preserve the raw data first so it can be
-      // recovered manually.
-      try {
-        localStorage.setItem(`zagafy_corrupt_story_${projectId}_${Date.now()}`, row.data);
-      } catch {
-        // Quota exceeded or no localStorage — backup is best-effort
-      }
-      console.error(`[dexie] Corrupt story blob for project "${projectId}" — backed up to localStorage`, e);
-      return null;
-    }
-  } catch {
-    return null;
+  const row = await db.stories.get(projectId);
+  if (!row) return null;
+  // A failed read or corrupt record is not a missing project. Keep the original
+  // row intact and block callers from replacing it with an empty default.
+  const parsed: unknown = JSON.parse(row.data);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Stored project is not an object');
   }
+  return parsed as Record<string, unknown>;
 }
 
 /**

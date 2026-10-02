@@ -48,7 +48,7 @@ export async function addComment(
     updatedAt: now,
   };
   await db.comments.put(comment);
-  void recordDelta('comment', comment.id, 'upsert');
+  void recordDelta('comment', comment.id, 'upsert', projectId);
   return comment;
 }
 
@@ -73,13 +73,17 @@ export async function listOrphaned(
 }
 
 export async function updateCommentText(id: string, text: string): Promise<void> {
+  const existing = await db.comments.get(id);
+  if (!existing) return;
   await db.comments.update(id, { text, updatedAt: new Date().toISOString() });
-  void recordDelta('comment', id, 'upsert');
+  void recordDelta('comment', id, 'upsert', existing.projectId);
 }
 
 export async function deleteComment(id: string): Promise<void> {
+  const existing = await db.comments.get(id);
+  if (!existing) return;
   await db.comments.delete(id);
-  void recordDelta('comment', id, 'delete');
+  void recordDelta('comment', id, 'delete', existing.projectId);
 }
 
 export async function addReply(id: string, text: string): Promise<CommentReply | null> {
@@ -94,13 +98,15 @@ export async function addReply(id: string, text: string): Promise<CommentReply |
     replies: [...existing.replies, reply],
     updatedAt: new Date().toISOString(),
   });
-  void recordDelta('comment', id, 'upsert');
+  void recordDelta('comment', id, 'upsert', existing.projectId);
   return reply;
 }
 
 export async function setResolved(id: string, resolved: boolean): Promise<void> {
+  const existing = await db.comments.get(id);
+  if (!existing) return;
   await db.comments.update(id, { resolved, updatedAt: new Date().toISOString() });
-  void recordDelta('comment', id, 'upsert');
+  void recordDelta('comment', id, 'upsert', existing.projectId);
 }
 
 /** Bulk-persist comments (used after re-anchoring updates offsets/orphan flags). */
@@ -109,7 +115,7 @@ export async function putComments(comments: ManuscriptComment[]): Promise<void> 
   await db.comments.bulkPut(comments);
   // Callers pass only the comments that actually changed (e.g. reanchorAll's
   // `changed` set), so syncing each keeps other devices' anchors current.
-  for (const c of comments) void recordDelta('comment', c.id, 'upsert');
+  for (const c of comments) void recordDelta('comment', c.id, 'upsert', c.projectId);
 }
 
 // ─── Pure re-anchoring ───

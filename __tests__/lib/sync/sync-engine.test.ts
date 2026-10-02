@@ -226,6 +226,59 @@ describe('SyncEngine', () => {
       expect(Array.isArray(body.deltas)).toBe(true);
     });
 
+    it('retains the queue and chapter version on an incomplete acknowledgement', async () => {
+      vi.mocked(readQueue).mockResolvedValue({ entries: [
+        { id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: Date.now() },
+      ], coveredIds: ['q0', 'q1'] });
+      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+      mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { applied: 0, conflicts: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }));
+      await (engine as any).push();
+      expect(clearEntries).not.toHaveBeenCalled();
+      expect(db.chapters.update).not.toHaveBeenCalled();
+      expect(engine.getStatus()).toBe('error');
+    });
+
+    it('bounds a large push and clears only covered rows for the submitted entities', async () => {
+      const entries = Array.from({ length: 501 }, (_, index) => ({ id: `q${index}`, entityType: 'chapter' as const, entityId: `ch${index}`, op: 'delete' as const, timestamp: index }));
+      const coveredIdsByEntity = Object.fromEntries(entries.map(entry => [`chapter:${entry.entityId}`, [entry.id]]));
+      coveredIdsByEntity['chapter:ch0'].push('superseded');
+      vi.mocked(readQueue).mockResolvedValue({ entries, coveredIds: [...entries.map(entry => entry.id), 'superseded'], coveredIdsByEntity });
+      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+      mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { applied: 500, conflicts: [], serverTimestamp: new Date().toISOString() } }), { status: 200 }));
+      await (engine as any).push();
+      const sent = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(sent.deltas).toHaveLength(500);
+      expect(clearEntries).toHaveBeenCalledWith(expect.arrayContaining(['q0', 'superseded', 'q499']));
+      expect(vi.mocked(clearEntries).mock.calls[0][0]).not.toContain('q500');
+      expect(engine.getStatus()).toBe('idle');
+    });
+
+    it('retains local writing and queue when a chapter conflict backup cannot be saved', async () => {
+      vi.mocked(readQueue).mockResolvedValue({ entries: [{ id: 'q1', entityType: 'chapter', entityId: 'ch1', op: 'upsert', timestamp: 1 }], coveredIds: ['q1'] });
+      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+      vi.mocked(db.chapters.get).mockResolvedValueOnce({ id: 'ch1', content: 'Local edit', title: 'Chapter', summary: '', version: 1 } as any).mockResolvedValueOnce({ id: 'ch1', content: 'Local edit' } as any);
+      vi.mocked(db.chapterVersions.put).mockRejectedValueOnce(new Error('storage full'));
+      const conflict = { entityType: 'chapter', entityId: 'ch1', localPayload: { content: 'Local edit' }, serverPayload: { id: 'ch1', content: 'Server edit', version: 3 }, serverUpdatedAt: '', detectedAt: '' };
+      mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { applied: 0, conflicts: [conflict], serverTimestamp: '' } }), { status: 200 }));
+      await (engine as any).push();
+      expect(db.chapters.put).not.toHaveBeenCalled();
+      expect(clearEntries).not.toHaveBeenCalled();
+      expect(engine.getStatus()).toBe('error');
+    });
+
+    it('retains the story and queue when a user-visible recovery snapshot cannot be saved', async () => {
+      vi.mocked(readQueue).mockResolvedValue({ entries: [{ id: 'q1', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: 1 }], coveredIds: ['q1'] });
+      vi.mocked(getServerStoryId).mockResolvedValue('server-story-1');
+      vi.mocked(db.stories.get).mockResolvedValue({ id: 'current', data: '{"title":"My local story","chapters":[]}' } as any);
+      vi.mocked(db.storySnapshots.put).mockRejectedValueOnce(new Error('storage full'));
+      const conflict = { entityType: 'story', entityId: 'current', localPayload: {}, serverPayload: { title: 'Cloud', version: 3 }, serverUpdatedAt: '', detectedAt: '' };
+      mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ data: { applied: 0, conflicts: [conflict], serverTimestamp: '' } }), { status: 200 }));
+      await (engine as any).push();
+      expect(db.stories.put).not.toHaveBeenCalled();
+      expect(clearEntries).not.toHaveBeenCalled();
+      expect(engine.getStatus()).toBe('error');
+    });
+
     it('clears ALL covered queue row ids (including superseded duplicates) on success', async () => {
       // Start the engine first
       mockFetch.mockResolvedValueOnce(
@@ -756,10 +809,11 @@ describe('SyncEngine', () => {
       // Adopted the server state into Dexie.
       const adopt = vi.mocked(db.stories.put).mock.calls.find((c) => (c[0] as any).data?.includes('Server'));
       expect(adopt).toBeDefined();
-      // Backed up the losing local blob under a recovery key.
-      const backupKey = Object.keys(localStorage).find((k) => k.startsWith('zagafy_sync_conflict_story_'));
-      expect(backupKey).toBeDefined();
-      expect(localStorage.getItem(backupKey!)).toContain('Local');
+      // Recovery is visible in Versions, rather than an inaccessible localStorage key.
+      const backup = vi.mocked(db.storySnapshots.put).mock.calls.at(-1)?.[0] as any;
+      expect(backup).toMatchObject({ storyId: 'current', name: 'Sync conflict backup (local edit)' });
+      expect(JSON.parse(backup.data).title).toBe('Local');
+
       // Tracked the server version so the next push doesn't re-conflict.
       expect(updateSyncMeta).toHaveBeenCalledWith({ serverStoryVersion: 9 }, expect.anything());
     });

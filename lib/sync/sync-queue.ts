@@ -24,11 +24,12 @@ export async function recordDelta(
   entityType: SyncEntityType,
   entityId: string,
   op: 'upsert' | 'delete',
+  projectId: string = getActiveProjectId(),
 ): Promise<void> {
   try {
     await db.syncQueue.put({
       id: crypto.randomUUID(),
-      projectId: getActiveProjectId(),
+      projectId,
       entityType,
       entityId,
       op,
@@ -47,6 +48,8 @@ export interface ReadQueueResult {
    *  Clear these after a successful push — clearing only the deduped entry ids
    *  leaves older duplicate rows to resurface as "latest" on the next push. */
   coveredIds: string[];
+  /** Raw rows grouped by entity, for safe bounded push batches. */
+  coveredIdsByEntity?: Record<string, string[]>;
 }
 
 /**
@@ -66,14 +69,17 @@ export async function readQueue(
 
   // Deduplicate: keep the latest entry per entityType+entityId
   const map = new Map<string, SyncQueueEntry>();
+  const coveredIdsByEntity: Record<string, string[]> = {};
   for (const entry of all) {
     const key = `${entry.entityType}:${entry.entityId}`;
     map.set(key, entry as SyncQueueEntry);
+    (coveredIdsByEntity[key] ??= []).push(entry.id);
   }
 
   return {
     entries: Array.from(map.values()),
     coveredIds: all.map(e => e.id),
+    coveredIdsByEntity,
   };
 }
 

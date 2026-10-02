@@ -38,13 +38,15 @@ const mockCollabFindFirst = vi.fn(async (): Promise<unknown> => null);
 const mockChapterFindFirst = vi.fn(async () => null);
 
 vi.mock('@/db/client', () => ({
-  db: vi.fn(() => ({
+  db: vi.fn(() => { const database = {
     insert: vi.fn(() => ({
       values: mockInsertValues.mockReturnValue({
         onConflictDoUpdate: mockOnConflictDoUpdate.mockReturnValue({
           onConflictDoNothing: mockOnConflictDoNothing,
+          returning: vi.fn(async () => [{ id: 'saved' }]),
         }),
         onConflictDoNothing: mockOnConflictDoNothing,
+          returning: vi.fn(async () => [{ id: 'saved' }]),
       }),
     })),
     update: vi.fn(() => ({
@@ -61,7 +63,9 @@ vi.mock('@/db/client', () => ({
       chapters: { findFirst: mockChapterFindFirst },
       chapterVersions: { findFirst: vi.fn(async () => null) },
     },
-  })),
+    execute: vi.fn(async () => undefined),
+    transaction: async (work: (tx: unknown) => unknown): Promise<unknown> => work(database),
+  }; return database; }),
   isDatabaseConfigured: vi.fn(() => true),
 }));
 
@@ -78,6 +82,8 @@ vi.mock('@/db/schema', () => ({
 }));
 
 vi.mock('drizzle-orm', () => ({
+  sql: vi.fn((...args: any[]) => args),
+  inArray: vi.fn((...args: any[]) => args),
   eq: vi.fn((...args: any[]) => args),
   and: vi.fn((...args: any[]) => args),
   gte: vi.fn((...args: any[]) => args),

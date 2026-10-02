@@ -1,17 +1,17 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
+import { exportProjectRecovery } from '@/lib/storage/export-recovery';
 import { StoreSkeleton } from '@/components/antiquarian/StoreSkeleton';
 import {
   migrateFromLocalStorage,
   getAllChapterContents,
-  putChapterContent,
-  deleteChapterContent,
   getStory,
   putStory,
 } from '@/lib/storage/dexie-db';
 import type { WorldBibleSection } from '@/lib/types/world-bible';
-import { recordDelta } from '@/lib/sync/sync-queue';
+import { persistProjectState } from '@/lib/storage/persist-project';
 import { useSync } from '@/lib/sync/sync-context';
 import { wordCount as countWords } from '@/lib/editor/serialization';
 import {
@@ -243,26 +243,26 @@ async function hydrateFromDexie(projectId: string = getActiveProjectId()): Promi
     loadedState = { ...defaultState, ...(saved as Partial<StoryState>) };
   }
 
-  // Load chapter contents from Dexie and merge back
-  try {
-    const contentMap = await getAllChapterContents(projectId);
-    if (contentMap.size > 0 && Array.isArray(loadedState.chapters)) {
-      loadedState = {
-        ...loadedState,
-        chapters: loadedState.chapters.map(ch => ({
-          ...ch,
-          content: contentMap.get(ch.id) ?? ch.content,
-        })),
-      };
-    }
-  } catch {
-    // Dexie unavailable — chapters keep whatever content they have
-  }
+  // Do not hydrate stripped chapter contents after a storage read failure:
+  // autosave could otherwise replace the real text with empty strings.
+  const contentMap = await getAllChapterContents(projectId);
+  if (!Array.isArray(loadedState.chapters)) throw new Error('Stored chapters are invalid');
+  loadedState = {
+    ...loadedState,
+    chapters: loadedState.chapters.map(ch => {
+      if (!ch || typeof ch.id !== 'string') throw new Error('Stored chapter is invalid');
+      return { ...ch, content: contentMap.get(ch.id) ?? ch.content };
+    }),
+  };
 
   return loadedState;
 }
 
 export function StoryProvider({ children }: { children: React.ReactNode }) {
+  const tStorage = useTranslations('storage');
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [recoveryError, setRecoveryError] = useState(false);
   const [state, setState] = useState<StoryState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
@@ -280,11 +280,9 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   // a project switch can flush it to the OLD project id and beforeunload can
   // fire it before the tab dies.
   const pendingSaveRef = useRef<{ state: StoryState; projectId: string } | null>(null);
-  // Chapter id set from the last persist, per project — diffed on each persist
-  // to detect chapter deletions (Dexie row cleanup + sync delete delta).
-  const lastPersistedChaptersRef = useRef<{ projectId: string; ids: Set<string> } | null>(null);
 
   useEffect(() => {
+    let active = true;
     async function loadState() {
       // Run Dexie migration first (idempotent). This also moves any legacy
       // localStorage state blob into the Dexie stories table.
@@ -314,16 +312,14 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       }
 
       const loaded = await hydrateFromDexie(activeId);
-      lastPersistedChaptersRef.current = {
-        projectId: activeId,
-        ids: new Set(loaded.chapters.map(ch => ch.id)),
-      };
+      if (!active || activeProjectIdRef.current !== activeId) return;
       setState(loaded);
       setIsLoaded(true);
     }
 
-    loadState();
-  }, []);
+    void loadState().catch(() => { if (active) setLoadError(true); });
+    return () => { active = false; };
+  }, [loadAttempt]);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveError, setSaveError] = useState(false);
@@ -332,55 +328,12 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   // Dexie, record sync deltas, and notify other tabs. Shared by the debounced
   // autosave and the imperative saveNow().
   const persistState = useCallback(async (next: StoryState, projectId: string) => {
-    // Chapter deletions only mutate the in-memory array — diff against the
-    // last-persisted id set so removed chapters are deleted from Dexie and
-    // queued as sync deletes. Ref is swapped synchronously (before any await)
-    // so an interleaved project-switch flush never diffs the wrong project.
-    const prevChapters = lastPersistedChaptersRef.current;
-    const currentIds = new Set(next.chapters.map(ch => ch.id));
-    lastPersistedChaptersRef.current = { projectId, ids: currentIds };
-    if (prevChapters && prevChapters.projectId === projectId) {
-      for (const id of prevChapters.ids) {
-        if (!currentIds.has(id)) {
-          deleteChapterContent(id).catch(() => {});
-          recordDelta('chapter', id, 'delete').catch(() => {});
-        }
-      }
-    }
-
-    const stateForStore = {
-      ...next,
-      chapters: next.chapters.map(ch => ({ ...ch, content: '' })),
-    };
-    const totalWords = next.chapters.reduce(
-      (sum, ch) => sum + (ch.content ? countWords(ch.content) : 0),
-      0,
-    );
-    await putStory(stateForStore as unknown as Record<string, unknown>, {
-      projectId,
-      wordCount: totalWords,
-    });
-    const chapterWrites = await Promise.allSettled(
-      next.chapters.map(ch =>
-        putChapterContent(ch.id, ch.content, ch.title, ch.summary, ch.canonStatus, ch.source, projectId)
-      )
-    );
-    recordDelta('story', projectId, 'upsert').catch(() => {});
-    for (const ch of next.chapters) {
-      recordDelta('chapter', ch.id, 'upsert').catch(() => {});
-    }
+    await persistProjectState(next, projectId);
     notifySyncWrite();
     try {
       channelRef.current?.postMessage({ type: 'state-updated', at: Date.now() });
     } catch {
       // BroadcastChannel post failures are non-fatal
-    }
-    // Surface chapter write failures the same way a putStory failure would —
-    // the stripped blob saved fine, so a swallowed chapter write means the
-    // chapter resolves to '' on next hydration (silent manuscript loss).
-    const failedWrites = chapterWrites.filter(r => r.status === 'rejected').length;
-    if (failedWrites > 0) {
-      throw new Error(`${failedWrites} chapter content write(s) failed`);
     }
   }, [notifySyncWrite]);
 
@@ -419,13 +372,22 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   // Imperative flush — persist now and resolve when written. Adopts `next` into
   // store state and suppresses the debounce's duplicate write of the same ref.
   const saveNow = useCallback(async (next?: StoryState) => {
+    if (!isLoaded || loadError) throw new Error('Project has not loaded successfully');
+    if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+    pendingSaveRef.current = null;
     const target = next ?? state;
     if (next) {
       lastRemoteStateRef.current = next;
       setState(next);
     }
-    await persistState(target, activeProjectIdRef.current);
-  }, [state, persistState]);
+    try {
+      await persistState(target, activeProjectIdRef.current);
+      setSaveError(false);
+    } catch (error) {
+      setSaveError(true);
+      throw error;
+    }
+  }, [state, persistState, isLoaded, loadError]);
 
   // Cross-tab sync via BroadcastChannel (Dexie writes don't fire storage events)
   useEffect(() => {
@@ -448,13 +410,8 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
         hydrateTimer = null;
         const pid = activeProjectIdRef.current;
         hydrateFromDexie(pid).then(next => {
+          if (activeProjectIdRef.current !== pid) return;
           lastRemoteStateRef.current = next;
-          // Adopt the hydrated chapter set as the deletion-diff baseline so a
-          // chapter removed elsewhere isn't re-deleted on the next local save.
-          lastPersistedChaptersRef.current = {
-            projectId: pid,
-            ids: new Set(next.chapters.map(ch => ch.id)),
-          };
           setState(next);
         }).catch(() => {
           // Ignore — remote rehydration failed
@@ -480,15 +437,15 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
         persistState(pending.state, pending.projectId).catch(() => {});
       }
       activeProjectIdRef.current = id;
+      setIsLoaded(false);
+      setLoadError(false);
       hydrateFromDexie(id).then(next => {
+        if (activeProjectIdRef.current !== id) return;
         lastRemoteStateRef.current = next;
-        lastPersistedChaptersRef.current = {
-          projectId: id,
-          ids: new Set(next.chapters.map(ch => ch.id)),
-        };
         setState(next);
+        setIsLoaded(true);
       }).catch(() => {
-        // Ignore — switch hydration failed
+        if (activeProjectIdRef.current === id) setLoadError(true);
       });
     };
 
@@ -533,9 +490,24 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  if (!isLoaded) {
-    return <StoreSkeleton />;
+  if (loadError) {
+    return <main className="mx-auto max-w-xl p-8 space-y-4" role="alert">
+      <h1 className="font-serif text-2xl">{tStorage('loadTitle')}</h1>
+      <p>{tStorage('loadError')}</p>
+      <button className="underline" onClick={() => { setIsLoaded(false); setLoadError(false); setRecoveryError(false); setLoadAttempt(attempt => attempt + 1); }}>{tStorage('retry')}</button>
+      <button className="underline block" onClick={async () => {
+        try {
+          const recovery = await exportProjectRecovery(activeProjectIdRef.current);
+          const url = URL.createObjectURL(new Blob([JSON.stringify(recovery, null, 2)], { type: 'application/json' }));
+          const link = document.createElement('a'); link.href = url; link.download = 'zagafy-project-recovery.json';
+          link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); setRecoveryError(false);
+        } catch { setRecoveryError(true); }
+      }}>{tStorage('downloadRecovery')}</button>
+      <p className="text-sm">{tStorage('recoveryNote')}</p>
+      {recoveryError && <p>{tStorage('recoveryError')}</p>}
+    </main>;
   }
+  if (!isLoaded) return <StoreSkeleton />;
 
   return (
     <StoryContext.Provider value={{ state, setState, updateField, saveNow }}>

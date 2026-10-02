@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
@@ -13,6 +13,28 @@ import { getUserPlan } from '@/lib/get-user-plan';
 import type { PushRequest, SyncDelta, ConflictRecord } from '@/lib/sync/types';
 
 export const runtime = 'nodejs';
+
+type SyncDatabase = Pick<ReturnType<typeof db>, 'query' | 'select' | 'insert' | 'update' | 'delete'>;
+const ENTITY_TYPES = new Set(['story', 'chapter', 'chapterVersion', 'storySnapshot', 'session', 'chatMessage', 'writerInsight', 'comment']);
+function validPush(value: unknown): value is PushRequest {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const body = value as PushRequest;
+  if (typeof body.storyId !== 'string' || !body.storyId.trim() || body.storyId.length > 200 ||
+      (body.storyTitle !== undefined && (typeof body.storyTitle !== 'string' || body.storyTitle.length > 1000)) ||
+      !Array.isArray(body.deltas) || body.deltas.length > 500) return false;
+  return body.deltas.every(delta => {
+    if (!delta || typeof delta !== 'object' || !ENTITY_TYPES.has(delta.entityType) ||
+        typeof delta.entityId !== 'string' || !delta.entityId || delta.entityId.length > 200 ||
+        !Number.isFinite(delta.timestamp) || delta.timestamp < 0 ||
+        (delta.op !== 'upsert' && delta.op !== 'delete')) return false;
+    if (delta.op === 'delete') return delta.entityType !== 'story' && delta.payload === null;
+    const payload = delta.payload;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+    if (payload.version !== undefined && (!Number.isSafeInteger(payload.version) || (payload.version as number) < 0)) return false;
+    if (delta.entityType === 'chapter' && (typeof payload.content !== 'string' || payload.content.length > 5_000_000)) return false;
+    return true;
+  });
+}
 
 /**
  * POST /api/sync/push -- accept batched local deltas and apply to Postgres.
@@ -49,6 +71,7 @@ export async function POST(req: NextRequest) {
     return err('validation_failed', 'Invalid JSON body', 400, undefined, { requestId });
   }
 
+  if (!validPush(body)) return err('validation_failed', 'Invalid storyId, deltas or sync payload (maximum 500 deltas)', 400, undefined, { requestId });
   const { storyId, storyTitle, deltas } = body;
   if (!storyId || !Array.isArray(deltas)) {
     return err('validation_failed', 'storyId and deltas[] are required', 400, undefined, { requestId });
@@ -64,16 +87,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    return await db().transaction(async database => {
+      // One transaction owns this story's authorization, version checks and
+      // complete batch. Concurrent pushes cannot both accept the same base.
+      await database.execute(sql`SET LOCAL lock_timeout = '5s'`);
+      await database.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`zagafy-sync:${storyId}`}, 0))`);
     // Plan gate: cloud sync is a paid feature. For SHARED stories the story
     // OWNER's plan governs — a collaborator with a free plan may still push to
     // a paid owner's story, and a paid collaborator cannot sync a free owner's
     // story. Checked BEFORE the first-push upsert so a free user never creates
     // a server story row.
-    const storyRow = await db().query.stories.findFirst({
+    const storyRow = await database.query.stories.findFirst({
       where: eq(schema.stories.id, storyId),
       columns: { ownerId: true },
     });
-    const plan = await getUserPlan(storyRow?.ownerId ?? userId);
+    const plan = await getUserPlan(storyRow?.ownerId ?? userId, database);
     if (!getLimits(plan).cloudSync) {
       return err(
         'forbidden',
@@ -86,12 +114,12 @@ export async function POST(req: NextRequest) {
 
     // Access check FIRST — owner and editor collaborators may push;
     // readers and strangers may not.
-    const access = await getStoryAccess(storyId, userId);
+    const access = await getStoryAccess(storyId, userId, database);
 
     if (access === null) {
       // Either the story doesn't exist yet (first push — create it for the
       // caller as owner) or it exists and the caller has no access (403).
-      const existing = await db().query.stories.findFirst({
+      const existing = await database.query.stories.findFirst({
         where: eq(schema.stories.id, storyId),
         columns: { id: true },
       });
@@ -100,7 +128,7 @@ export async function POST(req: NextRequest) {
       }
       // First push: create the story owned by the caller. Kept as an upsert
       // to stay race-safe against a concurrent first push from another tab.
-      await db()
+      await database
         .insert(schema.stories)
         .values({
           id: storyId,
@@ -121,7 +149,7 @@ export async function POST(req: NextRequest) {
       // Re-check ownership: if another user's story appeared between the
       // access check and the insert, the guarded update matched nothing —
       // refuse to write deltas into a story the caller does not own.
-      const created = await db().query.stories.findFirst({
+      const created = await database.query.stories.findFirst({
         where: eq(schema.stories.id, storyId),
         columns: { ownerId: true },
       });
@@ -129,15 +157,8 @@ export async function POST(req: NextRequest) {
         return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
       }
     } else if (access === 'owner' || access === 'editor') {
-      // Story exists and the caller may write: update title/updatedAt only.
-      // NEVER touches ownerId — editors cannot claim ownership.
-      await db()
-        .update(schema.stories)
-        .set({
-          title: storyTitle || 'Untitled',
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.stories.id, storyId));
+      // Metadata title is updated only by an accepted story-blob delta below.
+      // A stale chapter-only push must not rename a newer server story.
     } else {
       // 'reader' — read-only collaborators cannot push.
       return err('forbidden', 'You do not have edit access to this story', 403, undefined, { requestId });
@@ -149,27 +170,19 @@ export async function POST(req: NextRequest) {
     let storyVersion: number | undefined;
 
     for (const delta of deltas) {
-      try {
-        const result = await applyDelta(storyId, delta, log);
-        if (result.conflict) {
-          conflicts.push(result.conflict);
-        } else {
-          applied++;
-          if (typeof result.newChapterVersion === 'number') {
-            chapterVersions[delta.entityId] = result.newChapterVersion;
-          }
-          if (typeof result.newStoryVersion === 'number') {
-            storyVersion = result.newStoryVersion;
-          }
-        }
-      } catch (deltaErr) {
-        log.warn('delta apply failed', { entityType: delta.entityType, entityId: delta.entityId, err: String(deltaErr) });
+      const result = await applyDelta(database, storyId, delta, log);
+      if (result.conflict) {
+        conflicts.push(result.conflict);
+      } else {
+        applied++;
+        if (typeof result.newChapterVersion === 'number') chapterVersions[delta.entityId] = result.newChapterVersion;
+        if (typeof result.newStoryVersion === 'number') storyVersion = result.newStoryVersion;
       }
     }
 
     // Update story's updatedAt after all deltas applied
     if (applied > 0) {
-      await db()
+      await database
         .update(schema.stories)
         .set({ updatedAt: new Date() })
         .where(eq(schema.stories.id, storyId));
@@ -178,6 +191,7 @@ export async function POST(req: NextRequest) {
     const serverTimestamp = new Date().toISOString();
     log.info('push complete', { applied, conflicts: conflicts.length, deltas: deltas.length });
     return ok({ applied, conflicts, chapterVersions, storyVersion, serverTimestamp }, { requestId });
+    });
   } catch (dbErr) {
     log.error('push failed', dbErr);
     return err('internal_error', 'Push failed', 500, undefined, { requestId });
@@ -197,6 +211,7 @@ interface ApplyResult {
 }
 
 async function applyDelta(
+  database: SyncDatabase,
   storyId: string,
   delta: SyncDelta,
   log: ReturnType<typeof createRouteLogger>,
@@ -204,84 +219,83 @@ async function applyDelta(
   const { entityType, entityId, op, payload } = delta;
 
   if (op === 'delete') {
-    await applyDelete(storyId, entityType, entityId);
+    await applyDelete(database, storyId, entityType, entityId);
     return {};
   }
 
   if (!payload) {
-    log.warn('upsert delta missing payload', { entityType, entityId });
-    return {};
+    throw new Error('Upsert delta missing payload');
   }
 
   switch (entityType) {
     case 'story':
-      return applyStoryUpsert(storyId, payload);
+      return applyStoryUpsert(database, storyId, payload);
     case 'chapter':
-      return applyChapterUpsert(storyId, entityId, payload);
+      return applyChapterUpsert(database, storyId, entityId, payload);
     case 'chapterVersion':
-      return applyChapterVersionUpsert(storyId, entityId, payload);
+      return applyChapterVersionUpsert(database, storyId, entityId, payload);
     case 'storySnapshot':
-      return applySnapshotUpsert(storyId, entityId, payload);
+      return applySnapshotUpsert(database, storyId, entityId, payload);
     case 'session':
-      return applySessionUpsert(storyId, entityId, payload);
+      return applySessionUpsert(database, storyId, entityId, payload);
     case 'chatMessage':
-      return applyChatMessageUpsert(storyId, entityId, payload);
+      return applyChatMessageUpsert(database, storyId, entityId, payload);
     case 'writerInsight':
-      return applyInsightUpsert(storyId, entityId, payload);
+      return applyInsightUpsert(database, storyId, entityId, payload);
     case 'comment':
-      return applyCommentUpsert(storyId, entityId, payload);
+      return applyCommentUpsert(database, storyId, entityId, payload);
     default:
-      log.warn('unknown entity type', { entityType });
-      return {};
+      throw new Error('Unknown sync entity type');
   }
 }
 
 async function applyDelete(
+  database: SyncDatabase,
   storyId: string,
   entityType: string,
   entityId: string,
 ): Promise<void> {
   switch (entityType) {
     case 'chapter':
-      await db().delete(schema.chapters).where(
+      await database.delete(schema.chapters).where(
         and(eq(schema.chapters.id, entityId), eq(schema.chapters.storyId, storyId)),
       );
       break;
     case 'chapterVersion':
       // chapterVersions has no storyId column — scope through the parent
       // chapter so a version can only be deleted within the caller's story.
-      await db().delete(schema.chapterVersions).where(
+      await database.delete(schema.chapterVersions).where(
         and(
           eq(schema.chapterVersions.id, entityId),
           inArray(
             schema.chapterVersions.chapterId,
-            db().select({ id: schema.chapters.id }).from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
+            database.select({ id: schema.chapters.id }).from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
           ),
         ),
       );
       break;
     case 'storySnapshot':
-      await db().delete(schema.storySnapshots).where(
+      await database.delete(schema.storySnapshots).where(
         and(eq(schema.storySnapshots.id, entityId), eq(schema.storySnapshots.storyId, storyId)),
       );
       break;
     case 'session':
-      await db().delete(schema.sessions).where(
+      await database.delete(schema.sessions).where(
         and(eq(schema.sessions.id, entityId), eq(schema.sessions.storyId, storyId)),
       );
       break;
     case 'chatMessage':
-      await db().delete(schema.chatMessages).where(
+      await database.delete(schema.chatMessages).where(
         and(eq(schema.chatMessages.id, entityId), eq(schema.chatMessages.storyId, storyId)),
       );
       break;
     case 'writerInsight':
-      await db().delete(schema.writerInsights).where(
+      await database.delete(schema.writerInsights).where(
         and(eq(schema.writerInsights.id, entityId), eq(schema.writerInsights.storyId, storyId)),
       );
       break;
     case 'comment':
-      await db().delete(schema.comments).where(
+      await database.delete(schema.comments).where(
         and(eq(schema.comments.id, entityId), eq(schema.comments.storyId, storyId)),
       );
       break;
@@ -289,6 +303,7 @@ async function applyDelete(
 }
 
 async function applyStoryUpsert(
+  database: SyncDatabase,
   storyId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
@@ -298,7 +313,7 @@ async function applyStoryUpsert(
   const baseVersion = typeof payload.version === 'number' ? payload.version : 0;
   const { version: _clientVersion, ...state } = payload;
 
-  const existing = await db().query.stories.findFirst({
+  const existing = await database.query.stories.findFirst({
     where: eq(schema.stories.id, storyId),
     columns: { version: true, state: true, updatedAt: true },
   });
@@ -307,7 +322,7 @@ async function applyStoryUpsert(
   // client pushed from, reject rather than overwrite. Returning the server copy
   // lets the client preserve its losing edits (as a recovery snapshot) and adopt
   // the server state instead of silently destroying characters/canon/world-bible.
-  if (existing && existing.version > baseVersion) {
+  if (existing && (existing.version ?? 0) !== baseVersion) {
     return {
       conflict: {
         entityType: 'story',
@@ -324,10 +339,11 @@ async function applyStoryUpsert(
   }
 
   const newVersion = (existing?.version ?? 0) + 1;
-  await db()
+  await database
     .update(schema.stories)
     .set({
       state,
+      ...(typeof state.title === 'string' ? { title: state.title } : {}),
       version: newVersion,
       updatedAt: new Date(),
     })
@@ -336,6 +352,7 @@ async function applyStoryUpsert(
 }
 
 async function applyChapterUpsert(
+  database: SyncDatabase,
   storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
@@ -348,14 +365,14 @@ async function applyChapterUpsert(
 
   // Check for optimistic concurrency conflict. Scope to the owned story so a
   // chapter ID belonging to another user's story is never matched here.
-  const existing = await db().query.chapters.findFirst({
+  const existing = await database.query.chapters.findFirst({
     where: and(eq(schema.chapters.id, entityId), eq(schema.chapters.storyId, storyId)),
     columns: { version: true, updatedAt: true },
   });
 
-  if (existing && existing.version > clientVersion) {
+  if (existing && existing.version !== clientVersion) {
     // Server has a newer version -- reject this delta
-    const serverRow = await db().query.chapters.findFirst({
+    const serverRow = await database.query.chapters.findFirst({
       where: eq(schema.chapters.id, entityId),
     });
     return {
@@ -372,7 +389,7 @@ async function applyChapterUpsert(
 
   const newVersion = (existing?.version ?? 0) + 1;
 
-  await db()
+  const saved = await database
     .insert(schema.chapters)
     .values({
       id: entityId,
@@ -403,12 +420,14 @@ async function applyChapterUpsert(
         version: newVersion,
         updatedAt: new Date(),
       },
-    });
+    }).returning({ id: schema.chapters.id });
+  if (saved.length !== 1) throw new Error('Chapter id is not writable in this story');
 
   return { newChapterVersion: newVersion };
 }
 
 async function applyChapterVersionUpsert(
+  database: SyncDatabase,
   storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
@@ -416,13 +435,13 @@ async function applyChapterVersionUpsert(
   const chapterId = (payload.chapterId as string) ?? '';
   // Require the parent chapter to exist AND belong to the caller's story —
   // prevents attaching version blobs to another user's chapter.
-  const chapter = await db().query.chapters.findFirst({
+  const chapter = await database.query.chapters.findFirst({
     where: and(eq(schema.chapters.id, chapterId), eq(schema.chapters.storyId, storyId)),
     columns: { id: true },
   });
-  if (!chapter) return {};
+  if (!chapter) throw new Error('Chapter version parent is not in this story');
 
-  await db()
+  await database
     .insert(schema.chapterVersions)
     .values({
       id: entityId,
@@ -435,11 +454,12 @@ async function applyChapterVersionUpsert(
 }
 
 async function applySnapshotUpsert(
+  database: SyncDatabase,
   storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await db()
+  await database
     .insert(schema.storySnapshots)
     .values({
       id: entityId,
@@ -456,11 +476,12 @@ async function applySnapshotUpsert(
 }
 
 async function applySessionUpsert(
+  database: SyncDatabase,
   storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await db()
+  await database
     .insert(schema.sessions)
     .values({
       id: entityId,
@@ -477,11 +498,12 @@ async function applySessionUpsert(
 }
 
 async function applyChatMessageUpsert(
+  database: SyncDatabase,
   storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await db()
+  await database
     .insert(schema.chatMessages)
     .values({
       id: entityId,
@@ -498,11 +520,12 @@ async function applyChatMessageUpsert(
 }
 
 async function applyInsightUpsert(
+  database: SyncDatabase,
   storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await db()
+  await database
     .insert(schema.writerInsights)
     .values({
       id: entityId,
@@ -535,6 +558,7 @@ async function applyInsightUpsert(
 }
 
 async function applyCommentUpsert(
+  database: SyncDatabase,
   storyId: string,
   entityId: string,
   payload: Record<string, unknown>,
@@ -546,7 +570,7 @@ async function applyCommentUpsert(
   const updatedAt = payload.updatedAt
     ? new Date(payload.updatedAt as string)
     : new Date();
-  await db()
+  await database
     .insert(schema.comments)
     .values({
       id: entityId,

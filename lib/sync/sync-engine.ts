@@ -129,7 +129,7 @@ export class SyncEngine {
   async syncNow(): Promise<void> {
     if (this.pushTimer) clearTimeout(this.pushTimer);
     await this.push();
-    await this.pull();
+    if (this.status !== 'error') await this.pull();
   }
 
   // ─── Push ───
@@ -144,7 +144,15 @@ export class SyncEngine {
       // re-reading the active project mid-push would push the wrong story after
       // a project switch.
       const projectId = getActiveProjectId();
-      const { entries: queue, coveredIds } = await readQueue(projectId);
+      const pending = await readQueue(projectId);
+      // The API accepts 500 deltas. Keep the rest queued for the next cycle,
+      // including superseded raw rows for every unpushed entity.
+      const queue = pending.entries.slice(0, 500);
+      if (pending.entries.length > 500 && !pending.coveredIdsByEntity) {
+        throw new Error('Cannot safely batch sync queue');
+      }
+      const coveredIds = pending.entries.length <= 500 ? pending.coveredIds :
+        queue.flatMap(entry => pending.coveredIdsByEntity![`${entry.entityType}:${entry.entityId}`] ?? []);
       if (queue.length === 0) {
         this.setStatus('idle');
         this.pushing = false;
@@ -223,10 +231,17 @@ export class SyncEngine {
       const result = data.data;
       if (this.destroyed) return;
 
+      // A legacy/partial server acknowledgement must never erase mutations it
+      // did not apply. Keep the whole queue if the response cannot account for
+      // every sent delta; the transactional server accounts for all of them.
+      if (!Number.isSafeInteger(result.applied) || result.applied < 0 ||
+          !Array.isArray(result.conflicts) || result.applied + result.conflicts.length !== deltas.length) {
+        throw new Error('Incomplete sync acknowledgement; local changes retained');
+      }
+
       // Clear ALL raw queue rows covered by the dedup — clearing only the
       // deduped "latest" ids would leave superseded duplicates to resurface
       // as latest on the next push and re-push stale content.
-      await clearEntries(coveredIds);
       await updateSyncMeta({ lastPushedAt: result.serverTimestamp }, projectId);
 
       // Adopt the server's post-push chapter versions so the next push
@@ -250,6 +265,10 @@ export class SyncEngine {
         this.setStatus('idle');
         this.emit({ type: 'push-complete', applied: result.applied, conflicts: [] });
       }
+      // Recovery backups and local version adoption must finish before any
+      // acknowledgement removes the durable queue rows.
+      await clearEntries(coveredIds);
+      if (pending.entries.length > queue.length) this.notifyWrite();
     } catch (e) {
       if (this.isOffline()) {
         this.setStatus('offline');
@@ -586,8 +605,8 @@ export class SyncEngine {
 
   /**
    * C3 — snapshot the current local chapter content as a recovery version before
-   * a conflict overwrites it with the server's copy. Best-effort: recovery must
-   * never block conflict resolution. No-op when local content matches the server
+   * a conflict overwrites it with the server's copy. Recovery must succeed
+   * before conflict resolution can replace local writing. No-op when local content matches the server
    * or the chapter isn't present locally.
    */
   private async backupLosingChapterEdit(
@@ -595,7 +614,7 @@ export class SyncEngine {
     serverContent: string,
     projectId: string,
   ): Promise<void> {
-    try {
+    {
       const local = await dexieDb.chapters.get(chapterId);
       if (!local || !local.content || local.content === serverContent) return;
       const id = crypto.randomUUID();
@@ -618,56 +637,48 @@ export class SyncEngine {
         createdAt,
         data: JSON.stringify(recovery),
       });
-    } catch {
-      // best-effort recovery snapshot
     }
   }
 
   /**
    * C1 — resolve a story-blob conflict without destroying local data. The server
    * rejected our push because its blob advanced past our base version. Preserve
-   * the losing local blob (characters/canon/world-bible) to a recovery key, then
+   * the losing local story and manuscript in the Versions page, then
    * adopt the server state and track its version so the next push is based on it.
    */
   private async resolveStoryConflict(c: ConflictRecord, projectId: string): Promise<void> {
     const sp = (c.serverPayload ?? {}) as Record<string, unknown>;
     const { version: serverVersion, ...serverState } = sp;
 
-    // 1. Back up the losing local blob so no bible data is silently destroyed.
-    //    Mirrors the corrupt-blob recovery pattern in dexie-db.getStory().
-    try {
-      const localRow = await dexieDb.stories.get(projectId);
-      if (localRow?.data && typeof localStorage !== 'undefined') {
-        localStorage.setItem(
-          `zagafy_sync_conflict_story_${projectId}_${Date.now()}`,
-          localRow.data,
-        );
+    // Persist a user-visible recovery snapshot before replacing the story.
+    // If storage is full, stop and retain both the local manuscript and queue.
+    const existingStory = await dexieDb.stories.get(projectId);
+    if (existingStory?.data) {
+      const localState = JSON.parse(existingStory.data) as Record<string, unknown>;
+      const chapters = Array.isArray(localState.chapters) ? localState.chapters as Record<string, unknown>[] : [];
+      const recoveredChapters = [];
+      for (const chapter of chapters) {
+        const row = await dexieDb.chapters.get(chapter.id as string);
+        recoveredChapters.push({ ...chapter, content: row?.content ?? chapter.content ?? '' });
       }
-    } catch {
-      // Quota exceeded / no localStorage — backup is best-effort.
-    }
-
-    // 2. Adopt the server blob into Dexie so later edits build on it.
-    try {
-      const existingStory = await dexieDb.stories.get(projectId);
-      const stateChapters = (serverState as { chapters?: unknown[] }).chapters;
-      await dexieDb.stories.put({
-        id: projectId,
-        data: JSON.stringify(serverState),
-        title: typeof (serverState as { title?: unknown }).title === 'string'
-          ? (serverState as { title: string }).title
-          : existingStory?.title ?? 'Untitled Project',
-        chapterCount: Array.isArray(stateChapters)
-          ? stateChapters.length
-          : existingStory?.chapterCount ?? 0,
-        wordCount: existingStory?.wordCount ?? 0,
-        status: existingStory?.status ?? 'draft',
-        createdAt: existingStory?.createdAt ?? Date.now(),
-        updatedAt: Date.now(),
+      const payload = { ...localState, chapters: recoveredChapters };
+      const id = crypto.randomUUID();
+      await dexieDb.storySnapshots.put({
+        id, storyId: projectId, name: 'Sync conflict backup (local edit)',
+        description: 'Local story and manuscript preserved before adopting the cloud version.',
+        createdAt: Date.now(), chapterCount: recoveredChapters.length,
+        wordCount: recoveredChapters.reduce((sum, chapter) => sum + wordCount(chapter.content as string), 0),
+        data: JSON.stringify(payload),
       });
-    } catch {
-      // best-effort adopt
     }
+    const stateChapters = serverState.chapters as unknown[] | undefined;
+    await dexieDb.stories.put({
+      id: projectId, data: JSON.stringify(serverState),
+      title: typeof serverState.title === 'string' ? serverState.title : existingStory?.title ?? 'Untitled Project',
+      chapterCount: Array.isArray(stateChapters) ? stateChapters.length : existingStory?.chapterCount ?? 0,
+      wordCount: existingStory?.wordCount ?? 0, status: existingStory?.status ?? 'draft',
+      createdAt: existingStory?.createdAt ?? Date.now(), updatedAt: Date.now(),
+    });
 
     // 3. Track the server version so the next push doesn't immediately re-conflict.
     if (typeof serverVersion === 'number') {

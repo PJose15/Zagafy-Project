@@ -1,4 +1,12 @@
 {
+  "storage": {
+      "loadTitle": "No se pudo cargar tu proyecto",
+      "loadError": "No se pudieron leer los datos guardados. La edición está pausada para proteger tu manuscrito. Reintenta cuando puedas acceder al almacenamiento del navegador.",
+      "retry": "Reintentar carga",
+      "downloadRecovery": "Descargar registros para recuperar el proyecto",
+      "recoveryNote": "Este archivo contiene los registros originales, incluido el texto de los capítulos. Guárdalo en privado; no es una copia de seguridad normal.",
+      "recoveryError": "No se pudo descargar el archivo. Conserva los datos de este navegador y reintenta."
+  },
   "sync": {
     "workspaceAccountNotice": "La sincronización está en pausa: el espacio de escritura local de este navegador se vinculó a otra cuenta. Usa un perfil de navegador separado para esta cuenta. Los manuscritos locales permanecen en este dispositivo después de cerrar sesión."
   },
@@ -1290,6 +1298,8 @@
     "editorPlaceholder": "Empieza a escribir tu capítulo aquí...",
     "summaryPlaceholder": "Breve resumen para la Biblia de la Historia...",
     "saveChapter": "Guardar Capítulo",
+    "saving": "Guardando…",
+    "saveError": "No se pudo guardar el capítulo. Tu borrador sigue abierto; inténtalo de nuevo.",
     "moveUpAria": "Mover {title} hacia arriba",
     "moveDownAria": "Mover {title} hacia abajo",
     "editAria": "Editar {title}",
@@ -2120,6 +2130,12 @@
     "defaultTitle": "Mi Novela"
   },
   "billing": {
+    "statusError": "No se pudo cargar tu plan. Inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "interval": "Periodo de facturación",
+    "monthly": "Mensual",
+    "yearly": "Anual",
+    "perYear": "${price}/año",
     "title": "Facturación",
     "currentPlan": "Plan actual:",
     "perMonth": "${price}/mes",

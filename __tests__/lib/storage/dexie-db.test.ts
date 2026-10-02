@@ -233,9 +233,10 @@ describe('dexie-db', () => {
       expect(all).toHaveLength(1);
     });
 
-    it('getStory returns null when stored JSON is corrupt', async () => {
+    it('getStory rejects corrupt JSON without overwriting the original', async () => {
       await db.stories.put({ id: getActiveProjectId(), data: '{not-json', updatedAt: Date.now() });
-      expect(await getStory()).toBeNull();
+      await expect(getStory()).rejects.toThrow();
+      expect((await db.stories.get(getActiveProjectId()))?.data).toBe('{not-json');
     });
   });
 

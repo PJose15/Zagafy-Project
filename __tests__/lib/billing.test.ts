@@ -15,7 +15,7 @@ describe('billing', () => {
       expect(isPlanId(plan)).toBe(true);
     });
 
-    it.each([null, undefined, '', 'pro', 'enterprise', 42, true])(
+    it.each([null, undefined, '', 'pro', 'enterprise', 42, true, 'constructor', 'toString', '__proto__'])(
       'returns false for %s',
       (val) => {
         expect(isPlanId(val)).toBe(false);

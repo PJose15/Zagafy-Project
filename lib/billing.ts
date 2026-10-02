@@ -87,7 +87,7 @@ const PLAN_RANK: Record<PlanId, number> = {
 
 /** Type guard: returns true when the value is a valid PlanId string. */
 export function isPlanId(value: unknown): value is PlanId {
-  return typeof value === 'string' && value in PLAN_LIMITS;
+  return typeof value === 'string' && Object.hasOwn(PLAN_LIMITS, value);
 }
 
 /** True when `userPlan` meets or exceeds `requiredPlan`. */
@@ -155,7 +155,16 @@ export function getStripePriceId(
   interval: 'monthly' | 'yearly',
 ): string | null {
   const key = `STRIPE_PRICE_${plan.toUpperCase()}_${interval.toUpperCase()}`;
-  return process.env[key] ?? null;
+  return process.env[key]?.trim() || null;
+}
+
+/** Resolve entitlements from configured price identity, never price amount or metadata. */
+export function getPlanForStripePrice(priceId: string): Exclude<PlanId, 'free'> | null {
+  const matches = (['writer', 'author', 'studio'] as const).filter(plan =>
+    (['monthly', 'yearly'] as const).some(interval => getStripePriceId(plan, interval) === priceId),
+  );
+  if (matches.length > 1) throw new Error('Stripe price maps to multiple plans');
+  return matches[0] ?? null;
 }
 
 /**

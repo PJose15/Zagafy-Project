@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CreditCard, ArrowUpRight, Crown, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { ParchmentCard, BrassButton } from '@/components/antiquarian';
 import { useToast } from '@/components/toast';
-import { PLANS, type PlanId } from '@/lib/billing';
+import { PLANS, isPlanId, type PlanId } from '@/lib/billing';
 import { parseApiResponse } from '@/lib/api-response';
+import { useUser } from '@clerk/nextjs';
 
 /**
  * Phase 5.7 — billing section for the settings page.
@@ -16,19 +17,38 @@ import { parseApiResponse } from '@/lib/api-response';
  * when auth is enabled (SaaS mode).
  */
 
-interface BillingSectionProps {
-  currentPlan?: PlanId;
+export function BillingSection() {
+  const authEnabled = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) && process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'embed';
+  return authEnabled ? <SignedInBillingSection /> : null;
 }
 
-export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
+function SignedInBillingSection() {
   const t = useTranslations('billing');
   const { toast } = useToast();
+  const { user, isLoaded, isSignedIn } = useUser();
+  const userId = user?.id;
   const [loading, setLoading] = useState<string | null>(null);
-
-  // Check auth directly from env vars (lib/auth imports server-only Clerk)
-  const authEnabled =
-    Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) &&
-    process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'embed';
+  const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly');
+  const [billing, setBilling] = useState<{ userId: string; plan: PlanId; hasBillingAccount: boolean } | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !userId) return;
+    const controller = new AbortController();
+    let active = true;
+    async function load() {
+      try {
+        const response = await fetch('/api/billing/status', { cache: 'no-store', signal: controller.signal });
+        const result = await parseApiResponse<{ plan: PlanId; hasBillingAccount: boolean }>(response);
+        if (!result.ok || !isPlanId(result.data.plan)) throw new Error('Billing lookup failed');
+        if (active) { setBilling({ ...result.data, userId: userId! }); setFailure(null); }
+      } catch {
+        if (active) setFailure(userId!);
+      }
+    }
+    void load();
+    return () => { active = false; controller.abort(); };
+  }, [isLoaded, isSignedIn, userId, retry]);
 
   const handleCheckout = useCallback(async (plan: Exclude<PlanId, 'free'>) => {
     setLoading(plan);
@@ -36,7 +56,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, interval: 'monthly' }),
+        body: JSON.stringify({ plan, interval }),
       });
       const result = await parseApiResponse<{ url: string }>(res);
       if (!result.ok) {
@@ -51,7 +71,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
     } finally {
       setLoading(null);
     }
-  }, [toast, t]);
+  }, [toast, t, interval]);
 
   const handlePortal = useCallback(async () => {
     setLoading('portal');
@@ -75,7 +95,14 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
     }
   }, [toast, t]);
 
-  if (!authEnabled) return null;
+  if (isLoaded && !isSignedIn) return null;
+  if (!billing || billing.userId !== userId || failure === userId) {
+    return <ParchmentCard className="space-y-3">
+      <h2 className="text-xl font-serif font-semibold">{t('title')}</h2>
+      {failure === userId ? <><p role="alert">{t('statusError')}</p><BrassButton onClick={() => { setFailure(null); setRetry(value => value + 1); }}>{t('retry')}</BrassButton></> : <p role="status">{t('loading')}</p>}
+    </ParchmentCard>;
+  }
+  const currentPlan = billing.plan;
 
   const currentPlanInfo = PLANS.find((p) => p.id === currentPlan) ?? PLANS[0];
   const upgradePlans = PLANS.filter(
@@ -96,17 +123,17 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
           {currentPlan !== 'free' && <Crown size={14} />}
           {currentPlanInfo.name}
         </span>
-        {currentPlanInfo.monthlyPrice > 0 && (
-          <span className="text-sepia-600 text-xs">
-            {t('perMonth', { price: currentPlanInfo.monthlyPrice })}
-          </span>
-        )}
+
       </div>
 
       {/* Upgrade options */}
       {upgradePlans.length > 0 && (
         <div className="space-y-3 pt-2">
           <p className="text-sepia-600 text-sm">{t('upgradePlan')}</p>
+          <div role="radiogroup" aria-label={t('interval')} className="flex gap-2">
+            <BrassButton role="radio" aria-checked={interval === 'monthly'} onClick={() => setInterval('monthly')}>{t('monthly')}</BrassButton>
+            <BrassButton role="radio" aria-checked={interval === 'yearly'} onClick={() => setInterval('yearly')}>{t('yearly')}</BrassButton>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {upgradePlans.map((plan) => (
               <div
@@ -118,7 +145,7 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
                     {plan.name}
                   </span>
                   <span className="text-sepia-600 text-sm">
-                    {t('perMonth', { price: plan.monthlyPrice })}
+                    {interval === 'monthly' ? t('perMonth', { price: plan.monthlyPrice }) : t('perYear', { price: plan.yearlyPrice })}
                   </span>
                 </div>
                 <p className="text-xs text-sepia-600 leading-relaxed">
@@ -141,8 +168,8 @@ export function BillingSection({ currentPlan = 'free' }: BillingSectionProps) {
         </div>
       )}
 
-      {/* Manage billing (only if on a paid plan) */}
-      {currentPlan !== 'free' && (
+      {/* Keep invoices and subscription management available after cancellation. */}
+      {billing.hasBillingAccount && (
         <div className="pt-2">
           <BrassButton
             onClick={handlePortal}

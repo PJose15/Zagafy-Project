@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { renderHook, act, waitFor, cleanup, render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 vi.mock('@/lib/storage/dexie-db', () => ({
   migrateFromLocalStorage: vi.fn().mockResolvedValue(undefined),
@@ -12,6 +13,10 @@ vi.mock('@/lib/storage/dexie-db', () => ({
   putStory: vi.fn().mockResolvedValue(undefined),
   clearAllStoryData: vi.fn().mockResolvedValue(undefined),
 }));
+
+vi.mock('@/lib/storage/persist-project', () => ({ persistProjectState: vi.fn().mockResolvedValue(undefined) }));
+import { getStory, putStory, getAllChapterContents } from '@/lib/storage/dexie-db';
+import { persistProjectState } from '@/lib/storage/persist-project';
 
 import { StoryProvider, useStory, defaultState } from '@/lib/store';
 import type { StoryState } from '@/lib/store';
@@ -102,13 +107,12 @@ describe('useStory() inside StoryProvider', () => {
   });
 
   it('saveNow persists immediately and adopts the passed state', async () => {
-    const { putStory } = await import('@/lib/storage/dexie-db');
     const { result } = renderHook(() => useStory(), { wrapper });
     await waitFor(() => {
       expect(result.current).not.toBeNull();
     });
 
-    vi.mocked(putStory).mockClear();
+    vi.mocked(persistProjectState).mockClear();
     const next: StoryState = { ...defaultState, title: 'Saved Novel', synopsis: 'A flushed tale' };
     await act(async () => {
       await result.current.saveNow(next);
@@ -117,8 +121,42 @@ describe('useStory() inside StoryProvider', () => {
     // Store adopted the passed state...
     expect(result.current.state.title).toBe('Saved Novel');
     // ...and the persist actually ran with that title (the Genesis race fix).
-    expect(putStory).toHaveBeenCalled();
-    const lastArgs = vi.mocked(putStory).mock.calls.at(-1);
+    expect(persistProjectState).toHaveBeenCalled();
+    const lastArgs = vi.mocked(persistProjectState).mock.calls.at(-1);
     expect((lastArgs?.[0] as { title?: string }).title).toBe('Saved Novel');
   });
+  it('cancels an older pending autosave before an explicit save and close', async () => {
+    const { result } = renderHook(() => useStory(), { wrapper });
+    await waitFor(() => expect(result.current).not.toBeNull());
+    act(() => result.current.updateField('title', 'Older draft'));
+    vi.mocked(persistProjectState).mockClear();
+    const next = { ...defaultState, title: 'Newest draft' };
+    await act(async () => {
+      const saving = result.current.saveNow(next);
+      window.dispatchEvent(new Event('beforeunload'));
+      await saving;
+    });
+    expect(vi.mocked(persistProjectState).mock.calls.map(call => call[0].title)).toEqual(['Newest draft']);
+  });
+
+});
+
+it('blocks editing on a failed initial read, preserves storage and allows a retry', async () => {
+  vi.mocked(getStory).mockRejectedValueOnce(new Error('storage unavailable'));
+  render(<StoryProvider><div>Ready to edit</div></StoryProvider>);
+  expect(await screen.findByRole('alert')).not.toBeNull();
+  expect(screen.queryByText('Ready to edit')).toBeNull();
+  expect(putStory).not.toHaveBeenCalled();
+  expect(persistProjectState).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Retry loading'));
+  expect(await screen.findByText('Ready to edit')).not.toBeNull();
+});
+it('blocks editing when chapter contents cannot be read', async () => {
+  vi.mocked(getStory).mockResolvedValueOnce({ ...defaultState, title: 'Existing' }).mockResolvedValueOnce({ ...defaultState, title: 'Existing' });
+  vi.mocked(getAllChapterContents).mockRejectedValueOnce(new Error('chapter storage failure'));
+  render(<StoryProvider><div>Ready to edit</div></StoryProvider>);
+  expect(await screen.findByRole('alert')).not.toBeNull();
+  expect(screen.queryByText('Ready to edit')).toBeNull();
+  expect(putStory).not.toHaveBeenCalled();
+  expect(persistProjectState).not.toHaveBeenCalled();
 });

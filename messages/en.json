@@ -1,4 +1,12 @@
 {
+  "storage": {
+      "loadTitle": "Your project could not be loaded",
+      "loadError": "Saved data could not be read. Editing is paused to protect your manuscript. Retry after restoring access to browser storage.",
+      "retry": "Retry loading",
+      "downloadRecovery": "Download stored records for recovery",
+      "recoveryNote": "This recovery file contains the original stored records, including chapter text. Keep it private; it is not a normal project backup.",
+      "recoveryError": "The recovery download failed. Please keep this browser data and retry."
+  },
   "sync": {
     "workspaceAccountNotice": "Cloud sync is paused: this browser’s local writing workspace was linked to another account. Use a separate browser profile for this account. Local manuscripts remain on this device after sign-out."
   },
@@ -1290,6 +1298,8 @@
     "editorPlaceholder": "Start writing your chapter here...",
     "summaryPlaceholder": "Brief summary for the Story Bible...",
     "saveChapter": "Save Chapter",
+    "saving": "Saving…",
+    "saveError": "Could not save this chapter. Your draft is still open; please retry.",
     "moveUpAria": "Move {title} up",
     "moveDownAria": "Move {title} down",
     "editAria": "Edit {title}",
@@ -2120,6 +2130,12 @@
     "defaultTitle": "My Novel"
   },
   "billing": {
+    "statusError": "Could not load your billing status. Please retry.",
+    "retry": "Retry",
+    "interval": "Billing interval",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perYear": "${price}/yr",
     "title": "Billing",
     "currentPlan": "Current plan:",
     "perMonth": "${price}/mo",

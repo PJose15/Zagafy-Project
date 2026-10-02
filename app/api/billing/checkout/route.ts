@@ -48,6 +48,9 @@ export async function POST(req: NextRequest) {
     return err('validation_failed', 'Invalid JSON body', 400, undefined, { requestId });
   }
 
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return err('validation_failed', 'Body must be an object', 400, undefined, { requestId });
+  }
   const { plan, interval = 'monthly' } = body;
 
   if (typeof plan !== 'string' || !PAID_PLANS.has(plan)) {
@@ -111,6 +114,16 @@ export async function POST(req: NextRequest) {
     if (!appUrl) {
       log.error('APP_URL / NEXT_PUBLIC_APP_URL not configured in production');
       return err('internal_error', 'Billing not configured', 500, undefined, { requestId });
+    }
+
+    // Plan changes must update the existing subscription through the portal,
+    // rather than charging the same customer for a second subscription.
+    const subscriptions = await stripe().subscriptions.list({ customer: customerId, status: 'all', limit: 100 });
+    if (subscriptions.has_more) throw new Error('Subscription lookup is incomplete');
+    const ongoing = new Set(['active', 'trialing', 'past_due', 'unpaid', 'paused', 'incomplete']);
+    if (subscriptions.data.some(subscription => ongoing.has(subscription.status))) {
+      const portal = await stripe().billingPortal.sessions.create({ customer: customerId, return_url: `${appUrl}/settings` });
+      return ok({ url: portal.url }, { requestId });
     }
 
     const session = await stripe().checkout.sessions.create({
