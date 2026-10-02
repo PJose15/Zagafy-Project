@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // ── Mocks ──
-const mockIncr = vi.fn(async (): Promise<number> => 1);
-const mockExpire = vi.fn(async (): Promise<number> => 1);
+const mockEval = vi.fn(async (): Promise<number> => 1);
 const mockGet = vi.fn(async (): Promise<number | null> => 0);
 vi.mock('@upstash/redis', () => ({
   Redis: {
-    fromEnv: vi.fn(() => ({ incr: mockIncr, expire: mockExpire, get: mockGet })),
+    fromEnv: vi.fn(() => ({ eval: mockEval, get: mockGet })),
   },
 }));
 
@@ -27,8 +26,7 @@ function stubUpstashEnv() {
 describe('lib/ai-quota', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockIncr.mockResolvedValue(1);
-    mockExpire.mockResolvedValue(1);
+    mockEval.mockResolvedValue(1);
     mockGet.mockResolvedValue(0);
     mockGetUserPlan.mockResolvedValue('free');
   });
@@ -38,10 +36,28 @@ describe('lib/ai-quota', () => {
   });
 
   describe('checkAiQuota', () => {
+    it.each(['true', 'false', ''])('fails closed on production Redis outage even with strict=%s', async (strict) => {
+      stubUpstashEnv();
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.stubEnv('RATE_LIMIT_STRICT', strict);
+      mockEval.mockRejectedValue(new Error('timeout'));
+      expect(await checkAiQuota('user-1')).toEqual({ allowed: false, unavailable: true });
+      expect((await enforceAiQuota({ userId: 'user-1', embedMode: false }))?.status).toBe(503);
+    });
+    it('fails closed on a reservation script failure in production', async () => {
+      stubUpstashEnv(); vi.stubEnv('NODE_ENV', 'production');
+      mockEval.mockRejectedValueOnce(new Error('timeout'));
+      expect((await checkAiQuota('user-1')).allowed).toBe(false);
+    });
+    it('meters the shared embed budget in production', async () => {
+      stubUpstashEnv(); vi.stubEnv('NODE_ENV', 'production');
+      mockEval.mockResolvedValue(101);
+      expect((await enforceAiQuota({ userId: 'embed-mode', embedMode: true }))?.status).toBe(429);
+    });
     it('fails open when Upstash is not configured', async () => {
       const result = await checkAiQuota('user-1');
       expect(result.allowed).toBe(true);
-      expect(mockIncr).not.toHaveBeenCalled();
+      expect(mockEval).not.toHaveBeenCalled();
     });
 
     it('fails closed without Upstash in production strict mode', async () => {
@@ -54,28 +70,26 @@ describe('lib/ai-quota', () => {
     it('allows calls under the plan limit and reports remaining', async () => {
       stubUpstashEnv();
       mockGetUserPlan.mockResolvedValue('free'); // 100/month
-      mockIncr.mockResolvedValue(40);
+      mockEval.mockResolvedValue(40);
 
       const result = await checkAiQuota('user-1');
       expect(result).toEqual({ allowed: true, remaining: 60 });
       // Key is per-user per-UTC-month.
-      expect(mockIncr).toHaveBeenCalledWith(expect.stringMatching(/^aiq:user-1:\d{4}-\d{2}$/));
-      // TTL is only armed on the first call of the month.
-      expect(mockExpire).not.toHaveBeenCalled();
+      expect(mockEval).toHaveBeenCalledWith(expect.stringContaining("redis.call('EXPIRE'"), [expect.stringMatching(/^aiq:user-1:\d{4}-\d{2}$/)], [100, 35 * 24 * 60 * 60]);
     });
 
     it('arms the TTL on the first call of the month', async () => {
       stubUpstashEnv();
-      mockIncr.mockResolvedValue(1);
+      mockEval.mockResolvedValue(1);
 
       await checkAiQuota('user-1');
-      expect(mockExpire).toHaveBeenCalledTimes(1);
+      expect(mockEval).toHaveBeenCalledTimes(1);
     });
 
     it('blocks once the plan allowance is exhausted', async () => {
       stubUpstashEnv();
       mockGetUserPlan.mockResolvedValue('free'); // 100/month
-      mockIncr.mockResolvedValue(101);
+      mockEval.mockResolvedValue(101);
 
       const result = await checkAiQuota('user-1');
       expect(result).toEqual({ allowed: false, remaining: 0 });
@@ -84,7 +98,7 @@ describe('lib/ai-quota', () => {
     it('uses the resolved plan limit (writer: 1500)', async () => {
       stubUpstashEnv();
       mockGetUserPlan.mockResolvedValue('writer');
-      mockIncr.mockResolvedValue(101); // over free limit, well under writer
+      mockEval.mockResolvedValue(101); // over free limit, well under writer
 
       const result = await checkAiQuota('user-1');
       expect(result.allowed).toBe(true);
@@ -93,7 +107,7 @@ describe('lib/ai-quota', () => {
 
     it('fails open when Redis is unreachable', async () => {
       stubUpstashEnv();
-      mockIncr.mockRejectedValue(new Error('ECONNREFUSED'));
+      mockEval.mockRejectedValue(new Error('ECONNREFUSED'));
 
       const result = await checkAiQuota('user-1');
       expect(result.allowed).toBe(true);
@@ -105,12 +119,12 @@ describe('lib/ai-quota', () => {
       stubUpstashEnv();
       const res = await enforceAiQuota({ userId: 'embed-mode', embedMode: true });
       expect(res).toBeNull();
-      expect(mockIncr).not.toHaveBeenCalled();
+      expect(mockEval).not.toHaveBeenCalled();
     });
 
     it('returns null while the allowance holds', async () => {
       stubUpstashEnv();
-      mockIncr.mockResolvedValue(5);
+      mockEval.mockResolvedValue(5);
       const res = await enforceAiQuota({ userId: 'user-1', embedMode: false });
       expect(res).toBeNull();
     });
@@ -118,7 +132,7 @@ describe('lib/ai-quota', () => {
     it('returns a 429 quota_exceeded response when exhausted', async () => {
       stubUpstashEnv();
       mockGetUserPlan.mockResolvedValue('free');
-      mockIncr.mockResolvedValue(101);
+      mockEval.mockResolvedValue(101);
 
       const res = await enforceAiQuota({ userId: 'user-1', embedMode: false });
       expect(res).not.toBeNull();
@@ -132,6 +146,11 @@ describe('lib/ai-quota', () => {
 
   // A1 — sidecar peek: read-only check that never increments the counter.
   describe('peekAiQuota', () => {
+    it('fails closed on production Redis read failures', async () => {
+      stubUpstashEnv(); vi.stubEnv('NODE_ENV', 'production');
+      mockGet.mockRejectedValue(new Error('timeout'));
+      expect(await peekAiQuota('user-1')).toEqual({ allowed: false, unavailable: true });
+    });
     it('fails open when Upstash is not configured (no read)', async () => {
       const result = await peekAiQuota('user-1');
       expect(result.allowed).toBe(true);
@@ -154,7 +173,7 @@ describe('lib/ai-quota', () => {
       expect(result.allowed).toBe(true);
       expect(mockGet).toHaveBeenCalledWith(expect.stringMatching(/^aiq:user-1:\d{4}-\d{2}$/));
       // Peeking must not consume quota.
-      expect(mockIncr).not.toHaveBeenCalled();
+      expect(mockEval).not.toHaveBeenCalled();
     });
 
     it('blocks when already at/over the limit', async () => {
@@ -164,7 +183,7 @@ describe('lib/ai-quota', () => {
 
       const result = await peekAiQuota('user-1');
       expect(result.allowed).toBe(false);
-      expect(mockIncr).not.toHaveBeenCalled();
+      expect(mockEval).not.toHaveBeenCalled();
     });
 
     it('treats a missing counter as zero usage', async () => {
@@ -195,7 +214,7 @@ describe('lib/ai-quota', () => {
       mockGet.mockResolvedValue(5);
       const res = await enforceAiQuotaPeek({ userId: 'user-1', embedMode: false });
       expect(res).toBeNull();
-      expect(mockIncr).not.toHaveBeenCalled();
+      expect(mockEval).not.toHaveBeenCalled();
     });
 
     it('returns a 429 when the user is already over quota', async () => {
@@ -208,7 +227,7 @@ describe('lib/ai-quota', () => {
       expect(res!.status).toBe(429);
       const body = await res!.json();
       expect(body.code).toBe('quota_exceeded');
-      expect(mockIncr).not.toHaveBeenCalled();
+      expect(mockEval).not.toHaveBeenCalled();
     });
   });
 });

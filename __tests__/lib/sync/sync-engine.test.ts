@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+const active = vi.hoisted(() => ({ id: 'current' }));
+vi.mock('@/lib/projects/active-project', () => ({ getActiveProjectId: () => active.id }));
+
 // Mock sync-queue before importing SyncEngine.
 // getSyncMeta defaults to a BOUND project (serverStoryId set) so the pull-apply
 // tests below exercise the normal bound path; unbound behavior is covered by a
@@ -49,6 +52,7 @@ describe('SyncEngine', () => {
   let engine: SyncEngine;
 
   beforeEach(() => {
+    active.id = 'current';
     vi.useFakeTimers();
     vi.clearAllMocks();
     mockFetch.mockReset();
@@ -360,6 +364,16 @@ describe('SyncEngine', () => {
   // ─── pull ───
 
   describe('pull (via syncNow)', () => {
+    it('does not apply a delayed pull to the newly active project', async () => {
+      mockFetch.mockImplementationOnce(async () => {
+        active.id = 'other';
+        return new Response(JSON.stringify({ data: { storyId: 'server-story-1', story: { state: '{}' }, chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], serverTimestamp: '2026-01-01T00:00:00Z' } }), { status: 200 });
+      });
+      await engine.start();
+      expect(updateSyncMeta).toHaveBeenCalledWith({ lastPulledAt: '2026-01-01T00:00:00Z' }, 'current');
+      expect(vi.mocked(db.stories.put).mock.calls.every(([row]) => row.id !== 'other')).toBe(true);
+    });
+
     it('calls fetch with the bound storyId and the incremental since watermark', async () => {
       // REG-3: the since watermark comes from the project-keyed sync meta
       // (getSyncMeta), not a hardcoded 'sync' row. Bound project with a prior
@@ -678,6 +692,18 @@ describe('SyncEngine', () => {
       const body = JSON.parse((pushCall![1] as RequestInit).body as string);
       return body.deltas.find((d: any) => d.entityType === 'story');
     }
+
+    it('keeps the captured version when the active project changes during a push', async () => {
+      await startEngine();
+      queueStoryDelta();
+      vi.mocked(getServerStoryId).mockImplementationOnce(async () => { active.id = 'other'; return 'server-story-1'; });
+      vi.mocked(getSyncMeta).mockImplementation(async projectId => ({ id: projectId ?? active.id, serverStoryId: 'server-story-1', lastPulledAt: null, lastPushedAt: null, serverStoryVersion: projectId === 'current' ? 4 : 99 }));
+      mockFetch.mockResolvedValueOnce(pushResponse({ applied: 1, conflicts: [], serverTimestamp: new Date().toISOString(), storyVersion: 5 }));
+      mockFetch.mockResolvedValueOnce(pullResponse({}));
+      await engine.syncNow();
+      expect(pushedStoryDelta().payload.version).toBe(4);
+      expect(updateSyncMeta).toHaveBeenCalledWith({ serverStoryVersion: 5 }, 'current');
+    });
 
     it('stamps the pushed story delta with the base serverStoryVersion', async () => {
       vi.mocked(getSyncMeta).mockResolvedValue({

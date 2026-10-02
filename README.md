@@ -1,3 +1,8 @@
+> Release work: see [the current launch checklist](docs/LAUNCH_READINESS.md).
+> Gemini powers writing and the main character-chat reply; Anthropic powers its
+> background state, insight, contradiction and memory helpers. Production requires
+> configured authentication and distributed rate/quota limits.
+
 <div align="center">
 <img width="1200" height="475" alt="Zagafy Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 
@@ -38,8 +43,8 @@ A continuity-aware writing application that helps authors craft consistent, deep
 ### Setup
 
 ```bash
-git clone https://github.com/PJose15/story-memory-writer.git
-cd story-memory-writer
+git clone https://github.com/PJose15/Zagafy-Project.git
+cd Zagafy-Project
 npm install
 cp .env.example .env.local
 # Edit .env.local and add your GEMINI_API_KEY

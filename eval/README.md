@@ -7,8 +7,7 @@ against each AI-powered API route and grading the responses automatically.
 
 ## Test Cases
 
-Each endpoint has **50 test cases** (10 representative cases are checked in for
-the initial framework; the full suite is expanded over time). Cases live in
+The checked-in suite has 20 cases across three endpoints. Cases live in
 `eval/cases/<endpoint>.json` and follow this schema:
 
 ```json
@@ -35,7 +34,7 @@ the initial framework; the full suite is expanded over time). Cases live in
 ## Runner
 
 ```bash
-npx tsx eval/runner.ts --base-url http://localhost:3000
+EVAL_AUTH_TOKEN=<current-staging-user-JWT> npx tsx eval/runner.ts --base-url https://<staging-domain>
 ```
 
 The runner:
@@ -66,3 +65,9 @@ for 90 days.
 Future work: a small dashboard page that reads `eval/results/` history and
 plots pass-rate trends per endpoint over time, enabling the team to catch
 regressions before they reach users.
+
+The staging server must already be running. Nightly CI requires `STAGING_URL` and
+`EVAL_AUTH_TOKEN` secrets, with JWT renewal managed by the operator. Missing/expired
+credentials and endpoint errors fail the job. Empty/degraded responses fail too.
+`qualityReview: manual_required` records that contract checks do not grade narrative
+quality. Attach human review before using the results as a release approval.

@@ -21,7 +21,7 @@ import type { FlowScore } from '@/lib/types/writing-session';
 import { readGamification } from '@/lib/types/gamification';
 import { getStreakWarning } from '@/lib/gamification/writing-streak';
 import { GamificationProvider } from '@/hooks/use-gamification';
-import { SyncProvider } from '@/lib/sync/sync-context';
+import { AuthenticatedSyncProvider } from '@/lib/sync/authenticated-sync-provider';
 import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
 import { AiStatusBanner } from '@/components/ai/ai-status-banner';
 import { useProfile } from '@/hooks/use-profile';
@@ -91,7 +91,7 @@ export function LibraryShell({ children }: { children: React.ReactNode }) {
   // I18nProvider + ConsentBanner moved to the root layout (S1-I04) so
   // marketing/auth pages get them without mounting this heavy shell.
   return (
-    <SyncProvider enabled={syncEnabled}>
+    <AuthenticatedSyncProvider enabled={syncEnabled}>
       <StoryProvider>
         <SessionProvider>
           <GamificationProvider>
@@ -105,6 +105,6 @@ export function LibraryShell({ children }: { children: React.ReactNode }) {
           </GamificationProvider>
         </SessionProvider>
       </StoryProvider>
-    </SyncProvider>
+    </AuthenticatedSyncProvider>
   );
 }

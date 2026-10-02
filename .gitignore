@@ -22,3 +22,6 @@ loadtest/*.json
 
 # Per-developer Claude Code state.
 .claude/
+
+# AI eval output may contain private staging manuscript snippets.
+eval/results/

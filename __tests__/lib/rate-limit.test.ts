@@ -139,7 +139,7 @@ describe('validateRateLimitConfig', () => {
     spy.mockRestore();
   });
 
-  it('warns (degraded, fail-open) in production when Upstash is not configured and strict mode is off', async () => {
+  it('fails closed in production even when strict mode is off', async () => {
     vi.resetModules();
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
@@ -150,10 +150,10 @@ describe('validateRateLimitConfig', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mod.validateRateLimitConfig();
-    // Default is fail-open: warn about the degraded in-memory limiter, never error.
-    expect(errorSpy).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalled();
-    const warning = warnSpy.mock.calls[0][0] as string;
+    expect(errorSpy).toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(mod.getRateLimitMode()).toBe('disabled');
+    const warning = errorSpy.mock.calls[0][0] as string;
     expect(warning).toContain('UPSTASH');
     errorSpy.mockRestore();
     warnSpy.mockRestore();

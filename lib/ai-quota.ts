@@ -6,26 +6,22 @@ import { getUserPlan } from '@/lib/get-user-plan';
 import type { AuthedUser } from '@/lib/auth';
 
 /**
- * Monthly AI-call quota, enforced per user against PLAN_LIMITS.aiCallsPerMonth.
- *
- * Counting uses a single Upstash Redis INCR on `aiq:<userId>:<YYYY-MM>` so it
- * is atomic across serverless instances. The key expires after ~35 days —
- * longer than any calendar month, so a live month is never evicted while the
- * previous month's key cleans itself up.
- *
- * Fail-open posture mirrors lib/rate-limit.ts: when Upstash is unconfigured
- * (or unreachable) the quota is not enforced, unless the deployment opted into
- * strict mode with RATE_LIMIT_STRICT=true in production — then it fails closed.
- *
- * Metered routes: chat, ingest, audit, analyze-character, extract-world-bible,
- * micro-prompt, polish, closing-question, story-coach, character-chat (main),
- * and all six publishing/* routes. The four auxiliary character-chat routes
- * (state / insight / contradiction / memory) are deliberately NOT metered:
- * they are fire-and-forget sidecars of a single chat turn, and counting them
- * would bill one user-visible turn up to 4x.
+ * A single Redis script reserves monthly allowance and sets its expiry atomically.
+ * Production always fails closed on absent/unreachable Redis (HTTP 503), including
+ * explicit embed deployments, which share a bounded free-plan budget. Local
+ * development may operate without Redis. Exhaustion is distinct (HTTP 429).
+ * Character-chat helpers do not consume another turn: lib/ai-turn binds each
+ * helper to a metered main turn with one atomic claim per helper and a short TTL.
  */
 
 const TTL_SECONDS = 35 * 24 * 60 * 60; // ~35 days, outlives any calendar month
+const RESERVE_QUOTA = `
+local count = tonumber(redis.call('GET', KEYS[1]) or '0')
+if count >= tonumber(ARGV[1]) then return -1 end
+count = redis.call('INCR', KEYS[1])
+if redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[2]) end
+return count
+`;
 
 /** Redis key for a user's current-month AI call counter (UTC month). */
 function quotaKey(userId: string, now = new Date()): string {
@@ -44,20 +40,19 @@ function isUpstashConfigured(): boolean {
  * Count one AI call for the user and check it against their plan's monthly
  * allowance. Returns `{ allowed: false }` once the allowance is exhausted.
  */
+type QuotaResult = { allowed: boolean; remaining?: number; unavailable?: boolean };
+
+function unavailableQuota(): QuotaResult {
+  return process.env.NODE_ENV === 'production'
+    ? { allowed: false, unavailable: true }
+    : { allowed: true };
+}
+
 export async function checkAiQuota(
   userId: string,
-): Promise<{ allowed: boolean; remaining?: number }> {
+): Promise<QuotaResult> {
   if (!isUpstashConfigured()) {
-    // Same posture as the rate limiter: without Upstash we cannot count across
-    // serverless instances, so we fail open — unless the deployment explicitly
-    // opted into strict fail-closed behavior.
-    if (
-      process.env.NODE_ENV === 'production' &&
-      process.env.RATE_LIMIT_STRICT === 'true'
-    ) {
-      return { allowed: false };
-    }
-    return { allowed: true };
+    return unavailableQuota();
   }
 
   try {
@@ -67,38 +62,21 @@ export async function checkAiQuota(
 
     const redis = Redis.fromEnv();
     const key = quotaKey(userId);
-    const count = await redis.incr(key);
-    if (count === 1) {
-      // First call this month — arm the TTL so stale months self-clean.
-      await redis.expire(key, TTL_SECONDS);
-    }
-    if (count > limit) return { allowed: false, remaining: 0 };
+    const count = Number(await redis.eval(RESERVE_QUOTA, [key], [limit, TTL_SECONDS]));
+    if (count === -1 || count > limit) return { allowed: false, remaining: 0 };
+    if (!Number.isSafeInteger(count) || count < 1) throw new Error('Invalid quota result');
     return { allowed: true, remaining: limit - count };
   } catch {
-    // Upstash unreachable — fail open, matching the rate limiter's posture.
-    return { allowed: true };
+    return unavailableQuota();
   }
 }
 
-/**
- * Read-only quota check: reports whether the user is ALREADY over their monthly
- * allowance WITHOUT incrementing the counter. Used by the character-chat
- * sidecars (state/insight/contradiction/memory) — they each make a real paid
- * Anthropic call but must not each count as a separate AI call (that would bill
- * one visible turn up to 4x). Peeking lets an exhausted user be blocked from
- * looping the sidecars for uncapped spend while a legitimate turn still costs 1.
- */
+/** Read-only usage display. Never authorizes a paid helper; use enforceAiSidecar. */
 export async function peekAiQuota(
   userId: string,
-): Promise<{ allowed: boolean }> {
+): Promise<QuotaResult> {
   if (!isUpstashConfigured()) {
-    if (
-      process.env.NODE_ENV === 'production' &&
-      process.env.RATE_LIMIT_STRICT === 'true'
-    ) {
-      return { allowed: false };
-    }
-    return { allowed: true };
+    return unavailableQuota();
   }
   try {
     const plan = await getUserPlan(userId);
@@ -108,22 +86,22 @@ export async function peekAiQuota(
     const current = Number(await redis.get(quotaKey(userId))) || 0;
     return { allowed: current < limit };
   } catch {
-    // Upstash unreachable — fail open, matching the rate limiter's posture.
-    return { allowed: true };
+    return unavailableQuota();
   }
 }
 
 /**
  * Route helper: returns a 429 response when the user's monthly AI allowance is
  * used up, or null when the call may proceed. Call AFTER auth + rate limiting.
- * Embed mode (self-hosted, no billing) is never metered.
+ * Local development embed mode is unmetered; production embeds share a budget.
  */
 export async function enforceAiQuota(
   user: AuthedUser,
   init?: { requestId?: string },
 ): Promise<NextResponse | null> {
-  if (user.embedMode) return null;
-  const { allowed } = await checkAiQuota(user.userId);
+  if (user.embedMode && process.env.NODE_ENV !== 'production') return null;
+  const { allowed, unavailable } = await checkAiQuota(user.userId);
+  if (unavailable) return quotaUnavailable(init);
   if (allowed) return null;
   return quotaExceeded(init);
 }
@@ -136,10 +114,15 @@ export async function enforceAiQuotaPeek(
   user: AuthedUser,
   init?: { requestId?: string },
 ): Promise<NextResponse | null> {
-  if (user.embedMode) return null;
-  const { allowed } = await peekAiQuota(user.userId);
+  if (user.embedMode && process.env.NODE_ENV !== 'production') return null;
+  const { allowed, unavailable } = await peekAiQuota(user.userId);
+  if (unavailable) return quotaUnavailable(init);
   if (allowed) return null;
   return quotaExceeded(init);
+}
+
+export function quotaUnavailable(init?: { requestId?: string }): NextResponse {
+  return err('upstream_unavailable', 'AI usage limits are temporarily unavailable. Please try again shortly.', 503, undefined, init);
 }
 
 function quotaExceeded(init?: { requestId?: string }): NextResponse {

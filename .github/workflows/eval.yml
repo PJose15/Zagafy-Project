@@ -16,11 +16,12 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run AI Eval
-        run: npx tsx eval/runner.ts --base-url ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
+        run: npx tsx eval/runner.ts
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        continue-on-error: true
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          EVAL_AUTH_TOKEN: ${{ secrets.EVAL_AUTH_TOKEN }}
       - name: Upload eval results
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: eval-results-${{ github.run_number }}

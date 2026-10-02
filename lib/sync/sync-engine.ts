@@ -67,6 +67,7 @@ export class SyncEngine {
 
     try {
       await this.pull();
+      if (this.destroyed) return;
       this.setStatus('idle');
     } catch {
       if (this.isOffline()) {
@@ -160,7 +161,7 @@ export class SyncEngine {
       // Base version for the story blob's optimistic-concurrency check. The
       // server compares this against its stored version and rejects a stale
       // overwrite as a conflict instead of clobbering bible edits made elsewhere.
-      const bindMeta = await getSyncMeta();
+      const bindMeta = await getSyncMeta(projectId);
       const baseStoryVersion = bindMeta?.serverStoryVersion ?? 0;
 
       // Resolve payloads from Dexie for each queued entry
@@ -197,6 +198,7 @@ export class SyncEngine {
       // Get story title for server-side story record
       const storyTitle = await getStoryTitle(projectId);
 
+      if (this.destroyed) return;
       const res = await fetch('/api/sync/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -219,6 +221,7 @@ export class SyncEngine {
 
       const data = await res.json() as { data: PushResponse };
       const result = data.data;
+      if (this.destroyed) return;
 
       // Clear ALL raw queue rows covered by the dedup — clearing only the
       // deduped "latest" ids would leave superseded duplicates to resurface
@@ -240,9 +243,9 @@ export class SyncEngine {
         this.setStatus('conflict');
         this.emit({ type: 'push-complete', applied: result.applied, conflicts: result.conflicts });
         // Apply server versions for conflicted chapters
-        await this.applyConflictResolutions(result.conflicts);
+        await this.applyConflictResolutions(result.conflicts, projectId);
         // The overwrite must reach this tab's in-memory store too.
-        this.broadcastStateUpdated();
+        if (getActiveProjectId() === projectId) this.broadcastStateUpdated();
       } else {
         this.setStatus('idle');
         this.emit({ type: 'push-complete', applied: result.applied, conflicts: [] });
@@ -271,7 +274,8 @@ export class SyncEngine {
       // Read this project's sync metadata (keyed per project — see the Dexie v8
       // migration). `getSyncMeta()` resolves both the server binding and the
       // last-pulled watermark from the correct row.
-      const meta = await getSyncMeta();
+      const projectId = getActiveProjectId();
+      const meta = await getSyncMeta(projectId);
       const serverStoryId = meta?.serverStoryId ?? null;
 
       // Multi-project safety: only pull for a project that is bound to a server
@@ -293,6 +297,7 @@ export class SyncEngine {
       if (since) params.set('since', since);
       params.set('storyId', serverStoryId);
 
+      if (this.destroyed) return;
       const res = await fetch(`/api/sync/pull?${params.toString()}`);
 
       if (!res.ok) {
@@ -308,13 +313,14 @@ export class SyncEngine {
       const result = data.data;
 
       // Apply pulled data to Dexie (scoped to the active/bound project).
-      const counts = await this.applyPulledData(result);
+      if (this.destroyed) return;
+      const counts = await this.applyPulledData(result, projectId);
 
-      await updateSyncMeta({ lastPulledAt: result.serverTimestamp });
+      await updateSyncMeta({ lastPulledAt: result.serverTimestamp }, projectId);
 
       // The pull only wrote to Dexie; the current tab's in-memory store would
       // clobber it with stale state on the next edit unless it re-hydrates.
-      if (Object.values(counts).some(n => n > 0)) {
+      if (getActiveProjectId() === projectId && Object.values(counts).some(n => n > 0)) {
         this.broadcastStateUpdated();
       }
 
@@ -334,10 +340,9 @@ export class SyncEngine {
 
   // ─── Apply pulled data to Dexie ───
 
-  private async applyPulledData(data: PullResponse): Promise<Record<string, number>> {
+  private async applyPulledData(data: PullResponse, projectId: string): Promise<Record<string, number>> {
     const counts: Record<string, number> = {};
-    // All pulled rows belong to the active project (active-project-only sync).
-    const projectId = getActiveProjectId();
+    // Rows belong to the project captured before the network request.
 
     // Dirty guard: an entity with a pending (unpushed) local write must NOT be
     // overwritten by a background pull — that silently discards live edits. Its
@@ -546,11 +551,10 @@ export class SyncEngine {
    * When the server rejects a chapter push due to version conflict,
    * apply the server's version locally (server-authoritative).
    */
-  private async applyConflictResolutions(conflicts: ConflictRecord[]): Promise<void> {
+  private async applyConflictResolutions(conflicts: ConflictRecord[], projectId: string): Promise<void> {
     // Chapters are stored per project; without projectId the row is dropped from
     // getAllChapterContents(projectId) and its content silently vanishes from the
     // active project. Scope the overwrite to the active project like applyPulledData.
-    const projectId = getActiveProjectId();
     for (const c of conflicts) {
       if (c.entityType === 'chapter' && c.serverPayload) {
         const sp = c.serverPayload;

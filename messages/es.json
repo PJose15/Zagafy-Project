@@ -1,4 +1,7 @@
 {
+  "sync": {
+    "workspaceAccountNotice": "La sincronización está en pausa: el espacio de escritura local de este navegador se vinculó a otra cuenta. Usa un perfil de navegador separado para esta cuenta. Los manuscritos locales permanecen en este dispositivo después de cerrar sesión."
+  },
   "app": {
     "name": "Zagafy",
     "version": "CanonKeeper v1.0"
@@ -2209,7 +2212,7 @@
         "period": "para siempre",
         "description": "Perfecto para probar Zagafy en un único proyecto.",
         "cta": "Empezar",
-        "f1": "1 historia",
+        "f1": "Espacio de escritura local",
         "f2": "50 solicitudes de IA al día",
         "f3": "Almacenamiento local",
         "f4": "Editor de manuscritos",

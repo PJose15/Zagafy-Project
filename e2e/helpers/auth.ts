@@ -29,6 +29,17 @@ export function clerkE2ECredentialsConfigured(): boolean {
   );
 }
 
+async function verifyRequiredSession(page: Page): Promise<void> {
+  if (process.env.E2E_REQUIRE_AUTH !== 'true') return;
+  await expect.poll(
+    () => page.evaluate(() => Boolean(
+      (window as unknown as { Clerk?: { user?: { id?: string }; session?: { id?: string } } }).Clerk?.user?.id &&
+      (window as unknown as { Clerk?: { session?: { id?: string } } }).Clerk?.session?.id,
+    )),
+    { message: 'Release readiness requires an active Clerk user and session', timeout: 15_000 },
+  ).toBe(true);
+}
+
 /**
  * Navigate to `path`, signing in through Clerk first when the app requires it.
  * Skips the current test (with setup instructions) when auth is enabled but
@@ -36,6 +47,9 @@ export function clerkE2ECredentialsConfigured(): boolean {
  */
 export async function gotoApp(page: Page, path: string = '/'): Promise<void> {
   const useClerk = clerkE2ECredentialsConfigured();
+  if (process.env.E2E_REQUIRE_AUTH === 'true' && !useClerk) {
+    throw new Error('Release readiness requires Clerk keys and dedicated test-user credentials');
+  }
 
   // The testing token must be installed before navigation so Clerk FAPI
   // requests carry it from the first load.
@@ -45,7 +59,10 @@ export async function gotoApp(page: Page, path: string = '/'): Promise<void> {
 
   await page.goto(path);
 
-  if (!page.url().includes('/sign-in')) return; // auth disabled or already signed in
+  if (!page.url().includes('/sign-in')) {
+    await verifyRequiredSession(page);
+    return; // auth disabled or already signed in
+  }
 
   if (!useClerk) {
     test.skip(
@@ -76,4 +93,5 @@ export async function gotoApp(page: Page, path: string = '/'): Promise<void> {
     await page.goto(path);
   }
   await expect(page).not.toHaveURL(/sign-in/);
+  await verifyRequiredSession(page);
 }

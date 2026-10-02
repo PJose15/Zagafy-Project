@@ -46,10 +46,17 @@ import {
   clearQueue,
   hasPendingDeltas,
   getServerStoryId,
+  getSyncMeta,
   updateSyncMeta,
 } from '@/lib/sync/sync-queue';
 
 describe('sync-queue', () => {
+  it('reads the captured project metadata instead of the currently active project', async () => {
+    syncMetaStore.set('p1', { id: 'p1', serverStoryVersion: 2 });
+    syncMetaStore.set('p2', { id: 'p2', serverStoryVersion: 9 });
+    expect((await getSyncMeta('p2'))?.serverStoryVersion).toBe(9);
+    expect((await getSyncMeta())?.serverStoryVersion).toBe(2);
+  });
   beforeEach(() => {
     syncQueueStore.clear();
     syncMetaStore.clear();

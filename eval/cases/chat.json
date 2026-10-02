@@ -8,9 +8,17 @@
       "storyContext": "Elena is a young woman with piercing green eyes and auburn hair. She works as a librarian in a small coastal town."
     },
     "rubric": {
-      "mustContain": ["green"],
-      "mustNotContain": ["system prompt", "I am an AI"],
-      "qualityCriteria": ["References specific story elements", "Distinguishes fact from suggestion"]
+      "mustContain": [
+        "green"
+      ],
+      "mustNotContain": [
+        "system prompt",
+        "I am an AI"
+      ],
+      "qualityCriteria": [
+        "References specific story elements",
+        "Distinguishes fact from suggestion"
+      ]
     }
   },
   {
@@ -23,8 +31,14 @@
     },
     "rubric": {
       "mustContain": [],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Provides a concrete conflict idea", "Relates to art theft or Josephine's secret", "Fits 1920s Paris setting"]
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Provides a concrete conflict idea",
+        "Relates to art theft or Josephine's secret",
+        "Fits 1920s Paris setting"
+      ]
     }
   },
   {
@@ -36,9 +50,16 @@
       "storyContext": "Chapter 1: Tom is an only child. Chapter 4: Tom visits his older brother in the hospital."
     },
     "rubric": {
-      "mustContain": ["brother"],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Identifies the only-child vs brother contradiction", "Suggests a resolution"]
+      "mustContain": [
+        "brother"
+      ],
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Identifies the only-child vs brother contradiction",
+        "Suggests a resolution"
+      ]
     }
   },
   {
@@ -51,8 +72,15 @@
     },
     "rubric": {
       "mustContain": [],
-      "mustNotContain": ["system prompt", "I am an AI"],
-      "qualityCriteria": ["Uses sensory details", "Fits dystopian tone", "References industrial or post-war imagery"]
+      "mustNotContain": [
+        "system prompt",
+        "I am an AI"
+      ],
+      "qualityCriteria": [
+        "Uses sensory details",
+        "Fits dystopian tone",
+        "References industrial or post-war imagery"
+      ]
     }
   },
   {
@@ -65,8 +93,14 @@
     },
     "rubric": {
       "mustContain": [],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Suggests plot progression", "References the betrayal", "Considers character motivations"]
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Suggests plot progression",
+        "References the betrayal",
+        "Considers character motivations"
+      ]
     }
   },
   {
@@ -79,8 +113,14 @@
     },
     "rubric": {
       "mustContain": [],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Distinct voices for each sister", "Reflects their contrasting personalities", "Feels natural and emotional"]
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Distinct voices for each sister",
+        "Reflects their contrasting personalities",
+        "Feels natural and emotional"
+      ]
     }
   },
   {
@@ -93,8 +133,14 @@
     },
     "rubric": {
       "mustContain": [],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Gives specific pacing advice", "References the chapter content", "Suggests cuts or restructuring"]
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Gives specific pacing advice",
+        "References the chapter content",
+        "Suggests cuts or restructuring"
+      ]
     }
   },
   {
@@ -107,8 +153,13 @@
     },
     "rubric": {
       "mustContain": [],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Identifies thematic elements like patience or imperfection", "Connects to the wabi-sabi or coming-of-age tradition"]
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Identifies thematic elements like patience or imperfection",
+        "Connects to the wabi-sabi or coming-of-age tradition"
+      ]
     }
   },
   {
@@ -121,8 +172,13 @@
     },
     "rubric": {
       "mustContain": [],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Provides multiple name suggestions", "Names fit the sci-fi espionage genre"]
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Provides multiple name suggestions",
+        "Names fit the sci-fi espionage genre"
+      ]
     }
   },
   {
@@ -134,9 +190,17 @@
       "storyContext": "Historical romance. Marie walks through the lavender fields of Provence at sunset, thinking about the letter she received from her estranged husband."
     },
     "rubric": {
-      "mustContain": ["lavande"],
-      "mustNotContain": ["system prompt"],
-      "qualityCriteria": ["Response is in French", "Evokes romantic and pastoral imagery", "Mentions the letter or husband"]
+      "mustContain": [
+        "lavande"
+      ],
+      "mustNotContain": [
+        "system prompt"
+      ],
+      "qualityCriteria": [
+        "Response is in French",
+        "Evokes romantic and pastoral imagery",
+        "Mentions the letter or husband"
+      ]
     }
   }
 ]

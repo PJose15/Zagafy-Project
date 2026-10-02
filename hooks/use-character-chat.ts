@@ -306,6 +306,10 @@ export function useCharacterChat(characterId: string | null) {
         signal: controller.signal,
       });
 
+      const turnId = res.headers?.get('X-AI-Turn-ID');
+      const helperHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (turnId) helperHeaders['X-AI-Turn-ID'] = turnId;
+
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         const reason = body?.details?.reason;
@@ -381,7 +385,7 @@ export function useCharacterChat(characterId: string | null) {
           try {
             const ires = await fetch('/api/character-chat/insight', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({ characterName: character.name, transcript, language: state.language }),
             });
             if (!ires.ok) {
@@ -424,7 +428,7 @@ export function useCharacterChat(characterId: string | null) {
           try {
             const sres = await fetch('/api/character-chat/state', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({
                 characterName: character.name,
                 mode,
@@ -457,7 +461,7 @@ export function useCharacterChat(characterId: string | null) {
           try {
             const cres = await fetch('/api/character-chat/contradiction', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({
                 characterName: character.name,
                 reply: replyText,
@@ -489,7 +493,7 @@ export function useCharacterChat(characterId: string | null) {
           try {
             const mres = await fetch('/api/character-chat/memory', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({ characterName: character.name, transcript: memTranscript, existingMemory, language: state.language }),
             });
             if (!mres.ok) return;

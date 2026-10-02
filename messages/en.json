@@ -1,4 +1,7 @@
 {
+  "sync": {
+    "workspaceAccountNotice": "Cloud sync is paused: this browser’s local writing workspace was linked to another account. Use a separate browser profile for this account. Local manuscripts remain on this device after sign-out."
+  },
   "app": {
     "name": "Zagafy",
     "version": "CanonKeeper v1.0"
@@ -2209,7 +2212,7 @@
         "period": "forever",
         "description": "Perfect for trying Zagafy on a single project.",
         "cta": "Get Started",
-        "f1": "1 story",
+        "f1": "Local writing workspace",
         "f2": "50 AI requests per day",
         "f3": "Local storage",
         "f4": "Manuscript editor",

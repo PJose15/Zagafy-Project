@@ -101,8 +101,8 @@ export async function hasPendingDeltas(): Promise<boolean> {
 // ─── Sync metadata (one row per project) ───
 
 /** Read the active project's sync metadata. Returns null if not yet initialized. */
-export async function getSyncMeta(): Promise<SyncMeta | null> {
-  const row = await db.syncMeta.get(getActiveProjectId());
+export async function getSyncMeta(projectId: string = getActiveProjectId()): Promise<SyncMeta | null> {
+  const row = await db.syncMeta.get(projectId);
   return (row as SyncMeta | undefined) ?? null;
 }
 

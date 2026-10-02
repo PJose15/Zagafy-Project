@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
-import { enforceAiQuotaPeek } from '@/lib/ai-quota';
+import { enforceAiSidecar } from '@/lib/ai-turn';
 import { getErrorStatus } from '@/lib/api-error';
 import { ok, err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
@@ -60,10 +60,8 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
-  // Sidecar of a single chat turn — not metered (that would bill one turn up to
-  // 4x), but block an already-over-quota user from looping it for uncapped spend.
-  const quotaResponse = await enforceAiQuotaPeek(authResult, { requestId });
-  if (quotaResponse) return quotaResponse;
+  const turnResponse = await enforceAiSidecar(authResult, req.headers.get('X-AI-Turn-ID'), 'state', { requestId });
+  if (turnResponse) return turnResponse;
 
   try {
     const body = await req.json();
@@ -87,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     const priorState =
-      currentState && typeof currentState === 'object' ? JSON.stringify(currentState) : '{}';
+      currentState && typeof currentState === 'object' ? JSON.stringify(currentState).slice(0, 2000) : '{}';
 
     const result = await callAnthropicMessages({
       apiKey,
