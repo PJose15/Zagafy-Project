@@ -36,7 +36,9 @@ const mockInsightsFindMany = vi.fn(async () => []);
 const mockCommentsFindMany = vi.fn(async () => []);
 
 vi.mock('@/db/client', () => ({
-  db: vi.fn(() => ({
+  db: vi.fn(() => { const database = {
+    execute: vi.fn(async () => [{ timestamp: new Date().toISOString() }]),
+    transaction: async (work: (tx: unknown) => unknown): Promise<unknown> => work(database),
     // Subquery builder used by fetchChapterVersions (chapter ids for story)
     select: vi.fn(() => ({
       from: vi.fn(() => ({
@@ -54,7 +56,7 @@ vi.mock('@/db/client', () => ({
       writerInsights: { findMany: mockInsightsFindMany },
       comments: { findMany: mockCommentsFindMany },
     },
-  })),
+  }; return database; }),
   isDatabaseConfigured: vi.fn(() => true),
 }));
 
@@ -62,15 +64,16 @@ vi.mock('@/db/schema', () => ({
   stories: { id: 'id', ownerId: 'ownerId', updatedAt: 'updatedAt' },
   storyCollaborators: { storyId: 'storyId', userId: 'userId', role: 'role' },
   chapters: { id: 'id', storyId: 'storyId', updatedAt: 'updatedAt' },
-  chapterVersions: { id: 'id', chapterId: 'chapterId', createdAt: 'createdAt' },
-  storySnapshots: { id: 'id', storyId: 'storyId', createdAt: 'createdAt' },
-  sessions: { id: 'id', storyId: 'storyId', startedAt: 'startedAt' },
-  chatMessages: { id: 'id', storyId: 'storyId', timestamp: 'timestamp' },
-  writerInsights: { id: 'id', storyId: 'storyId', lastObservedAt: 'lastObservedAt' },
-  comments: { id: 'id', storyId: 'storyId', chapterId: 'chapterId', updatedAt: 'updatedAt' },
+  chapterVersions: { syncedAt: 'syncedAt', id: 'id', chapterId: 'chapterId', createdAt: 'createdAt' },
+  storySnapshots: { syncedAt: 'syncedAt', id: 'id', storyId: 'storyId', createdAt: 'createdAt' },
+  sessions: { syncedAt: 'syncedAt', id: 'id', storyId: 'storyId', startedAt: 'startedAt' },
+  chatMessages: { syncedAt: 'syncedAt', id: 'id', storyId: 'storyId', timestamp: 'timestamp' },
+  writerInsights: { syncedAt: 'syncedAt', id: 'id', storyId: 'storyId', lastObservedAt: 'lastObservedAt' },
+  comments: { syncedAt: 'syncedAt', id: 'id', storyId: 'storyId', chapterId: 'chapterId', updatedAt: 'updatedAt' },
 }));
 
 vi.mock('drizzle-orm', () => ({
+  sql: vi.fn((...args: any[]) => args),
   eq: vi.fn((...args: any[]) => args),
   and: vi.fn((...args: any[]) => args),
   gte: vi.fn((...args: any[]) => args),

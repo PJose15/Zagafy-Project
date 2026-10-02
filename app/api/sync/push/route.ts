@@ -88,109 +88,109 @@ export async function POST(req: NextRequest) {
 
   try {
     return await db().transaction(async database => {
-      // One transaction owns this story's authorization, version checks and
-      // complete batch. Concurrent pushes cannot both accept the same base.
-      await database.execute(sql`SET LOCAL lock_timeout = '5s'`);
-      await database.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`zagafy-sync:${storyId}`}, 0))`);
-    // Plan gate: cloud sync is a paid feature. For SHARED stories the story
-    // OWNER's plan governs — a collaborator with a free plan may still push to
-    // a paid owner's story, and a paid collaborator cannot sync a free owner's
-    // story. Checked BEFORE the first-push upsert so a free user never creates
-    // a server story row.
-    const storyRow = await database.query.stories.findFirst({
-      where: eq(schema.stories.id, storyId),
-      columns: { ownerId: true },
-    });
-    const plan = await getUserPlan(storyRow?.ownerId ?? userId, database);
-    if (!getLimits(plan).cloudSync) {
-      return err(
-        'forbidden',
-        'Cloud sync requires a paid plan. Upgrade to sync this story across devices.',
-        403,
-        undefined,
-        { requestId },
-      );
-    }
-
-    // Access check FIRST — owner and editor collaborators may push;
-    // readers and strangers may not.
-    const access = await getStoryAccess(storyId, userId, database);
-
-    if (access === null) {
-      // Either the story doesn't exist yet (first push — create it for the
-      // caller as owner) or it exists and the caller has no access (403).
-      const existing = await database.query.stories.findFirst({
-        where: eq(schema.stories.id, storyId),
-        columns: { id: true },
-      });
-      if (existing) {
-        return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
-      }
-      // First push: create the story owned by the caller. Kept as an upsert
-      // to stay race-safe against a concurrent first push from another tab.
-      await database
-        .insert(schema.stories)
-        .values({
-          id: storyId,
-          ownerId: userId,
-          title: storyTitle || 'Untitled',
-          updatedAt: new Date(),
-        })
-        .onConflictDoUpdate({
-          target: schema.stories.id,
-          // Only update when the conflicting row already belongs to the
-          // caller — a colliding id owned by someone else must not be retitled.
-          where: eq(schema.stories.ownerId, userId),
-          set: {
-            title: storyTitle || 'Untitled',
-            updatedAt: new Date(),
-          },
-        });
-      // Re-check ownership: if another user's story appeared between the
-      // access check and the insert, the guarded update matched nothing —
-      // refuse to write deltas into a story the caller does not own.
-      const created = await database.query.stories.findFirst({
+        // One transaction owns this story's authorization, version checks and
+        // complete batch. Concurrent pushes cannot both accept the same base.
+        await database.execute(sql`SET LOCAL lock_timeout = '5s'`);
+        await database.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`zagafy-sync:${storyId}`}, 0))`);
+      // Plan gate: cloud sync is a paid feature. For SHARED stories the story
+      // OWNER's plan governs — a collaborator with a free plan may still push to
+      // a paid owner's story, and a paid collaborator cannot sync a free owner's
+      // story. Checked BEFORE the first-push upsert so a free user never creates
+      // a server story row.
+      const storyRow = await database.query.stories.findFirst({
         where: eq(schema.stories.id, storyId),
         columns: { ownerId: true },
       });
-      if (!created || created.ownerId !== userId) {
-        return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
+      const plan = await getUserPlan(storyRow?.ownerId ?? userId, database);
+      if (!getLimits(plan).cloudSync) {
+        return err(
+          'forbidden',
+          'Cloud sync requires a paid plan. Upgrade to sync this story across devices.',
+          403,
+          undefined,
+          { requestId },
+        );
       }
-    } else if (access === 'owner' || access === 'editor') {
-      // Metadata title is updated only by an accepted story-blob delta below.
-      // A stale chapter-only push must not rename a newer server story.
-    } else {
-      // 'reader' — read-only collaborators cannot push.
-      return err('forbidden', 'You do not have edit access to this story', 403, undefined, { requestId });
-    }
 
-    let applied = 0;
-    const conflicts: ConflictRecord[] = [];
-    const chapterVersions: Record<string, number> = {};
-    let storyVersion: number | undefined;
+      // Access check FIRST — owner and editor collaborators may push;
+      // readers and strangers may not.
+      const access = await getStoryAccess(storyId, userId, database);
 
-    for (const delta of deltas) {
-      const result = await applyDelta(database, storyId, delta, log);
-      if (result.conflict) {
-        conflicts.push(result.conflict);
+      if (access === null) {
+        // Either the story doesn't exist yet (first push — create it for the
+        // caller as owner) or it exists and the caller has no access (403).
+        const existing = await database.query.stories.findFirst({
+          where: eq(schema.stories.id, storyId),
+          columns: { id: true },
+        });
+        if (existing) {
+          return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
+        }
+        // First push: create the story owned by the caller. Kept as an upsert
+        // to stay race-safe against a concurrent first push from another tab.
+        await database
+          .insert(schema.stories)
+          .values({
+            id: storyId,
+            ownerId: userId,
+            title: storyTitle || 'Untitled',
+            updatedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+          })
+          .onConflictDoUpdate({
+            target: schema.stories.id,
+            // Only update when the conflicting row already belongs to the
+            // caller — a colliding id owned by someone else must not be retitled.
+            where: eq(schema.stories.ownerId, userId),
+            set: {
+              title: storyTitle || 'Untitled',
+              updatedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
+            },
+          });
+        // Re-check ownership: if another user's story appeared between the
+        // access check and the insert, the guarded update matched nothing —
+        // refuse to write deltas into a story the caller does not own.
+        const created = await database.query.stories.findFirst({
+          where: eq(schema.stories.id, storyId),
+          columns: { ownerId: true },
+        });
+        if (!created || created.ownerId !== userId) {
+          return err('forbidden', 'You do not own this story', 403, undefined, { requestId });
+        }
+      } else if (access === 'owner' || access === 'editor') {
+        // Metadata title is updated only by an accepted story-blob delta below.
+        // A stale chapter-only push must not rename a newer server story.
       } else {
-        applied++;
-        if (typeof result.newChapterVersion === 'number') chapterVersions[delta.entityId] = result.newChapterVersion;
-        if (typeof result.newStoryVersion === 'number') storyVersion = result.newStoryVersion;
+        // 'reader' — read-only collaborators cannot push.
+        return err('forbidden', 'You do not have edit access to this story', 403, undefined, { requestId });
       }
-    }
 
-    // Update story's updatedAt after all deltas applied
-    if (applied > 0) {
-      await database
-        .update(schema.stories)
-        .set({ updatedAt: new Date() })
-        .where(eq(schema.stories.id, storyId));
-    }
+      let applied = 0;
+      const conflicts: ConflictRecord[] = [];
+      const chapterVersions: Record<string, number> = {};
+      let storyVersion: number | undefined;
 
-    const serverTimestamp = new Date().toISOString();
-    log.info('push complete', { applied, conflicts: conflicts.length, deltas: deltas.length });
-    return ok({ applied, conflicts, chapterVersions, storyVersion, serverTimestamp }, { requestId });
+      for (const delta of deltas) {
+        const result = await applyDelta(database, storyId, delta, log);
+        if (result.conflict) {
+          conflicts.push(result.conflict);
+        } else {
+          applied++;
+          if (typeof result.newChapterVersion === 'number') chapterVersions[delta.entityId] = result.newChapterVersion;
+          if (typeof result.newStoryVersion === 'number') storyVersion = result.newStoryVersion;
+        }
+      }
+
+      // Update story's updatedAt after all deltas applied
+      if (applied > 0) {
+        await database
+          .update(schema.stories)
+          .set({ updatedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'` })
+          .where(eq(schema.stories.id, storyId));
+      }
+
+      const serverTimestamp = new Date().toISOString();
+      log.info('push complete', { applied, conflicts: conflicts.length, deltas: deltas.length });
+      return ok({ applied, conflicts, chapterVersions, storyVersion, serverTimestamp }, { requestId });
     });
   } catch (dbErr) {
     log.error('push failed', dbErr);
@@ -345,7 +345,7 @@ async function applyStoryUpsert(
       state,
       ...(typeof state.title === 'string' ? { title: state.title } : {}),
       version: newVersion,
-      updatedAt: new Date(),
+      updatedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
     })
     .where(eq(schema.stories.id, storyId));
   return { newStoryVersion: newVersion };
@@ -402,7 +402,7 @@ async function applyChapterUpsert(
       orderIndex: typeof payload.orderIndex === 'number' ? payload.orderIndex : 0,
       wordCount,
       version: newVersion,
-      updatedAt: new Date(),
+      updatedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
     })
     .onConflictDoUpdate({
       target: schema.chapters.id,
@@ -418,7 +418,7 @@ async function applyChapterUpsert(
         orderIndex: typeof payload.orderIndex === 'number' ? payload.orderIndex : 0,
         wordCount,
         version: newVersion,
-        updatedAt: new Date(),
+        updatedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'`,
       },
     }).returning({ id: schema.chapters.id });
   if (saved.length !== 1) throw new Error('Chapter id is not writable in this story');
@@ -441,7 +441,7 @@ async function applyChapterVersionUpsert(
   });
   if (!chapter) throw new Error('Chapter version parent is not in this story');
 
-  await database
+  const saved = await database
     .insert(schema.chapterVersions)
     .values({
       id: entityId,
@@ -449,7 +449,16 @@ async function applyChapterVersionUpsert(
       createdAt: payload.createdAt ? new Date(payload.createdAt as string) : new Date(),
       data: payload.data ?? payload,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: schema.chapterVersions.id,
+      where: eq(schema.chapterVersions.chapterId, chapterId),
+      set: {
+        createdAt: payload.createdAt ? new Date(payload.createdAt as string) : new Date(),
+        data: payload.data ?? payload,
+        syncedAt: sql`clock_timestamp()`,
+      },
+    }).returning({ id: schema.chapterVersions.id });
+  if (saved.length !== 1) throw new Error('Entity id is not writable in this story');
   return {};
 }
 
@@ -459,7 +468,7 @@ async function applySnapshotUpsert(
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await database
+  const saved = await database
     .insert(schema.storySnapshots)
     .values({
       id: entityId,
@@ -471,7 +480,20 @@ async function applySnapshotUpsert(
       createdAt: payload.createdAt ? new Date(payload.createdAt as number) : new Date(),
       data: payload.data ?? payload,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: schema.storySnapshots.id,
+      where: eq(schema.storySnapshots.storyId, storyId),
+      set: {
+        name: (payload.name as string) ?? 'Unnamed',
+        description: (payload.description as string) ?? '',
+        wordCount: typeof payload.wordCount === 'number' ? payload.wordCount : 0,
+        chapterCount: typeof payload.chapterCount === 'number' ? payload.chapterCount : 0,
+        createdAt: payload.createdAt ? new Date(payload.createdAt as number) : new Date(),
+        data: payload.data ?? payload,
+        syncedAt: sql`clock_timestamp()`,
+      },
+    }).returning({ id: schema.storySnapshots.id });
+  if (saved.length !== 1) throw new Error('Entity id is not writable in this story');
   return {};
 }
 
@@ -481,7 +503,7 @@ async function applySessionUpsert(
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await database
+  const saved = await database
     .insert(schema.sessions)
     .values({
       id: entityId,
@@ -493,7 +515,20 @@ async function applySessionUpsert(
       heteronymId: (payload.heteronymId as string) ?? null,
       data: payload.data ?? payload,
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: schema.sessions.id,
+      where: eq(schema.sessions.storyId, storyId),
+      set: {
+        startedAt: payload.startedAt ? new Date(payload.startedAt as string) : new Date(),
+        endedAt: payload.endedAt ? new Date(payload.endedAt as string) : null,
+        wordsAdded: typeof payload.wordsAdded === 'number' ? payload.wordsAdded : 0,
+        flowScore: typeof payload.flowScore === 'number' ? payload.flowScore : null,
+        heteronymId: (payload.heteronymId as string) ?? null,
+        data: payload.data ?? payload,
+        syncedAt: sql`clock_timestamp()`,
+      },
+    }).returning({ id: schema.sessions.id });
+  if (saved.length !== 1) throw new Error('Entity id is not writable in this story');
   return {};
 }
 
@@ -503,7 +538,7 @@ async function applyChatMessageUpsert(
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await database
+  const saved = await database
     .insert(schema.chatMessages)
     .values({
       id: entityId,
@@ -515,7 +550,20 @@ async function applyChatMessageUpsert(
         ? new Date(payload.timestamp as number)
         : new Date(),
     })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: schema.chatMessages.id,
+      where: eq(schema.chatMessages.storyId, storyId),
+      set: {
+        chapterId: (payload.chapterId as string) ?? null,
+        role: (payload.role as string) ?? 'user',
+        content: (payload.content as string) ?? '',
+        timestamp: payload.timestamp
+          ? new Date(payload.timestamp as number)
+          : new Date(),
+        syncedAt: sql`clock_timestamp()`,
+      },
+    }).returning({ id: schema.chatMessages.id });
+  if (saved.length !== 1) throw new Error('Entity id is not writable in this story');
   return {};
 }
 
@@ -525,7 +573,7 @@ async function applyInsightUpsert(
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
-  await database
+  const saved = await database
     .insert(schema.writerInsights)
     .values({
       id: entityId,
@@ -545,15 +593,17 @@ async function applyInsightUpsert(
       // blocks cross-tenant overwrite of an insight by guessing its ID.
       where: eq(schema.writerInsights.storyId, storyId),
       set: {
-        observation: (payload.observation as string) ?? '',
-        evidenceCount: typeof payload.evidenceCount === 'number' ? payload.evidenceCount : 1,
-        lastObservedAt: payload.lastObservedAt
-          ? new Date(payload.lastObservedAt as number)
-          : new Date(),
-        confidence: typeof payload.confidence === 'number' ? payload.confidence : 50,
-        pinned: typeof payload.pinned === 'number' ? payload.pinned : 0,
+          syncedAt: sql`clock_timestamp()`,
+          observation: (payload.observation as string) ?? '',
+          evidenceCount: typeof payload.evidenceCount === 'number' ? payload.evidenceCount : 1,
+          lastObservedAt: payload.lastObservedAt
+            ? new Date(payload.lastObservedAt as number)
+            : new Date(),
+          confidence: typeof payload.confidence === 'number' ? payload.confidence : 50,
+          pinned: typeof payload.pinned === 'number' ? payload.pinned : 0,
       },
-    });
+    }).returning({ id: schema.writerInsights.id });
+  if (saved.length !== 1) throw new Error('Entity id is not writable in this story');
   return {};
 }
 
@@ -570,7 +620,7 @@ async function applyCommentUpsert(
   const updatedAt = payload.updatedAt
     ? new Date(payload.updatedAt as string)
     : new Date();
-  await database
+  const saved = await database
     .insert(schema.comments)
     .values({
       id: entityId,
@@ -583,10 +633,12 @@ async function applyCommentUpsert(
       target: schema.comments.id,
       where: eq(schema.comments.storyId, storyId),
       set: {
-        chapterId: (payload.chapterId as string) ?? '',
-        updatedAt,
-        data: payload,
+          syncedAt: sql`clock_timestamp()`,
+          chapterId: (payload.chapterId as string) ?? '',
+          updatedAt,
+          data: payload,
       },
-    });
+    }).returning({ id: schema.comments.id });
+  if (saved.length !== 1) throw new Error('Entity id is not writable in this story');
   return {};
 }

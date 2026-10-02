@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { eq, and, gte, inArray } from 'drizzle-orm';
+import { eq, and, gte, inArray, sql } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
@@ -16,6 +16,7 @@ export const runtime = 'nodejs';
 // rows committed while the pull queries were in flight are picked up by the
 // next incremental pull rather than falling into the gap.
 const WATERMARK_OVERLAP_MS = 2_000;
+type PullDatabase = Pick<ReturnType<typeof db>, 'query' | 'select' | 'execute'>;
 
 /**
  * GET /api/sync/pull -- return all server data for the authenticated user,
@@ -52,107 +53,122 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Find the user's story. If storyId is provided, verify the caller has
-    // access (owner OR collaborator — collaborators pull shared stories).
-    // Otherwise, return the user's most recent OWNED story.
-    let story: typeof schema.stories.$inferSelect | undefined;
+    return await db().transaction(async database => {
+      // Find the user's story. If storyId is provided, verify the caller has
+      // access (owner OR collaborator — collaborators pull shared stories).
+      // Otherwise, return the user's most recent OWNED story.
+      let story: typeof schema.stories.$inferSelect | undefined;
 
-    if (storyIdParam) {
-      const access = await getStoryAccess(storyIdParam, userId);
-      if (access !== null) {
-        story = await db().query.stories.findFirst({
-          where: eq(schema.stories.id, storyIdParam),
+      if (storyIdParam) {
+        const access = await getStoryAccess(storyIdParam, userId, database);
+        if (access !== null) {
+          story = await database.query.stories.findFirst({
+            where: eq(schema.stories.id, storyIdParam),
+          });
+        }
+      } else {
+        story = await database.query.stories.findFirst({
+          where: eq(schema.stories.ownerId, userId),
+          orderBy: (s, { desc }) => [desc(s.updatedAt)],
         });
       }
-    } else {
-      story = await db().query.stories.findFirst({
-        where: eq(schema.stories.ownerId, userId),
-        orderBy: (s, { desc }) => [desc(s.updatedAt)],
+
+      if (story) {
+        await database.execute(sql`SET LOCAL lock_timeout = '5s'`);
+        await database.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`zagafy-sync:${story.id}`}, 0))`);
+        // Access and state may have changed while waiting for a push to commit.
+        if (!await getStoryAccess(story.id, userId, database)) {
+          return err('forbidden', 'Story access is no longer available', 403, undefined, { requestId });
+        }
+        story = await database.query.stories.findFirst({ where: eq(schema.stories.id, story.id) });
+      }
+
+      // Plan gate: cloud sync is a paid feature. For SHARED stories the story
+      // OWNER's plan governs (the owner's plan pays for the story); with no
+      // story resolved, the caller's own plan decides.
+      const plan = await getUserPlan(story ? story.ownerId : userId, database);
+      if (!getLimits(plan).cloudSync) {
+        return err(
+          'forbidden',
+          'Cloud sync requires a paid plan. Upgrade to sync this story across devices.',
+          403,
+          undefined,
+          { requestId },
+        );
+      }
+
+      if (!story) {
+        // No story on server -- this is a first sync from a new user
+        return ok({
+          storyId: null,
+          story: null,
+          chapters: [],
+          chapterVersions: [],
+          storySnapshots: [],
+          sessions: [],
+          chatMessages: [],
+          writerInsights: [],
+          serverTimestamp: new Date().toISOString(),
+        }, { requestId });
+      }
+
+      const storyId = story.id;
+
+      // Capture the watermark BEFORE running the queries (with a small overlap)
+      // so rows committed while the queries execute are re-delivered by the next
+      // since-pull instead of being skipped forever. Re-delivery is safe: pull
+      // consumers upsert by id, so overlap only costs a few duplicate rows.
+      const clockResult = await database.execute(sql`SELECT clock_timestamp()::text AS timestamp`);
+      const clockRows = Array.isArray(clockResult) ? clockResult : (clockResult as unknown as { rows: { timestamp: string }[] }).rows;
+      const clock = clockRows[0] as { timestamp: string };
+      const serverTimestamp = new Date(new Date(clock.timestamp).getTime() - WATERMARK_OVERLAP_MS).toISOString();
+
+      // Fetch all entities, optionally filtered by since timestamp
+      const [chapters, chapterVersions, storySnapshots, sessions, chatMessages, writerInsights, comments] =
+        await Promise.all([
+          fetchChapters(database, storyId, sinceDate),
+          fetchChapterVersions(database, storyId, sinceDate),
+          fetchSnapshots(database, storyId, sinceDate),
+          fetchSessions(database, storyId, sinceDate),
+          fetchChatMessages(database, storyId, sinceDate),
+          fetchInsights(database, storyId, sinceDate),
+          fetchComments(database, storyId, sinceDate),
+        ]);
+
+      // Only include the story state if it was updated since the timestamp
+      const includeStory = !sinceDate || story.updatedAt >= sinceDate;
+
+      log.info('pull complete', {
+        storyId,
+        chapters: chapters.length,
+        chapterVersions: chapterVersions.length,
+        storySnapshots: storySnapshots.length,
+        sessions: sessions.length,
+        chatMessages: chatMessages.length,
+        writerInsights: writerInsights.length,
+        comments: comments.length,
+        since: sinceParam ?? 'full',
       });
-    }
 
-    // Plan gate: cloud sync is a paid feature. For SHARED stories the story
-    // OWNER's plan governs (the owner's plan pays for the story); with no
-    // story resolved, the caller's own plan decides.
-    const plan = await getUserPlan(story ? story.ownerId : userId);
-    if (!getLimits(plan).cloudSync) {
-      return err(
-        'forbidden',
-        'Cloud sync requires a paid plan. Upgrade to sync this story across devices.',
-        403,
-        undefined,
-        { requestId },
-      );
-    }
-
-    if (!story) {
-      // No story on server -- this is a first sync from a new user
       return ok({
-        storyId: null,
-        story: null,
-        chapters: [],
-        chapterVersions: [],
-        storySnapshots: [],
-        sessions: [],
-        chatMessages: [],
-        writerInsights: [],
-        serverTimestamp: new Date().toISOString(),
+        storyId,
+        story: includeStory ? {
+          id: story.id,
+          title: story.title,
+          state: story.state,
+          version: story.version,
+          updatedAt: story.updatedAt.toISOString(),
+        } : null,
+        chapters: chapters.map(serializeChapter),
+        chapterVersions: chapterVersions.map(serializeChapterVersion),
+        storySnapshots: storySnapshots.map(serializeSnapshot),
+        sessions: sessions.map(serializeSession),
+        chatMessages: chatMessages.map(serializeChatMessage),
+        writerInsights: writerInsights.map(serializeInsight),
+        comments: comments.map(serializeComment),
+        serverTimestamp,
       }, { requestId });
-    }
-
-    const storyId = story.id;
-
-    // Capture the watermark BEFORE running the queries (with a small overlap)
-    // so rows committed while the queries execute are re-delivered by the next
-    // since-pull instead of being skipped forever. Re-delivery is safe: pull
-    // consumers upsert by id, so overlap only costs a few duplicate rows.
-    const serverTimestamp = new Date(Date.now() - WATERMARK_OVERLAP_MS).toISOString();
-
-    // Fetch all entities, optionally filtered by since timestamp
-    const [chapters, chapterVersions, storySnapshots, sessions, chatMessages, writerInsights, comments] =
-      await Promise.all([
-        fetchChapters(storyId, sinceDate),
-        fetchChapterVersions(storyId, sinceDate),
-        fetchSnapshots(storyId, sinceDate),
-        fetchSessions(storyId, sinceDate),
-        fetchChatMessages(storyId, sinceDate),
-        fetchInsights(storyId, sinceDate),
-        fetchComments(storyId, sinceDate),
-      ]);
-
-    // Only include the story state if it was updated since the timestamp
-    const includeStory = !sinceDate || story.updatedAt >= sinceDate;
-
-    log.info('pull complete', {
-      storyId,
-      chapters: chapters.length,
-      chapterVersions: chapterVersions.length,
-      storySnapshots: storySnapshots.length,
-      sessions: sessions.length,
-      chatMessages: chatMessages.length,
-      writerInsights: writerInsights.length,
-      comments: comments.length,
-      since: sinceParam ?? 'full',
     });
-
-    return ok({
-      storyId,
-      story: includeStory ? {
-        id: story.id,
-        title: story.title,
-        state: story.state,
-        version: story.version,
-        updatedAt: story.updatedAt.toISOString(),
-      } : null,
-      chapters: chapters.map(serializeChapter),
-      chapterVersions: chapterVersions.map(serializeChapterVersion),
-      storySnapshots: storySnapshots.map(serializeSnapshot),
-      sessions: sessions.map(serializeSession),
-      chatMessages: chatMessages.map(serializeChatMessage),
-      writerInsights: writerInsights.map(serializeInsight),
-      comments: comments.map(serializeComment),
-      serverTimestamp,
-    }, { requestId });
   } catch (dbErr) {
     log.error('pull failed', dbErr);
     return err('internal_error', 'Pull failed', 500, undefined, { requestId });
@@ -161,84 +177,84 @@ export async function GET(req: NextRequest) {
 
 // ─── Query helpers ───
 
-async function fetchChapters(storyId: string, since: Date | null) {
+async function fetchChapters(database: PullDatabase, storyId: string, since: Date | null) {
   if (since) {
-    return db().query.chapters.findMany({
+    return database.query.chapters.findMany({
       where: and(eq(schema.chapters.storyId, storyId), gte(schema.chapters.updatedAt, since)),
     });
   }
-  return db().query.chapters.findMany({
+  return database.query.chapters.findMany({
     where: eq(schema.chapters.storyId, storyId),
   });
 }
 
-async function fetchChapterVersions(storyId: string, since: Date | null) {
+async function fetchChapterVersions(database: PullDatabase, storyId: string, since: Date | null) {
   // chapterVersions has no storyId column — scope through a subquery of the
-  // story's chapter ids (same pattern as applyDelete in push). Versions are
-  // immutable, so createdAt stands in for updatedAt when filtering by since.
+  // story's chapter ids (same pattern as applyDelete in push). Receipt time
+  // includes late offline uploads and later history-label changes.
   const inStory = inArray(
     schema.chapterVersions.chapterId,
-    db().select({ id: schema.chapters.id }).from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
+    database.select({ id: schema.chapters.id }).from(schema.chapters).where(eq(schema.chapters.storyId, storyId)),
   );
   if (since) {
-    return db().query.chapterVersions.findMany({
-      where: and(inStory, gte(schema.chapterVersions.createdAt, since)),
+    return database.query.chapterVersions.findMany({
+      where: and(inStory, gte(schema.chapterVersions.syncedAt, since)),
     });
   }
-  return db().query.chapterVersions.findMany({ where: inStory });
+  return database.query.chapterVersions.findMany({ where: inStory });
 }
 
-async function fetchSnapshots(storyId: string, since: Date | null) {
+async function fetchSnapshots(database: PullDatabase, storyId: string, since: Date | null) {
   if (since) {
-    return db().query.storySnapshots.findMany({
-      where: and(eq(schema.storySnapshots.storyId, storyId), gte(schema.storySnapshots.createdAt, since)),
+    return database.query.storySnapshots.findMany({
+      where: and(eq(schema.storySnapshots.storyId, storyId), gte(schema.storySnapshots.syncedAt, since)),
     });
   }
-  return db().query.storySnapshots.findMany({
+  return database.query.storySnapshots.findMany({
     where: eq(schema.storySnapshots.storyId, storyId),
   });
 }
 
-async function fetchSessions(storyId: string, since: Date | null) {
+async function fetchSessions(database: PullDatabase, storyId: string, since: Date | null) {
   if (since) {
-    return db().query.sessions.findMany({
-      where: and(eq(schema.sessions.storyId, storyId), gte(schema.sessions.startedAt, since)),
+    return database.query.sessions.findMany({
+      where: and(eq(schema.sessions.storyId, storyId), gte(schema.sessions.syncedAt, since)),
     });
   }
-  return db().query.sessions.findMany({
+  return database.query.sessions.findMany({
     where: eq(schema.sessions.storyId, storyId),
   });
 }
 
-async function fetchChatMessages(storyId: string, since: Date | null) {
+async function fetchChatMessages(database: PullDatabase, storyId: string, since: Date | null) {
   if (since) {
-    return db().query.chatMessages.findMany({
-      where: and(eq(schema.chatMessages.storyId, storyId), gte(schema.chatMessages.timestamp, since)),
+    return database.query.chatMessages.findMany({
+      where: and(eq(schema.chatMessages.storyId, storyId), gte(schema.chatMessages.syncedAt, since)),
     });
   }
-  return db().query.chatMessages.findMany({
+  return database.query.chatMessages.findMany({
     where: eq(schema.chatMessages.storyId, storyId),
   });
 }
 
-async function fetchInsights(storyId: string, since: Date | null) {
+async function fetchInsights(database: PullDatabase, storyId: string, since: Date | null) {
   if (since) {
-    return db().query.writerInsights.findMany({
-      where: and(eq(schema.writerInsights.storyId, storyId), gte(schema.writerInsights.lastObservedAt, since)),
+    return database.query.writerInsights.findMany({
+      where: and(eq(schema.writerInsights.storyId, storyId), gte(schema.writerInsights.syncedAt, since)),
     });
   }
-  return db().query.writerInsights.findMany({
+  return database.query.writerInsights.findMany({
     where: eq(schema.writerInsights.storyId, storyId),
   });
 }
 
-async function fetchComments(storyId: string, since: Date | null) {
+async function fetchComments(database: PullDatabase, storyId: string, since: Date | null) {
   if (since) {
-    return db().query.comments.findMany({
-      where: and(eq(schema.comments.storyId, storyId), gte(schema.comments.updatedAt, since)),
+    return database.query.comments.findMany({
+      where: and(eq(schema.comments.storyId, storyId), gte(schema.comments.syncedAt, since)),
     });
   }
-  return db().query.comments.findMany({
+  return database.query.comments.findMany({
     where: eq(schema.comments.storyId, storyId),
   });
 }

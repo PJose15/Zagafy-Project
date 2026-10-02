@@ -115,3 +115,36 @@ The production-build browser rerun passed all four required local journeys:
 chapter save/reload, independently parsed DOCX/PDF downloads, and JSON change/
 restore/reload. The earlier failing save-race checks passed after the fix. Local
 runtime had no authenticated Clerk session; hosted acceptance remains required.
+
+
+## Cloud receipt and update follow-up
+
+Registered migration `0005_sync_receipts` adds timezone-aware `synced_at` columns
+and scoped indexes for chapter versions, snapshots, sessions, chat, writer insights
+and comments. Their incremental pull filters use database receipt time while
+retaining historical user-facing dates. Updates refresh receipt time. Completed
+sessions and renamed history now update rather than being silently ignored.
+
+Push and pull use the same per-story transaction lock. Pull rereads access/state
+after locking and takes its watermark from the database clock. Chapter/story
+updates explicitly store UTC in their legacy timestamp columns. This prevents
+non-UTC database sessions and different application clocks from causing a receipt
+to fall behind a pull watermark. Concurrent push/pull tests verify coherent batches
+and delivery on the next pull; these embedded tests do not simulate multiple
+hosted processes or network partitions.
+
+Foreign IDs cannot be silently acknowledged for chapter versions, snapshots,
+sessions, chat messages, insights or comments; each guarded upsert requires a
+returned row, and a failed guard rolls back the preceding batch writes. The earlier
+chapter-ID guard has the same behavior. Version-parent ownership remains checked.
+
+All six registered migrations apply through the real Drizzle migrator. Reapplying
+the new SQL preserves historical data, and all six receipt columns are timestamptz.
+The current `0005_snapshot.json` matches the schema: subsequent `db:generate`
+reports no changes instead of recreating objects from manual migrations.
+
+Latest local full run: 215 suites / 2,956 tests passed. Production build, TypeScript
+and repository lint pass (seven existing warnings). The previous four production-build local
+browser journeys remain evidence for the unchanged manuscript/export/restore
+client. A hosted migration must be applied and verified in isolated staging before
+using the updated sync endpoints. No hosted schema was changed.

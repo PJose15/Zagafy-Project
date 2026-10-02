@@ -36,6 +36,13 @@
       "when": 1790906400000,
       "tag": "0004_stripe_events",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790989200000,
+      "tag": "0005_sync_receipts",
+      "breakpoints": true
     }
   ]
 }

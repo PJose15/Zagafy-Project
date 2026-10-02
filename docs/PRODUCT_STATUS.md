@@ -40,6 +40,11 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
   acknowledgements keep the queue. Failed pushes retain their error state.
 - Conflict resolution saves a chapter version or a full manuscript snapshot before
   overwriting a local edit. Failed recovery storage blocks that overwrite.
+- Cloud history uses timezone-aware database receipt times, so late offline
+  uploads and changed labels/completed sessions reach incremental pulls. Pull and
+  push share a story lock and database clock; Postgres tests cover a non-UTC session.
+  Foreign IDs are rejected for all seven non-story entity types and failed batches
+  roll back. The current Drizzle snapshot prevents duplicate future generation.
 - Stripe event claims and entitlement writes commit together. Failures roll back
   claims for retry. Per-customer locking and fresh subscription lookup prevent old
   event metadata from controlling the current entitlement.
@@ -54,13 +59,10 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
 | Priority | Concrete gap | Acceptance needed |
 | --- | --- | --- |
 | 1 | History, snapshots, sessions and writer insights do not consistently enqueue all local mutations | Atomic local mutation plus queue, captured project IDs, no echo on pull, and two-device round-trip tests. |
-| 1 | Incremental pull uses client-authored historical timestamps for several entity types | Add server receipt/update timestamps with a migration; prove late offline uploads and skewed clocks reach another client. |
-| 1 | Session upsert currently ignores an existing row, and some immutable ID collisions are silently acknowledged | Persist session completion and reject foreign entity collisions; database regressions for every entity type. |
 | 1 | Cloud deletions lack a general tombstone/delivery protocol | Verify deletion propagation across disconnected devices, including dependent rows and retained recovery copies. |
 | 1 | New simultaneous checkouts can still race before a subscription exists | Serialize/reuse checkout attempts and verify Stripe's one-subscription redirect plus portal configuration in staging. |
 | 2 | Some non-manuscript queue writes swallow failures and rely on a full push that is not implemented | Make failures observable/retryable or add tested reconciliation; retain local data. |
 | 2 | Browser project switching and cross-tab hydration need further in-flight save coverage | Rapid switches, pending saves, concurrent tabs, failed hydration and account changes cannot transfer or lose edits. |
-| 2 | Drizzle migration snapshots lag manual SQL migrations | Restore a current schema snapshot and prove future generation does not recreate existing objects. |
 | 2 | Notification delivery is best-effort after billing commits | Decide whether reliable email is required; use a durable outbox if it is, with idempotent retry tests. |
 | 2 | Snapshot pruning can remove recovery history | Define retention rules for conflict backups and verify predictable, user-visible recovery. |
 | 3 | Historical roadmap and counts overstate some completion and understate other shipped features | Keep this inventory and release evidence current; complete accessibility, localization and author usability review. |
