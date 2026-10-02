@@ -18,6 +18,8 @@ has passed these gates. Base reviewed: `485b71029eea4c8af096a0197fe0f12db55829af
 | Z08: false-green evaluation | Staging URL and authenticated JWT required; errors fail workflow. Updated obsolete input fields; empty/degraded output fails. Contract rubrics remain distinct from human quality review. |
 | Z09: browser account switching | Sync requires a loaded signed-in account; changing accounts destroys the old engine. The browser workspace is linked to its first syncing account; another account cannot automatically sync that workspace. Local manuscripts remain device-local and are not erased on sign-out. |
 | Z10: stale instructions | Current setup and launch guidance linked from README and roadmap. |
+| Follow-up: PDF round trip | Updated PDF import parser after the old parser rejected a valid Zagafy export. Added real export/import regression checks and retained dynamic PDF workers in deployment tracing. |
+| Follow-up: JSON restore | Corrected genre validation to accept the exported array and preserve author name/email/address. Added a browser backup/change/restore/reload journey. |
 
 ## Supported launch offer
 
@@ -74,7 +76,9 @@ npm run build
 Run the **Authenticated release readiness** workflow against an isolated staging
 deployment with `STAGING_URL`, Clerk development-instance E2E keys, and a dedicated
 test user's email/password. Missing configuration fails this workflow. It exercises
-the required manuscript journey; remaining real-world journeys below need evidence.
+the required manuscript, DOCX/PDF download and JSON backup/restore journeys;
+remaining real-world journeys below need evidence. All four required tests have
+unconditional assertions and must prove an active Clerk session in staging.
 
 The nightly eval uses `STAGING_URL` and `EVAL_AUTH_TOKEN`, a current Clerk JWT for
 a dedicated staging account. Arrange short-lived token renewal; an expired token
@@ -105,3 +109,5 @@ do not require a database schema migration. Avoid rolling back to a version that
 reopens AI quota/auth bypasses: disable paid AI or route traffic to a verified
 release while repairing a regression. Preserve local IndexedDB and exported backups.
 No production deployment or live integration verification is implied by this document.
+
+Current verification evidence and access blockers: [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md).

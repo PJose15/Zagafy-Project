@@ -22,6 +22,7 @@ import { clearAllInsights, readWriterInsights } from '@/lib/writer-memory';
 // Only these keys from StoryState are allowed during import
 const ALLOWED_KEYS = new Set<keyof StoryState>([
   'language', 'title', 'genre', 'synopsis', 'author_intent',
+  'author_name', 'author_email', 'author_address',
   'chapters', 'scenes', 'characters', 'timeline_events',
   'open_loops', 'world_rules', 'style_profile', 'active_conflicts',
   'foreshadowing_elements', 'locations', 'themes', 'canon_items',
@@ -61,11 +62,17 @@ function validateImportShape(data: unknown): { ok: true } | { ok: false; reason:
     }
   }
   // Cap common scalar string fields
-  for (const k of ['genre', 'synopsis', 'author_intent', 'language'] as const) {
+  for (const k of ['synopsis', 'author_intent', 'language', 'author_name', 'author_email', 'author_address'] as const) {
     const v = data[k];
     if (v !== undefined && (typeof v !== 'string' || v.length > MAX_STRING_FIELD)) {
       return { ok: false, reason: `${k} must be a string under ${MAX_STRING_FIELD} chars` };
     }
+  }
+  if (data.genre !== undefined && (
+    !Array.isArray(data.genre) || data.genre.length > MAX_ARRAY_ITEMS ||
+    data.genre.some(v => typeof v !== 'string' || v.length > MAX_STRING_FIELD)
+  )) {
+    return { ok: false, reason: `genre must be an array of strings under ${MAX_STRING_FIELD} chars` };
   }
   // Cap remaining arrays to prevent balloon state
   for (const k of [

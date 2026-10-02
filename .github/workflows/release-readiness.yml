@@ -22,7 +22,7 @@ jobs:
         run: |
           node -e "for (const key of ['BASE_URL','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_SECRET_KEY','E2E_CLERK_USER_EMAIL','E2E_CLERK_USER_PASSWORD']) { if (!process.env[key]) throw new Error('Missing '+key); }"
       - name: Verify authenticated core journey without skips
-        run: npx playwright test e2e/release-core.spec.ts
+        run: npx playwright test e2e/release-core.spec.ts e2e/release-export.spec.ts e2e/release-backup.spec.ts
         env:
           BASE_URL: ${{ secrets.STAGING_URL }}
           E2E_REQUIRE_AUTH: 'true'

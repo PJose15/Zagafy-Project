@@ -23,6 +23,10 @@ const frameOptionsHeader = isEmbed
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['pdf-parse', '@react-pdf/renderer', 'docx'],
+  // pdf-parse loads its worker dynamically; retain it in the Vercel function.
+  outputFileTracingIncludes: {
+    '/api/ingest': ['./node_modules/pdf-parse/dist/**/pdf.worker.mjs'],
+  },
   headers: async () => [
     {
       source: '/(.*)',

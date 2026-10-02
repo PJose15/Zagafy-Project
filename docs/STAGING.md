@@ -2,6 +2,10 @@
 
 > Phase 6.8 (ME-04). Updated 2026-06-09.
 
+> The topology and domains below are a setup plan, not verified live configuration.
+> See [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md) for observed deployment
+> evidence and [LAUNCH_READINESS.md](LAUNCH_READINESS.md) for current required variables.
+
 ## Architecture
 
 | Component | Production | Staging |
