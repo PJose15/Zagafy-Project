@@ -78,13 +78,12 @@ describe('sync-queue', () => {
       expect(typeof entry.id).toBe('string');
     });
 
-    it('does not throw on failure (catches errors)', async () => {
+    it('exposes queue storage failures for retry', async () => {
       // Make put throw
       const { db } = await import('@/lib/storage/dexie-db');
       vi.mocked(db.syncQueue.put).mockRejectedValueOnce(new Error('write failed'));
 
-      // Should not throw
-      await expect(recordDelta('story', 's-1', 'upsert')).resolves.toBeUndefined();
+      await expect(recordDelta('story', 's-1', 'upsert')).rejects.toThrow('write failed');
     });
   });
 

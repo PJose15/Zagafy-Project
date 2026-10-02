@@ -66,6 +66,7 @@ describe('projects registry', () => {
     await renameProject(id, 'Renamed Saga');
     const list = await listProjects();
     expect(list.find(p => p.id === id)?.title).toBe('Renamed Saga');
+    expect(await db.syncQueue.toArray()).toEqual([expect.objectContaining({ entityType: 'story', entityId: id, projectId: id, op: 'upsert' })]);
   });
 
   it('isolates chapter content per project', async () => {

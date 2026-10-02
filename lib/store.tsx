@@ -313,6 +313,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
       const loaded = await hydrateFromDexie(activeId);
       if (!active || activeProjectIdRef.current !== activeId) return;
+      lastRemoteStateRef.current = loaded;
       setState(loaded);
       setIsLoaded(true);
     }

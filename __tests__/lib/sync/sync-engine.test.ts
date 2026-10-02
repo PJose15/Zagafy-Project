@@ -22,6 +22,8 @@ vi.mock('@/lib/sync/sync-queue', () => ({
 
 vi.mock('@/lib/storage/dexie-db', () => ({
   db: {
+    transaction: vi.fn(async (_mode, _tables, callback) => callback()),
+    syncQueue: {},
     syncMeta: { get: vi.fn(async () => undefined) },
     stories: {
       get: vi.fn(async () => ({
@@ -36,7 +38,7 @@ vi.mock('@/lib/storage/dexie-db', () => ({
     storySnapshots: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
     sessions: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
     chatMessages: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
-    writerInsights: { put: vi.fn(async () => {}) },
+    writerInsights: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
     comments: { get: vi.fn(async () => null), put: vi.fn(async () => {}) },
   },
 }));
@@ -53,6 +55,7 @@ describe('SyncEngine', () => {
 
   beforeEach(() => {
     active.id = 'current';
+    vi.mocked(db.sessions.get).mockResolvedValue(null as any);
     vi.useFakeTimers();
     vi.clearAllMocks();
     mockFetch.mockReset();
@@ -74,6 +77,19 @@ describe('SyncEngine', () => {
   afterEach(() => {
     engine.destroy();
     vi.useRealTimers();
+  });
+
+  it('retries durable queued writes when the app starts and preserves a failed push status', async () => {
+    vi.mocked(readQueue).mockResolvedValue({ entries: [{ id: 'q', entityType: 'story', entityId: 'current', op: 'upsert', timestamp: 1 }], coveredIds: ['q'] });
+    mockFetch.mockResolvedValue(new Response('', { status: 503 }));
+    await engine.start();
+    expect(mockFetch).toHaveBeenCalledWith('/api/sync/push', expect.objectContaining({ method: 'POST' }));
+    expect(mockFetch.mock.calls.some(call => String(call[0]).startsWith('/api/sync/pull'))).toBe(false);
+    expect(engine.getStatus()).toBe('error'); expect(clearEntries).not.toHaveBeenCalled();
+    mockFetch.mockClear();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mockFetch).toHaveBeenCalledWith('/api/sync/push', expect.objectContaining({ method: 'POST' }));
+    expect(clearEntries).not.toHaveBeenCalled();
   });
 
   // ─── Constructor / getStatus ───
@@ -528,9 +544,10 @@ describe('SyncEngine', () => {
       expect(putCall.title).toBe('Chapter One');
     });
 
-    it('skips entities that already exist locally (for immutable types like sessions)', async () => {
+    it('refreshes a completed session already present in this project)', async () => {
       vi.mocked(db.sessions.get).mockResolvedValue({
         id: 's-1',
+        projectId: 'current',
         startedAt: '2026-01-01T00:00:00Z',
         endedAt: '2026-01-01T01:00:00Z',
         wordsAdded: 500,
@@ -559,8 +576,7 @@ describe('SyncEngine', () => {
 
       await engine.start();
 
-      // sessions.put should NOT have been called because the session already exists
-      expect(db.sessions.put).not.toHaveBeenCalled();
+      expect(db.sessions.put).toHaveBeenCalledWith(expect.objectContaining({ id: 's-1', projectId: 'current', wordsAdded: 500 }));
     });
   });
 

@@ -121,9 +121,9 @@ function writeSessionsSync(sessions: WritingSession[]): void {
 
 // ─── Async Dexie-backed public API ───
 
-export async function readSessions(): Promise<WritingSession[]> {
+export async function readSessions(projectId: string = getActiveProjectId()): Promise<WritingSession[]> {
   try {
-    const rows = await dexieGetSessions();
+    const rows = await dexieGetSessions(projectId);
     const sessions = (rows as unknown[]).filter(isWritingSession);
     if (sessions.length > 0) return sessions;
     return readSessionsSync();
@@ -132,9 +132,9 @@ export async function readSessions(): Promise<WritingSession[]> {
   }
 }
 
-export async function writeSessions(sessions: WritingSession[]): Promise<void> {
+export async function writeSessions(sessions: WritingSession[], projectId: string = getActiveProjectId()): Promise<void> {
   try {
-    await dexiePutAllSessions(sessions as unknown as Record<string, unknown>[]);
+    await dexiePutAllSessions(sessions as unknown as Record<string, unknown>[], projectId);
   } catch {
     writeSessionsSync(sessions);
   }
@@ -151,13 +151,13 @@ export async function addSession(session: WritingSession): Promise<void> {
   }
 }
 
-export async function updateSessionFlowScore(sessionId: string, score: FlowScore): Promise<void> {
+export async function updateSessionFlowScore(sessionId: string, score: FlowScore, projectId: string = getActiveProjectId()): Promise<void> {
   try {
-    const sessions = await readSessions();
+    const sessions = await readSessions(projectId);
     const idx = sessions.findIndex(s => s.id === sessionId);
     if (idx === -1) return;
     sessions[idx] = { ...sessions[idx], flowScore: score };
-    await writeSessions(sessions);
+    await writeSessions(sessions, projectId);
   } catch {
     // Fallback: update in localStorage
     const sessions = readSessionsSync();

@@ -9,13 +9,14 @@
  * push time so payloads are always fresh.
  */
 
+import { queueLocalMutation, notifyLocalMutation } from './local-mutation';
 import { db } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 import type { SyncEntityType, SyncQueueEntry, SyncMeta } from './types';
 
 /**
- * Record a local mutation in the sync queue. Call this after a successful
- * Dexie write so the sync engine knows what to push.
+ * Record a standalone mutation. Failures propagate so callers can retry.
+ * Entity writes should use queueLocalMutation inside their storage transaction.
  *
  * Safe to call when sync is disabled -- the queue will simply accumulate
  * entries that are never flushed (and cleared on project reset).
@@ -26,19 +27,8 @@ export async function recordDelta(
   op: 'upsert' | 'delete',
   projectId: string = getActiveProjectId(),
 ): Promise<void> {
-  try {
-    await db.syncQueue.put({
-      id: crypto.randomUUID(),
-      projectId,
-      entityType,
-      entityId,
-      op,
-      timestamp: Date.now(),
-    });
-  } catch {
-    // Sync queue write failures are non-fatal. The data is safe in Dexie;
-    // the sync engine will catch up on the next full push.
-  }
+  await queueLocalMutation(projectId, entityType, entityId, op);
+  notifyLocalMutation();
 }
 
 export interface ReadQueueResult {

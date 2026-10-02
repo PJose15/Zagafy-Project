@@ -1,14 +1,48 @@
 import { NextRequest } from 'next/server';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, gt, asc } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
+import { getLimits, isPlanId } from '@/lib/billing';
 import { getStoryAccess } from '@/lib/collab';
 
 export const runtime = 'nodejs';
+
+/** Catalog includes only owned or explicitly shared projects; no manuscript payloads. */
+export async function GET(req: NextRequest) {
+  const requestId = makeRequestId();
+  const authResult = await requireCloudUser();
+  if (isAuthError(authResult)) return authResult;
+  const { userId } = authResult;
+  const limited = await rateLimit(req, { maxRequests: 30, windowMs: 60_000 });
+  if (limited) return limited;
+  if (!isDatabaseConfigured()) return err('internal_error', 'Database not configured', 500);
+  const cursor = req.nextUrl.searchParams.get('cursor');
+  if (cursor !== null && (!cursor || cursor.length > 200)) return err('validation_failed', 'Invalid cursor', 400);
+  try {
+    const rows = await db().select({ storyId: schema.stories.id, title: schema.stories.title,
+      ownerId: schema.stories.ownerId, role: schema.storyCollaborators.role,
+      plan: schema.users.plan, updatedAt: schema.stories.updatedAt })
+      .from(schema.stories)
+      .innerJoin(schema.users, eq(schema.users.id, schema.stories.ownerId))
+      .leftJoin(schema.storyCollaborators, and(eq(schema.storyCollaborators.storyId, schema.stories.id), eq(schema.storyCollaborators.userId, userId)))
+      .where(and(or(eq(schema.stories.ownerId, userId), eq(schema.storyCollaborators.userId, userId)), cursor ? gt(schema.stories.id, cursor) : undefined))
+      .orderBy(asc(schema.stories.id)).limit(51);
+    const page = rows.slice(0, 50);
+    const response = ok({ me: userId, stories: page.map(row => ({ storyId: row.storyId, title: row.title,
+      role: row.ownerId === userId ? 'owner' : row.role,
+      canSync: isPlanId(row.plan) && getLimits(row.plan).cloudSync,
+      updatedAt: row.updatedAt.toISOString() })), nextCursor: rows.length > 50 ? page[49].storyId : null }, { requestId });
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+  } catch (error) {
+    createRouteLogger({ endpoint: '/api/stories', requestId }).error('catalog failed', error);
+    return err('internal_error', 'Unable to load cloud projects', 500, undefined, { requestId });
+  }
+}
 
 /**
  * DELETE /api/stories  — permanently delete a synced story and all its data.
@@ -43,7 +77,7 @@ export async function DELETE(req: NextRequest) {
   } catch {
     return err('validation_failed', 'Invalid JSON body', 400, undefined, { requestId });
   }
-  const storyId = typeof body.storyId === 'string' ? body.storyId : '';
+  const storyId = body && typeof body.storyId === 'string' ? body.storyId : '';
   if (!storyId) {
     return err('validation_failed', 'storyId is required', 400, undefined, { requestId });
   }

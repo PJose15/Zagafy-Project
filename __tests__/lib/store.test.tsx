@@ -21,6 +21,15 @@ import { persistProjectState } from '@/lib/storage/persist-project';
 import { StoryProvider, useStory, defaultState } from '@/lib/store';
 import type { StoryState } from '@/lib/store';
 
+it('hydrates an existing project without echoing its state into autosave and sync', async () => {
+  vi.mocked(getStory).mockResolvedValueOnce({ ...defaultState, title: 'Downloaded novel' }).mockResolvedValueOnce({ ...defaultState, title: 'Downloaded novel' });
+  const view = renderHook(() => useStory(), { wrapper: StoryProvider });
+  await waitFor(() => expect(view.result.current.state.title).toBe('Downloaded novel'));
+  // Hydration is a read, so there is no debounce work to advance.
+  expect(persistProjectState).not.toHaveBeenCalled();
+  view.unmount();
+});
+
 describe('defaultState', () => {
   it('has expected shape', () => {
     expect(defaultState.title).toBe('Untitled Project');

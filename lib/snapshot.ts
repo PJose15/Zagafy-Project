@@ -1,3 +1,4 @@
+import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 import { db, type DexieStorySnapshot } from '@/lib/storage/dexie-db';
 import type { StoryState } from '@/lib/store';
 import { getPlainText } from '@/lib/editor/serialization';
@@ -100,8 +101,9 @@ export async function createSnapshot(
     data: JSON.stringify(state),
   };
 
-  await db.transaction('rw', db.storySnapshots, async () => {
+  await db.transaction('rw', [db.storySnapshots, db.syncQueue], async () => {
     await db.storySnapshots.put(row);
+    await queueLocalMutation(storyId, 'storySnapshot', row.id);
     const all = await db.storySnapshots
       .where('storyId')
       .equals(storyId)
@@ -110,9 +112,11 @@ export async function createSnapshot(
       const excess = all.length - cap;
       const oldestIds = all.slice(0, excess).map(r => r.id);
       await db.storySnapshots.bulkDelete(oldestIds);
+      for (const id of oldestIds) await queueLocalMutation(storyId, 'storySnapshot', id, 'delete');
     }
   });
 
+  notifyLocalMutation();
   return rowToMetadata(row);
 }
 
@@ -135,7 +139,13 @@ export async function getSnapshot(id: string): Promise<StorySnapshot | null> {
 
 /** Delete a snapshot by ID from the local database. */
 export async function deleteSnapshot(id: string): Promise<void> {
-  await db.storySnapshots.delete(id);
+  await db.transaction('rw', [db.storySnapshots, db.syncQueue], async () => {
+    const row = await db.storySnapshots.get(id);
+    if (!row) return;
+    await db.storySnapshots.delete(id);
+    await queueLocalMutation(row.storyId, 'storySnapshot', id, 'delete');
+  });
+  notifyLocalMutation();
 }
 
 export interface SnapshotDelta {

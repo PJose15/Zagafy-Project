@@ -104,6 +104,7 @@ export type SyncEvent =
 
 /** Shape returned by GET /api/sync/pull. */
 export interface PullResponse {
+  accountId?: string;
   storyId: string | null;
   story: Record<string, unknown> | null;
   chapters: Record<string, unknown>[];

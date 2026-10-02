@@ -15,6 +15,7 @@ import {
   useConfirm,
   useToast,
 } from '@/components/antiquarian';
+import { CloudProjectsSection } from '@/components/projects/cloud-projects-section';
 import { useProjects } from '@/hooks/use-projects';
 import {
   createProject,
@@ -268,6 +269,7 @@ export default function ProjectsPage() {
           })}
         </div>
       )}
+      <CloudProjectsSection />
     </div>
   );
 }

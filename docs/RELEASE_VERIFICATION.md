@@ -8,10 +8,10 @@ restore the backup → reload and recover the original chapter and author metada
 
 | Gate | Result | Evidence and limits |
 | --- | --- | --- |
-| PR #121 CI | Passed on code commit `f8ade1c` | GitHub run 36954564786: dependency audit, lint, type check, tests and build passed. Documentation updates need their own checks. |
-| PR #121 CodeQL | Passed on code commit `f8ade1c` | GitHub run 36954564770. |
+| Previous PR #121 CI | Passed on commit `132ba19` | GitHub run 36961251196. The continuation below needs checks tied to its uploaded commit. |
+| Previous PR #121 CodeQL | Passed on commit `132ba19` | GitHub run 36961251257. |
 | Latest CI browser suite | 14 passed, 6 skipped | Job 110675387414 on code commit `f8ade1c`. This is not authenticated release acceptance. |
-| Vercel branch deployment | Ready; dashboard loads after Vercel sign-in | Signed-in project overview lists branch `fix/zagafy-launch-readiness` and PR #121. Browser rendered Dashboard, empty workspace and first-run check-in. This is local app rendering, not a Clerk session or integration proof. Health navigation was blocked by the browser client; no health success is claimed. |
+| Hosted deployment acceptance | Not verified in this continuation | Authenticated staging and production acceptance remain release gates. |
 | Local test suite after parser update | 210 suites, 2,882 tests passed | Includes three real document round-trip regressions; mocked service tests do not prove live integration behavior. |
 | Local chapter persistence | Passed | Production build, save/reload/edit assertions; no Clerk configured, embed runtime. |
 | Local DOCX/PDF downloads | Passed | Real browser/API downloads, independently reopened; expected chapter and English/Spanish text recovered. DOCX round-trip regression also checks bold/italic formatting and both chapters. PDF was additionally opened with Poppler. |
@@ -148,3 +148,40 @@ and repository lint pass (seven existing warnings). The previous four production
 browser journeys remain evidence for the unchanged manuscript/export/restore
 client. A hosted migration must be applied and verified in isolated staging before
 using the updated sync endpoints. No hosted schema was changed.
+
+
+## Cloud catalog and durable local mutation continuation
+
+The project library now includes an authenticated owned/shared cloud catalog with
+keyset pagination and owner-plan eligibility. Postgres regressions verify isolation,
+revoked sharing, pagination and metadata-only results. Import downloads the full
+project before activation and atomically saves the binding, manuscript, history,
+sessions, insights and comments. Real IndexedDB regressions cover simultaneous
+imports, account changes, ID collisions, incomplete manuscripts and late storage
+failure. Reopening an existing binding keeps pending local writing.
+
+The shared import path uses the same implementation. Initial story hydration no
+longer autosaves downloaded data back into the queue. Incremental pulls now update
+mutable history and sessions, retain queued local edits, remap local project scopes
+and commit rows with the watermark in one transaction. Failed storage leaves the
+prior rows and watermark intact. An old snapshot scope is repaired only when one
+existing binding identifies its owning local project.
+
+History, sessions, snapshots, insights, comments and project renames now save their
+normal Dexie mutations with durable queue entries. Failure regressions verify
+rollback, preservation of prior records and notification only after commit. Sync
+retries queued entries on startup and periodically, retaining a failed push status.
+Insight confidence converts between local fractions and server integer percentages.
+
+Legacy localStorage fallbacks, concurrent history replacement, general cloud
+removal delivery and simultaneous initial checkouts remain explicit implementation
+gaps in PRODUCT_STATUS.md. Local tests do not establish live authenticated
+second-device access, provider integration or deployment readiness.
+
+Verified local result for this continuation: **218 suites / 3,000 tests passed**.
+The production build and type checking pass; repository lint has six existing
+warnings and no errors. All four production-build browser journeys pass again:
+chapter save/reload, real DOCX/PDF downloads and parsing, and JSON backup restore.
+These browser checks use the local embed runtime and do not establish authenticated
+hosted cloud acceptance. No hosted migration, live payment, merge or deployment
+was performed.

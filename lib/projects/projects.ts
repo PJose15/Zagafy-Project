@@ -8,6 +8,7 @@
  */
 
 import {
+  db,
   getProjectRows,
   getStory,
   putStory,
@@ -16,6 +17,7 @@ import {
 } from '@/lib/storage/dexie-db';
 import { defaultState, type StoryState } from '@/lib/store';
 import { getActiveProjectId, setActiveProjectId } from '@/lib/projects/active-project';
+import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 import { getServerStoryId } from '@/lib/sync/sync-queue';
 
 export interface ProjectSummary {
@@ -92,9 +94,14 @@ export async function createProject(title = 'Untitled Project'): Promise<string>
 /** Rename a project (updates both the registry metadata and the blob title). */
 export async function renameProject(id: string, title: string): Promise<void> {
   const next = title.trim() || 'Untitled Project';
-  const blob = (await getStory(id)) ?? ({ ...defaultState } as unknown as Record<string, unknown>);
-  blob.title = next;
-  await putStory(blob, { projectId: id });
+  await db.transaction('rw', [db.stories, db.syncQueue], async () => {
+    const blob = await getStory(id);
+    if (!blob) throw new Error('Project no longer exists');
+    blob.title = next;
+    await putStory(blob, { projectId: id });
+    await queueLocalMutation(id, 'story', id);
+  });
+  notifyLocalMutation();
 }
 
 /** Switch the active project. The store re-hydrates off the broadcast. */

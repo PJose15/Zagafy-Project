@@ -11,7 +11,8 @@
 import { db as dexieDb } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 import { wordCount } from '@/lib/editor/serialization';
-import type { ManuscriptComment } from '@/lib/types/comment';
+import { LOCAL_MUTATION_EVENT } from './local-mutation';
+import { applyCloudData } from './apply-cloud-data';
 import type {
   SyncDelta,
   SyncStatus,
@@ -66,9 +67,8 @@ export class SyncEngine {
     this.setStatus('pulling');
 
     try {
-      await this.pull();
+      await this.syncNow();
       if (this.destroyed) return;
-      this.setStatus('idle');
     } catch {
       if (this.isOffline()) {
         this.setStatus('offline');
@@ -80,13 +80,14 @@ export class SyncEngine {
     // Periodic pull
     this.pullInterval = setInterval(() => {
       if (!this.pushing && !this.pulling) {
-        this.pull().catch(() => { /* logged internally */ });
+        this.syncNow().catch(() => { /* logged internally */ });
       }
     }, this.pullIntervalMs);
 
     // Push on beforeunload (best-effort)
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', this.handleBeforeUnload);
+      window.addEventListener(LOCAL_MUTATION_EVENT, this.handleLocalMutation);
     }
   }
 
@@ -97,6 +98,7 @@ export class SyncEngine {
     if (this.pullInterval) clearInterval(this.pullInterval);
     if (typeof window !== 'undefined') {
       window.removeEventListener('beforeunload', this.handleBeforeUnload);
+      window.removeEventListener(LOCAL_MUTATION_EVENT, this.handleLocalMutation);
     }
     this.listeners.clear();
   }
@@ -110,6 +112,8 @@ export class SyncEngine {
   getStatus(): SyncStatus {
     return this.status;
   }
+
+  private handleLocalMutation = () => this.notifyWrite();
 
   // ─── Trigger ───
 
@@ -335,7 +339,6 @@ export class SyncEngine {
       if (this.destroyed) return;
       const counts = await this.applyPulledData(result, projectId);
 
-      await updateSyncMeta({ lastPulledAt: result.serverTimestamp }, projectId);
 
       // The pull only wrote to Dexie; the current tab's in-memory store would
       // clobber it with stale state on the next edit unless it re-hydrates.
@@ -360,208 +363,7 @@ export class SyncEngine {
   // ─── Apply pulled data to Dexie ───
 
   private async applyPulledData(data: PullResponse, projectId: string): Promise<Record<string, number>> {
-    const counts: Record<string, number> = {};
-    // Rows belong to the project captured before the network request.
-
-    // Dirty guard: an entity with a pending (unpushed) local write must NOT be
-    // overwritten by a background pull — that silently discards live edits. Its
-    // queued delta will push on the next cycle, where server-side version checks
-    // reconcile it. Applies to the blind-put paths (story blob, chapters,
-    // insights); the other tables already skip rows that exist locally.
-    const { entries: pending } = await readQueue(projectId);
-    const pendingChapterIds = new Set(
-      pending.filter(e => e.entityType === 'chapter').map(e => e.entityId),
-    );
-    const pendingInsightIds = new Set(
-      pending.filter(e => e.entityType === 'writerInsight').map(e => e.entityId),
-    );
-    const pendingCommentIds = new Set(
-      pending.filter(e => e.entityType === 'comment').map(e => e.entityId),
-    );
-    const storyDirty = pending.some(e => e.entityType === 'story');
-
-    // Apply story state (skip if a local story edit is pending — see dirty guard)
-    if (data.story?.state && !storyDirty) {
-      const state = data.story.state as Record<string, unknown>;
-      // Merge server state into local Dexie story blob
-      const existingStory = await dexieDb.stories.get(projectId);
-      let chapterCount = existingStory?.chapterCount ?? 0;
-      const stateChapters = (state as { chapters?: unknown[] }).chapters;
-      if (Array.isArray(stateChapters)) chapterCount = stateChapters.length;
-      await dexieDb.stories.put({
-        id: projectId,
-        data: JSON.stringify(state),
-        title: typeof (state as { title?: unknown }).title === 'string'
-          ? (state as { title: string }).title
-          : existingStory?.title ?? 'Untitled Project',
-        chapterCount,
-        wordCount: existingStory?.wordCount ?? 0,
-        status: existingStory?.status ?? 'draft',
-        createdAt: existingStory?.createdAt ?? Date.now(),
-        updatedAt: Date.now(),
-      });
-      // Track the server blob version so the next story push bases its
-      // optimistic-concurrency check on what we just adopted.
-      const pulledVersion = (data.story as { version?: unknown }).version;
-      if (typeof pulledVersion === 'number') {
-        await updateSyncMeta({ serverStoryVersion: pulledVersion }, projectId);
-      }
-      counts.story = 1;
-    }
-
-    // Apply chapters (skip any with a pending local edit — dirty guard)
-    if (data.chapters.length > 0) {
-      let appliedChapters = 0;
-      for (const ch of data.chapters) {
-        if (pendingChapterIds.has(ch.id as string)) continue;
-        await dexieDb.chapters.put({
-          id: ch.id as string,
-          projectId,
-          title: (ch.title as string) ?? '',
-          content: (ch.content as string) ?? '',
-          summary: (ch.summary as string) ?? '',
-          canonStatus: ch.canonStatus as string | undefined,
-          source: ch.source as string | undefined,
-          updatedAt: ch.updatedAt
-            ? new Date(ch.updatedAt as string).getTime()
-            : Date.now(),
-          // Round-trip the server's optimistic-concurrency version — without it
-          // every subsequent push of this chapter conflicts forever.
-          version: typeof ch.version === 'number' ? ch.version : undefined,
-        });
-        appliedChapters++;
-      }
-      counts.chapters = appliedChapters;
-    }
-
-    // Apply chapter versions
-    if (data.chapterVersions.length > 0) {
-      for (const v of data.chapterVersions) {
-        const existing = await dexieDb.chapterVersions.get(v.id as string);
-        if (!existing) {
-          await dexieDb.chapterVersions.put({
-            id: v.id as string,
-            projectId,
-            chapterId: (v.chapterId as string) ?? '',
-            createdAt: (v.createdAt as string) ?? new Date().toISOString(),
-            data: typeof v.data === 'string' ? v.data : JSON.stringify(v.data),
-          });
-        }
-      }
-      counts.chapterVersions = data.chapterVersions.length;
-    }
-
-    // Apply snapshots
-    if (data.storySnapshots.length > 0) {
-      for (const s of data.storySnapshots) {
-        const existing = await dexieDb.storySnapshots.get(s.id as string);
-        if (!existing) {
-          await dexieDb.storySnapshots.put({
-            id: s.id as string,
-            storyId: (s.storyId as string) ?? '',
-            name: (s.name as string) ?? '',
-            description: (s.description as string) ?? '',
-            createdAt: (s.createdAt as number) ?? Date.now(),
-            wordCount: (s.wordCount as number) ?? 0,
-            chapterCount: (s.chapterCount as number) ?? 0,
-            data: typeof s.data === 'string' ? s.data : JSON.stringify(s.data),
-          });
-        }
-      }
-      counts.storySnapshots = data.storySnapshots.length;
-    }
-
-    // Apply sessions
-    if (data.sessions.length > 0) {
-      for (const s of data.sessions) {
-        const existing = await dexieDb.sessions.get(s.id as string);
-        if (!existing) {
-          await dexieDb.sessions.put({
-            id: s.id as string,
-            projectId,
-            startedAt: (s.startedAt as string) ?? '',
-            endedAt: (s.endedAt as string) ?? '',
-            wordsAdded: (s.wordsAdded as number) ?? 0,
-            flowScore: (s.flowScore as number) ?? null,
-            heteronymId: (s.heteronymId as string) ?? null,
-            data: typeof s.data === 'string' ? s.data : JSON.stringify(s.data),
-          });
-        }
-      }
-      counts.sessions = data.sessions.length;
-    }
-
-    // Apply chat messages
-    if (data.chatMessages.length > 0) {
-      for (const m of data.chatMessages) {
-        const existing = await dexieDb.chatMessages.get(m.id as string);
-        if (!existing) {
-          await dexieDb.chatMessages.put({
-            id: m.id as string,
-            projectId,
-            role: (m.role as 'user' | 'assistant') ?? 'user',
-            content: (m.content as string) ?? '',
-            timestamp: (m.timestamp as number) ?? Date.now(),
-            chapterId: m.chapterId as string | undefined,
-          });
-        }
-      }
-      counts.chatMessages = data.chatMessages.length;
-    }
-
-    // Apply writer insights (skip any with a pending local edit — dirty guard)
-    if (data.writerInsights.length > 0) {
-      let appliedInsights = 0;
-      for (const i of data.writerInsights) {
-        if (pendingInsightIds.has(i.id as string)) continue;
-        await dexieDb.writerInsights.put({
-          id: i.id as string,
-          projectId,
-          category: (i.category as string) ?? 'voice',
-          observation: (i.observation as string) ?? '',
-          evidenceCount: (i.evidenceCount as number) ?? 1,
-          lastObservedAt: (i.lastObservedAt as number) ?? Date.now(),
-          confidence: (i.confidence as number) ?? 50,
-          pinned: (i.pinned as number) ?? 0,
-        });
-        appliedInsights++;
-      }
-      counts.writerInsights = appliedInsights;
-    }
-
-    // Apply comments (A7). Skip any with a pending local edit (dirty guard). The
-    // pulled payload is a full ManuscriptComment minus projectId (the server
-    // scopes by storyId), so re-stamp the active projectId. Offsets were computed
-    // against the (also-synced) chapter text; the manuscript editor re-anchors on
-    // load, so a small drift self-heals without special handling here.
-    const pulledComments = Array.isArray(data.comments) ? data.comments : [];
-    if (pulledComments.length > 0) {
-      let appliedComments = 0;
-      for (const c of pulledComments) {
-        const id = c.id as string;
-        if (!id || pendingCommentIds.has(id)) continue;
-        await dexieDb.comments.put({
-          id,
-          projectId,
-          chapterId: (c.chapterId as string) ?? '',
-          startOffset: typeof c.startOffset === 'number' ? c.startOffset : 0,
-          endOffset: typeof c.endOffset === 'number' ? c.endOffset : 0,
-          quote: (c.quote as string) ?? '',
-          prefix: (c.prefix as string) ?? '',
-          suffix: (c.suffix as string) ?? '',
-          text: (c.text as string) ?? '',
-          replies: Array.isArray(c.replies) ? (c.replies as ManuscriptComment['replies']) : [],
-          resolved: c.resolved === true,
-          orphaned: c.orphaned === true,
-          createdAt: (c.createdAt as string) ?? new Date().toISOString(),
-          updatedAt: (c.updatedAt as string) ?? new Date().toISOString(),
-        });
-        appliedComments++;
-      }
-      counts.comments = appliedComments;
-    }
-
-    return counts;
+    return applyCloudData(data, projectId);
   }
 
   // ─── Conflict resolution ───
@@ -846,7 +648,7 @@ async function resolvePayload(
         observation: row.observation,
         evidenceCount: row.evidenceCount,
         lastObservedAt: row.lastObservedAt,
-        confidence: row.confidence,
+        confidence: Math.round(Math.min(1, Math.max(0, row.confidence)) * 100),
         pinned: row.pinned,
       };
     }

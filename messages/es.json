@@ -378,7 +378,24 @@
     "ariaDelete": "Eliminar {title}",
     "rename": "Renombrar",
     "delete": "Eliminar",
-    "importedProjectTitle": "Manuscrito importado"
+    "importedProjectTitle": "Manuscrito importado",
+    "cloud": {
+      "title": "Proyectos en la nube",
+      "description": "Abre en este dispositivo tus proyectos sincronizados y los que te han compartido.",
+      "error": "No se pudo cargar o abrir el proyecto. Comprueba tu conexión y la cuenta con la que has iniciado sesión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "loading": "Cargando proyectos…",
+      "empty": "Todavía no hay proyectos en la nube.",
+      "planRequired": "El propietario necesita un plan con sincronización en la nube para descargar este proyecto.",
+      "opening": "Descargando…",
+      "open": "Abrir proyecto",
+      "more": "Cargar más",
+      "roles": {
+        "owner": "Tu proyecto",
+        "editor": "Compartido · Editor",
+        "reader": "Compartido · Lector"
+      }
+    }
   },
   "genesis": {
     "mode": "Modo Génesis",

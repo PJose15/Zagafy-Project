@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import * as schema from '@/db/schema';
 import { POST } from '@/app/api/sync/push/route';
 import { GET } from '@/app/api/sync/pull/route';
+import { GET as catalog } from '@/app/api/stories/route';
 const identity = vi.hoisted(() => ({ userId: 'user_writer' }));
 vi.mock('@/lib/auth', () => ({ requireCloudUser: async () => ({ userId: identity.userId }), isAuthError: () => false }));
 vi.mock('@/lib/rate-limit', () => ({ rateLimit: async () => null }));
@@ -30,6 +31,40 @@ describe('Transactional sync push against migrated Postgres', () => {
     await pg.exec(`SET TIME ZONE 'UTC'; TRUNCATE users CASCADE;
       INSERT INTO users (id,email,plan) VALUES ('user_writer','writer@example.com','writer'), ('user_other','other@example.com','writer');
       INSERT INTO stories (id,owner_id,title,state,version) VALUES ('story_1','user_writer','Server title','{"title":"Server title"}',0), ('story_other','user_other','Private title','{}',0);`);
+  });
+  it('catalog exposes owned and shared metadata without leaking unrelated stories or manuscript content', async () => {
+    await pg.exec(`INSERT INTO story_collaborators (story_id,user_id,role) VALUES ('story_other','user_writer','reader');
+      INSERT INTO stories (id,owner_id,title,state) VALUES ('secret_story','user_other','Secret novel','{"synopsis":"Private manuscript"}');`);
+    const response = await catalog(new NextRequest('http://localhost/api/stories'));
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    const body = await response.json();
+    expect(body.data.me).toBe('user_writer');
+    expect(body.data.stories).toEqual([
+      expect.objectContaining({ storyId: 'story_1', role: 'owner', canSync: true }),
+      expect.objectContaining({ storyId: 'story_other', role: 'reader', canSync: true }),
+    ]);
+    expect(JSON.stringify(body)).not.toContain('secret_story');
+    expect(JSON.stringify(body)).not.toContain('synopsis');
+    expect(JSON.stringify(body)).not.toContain('email');
+    await pg.exec(`DELETE FROM story_collaborators WHERE user_id='user_writer'`);
+    expect((await (await catalog(new NextRequest('http://localhost/api/stories'))).json()).data.stories).toHaveLength(1);
+  });
+  it('catalog reflects the owner plan for shared projects', async () => {
+    await pg.exec(`UPDATE users SET plan='free' WHERE id='user_other';
+      INSERT INTO story_collaborators (story_id,user_id,role) VALUES ('story_other','user_writer','editor');`);
+    const body = await (await catalog(new NextRequest('http://localhost/api/stories'))).json();
+    expect(body.data.stories.find((s: {storyId: string}) => s.storyId === 'story_other')).toMatchObject({ canSync: false, role: 'editor' });
+  });
+  it('catalog pages deterministically without duplicates or another owner’s stories', async () => {
+    await pg.exec(`INSERT INTO stories (id,owner_id,title,state)
+      SELECT 'page_' || lpad(i::text,3,'0'), 'user_writer', 'Novel ' || i, '{}'::jsonb FROM generate_series(1,55) i;`);
+    const first = (await (await catalog(new NextRequest('http://localhost/api/stories'))).json()).data;
+    expect(first.stories).toHaveLength(50); expect(first.nextCursor).toBe('page_050');
+    const second = (await (await catalog(new NextRequest('http://localhost/api/stories?cursor=' + first.nextCursor))).json()).data;
+    expect(second.stories).toHaveLength(6); expect(second.nextCursor).toBeNull();
+    const ids = [...first.stories, ...second.stories].map((s: {storyId:string}) => s.storyId);
+    expect(new Set(ids).size).toBe(56); expect(ids).not.toContain('story_other');
+    expect((await catalog(new NextRequest('http://localhost/api/stories?cursor='))).status).toBe(400);
   });
   it('persists the whole valid batch and keeps title on a chapter-only push', async () => {
     const response = await POST(request([chapter()]));

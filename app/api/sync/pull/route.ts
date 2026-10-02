@@ -100,6 +100,7 @@ export async function GET(req: NextRequest) {
       if (!story) {
         // No story on server -- this is a first sync from a new user
         return ok({
+          accountId: userId,
           storyId: null,
           story: null,
           chapters: [],
@@ -166,6 +167,7 @@ export async function GET(req: NextRequest) {
         chatMessages: chatMessages.map(serializeChatMessage),
         writerInsights: writerInsights.map(serializeInsight),
         comments: comments.map(serializeComment),
+        accountId: userId,
         serverTimestamp,
       }, { requestId });
     });

@@ -13,11 +13,11 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
 
 | Area | Present in the code | Evidence and remaining limit |
 | --- | --- | --- |
-| First-run and projects | Intake, Genesis wizard, project library and switching | Local project persistence tests; authenticated onboarding acceptance remains. |
+| First-run and projects | Intake, Genesis wizard, local library, owned/shared cloud catalog and safe import | Local persistence, catalog isolation/pagination and import rollback/account-change regressions; authenticated second-device acceptance remains. |
 | Manuscript | Lexical editor, chapter organization, word counts, find/replace | Real browser save/reload regression; storage transactions and failure regressions. |
 | Narrative design | Story bible, canon, characters, timeline, conflicts and outlines | Existing component/API tests; complete author journey and narrative quality review remain. |
 | Assistance | Main chat, coaching, polish, flow, character chat and helper analysis | Auth, quota and helper ownership/replay tests; real model quality, latency and spend remain. |
-| History | Chapter versions and manuscript snapshots | Local storage and conflict recovery tests. Complete cloud coverage is not yet established. |
+| History | Chapter versions and manuscript snapshots | Atomic local write/queue and cloud update tests; legacy fallback/concurrent mutation coverage and hosted acceptance remain. |
 | Publishing | Query materials, manuscript DOCX/PDF and JSON backup/restore | Real document round trips and browser downloads/restores; live AI publishing quality remains. |
 | Billing | Tier limits, monthly/yearly checkout, portal and webhooks | Transactional Postgres webhook regressions, price matching, authenticated plan display and API tests; live Stripe lifecycle remains. |
 | Cloud/collaboration | Project binding, push/pull, invitations, roles, comments | Database transactions, concurrency and authorization regressions; gaps below still block a complete cloud promise. |
@@ -45,6 +45,20 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
   push share a story lock and database clock; Postgres tests cover a non-UTC session.
   Foreign IDs are rejected for all seven non-story entity types and failed batches
   roll back. The current Drizzle snapshot prevents duplicate future generation.
+- Owned and shared cloud projects appear in an authenticated, paginated catalog
+  without manuscript content or unrelated project metadata. Downloaded data,
+  binding and watermark commit before a new local project becomes active; account
+  changes, partial downloads, ID collisions and failed storage cannot leave a
+  blank active project or partial import. Existing bindings preserve local edits.
+- Cloud pulls now commit all local rows and their watermark atomically. Changed
+  version labels, snapshot names and completed sessions refresh unless a local
+  mutation is queued. Snapshots and serialized sessions use local project IDs;
+  the earlier snapshot scope is repaired only for an unambiguous existing binding.
+- Normal Dexie history, session, snapshot, insight, comment and project-rename
+  writes commit with their queue entries. Queue failures roll back the mutation;
+  committed writes notify sync, and startup/periodic cycles retry durable entries.
+  Insight confidence translates between local fractions and database percentages.
+  Initial store hydration no longer creates an autosave/upload echo.
 - Stripe event claims and entitlement writes commit together. Failures roll back
   claims for retry. Per-customer locking and fresh subscription lookup prevent old
   event metadata from controlling the current entitlement.
@@ -58,11 +72,10 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
 
 | Priority | Concrete gap | Acceptance needed |
 | --- | --- | --- |
-| 1 | A fresh browser cannot discover and reopen its own existing cloud projects; the library lists local Dexie rows, while shared-story import is a separate flow | Add an authenticated owned/shared cloud catalog and explicit safe binding/import into a local project; verify a fresh second device can reopen the same manuscript without creating a duplicate. |
-| 1 | History, snapshots, sessions and writer insights do not consistently enqueue all local mutations | Atomic local mutation plus queue, captured project IDs, no echo on pull, and two-device round-trip tests. |
+| 1 | Legacy history/session localStorage fallbacks can still report success outside the durable queue; read/modify/replace history operations can race concurrent edits | Scoped recovery and explicit failure handling; atomic per-record history mutations, concurrent editing tests and hosted two-device round trips. |
 | 1 | Cloud deletions lack a general tombstone/delivery protocol | Verify deletion propagation across disconnected devices, including dependent rows and retained recovery copies. |
 | 1 | New simultaneous checkouts can still race before a subscription exists | Serialize/reuse checkout attempts and verify Stripe's one-subscription redirect plus portal configuration in staging. |
-| 2 | Some non-manuscript queue writes swallow failures and rely on a full push that is not implemented | Make failures observable/retryable or add tested reconciliation; retain local data. |
+| 2 | Chat-history storage, local conflict backup delivery and full reconciliation still need end-to-end coverage | Verify all intended history appears after a fresh-device import; make any unsynced recovery records explicit. |
 | 2 | Browser project switching and cross-tab hydration need further in-flight save coverage | Rapid switches, pending saves, concurrent tabs, failed hydration and account changes cannot transfer or lose edits. |
 | 2 | Notification delivery is best-effort after billing commits | Decide whether reliable email is required; use a durable outbox if it is, with idempotent retry tests. |
 | 2 | Snapshot pruning can remove recovery history | Define retention rules for conflict backups and verify predictable, user-visible recovery. |

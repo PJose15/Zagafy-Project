@@ -1,3 +1,4 @@
+import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 import Dexie, { type Table } from 'dexie';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 import type { ManuscriptComment } from '@/lib/types/comment';
@@ -482,13 +483,19 @@ export async function putVersion(
   version: Record<string, unknown>,
   projectId: string = getActiveProjectId(),
 ): Promise<void> {
-  await db.chapterVersions.put({
-    id: version.id as string,
-    projectId,
-    chapterId: (version.chapterId as string) || '',
-    createdAt: (version.createdAt as string) || new Date().toISOString(),
-    data: JSON.stringify(version),
+  await db.transaction('rw', [db.chapterVersions, db.syncQueue], async () => {
+    const existing = await db.chapterVersions.get(version.id as string);
+    if (existing && existing.projectId !== projectId) throw new Error('Version belongs to another project');
+    await db.chapterVersions.put({
+      id: version.id as string,
+      projectId,
+      chapterId: (version.chapterId as string) || '',
+      createdAt: (version.createdAt as string) || new Date().toISOString(),
+      data: JSON.stringify(version),
+    });
+    await queueLocalMutation(projectId, 'chapterVersion', version.id as string);
   });
+  notifyLocalMutation();
 }
 
 export async function putAllVersions(
@@ -505,16 +512,30 @@ export async function putAllVersions(
   // Replace only this project's versions — other projects' history is untouched.
   // Transactional: a failure between delete and bulkPut must not destroy the
   // project's entire version history.
-  await db.transaction('rw', db.chapterVersions, async () => {
+  await db.transaction('rw', [db.chapterVersions, db.syncQueue], async () => {
+    const previous = await db.chapterVersions.where('projectId').equals(projectId).toArray();
+    for (const row of rows) {
+      const existing = await db.chapterVersions.get(row.id);
+      if (existing && existing.projectId !== projectId) throw new Error('Version belongs to another project');
+    }
     await db.chapterVersions.where('projectId').equals(projectId).delete();
     if (rows.length > 0) {
       await db.chapterVersions.bulkPut(rows);
     }
+    for (const row of rows) await queueLocalMutation(projectId, 'chapterVersion', row.id);
+    for (const row of previous) if (!rows.some(next => next.id === row.id)) await queueLocalMutation(projectId, 'chapterVersion', row.id, 'delete');
   });
+  notifyLocalMutation();
 }
 
 export async function deleteVersionById(id: string): Promise<void> {
-  await db.chapterVersions.delete(id);
+  await db.transaction('rw', [db.chapterVersions, db.syncQueue], async () => {
+    const row = await db.chapterVersions.get(id);
+    if (!row) return;
+    await db.chapterVersions.delete(id);
+    await queueLocalMutation(row.projectId ?? getActiveProjectId(), 'chapterVersion', id, 'delete');
+  });
+  notifyLocalMutation();
 }
 
 // ─── Sessions CRUD ───
@@ -533,16 +554,23 @@ export async function putSession(
   session: Record<string, unknown>,
   projectId: string = getActiveProjectId(),
 ): Promise<void> {
-  await db.sessions.put({
-    id: session.id as string,
-    projectId: (session.projectId as string) || projectId,
-    startedAt: (session.startedAt as string) || '',
-    endedAt: (session.endedAt as string) || '',
-    wordsAdded: (session.wordsAdded as number) || 0,
-    flowScore: (session.flowScore as number) ?? null,
-    heteronymId: (session.heteronymId as string) ?? null,
-    data: JSON.stringify(session),
+  const targetProjectId = (session.projectId as string) || projectId;
+  await db.transaction('rw', [db.sessions, db.syncQueue], async () => {
+    const existing = await db.sessions.get(session.id as string);
+    if (existing && existing.projectId !== targetProjectId) throw new Error('Session belongs to another project');
+    await db.sessions.put({
+      id: session.id as string,
+      projectId: targetProjectId,
+      startedAt: (session.startedAt as string) || '',
+      endedAt: (session.endedAt as string) || '',
+      wordsAdded: (session.wordsAdded as number) || 0,
+      flowScore: (session.flowScore as number) ?? null,
+      heteronymId: (session.heteronymId as string) ?? null,
+      data: JSON.stringify({ ...session, projectId: targetProjectId }),
+    });
+    await queueLocalMutation(targetProjectId, 'session', session.id as string);
   });
+  notifyLocalMutation();
 }
 
 export async function putAllSessions(
@@ -559,11 +587,19 @@ export async function putAllSessions(
     heteronymId: (s.heteronymId as string) ?? null,
     data: JSON.stringify(s),
   }));
-  // Replace only this project's sessions.
-  await db.sessions.where('projectId').equals(projectId).delete();
-  if (rows.length > 0) {
-    await db.sessions.bulkPut(rows);
-  }
+  await db.transaction('rw', [db.sessions, db.syncQueue], async () => {
+    const previous = await db.sessions.where('projectId').equals(projectId).toArray();
+    for (const row of rows) {
+      if (row.projectId !== projectId) throw new Error('Sessions must belong to the target project');
+      const existing = await db.sessions.get(row.id);
+      if (existing && existing.projectId !== projectId) throw new Error('Session belongs to another project');
+    }
+    await db.sessions.where('projectId').equals(projectId).delete();
+    if (rows.length) await db.sessions.bulkPut(rows);
+    for (const row of rows) await queueLocalMutation(projectId, 'session', row.id);
+    for (const row of previous) if (!rows.some(next => next.id === row.id)) await queueLocalMutation(projectId, 'session', row.id, 'delete');
+  });
+  notifyLocalMutation();
 }
 
 // ─── Story state CRUD ───

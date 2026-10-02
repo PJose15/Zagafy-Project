@@ -378,7 +378,24 @@
     "ariaDelete": "Delete {title}",
     "rename": "Rename",
     "delete": "Delete",
-    "importedProjectTitle": "Imported Manuscript"
+    "importedProjectTitle": "Imported Manuscript",
+    "cloud": {
+      "title": "Cloud projects",
+      "description": "Open your synced projects and projects shared with you on this device.",
+      "error": "Unable to load or open the cloud project. Check your connection and signed-in account, then retry.",
+      "retry": "Retry",
+      "loading": "Loading cloud projects…",
+      "empty": "No cloud projects yet.",
+      "planRequired": "The owner needs a plan with cloud sync to download this project.",
+      "opening": "Downloading…",
+      "open": "Open project",
+      "more": "Load more",
+      "roles": {
+        "owner": "Your project",
+        "editor": "Shared · Editor",
+        "reader": "Shared · Reader"
+      }
+    }
   },
   "genesis": {
     "mode": "Genesis Mode",

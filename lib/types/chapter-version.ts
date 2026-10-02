@@ -1,3 +1,4 @@
+import { getActiveProjectId } from '@/lib/projects/active-project';
 import {
   getAllVersions as dexieGetAll,
   putAllVersions as dexiePutAll,
@@ -67,9 +68,9 @@ function writeAllVersionsSync(versions: ChapterVersion[]): void {
 
 // ─── Async Dexie-backed public API ───
 
-export async function readAllVersions(): Promise<ChapterVersion[]> {
+export async function readAllVersions(projectId: string = getActiveProjectId()): Promise<ChapterVersion[]> {
   try {
-    const rows = await dexieGetAll();
+    const rows = await dexieGetAll(projectId);
     const versions = (rows as unknown[]).filter(isChapterVersion);
     if (versions.length > 0) return versions;
     // Fallback: read from localStorage if Dexie is empty (pre-migration)
@@ -79,16 +80,16 @@ export async function readAllVersions(): Promise<ChapterVersion[]> {
   }
 }
 
-async function writeAllVersions(versions: ChapterVersion[]): Promise<void> {
+async function writeAllVersions(versions: ChapterVersion[], projectId: string): Promise<void> {
   try {
-    await dexiePutAll(versions as unknown[] as Record<string, unknown>[]);
+    await dexiePutAll(versions as unknown[] as Record<string, unknown>[], projectId);
   } catch {
     writeAllVersionsSync(versions);
   }
 }
 
-export async function readVersions(chapterId: string): Promise<ChapterVersion[]> {
-  const all = await readAllVersions();
+export async function readVersions(chapterId: string, projectId: string = getActiveProjectId()): Promise<ChapterVersion[]> {
+  const all = await readAllVersions(projectId);
   return all.filter(v => v.chapterId === chapterId);
 }
 
@@ -97,9 +98,10 @@ export async function addVersion(
   content: string,
   label: string,
   source: VersionSource,
-  isCanonical = false
+  isCanonical = false,
+  projectId: string = getActiveProjectId(),
 ): Promise<ChapterVersion> {
-  const all = await readAllVersions();
+  const all = await readAllVersions(projectId);
 
   // If marking as canonical, unmark existing canonical for this chapter
   if (isCanonical) {
@@ -122,12 +124,12 @@ export async function addVersion(
   };
 
   all.push(version);
-  await writeAllVersions(all);
+  await writeAllVersions(all, projectId);
   return version;
 }
 
-export async function setCanonical(versionId: string): Promise<void> {
-  const all = await readAllVersions();
+export async function setCanonical(versionId: string, projectId: string = getActiveProjectId()): Promise<void> {
+  const all = await readAllVersions(projectId);
   const target = all.find(v => v.id === versionId);
   if (!target) return;
 
@@ -136,14 +138,14 @@ export async function setCanonical(versionId: string): Promise<void> {
       v.isCanonical = v.id === versionId;
     }
   }
-  await writeAllVersions(all);
+  await writeAllVersions(all, projectId);
 }
 
-export async function deleteVersion(versionId: string): Promise<void> {
+export async function deleteVersion(versionId: string, projectId: string = getActiveProjectId()): Promise<void> {
   try {
-    const all = await readAllVersions();
+    const all = await readAllVersions(projectId);
     const filtered = all.filter(v => v.id !== versionId);
-    await writeAllVersions(filtered);
+    await writeAllVersions(filtered, projectId);
   } catch {
     // Fallback: delete from localStorage
     const all = readAllVersionsSync();
@@ -152,12 +154,12 @@ export async function deleteVersion(versionId: string): Promise<void> {
   }
 }
 
-export async function renameVersion(versionId: string, newLabel: string): Promise<void> {
-  const all = await readAllVersions();
+export async function renameVersion(versionId: string, newLabel: string, projectId: string = getActiveProjectId()): Promise<void> {
+  const all = await readAllVersions(projectId);
   const target = all.find(v => v.id === versionId);
   if (target) {
     target.label = newLabel;
-    await writeAllVersions(all);
+    await writeAllVersions(all, projectId);
   }
 }
 
@@ -165,13 +167,13 @@ export async function renameVersion(versionId: string, newLabel: string): Promis
  * Auto-migrate: creates "Version A" from existing chapter content
  * if no versions exist for this chapter yet.
  */
-export async function ensureInitialVersion(chapterId: string, currentContent: string): Promise<ChapterVersion[]> {
-  const existing = await readVersions(chapterId);
+export async function ensureInitialVersion(chapterId: string, currentContent: string, projectId: string = getActiveProjectId()): Promise<ChapterVersion[]> {
+  const existing = await readVersions(chapterId, projectId);
   if (existing.length > 0) return existing;
 
   if (currentContent.trim().length === 0) return [];
 
-  const version = await addVersion(chapterId, currentContent, 'Version A', 'auto-snapshot', true);
+  const version = await addVersion(chapterId, currentContent, 'Version A', 'auto-snapshot', true, projectId);
   return [version];
 }
 
