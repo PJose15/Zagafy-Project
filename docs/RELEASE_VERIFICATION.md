@@ -17,54 +17,6 @@ restore the backup → reload and recover the original chapter and author metada
 | Local DOCX/PDF downloads | Passed | Real browser/API downloads, independently reopened; expected chapter and English/Spanish text recovered. DOCX round-trip regression also checks bold/italic formatting and both chapters. PDF was additionally opened with Poppler. |
 | Local JSON restore | Passed | Export, mutate chapter, restore, reload and reopen original content. Genre array and author fields survive restore and another export. |
 | Dependency audit | Zero reported vulnerabilities | Full dependency scan after the PDF parser update. Recheck on merge/deployment. |
-| Hosted configuration | Inspected; launch blockers found | Signed-in Vercel project/shared variable lists, Storage and Build settings inspected without revealing values. Neon signed-in organization/project list inspected. Details below. |
-
-## Hosted inspection — October 2, 2026
-
-Production remains on `master` commit `485b710` at `zagafy.vercel.app`;
-PR #121 has not been promoted. Project Node.js setting is `24.x`, which satisfies
-the parser runtime range. No Vercel deployment checks are configured.
-
-The complete project variable list and shared tab showed:
-
-| Variables | Configured target |
-| --- | --- |
-| `CLERK_WEBHOOK_SECRET`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Production only |
-| `DATABASE_URL`, `APP_URL`, `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` | Production only |
-| `ANTHROPIC_API_KEY` | All Environments |
-| `GEMINI_API_KEY` | Separate Production and All Pre-Production entries |
-| Shared variables | No shared variables linked |
-
-Required names absent from both project and linked shared variables:
-`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_WRITER_MONTHLY`,
-`STRIPE_PRICE_WRITER_YEARLY`, `STRIPE_PRICE_AUTHOR_MONTHLY`,
-`STRIPE_PRICE_AUTHOR_YEARLY`. Preview additionally lacks the Clerk keys,
-webhook secret, database URL, app URL and cron secret shown as Production-only.
-No secret values were revealed, copied or tested; presence does not establish
-credential validity. Email and monitoring configuration were not present in this
-variable list either and remain unverified.
-
-Vercel Storage reports no connected database. This does not negate the configured
-production `DATABASE_URL`; it may point to an external database. The signed-in
-Neon account's organization selector offered one organization, whose project list
-reported no projects. The production database's provider/project/branch, schema,
-migrations and restore capability therefore remain unresolved. Do not create a
-replacement database or run migrations before identifying the existing database.
-
-### Next configuration work
-
-1. Identify the database behind the existing production URL through its owner,
-   then establish an isolated staging branch with the app's schema. Do not copy
-   production credentials/data into an unreviewed preview.
-2. Configure preview with Clerk development-instance keys, dedicated test users,
-   staging database/app URL and the required Redis REST pair.
-3. Connect Stripe test mode and supply webhook and Writer/Author price IDs;
-   include Studio IDs if offering Studio. Configure email and monitoring.
-4. Redeploy the exact candidate and run authenticated readiness, real Redis,
-   Stripe, AI, collaboration and operational gates below before promotion.
-
-No hosted configuration was changed during this inspection.
 
 ## Bugs found and fixed during verification
 
