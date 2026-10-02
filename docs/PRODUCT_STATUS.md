@@ -58,6 +58,7 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
 
 | Priority | Concrete gap | Acceptance needed |
 | --- | --- | --- |
+| 1 | A fresh browser cannot discover and reopen its own existing cloud projects; the library lists local Dexie rows, while shared-story import is a separate flow | Add an authenticated owned/shared cloud catalog and explicit safe binding/import into a local project; verify a fresh second device can reopen the same manuscript without creating a duplicate. |
 | 1 | History, snapshots, sessions and writer insights do not consistently enqueue all local mutations | Atomic local mutation plus queue, captured project IDs, no echo on pull, and two-device round-trip tests. |
 | 1 | Cloud deletions lack a general tombstone/delivery protocol | Verify deletion propagation across disconnected devices, including dependent rows and retained recovery copies. |
 | 1 | New simultaneous checkouts can still race before a subscription exists | Serialize/reuse checkout attempts and verify Stripe's one-subscription redirect plus portal configuration in staging. |
