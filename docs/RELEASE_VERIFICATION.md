@@ -48,3 +48,21 @@ credentials or an absent active Clerk session must fail, rather than skip.
 No merge, production promotion, live payment, infrastructure mutation or
 production recovery drill has been performed. Connections alone do not constitute
 successful service verification. PR #121 remains a draft until these live gates pass.
+
+## Billing schema follow-up
+
+The webhook schema declared `stripe_events`, but the four committed migrations
+did not create it. Added and registered migration `0004_stripe_events`. Event-claim
+errors now return 503 before billing updates, provider lookups or notification
+email; Stripe can retry after recovery.
+
+Validation: all 19 webhook tests pass, including an outage regression asserting
+no downstream side effects; TypeScript, changed-file lint and diff checks pass.
+All five SQL migrations applied to a fresh embedded Postgres (PGlite). Reapplying
+the new migration succeeds; the event timestamp default and duplicate insert
+guard work, and prior migration columns remain present. This is local SQL evidence,
+not proof of the hosted database schema or real Stripe deliveries.
+
+Apply the registered migration to verified staging before enabling billing. No
+hosted migration was run. Out-of-order delivery and process-crash handling remain
+release gates.

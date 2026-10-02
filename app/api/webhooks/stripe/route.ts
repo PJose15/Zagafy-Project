@@ -162,7 +162,9 @@ export async function POST(req: NextRequest) {
       }
     } catch (dbErr) {
       log.error('Idempotency claim failed', dbErr);
-      // Continue processing — better to double-process than drop.
+      // Do not mutate entitlements or send mail without the durable guard.
+      // A non-2xx response lets Stripe retry after the database recovers.
+      return err('internal_error', 'Webhook event could not be claimed', 503, undefined, { requestId });
     }
   }
 

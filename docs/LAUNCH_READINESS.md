@@ -104,10 +104,20 @@ string-contract passes are not independent judgments of narrative quality.
 
 ## Rollback
 
-Keep the last approved artifact/commit and environment configuration. These changes
-do not require a database schema migration. Avoid rolling back to a version that
+Keep the last approved artifact/commit and environment configuration. Apply `0004_stripe_events` through the registered Drizzle migration runner before
+enabling billing. It adds the durable webhook event guard missing from the earlier
+migration chain; confirm the existing migration history before running it on an
+existing database. Avoid rolling back to a version that
 reopens AI quota/auth bypasses: disable paid AI or route traffic to a verified
 release while repairing a regression. Preserve local IndexedDB and exported backups.
 No production deployment or live integration verification is implied by this document.
 
 Current verification evidence and access blockers: [RELEASE_VERIFICATION.md](RELEASE_VERIFICATION.md).
+
+## Billing migration follow-up
+
+Added `0004_stripe_events.sql` and registered it in the migration journal. Billing
+webhooks now return 503 when claiming an event fails, before entitlement updates
+or email, so Stripe can retry. Apply and verify the migration in isolated staging
+first; no hosted database migration has been run. This does not yet establish
+crash-safe event processing or handling of out-of-order subscription events.

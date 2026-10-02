@@ -277,6 +277,21 @@ describe('POST /api/webhooks/stripe', () => {
     expect(mockUpdateSet).not.toHaveBeenCalled();
   });
 
+  it('returns a retryable error without billing or email side effects when the claim fails', async () => {
+    mockConstructEvent.mockReturnValue(fakeEvent('checkout.session.completed', {
+      id: 'cs_test_123', mode: 'subscription', customer: 'cus_abc',
+      subscription: 'sub_abc', metadata: { userId: 'user_abc', plan: 'writer' },
+    }));
+    mockClaimReturning.mockRejectedValueOnce(new Error('database unavailable'));
+    const { POST } = await import('@/app/api/webhooks/stripe/route');
+    const res = await POST(makeRequest('{}'));
+    expect(res.status).toBe(503);
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockSendEmail).not.toHaveBeenCalled();
+    expect(mockSubRetrieve).not.toHaveBeenCalled();
+    expect(mockDeleteWhere).not.toHaveBeenCalled();
+  });
+
   it('claims the event (records it) before processing for idempotency', async () => {
     mockConstructEvent.mockReturnValue(
       fakeEvent('customer.subscription.deleted', {
