@@ -7,7 +7,11 @@ import { wordCount } from '@/lib/editor/serialization';
  * The project is supplied by the caller before any asynchronous work starts.
  */
 export async function persistProjectState(state: StoryState, projectId: string): Promise<void> {
-  await db.transaction('rw', [db.stories, db.chapters, db.syncQueue], async () => {
+  await db.transaction('rw', [db.stories, db.chapters, db.syncQueue, db.syncMeta], async () => {
+    const meta = await db.syncMeta.get(projectId);
+    if (state.chapters.some(ch => meta?.serverDeletedEntities?.[`chapter:${ch.id}`])) {
+      throw new Error('A chapter was deleted in the cloud; recover its text into a new chapter');
+    }
     const oldChapters = await db.chapters.where('projectId').equals(projectId).toArray();
     const currentIds = new Set(state.chapters.map(chapter => chapter.id));
     if (currentIds.size !== state.chapters.length) throw new Error('Duplicate chapter IDs in manuscript');

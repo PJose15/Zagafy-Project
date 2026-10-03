@@ -1,4 +1,6 @@
+import { capturePendingRecovery, preservePendingRecovery } from '@/lib/storage/pending-recovery';
 import { db as dexieDb } from '@/lib/storage/dexie-db';
+import { applyDeletionReceipts, markCloudProjectDeleted } from './cloud-deletions';
 import { wordCount } from '@/lib/editor/serialization';
 import type { ManuscriptComment } from '@/lib/types/comment';
 import type { PullResponse } from './types';
@@ -7,11 +9,26 @@ import { readQueue, updateSyncMeta } from './sync-queue';
 /** All downloaded rows and their watermark commit together, or none do. */
 export const cloudTables = () => [dexieDb.stories, dexieDb.chapters, dexieDb.chapterVersions,
   dexieDb.storySnapshots, dexieDb.sessions, dexieDb.chatMessages, dexieDb.writerInsights,
-  dexieDb.comments, dexieDb.syncQueue, dexieDb.syncMeta];
+  dexieDb.comments, dexieDb.chapterAnalysis, dexieDb.syncQueue, dexieDb.syncMeta];
 
 export async function applyCloudData(data: PullResponse, projectId: string): Promise<Record<string, number>> {
-  return dexieDb.transaction('rw', cloudTables(), async () => {
+  const recovery = data.storyDeletedAt || data.tombstones?.length ? capturePendingRecovery(projectId) : [];
+  const result = await dexieDb.transaction('rw', cloudTables(), async () => {
+    await preservePendingRecovery(projectId, recovery);
     const counts: Record<string, number> = {};
+    if (data.storyDeletedAt) {
+      await markCloudProjectDeleted(projectId, data.storyId, data.storyDeletedAt);
+      return { cloudProjectDeleted: 1 };
+    }
+    if (data.tombstones?.length) counts.deleted = await applyDeletionReceipts(data.tombstones, projectId);
+    // A malformed/stale payload cannot resurrect a receipt already accepted.
+    const deleted = (await dexieDb.syncMeta.get(projectId))?.serverDeletedEntities ?? {};
+    const typedRows = [ ['chapter', data.chapters], ['chapterVersion', data.chapterVersions],
+      ['storySnapshot', data.storySnapshots], ['session', data.sessions], ['chatMessage', data.chatMessages],
+      ['writerInsight', data.writerInsights], ['comment', data.comments ?? []] ] as const;
+    for (const [type, rows] of typedRows) for (const row of rows) {
+      if (deleted[`${type}:${row.id}`]) throw new Error('Cloud payload contains a deleted record');
+    }
     // Refuse global primary-key collisions with another local project before writing.
     const scoped = [
       [data.chapters, dexieDb.chapters],
@@ -247,4 +264,6 @@ export async function applyCloudData(data: PullResponse, projectId: string): Pro
     await updateSyncMeta({ lastPulledAt: data.serverTimestamp }, projectId);
     return counts;
   });
+  recovery.forEach(capture => capture.committed());
+  return result;
 }

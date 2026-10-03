@@ -1846,6 +1846,7 @@
     }
   },
   "writingStats": {
+    "recovery": {"saveError": "No se pudo guardar o recuperar el historial de sesiones. Mantén esta pestaña abierta y reintenta.", "scoreError": "No se guardó tu puntuación de fluidez. Selecciónala de nuevo para reintentar.", "retry": "Reintentar recuperación", "export": "Exportar recuperaci\u00f3n"},
     "insight": {
       "keepWriting": "¡Sigue escribiendo!",
       "keepWritingDetail": "Sigue escribiendo — necesitamos al menos 5 sesiones para revelar tus patrones.",
@@ -1880,6 +1881,7 @@
       "scoreNA": "N/D"
     },
     "voice": {
+      "historyError": "No se pudo cargar el historial de sesiones. Reintenta cuando el almacenamiento esté disponible.",
       "title": "Analíticas por Voz",
       "allVoices": "Todas las Voces",
       "totalWords": "Palabras Totales",

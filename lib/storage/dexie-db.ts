@@ -119,6 +119,8 @@ export interface DexieSyncMeta {
   lastPushedAt: string | null;
   /** Server optimistic-concurrency version of the story `state` blob. */
   serverStoryVersion?: number | null;
+  serverDeletedAt?: string | null;
+  serverDeletedEntities?: Record<string, string>;
 }
 
 class ZagafyDB extends Dexie {
@@ -133,6 +135,7 @@ class ZagafyDB extends Dexie {
   writerInsights!: Table<DexieWriterInsight, string>;
   syncQueue!: Table<DexieSyncQueueEntry, string>;
   syncMeta!: Table<DexieSyncMeta, string>;
+  cloudDeleteQueue!: Table<{ id: string; accountId: string; projectId: string; createdAt: number }, string>;
   comments!: Table<ManuscriptComment, string>;
 
   constructor() {
@@ -285,6 +288,7 @@ class ZagafyDB extends Dexie {
       syncMeta: 'id',
       comments: 'id, projectId, chapterId, resolved, createdAt',
     });
+    this.version(10).stores({ cloudDeleteQueue: 'id, accountId' });
   }
 }
 
@@ -293,122 +297,66 @@ export const db = new ZagafyDB();
 // ─── Migration from localStorage ───
 
 export async function migrateFromLocalStorage(): Promise<void> {
-  try {
-    const existing = await db.meta.get('migration');
-    if (existing) return; // already migrated
-
-    const activeId = getActiveProjectId();
-
-    await db.transaction('rw', [db.chapters, db.chapterVersions, db.sessions, db.meta, db.stories], async () => {
-      // 1. Migrate chapters with content from zagafy_state and the whole state blob
-      const stateRaw = localStorage.getItem('zagafy_state');
-      if (stateRaw) {
-        try {
-          const state = JSON.parse(stateRaw);
-          let chapterCount = 0;
-          if (Array.isArray(state.chapters)) {
-            chapterCount = state.chapters.length;
-            const dexieChapters: DexieChapter[] = state.chapters
-              .filter((ch: Record<string, unknown>) => ch && typeof ch.id === 'string')
-              .map((ch: Record<string, unknown>) => ({
-                id: ch.id as string,
-                projectId: activeId,
-                title: (ch.title as string) || '',
-                content: (ch.content as string) || '',
-                summary: (ch.summary as string) || '',
-                canonStatus: ch.canonStatus as string | undefined,
-                source: ch.source as string | undefined,
-                updatedAt: Date.now(),
-              }));
-            if (dexieChapters.length > 0) {
-              await db.chapters.bulkPut(dexieChapters);
-            }
-
-            // Strip content from chapters before persisting to stories table
-            state.chapters = state.chapters.map((ch: Record<string, unknown>) => ({
-              ...ch,
-              content: '',
-            }));
-          }
-
-          // Persist the full state blob (sans chapter contents) into stories table
-          await db.stories.put({
-            id: activeId,
-            data: JSON.stringify(state),
-            title: typeof state.title === 'string' ? state.title : 'Untitled Project',
-            chapterCount,
-            wordCount: 0,
-            status: 'draft',
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          });
-
-          // Remove legacy localStorage key now that data lives in Dexie
-          localStorage.removeItem('zagafy_state');
-        } catch {
-          // Parse error — leave localStorage intact
-        }
-      }
-
-      // 2. Migrate chapter versions
-      const versionsRaw = localStorage.getItem('zagafy_chapter_versions');
-      if (versionsRaw) {
-        try {
-          const versions = JSON.parse(versionsRaw);
-          if (Array.isArray(versions)) {
-            const dexieVersions: DexieChapterVersion[] = versions
-              .filter((v: Record<string, unknown>) => v && typeof v.id === 'string')
-              .map((v: Record<string, unknown>) => ({
-                id: v.id as string,
-                projectId: activeId,
-                chapterId: (v.chapterId as string) || '',
-                createdAt: (v.createdAt as string) || new Date().toISOString(),
-                data: JSON.stringify(v),
-              }));
-            if (dexieVersions.length > 0) {
-              await db.chapterVersions.bulkPut(dexieVersions);
-            }
-          }
-          localStorage.removeItem('zagafy_chapter_versions');
-        } catch {
-          // Parse error — leave localStorage intact
-        }
-      }
-
-      // 3. Migrate writing sessions
-      const sessionsRaw = localStorage.getItem('zagafy_sessions');
-      if (sessionsRaw) {
-        try {
-          const sessions = JSON.parse(sessionsRaw);
-          if (Array.isArray(sessions)) {
-            const dexieSessions: DexieSession[] = sessions
-              .filter((s: Record<string, unknown>) => s && typeof s.id === 'string')
-              .map((s: Record<string, unknown>) => ({
-                id: s.id as string,
-                projectId: (s.projectId as string) || activeId,
-                startedAt: (s.startedAt as string) || '',
-                endedAt: (s.endedAt as string) || '',
-                wordsAdded: (s.wordsAdded as number) || 0,
-                flowScore: (s.flowScore as number) ?? null,
-                heteronymId: (s.heteronymId as string) ?? null,
-                data: JSON.stringify(s),
-              }));
-            if (dexieSessions.length > 0) {
-              await db.sessions.bulkPut(dexieSessions);
-            }
-          }
-          localStorage.removeItem('zagafy_sessions');
-        } catch {
-          // Parse error — leave localStorage intact
-        }
-      }
-
-      // 4. Mark migration complete
-      await db.meta.put({ id: 'migration', completedAt: new Date().toISOString() });
-    });
-  } catch (e) {
-    console.error('[dexie] Migration failed, falling back to localStorage', e);
+  if (await db.meta.get('migration')) return;
+  const activeId = getActiveProjectId();
+  const keys = ['zagafy_state', 'zagafy_chapter_versions', 'zagafy_sessions'] as const;
+  const originals = keys.map(key => ({ key, raw: localStorage.getItem(key) }));
+  const parsed = originals.map(({ raw }) => raw === null ? null : JSON.parse(raw));
+  const [legacyState, legacyVersions, legacySessions] = parsed;
+  if (legacyState !== null && (!legacyState || typeof legacyState !== 'object' || Array.isArray(legacyState))) throw new Error('Legacy manuscript is damaged');
+  for (const value of [legacyVersions, legacySessions]) if (value !== null && !Array.isArray(value)) throw new Error('Legacy history is damaged');
+  const { isWritingSession } = await import('@/lib/types/writing-session');
+  const versions = (legacyVersions ?? []) as Record<string, unknown>[];
+  for (const v of versions) {
+    if (!v || typeof v.id !== 'string' || typeof v.chapterId !== 'string' || typeof v.content !== 'string' ||
+        typeof v.label !== 'string' || typeof v.createdAt !== 'string' || typeof v.isCanonical !== 'boolean' ||
+        typeof v.wordCount !== 'number' || !['manual', 'scene-change', 'auto-snapshot'].includes(v.source as string)) throw new Error('Legacy chapter history is damaged');
   }
+  const sessions = (legacySessions ?? []) as Record<string, unknown>[];
+  for (const session of sessions) {
+    if (!isWritingSession(session)) throw new Error('Legacy session history is damaged');
+  }
+  const chapters = legacyState?.chapters ?? [];
+  if (!Array.isArray(chapters) || chapters.some(ch => !ch || typeof ch.id !== 'string' || typeof ch.content !== 'string')) throw new Error('Legacy chapters are damaged');
+  await db.transaction('rw', [db.chapters, db.chapterVersions, db.sessions, db.meta, db.stories, db.syncQueue], async () => {
+    if (await db.meta.get('migration')) return;
+    // A retry must never overwrite newer IndexedDB records. Conflicting legacy
+    // data stays intact for recovery instead of silently winning or disappearing.
+    const putMissing = async <T extends { id: string }>(table: Table<T, string>, row: T, type: 'chapter' | 'chapterVersion' | 'session') => {
+      const existing = await table.get(row.id);
+      if (existing) {
+        const oldData = existing as T & { projectId?: string; data?: string; content?: string };
+        const newData = row as T & { projectId?: string; data?: string; content?: string };
+        if (oldData.projectId !== newData.projectId || oldData.data !== newData.data || oldData.content !== newData.content) throw new Error('Legacy data conflicts with current storage; export recovery before continuing');
+        return;
+      }
+      await table.put(row);
+      await queueLocalMutation((row as T & { projectId?: string }).projectId ?? activeId, type, row.id);
+    };
+    for (const ch of chapters) await putMissing(db.chapters, { id: ch.id, projectId: activeId, title: ch.title ?? '', content: ch.content,
+      summary: ch.summary ?? '', canonStatus: ch.canonStatus, source: ch.source, updatedAt: Date.now() }, 'chapter');
+    for (const v of versions) await putMissing(db.chapterVersions, { id: v.id as string, projectId: activeId,
+      chapterId: v.chapterId as string, createdAt: v.createdAt as string, data: JSON.stringify(v) }, 'chapterVersion');
+    for (const session of sessions) await putMissing(db.sessions, { id: session.id as string, projectId: session.projectId as string,
+      startedAt: session.startedAt as string, endedAt: session.endedAt as string, wordsAdded: session.wordsAdded as number,
+      flowScore: session.flowScore as number | null, heteronymId: session.heteronymId as string | null, data: JSON.stringify(session) }, 'session');
+    if (legacyState) {
+      const state = { ...legacyState, chapters: chapters.map(ch => ({ ...ch, content: '' })) };
+      const existing = await db.stories.get(activeId);
+      if (existing && existing.data !== JSON.stringify(state)) throw new Error('Legacy manuscript conflicts with current storage; export recovery before continuing');
+      if (!existing) {
+        await db.stories.put({ id: activeId, data: JSON.stringify(state), title: state.title ?? 'Untitled Project', chapterCount: chapters.length,
+          wordCount: 0, status: 'draft', createdAt: Date.now(), updatedAt: Date.now() });
+        await queueLocalMutation(activeId, 'story', activeId);
+      }
+    }
+    await db.meta.put({ id: 'migration', completedAt: new Date().toISOString() });
+  });
+  // Never remove recovery bytes before the entire IndexedDB transaction commits.
+  for (const { key, raw } of originals) {
+    try { if (raw !== null && localStorage.getItem(key) === raw) localStorage.removeItem(key); } catch { /* safely retry cleanup later */ }
+  }
+  notifyLocalMutation();
 }
 
 // ─── Chapter Content CRUD ───
@@ -544,20 +492,25 @@ export async function getSessions(
   projectId: string = getActiveProjectId(),
 ): Promise<Record<string, unknown>[]> {
   const rows = await db.sessions.where('projectId').equals(projectId).toArray();
-  return rows.map(r => {
-    try { return JSON.parse(r.data); }
-    catch { return null; }
-  }).filter(Boolean) as Record<string, unknown>[];
+  return rows.map(row => {
+    const value = JSON.parse(row.data);
+    if (!value || value.id !== row.id || value.projectId !== projectId) throw new Error('Session history is damaged');
+    return value;
+  });
 }
 
 export async function putSession(
   session: Record<string, unknown>,
   projectId: string = getActiveProjectId(),
+  onlyIfMissing = false,
 ): Promise<void> {
   const targetProjectId = (session.projectId as string) || projectId;
   await db.transaction('rw', [db.sessions, db.syncQueue], async () => {
     const existing = await db.sessions.get(session.id as string);
     if (existing && existing.projectId !== targetProjectId) throw new Error('Session belongs to another project');
+    if (existing && onlyIfMissing) return;
+    if (existing && Date.parse(existing.endedAt) >= Date.parse(session.endedAt as string)) return;
+    if (existing?.flowScore != null) session = { ...session, flowScore: existing.flowScore };
     await db.sessions.put({
       id: session.id as string,
       projectId: targetProjectId,
@@ -569,6 +522,20 @@ export async function putSession(
       data: JSON.stringify({ ...session, projectId: targetProjectId }),
     });
     await queueLocalMutation(targetProjectId, 'session', session.id as string);
+  });
+  notifyLocalMutation();
+}
+
+/** A flow-score update cannot replace a concurrently added session list. */
+export async function updateSessionScore(id: string, score: number, projectId: string): Promise<void> {
+  const { isWritingSession } = await import('@/lib/types/writing-session');
+  await db.transaction('rw', [db.sessions, db.syncQueue], async () => {
+    const row = await db.sessions.get(id);
+    if (!row || row.projectId !== projectId) return;
+    const value = JSON.parse(row.data);
+    if (!isWritingSession(value) || value.id !== id || value.projectId !== projectId) throw new Error('Session history is damaged');
+    await db.sessions.put({ ...row, flowScore: score, data: JSON.stringify({ ...value, flowScore: score }) });
+    await queueLocalMutation(projectId, 'session', id);
   });
   notifyLocalMutation();
 }
@@ -665,11 +632,12 @@ export async function getProjectRows(): Promise<DexieStory[]> {
 }
 
 /** Delete every row belonging to one project across all scoped tables + its story row. */
-export async function deleteProjectData(projectId: string): Promise<void> {
+export async function deleteProjectData(projectId: string, deletion?: { storyId: string; accountId: string }): Promise<void> {
   await db.transaction(
     'rw',
-    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.chapterAnalysis, db.writerInsights, db.storySnapshots, db.syncQueue, db.syncMeta, db.comments],
+    [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.chapterAnalysis, db.writerInsights, db.storySnapshots, db.syncQueue, db.syncMeta, db.comments, db.cloudDeleteQueue],
     async () => {
+      if (deletion) await db.cloudDeleteQueue.put({ id: deletion.storyId, accountId: deletion.accountId, projectId, createdAt: Date.now() });
       await db.stories.delete(projectId);
       await db.comments.where('projectId').equals(projectId).delete();
       await db.chapters.where('projectId').equals(projectId).delete();

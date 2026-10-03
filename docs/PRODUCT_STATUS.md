@@ -1,4 +1,4 @@
-# Zagafy product status — October 2, 2026
+# Zagafy product status — October 3, 2026
 
 Zagafy is an offline-first narrative workshop for authors. The product centers on
 an editable manuscript, project-specific canon and characters, deliberate AI
@@ -17,7 +17,7 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
 | Manuscript | Lexical editor, chapter organization, word counts, find/replace | Real browser save/reload regression; storage transactions and failure regressions. |
 | Narrative design | Story bible, canon, characters, timeline, conflicts and outlines | Existing component/API tests; complete author journey and narrative quality review remain. |
 | Assistance | Main chat, coaching, polish, flow, character chat and helper analysis | Auth, quota and helper ownership/replay tests; real model quality, latency and spend remain. |
-| History | Chapter versions and manuscript snapshots | Chapter-version mutations now serialize read/write and queue in one transaction, with explicit failures and safe editor switching. Session history, legacy migration recovery and hosted acceptance remain. |
+| History | Chapter versions and manuscript snapshots | Chapter-version mutations now serialize read/write and queue in one transaction, with explicit failures and safe editor switching. Session writes and score updates are atomic; scoped WIP/completed journals and migration rollback preserve recovery. Hosted acceptance remains. |
 | Publishing | Query materials, manuscript DOCX/PDF and JSON backup/restore | Real document round trips and browser downloads/restores; live AI publishing quality remains. |
 | Billing | Tier limits, monthly/yearly checkout, portal and webhooks | Transactional Postgres webhook regressions, price matching, authenticated plan display and API tests; live Stripe lifecycle remains. |
 | Cloud/collaboration | Project binding, push/pull, invitations, roles, comments | Database transactions, concurrency and authorization regressions; gaps below still block a complete cloud promise. |
@@ -91,13 +91,50 @@ current editor text. Error messages are available in English and Spanish.
 These are local guarantees, not proof of hosted deletion delivery or live
 collaboration.
 
+## Session, deletion and checkout audit checkpoint
+
+- Session history uses validated IndexedDB records with atomic queue writes;
+  corruption and storage failures are visible rather than treated as empty history.
+  Flow-score updates serialize with additions. Completed-session journals retain
+  rich metrics after failed writes; per-session WIP heartbeats avoid recovering a
+  fresh session in another tab. Project switches retain the session's original scope.
+- Legacy migration validates before writing, refuses conflicting existing records,
+  commits its marker and queue together, and removes original bytes only after
+  success. Raw recovery exports retain malformed legacy data and pending journals.
+- Cloud entity deletion now writes permanent database-clock receipts in the same
+  transaction as content removal. Chapter dependencies receive receipts, comments
+  are removed, and story references are pruned. Stale pushes cannot revive deleted
+  IDs. Whole-project removal retains only authorization/deletion metadata after
+  cascading manuscript removal; former authorized devices can acknowledge it.
+- Pulls preserve durable local manuscript/history before removing cloud-deleted
+  rows. Registered pending store/Flow text gets a separate local recovery snapshot;
+  failed snapshots roll back removals and the watermark. Cross-tab hydration also
+  checkpoints pending text before replacement. Accepted local receipts block stale
+  manuscript autosaves from recreating deleted chapter IDs. These recovery copies
+  are local-only at creation and intentionally retained until the user removes them.
+- Whole-project receipts preserve the disconnected device's local copy and block
+  re-upload through the deleted binding. Local project deletion atomically queues
+  an account-scoped server deletion outbox; network failures retain it for retry.
+  Deleting a shared local copy does not remove its owner's cloud project.
+- Checkout reserves immutable parameters and an opaque idempotency key before
+  provider side effects, then serializes reconciliation per user. Repeated requests
+  reuse an open checkout, completed checkout/payment-in-progress uses the portal,
+  and a changed plan replaces a checkout only after confirmed expiration. Unknown
+  outcomes beyond the replay window fail closed for operator reconciliation.
+  Provider calls hold the user's transaction lock with a five-second lock wait;
+  slow providers can produce retryable errors and occupy a DB connection. This is
+  a deliberate correctness tradeoff that needs staging latency/load acceptance.
+
+Migration `0006_deletion_and_checkout` must be applied before deploying these
+routes. It has been verified against an isolated embedded Postgres instance,
+not applied to a hosted database. Receipts are not automatically pruned because
+an offline device may reconnect after a long absence.
+
 ## Remaining implementation work, in priority order
 
 | Priority | Concrete gap | Acceptance needed |
 | --- | --- | --- |
-| 1 | Session-history localStorage fallbacks still bypass the durable queue, flow-score updates can race, and legacy migration/recovery needs further review | Preserve WIP until durable commit; scoped atomic session mutations, migration rollback/recovery tests and hosted two-device round trips. Chapter-version operations are fixed in the checkpoint above. |
-| 1 | Cloud deletions lack a general tombstone/delivery protocol | Verify deletion propagation across disconnected devices, including dependent rows and retained recovery copies. |
-| 1 | New simultaneous checkouts can still race before a subscription exists | Serialize/reuse checkout attempts and verify Stripe's one-subscription redirect plus portal configuration in staging. |
+| 1 | Hosted acceptance of the session/deletion/checkout protocol | Dedicated accounts/devices, interrupted writes, quota failures, offline deletion/reconnect, completed checkout/webhook delay and safe migration rollout. Local implementation and regressions are complete in the checkpoint above. |
 | 2 | Chat-history storage, local conflict backup delivery and full reconciliation still need end-to-end coverage | Verify all intended history appears after a fresh-device import; make any unsynced recovery records explicit. |
 | 2 | Browser project switching and cross-tab hydration need further in-flight save coverage | Rapid switches, pending saves, concurrent tabs, failed hydration and account changes cannot transfer or lose edits. |
 | 2 | Notification delivery is best-effort after billing commits | Decide whether reliable email is required; use a durable outbox if it is, with idempotent retry tests. |

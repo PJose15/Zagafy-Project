@@ -6,6 +6,7 @@ import type { SyncEntityType } from './types';
 export async function prepareInitialUpload(projectId: string): Promise<string> {
   return db.transaction('rw', cloudTables(), async () => {
     const existing = await db.syncMeta.get(projectId);
+    if (existing?.serverDeletedAt) throw new Error('Cloud project was deleted; export or copy the local recovery project before syncing again');
     if (existing?.serverStoryId) return existing.serverStoryId;
     const story = await db.stories.get(projectId);
     if (!story) throw new Error('Cannot sync a missing local project');

@@ -122,6 +122,8 @@ export async function updateSyncMeta(
     lastPulledAt: existing?.lastPulledAt ?? null,
     lastPushedAt: existing?.lastPushedAt ?? null,
     serverStoryVersion: existing?.serverStoryVersion ?? null,
+    serverDeletedAt: existing?.serverDeletedAt ?? null,
+    serverDeletedEntities: existing?.serverDeletedEntities ?? {},
     ...updates,
   });
 }

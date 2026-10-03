@@ -1,12 +1,11 @@
 import { NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { stripe, isStripeConfigured } from '@/lib/stripe';
-import { db, isDatabaseConfigured } from '@/db/client';
-import { users } from '@/db/schema';
+import { isDatabaseConfigured } from '@/db/client';
+import { checkoutUrl, CheckoutUserMissing } from '@/lib/billing/checkout-attempt';
 import { getStripePriceId, resolveAppUrl, type PlanId } from '@/lib/billing';
 
 export const runtime = 'nodejs';
@@ -68,79 +67,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Look up (or lazily create) the Stripe customer for this user
-    const [user] = await db()
-      .select({ stripeCustomerId: users.stripeCustomerId, email: users.email })
-      .from(users)
-      .where(eq(users.id, auth.userId))
-      .limit(1);
-
-    if (!user) {
-      return err('not_found', 'User not found', 404, undefined, { requestId });
-    }
-
-    let customerId = user.stripeCustomerId;
-
-    if (!customerId) {
-      // Idempotency key pins concurrent creates for the same user to one
-      // Stripe customer object (Stripe replays the original response).
-      const customer = await stripe().customers.create(
-        {
-          email: user.email,
-          metadata: { userId: auth.userId },
-        },
-        { idempotencyKey: `customer-create-${auth.userId}` },
-      );
-      // Re-check the user row: if a concurrent request already stored a
-      // customer id, prefer it so the account keeps a single customer even
-      // when the idempotency window has expired.
-      const [fresh] = await db()
-        .select({ stripeCustomerId: users.stripeCustomerId })
-        .from(users)
-        .where(eq(users.id, auth.userId))
-        .limit(1);
-      if (fresh?.stripeCustomerId) {
-        customerId = fresh.stripeCustomerId;
-      } else {
-        customerId = customer.id;
-        await db()
-          .update(users)
-          .set({ stripeCustomerId: customerId })
-          .where(eq(users.id, auth.userId));
-      }
-    }
-
     const appUrl = resolveAppUrl();
-    if (!appUrl) {
-      log.error('APP_URL / NEXT_PUBLIC_APP_URL not configured in production');
-      return err('internal_error', 'Billing not configured', 500, undefined, { requestId });
+    if (!appUrl) return err('internal_error', 'Billing not configured', 500, undefined, { requestId });
+    const choice = { priceId, plan, interval, appUrl };
+    // A changed/expired choice commits a new reservation before contacting
+    // Stripe. Bound retries also handle competing requests choosing plans.
+    for (let retry = 0; retry < 3; retry++) {
+      const url = await checkoutUrl(auth.userId, choice, stripe());
+      if (url) return ok({ url }, { requestId });
     }
-
-    // Plan changes must update the existing subscription through the portal,
-    // rather than charging the same customer for a second subscription.
-    const subscriptions = await stripe().subscriptions.list({ customer: customerId, status: 'all', limit: 100 });
-    if (subscriptions.has_more) throw new Error('Subscription lookup is incomplete');
-    const ongoing = new Set(['active', 'trialing', 'past_due', 'unpaid', 'paused', 'incomplete']);
-    if (subscriptions.data.some(subscription => ongoing.has(subscription.status))) {
-      const portal = await stripe().billingPortal.sessions.create({ customer: customerId, return_url: `${appUrl}/settings` });
-      return ok({ url: portal.url }, { requestId });
-    }
-
-    const session = await stripe().checkout.sessions.create({
-      customer: customerId,
-      mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${appUrl}/settings?billing=success`,
-      cancel_url: `${appUrl}/settings?billing=cancelled`,
-      subscription_data: {
-        metadata: { userId: auth.userId, plan },
-      },
-      metadata: { userId: auth.userId, plan },
-    });
-
-    log.info('checkout session created', { userId: auth.userId, plan, interval, sessionId: session.id });
-    return ok({ url: session.url }, { requestId });
+    throw new Error('Checkout changed concurrently; retry');
   } catch (e) {
+    if (e instanceof CheckoutUserMissing) return err('not_found', 'User not found', 404, undefined, { requestId });
     log.error('Checkout session creation failed', e);
     return err('internal_error', 'Failed to create checkout session', 500, undefined, { requestId });
   }

@@ -250,3 +250,34 @@ export type NewStory = typeof stories.$inferInsert;
 export type StoryCollaborator = typeof storyCollaborators.$inferSelect;
 export type Chapter = typeof chapters.$inferSelect;
 export type NewChapter = typeof chapters.$inferInsert;
+/** Content-free receipts survive entity deletion and reject stale resurrection. */
+export const syncTombstones = pgTable('sync_tombstones', {
+  storyId: text('story_id').notNull().references(() => stories.id, { onDelete: 'cascade' }),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
+}, table => ({ pk: primaryKey({ columns: [table.storyId, table.entityType, table.entityId] }),
+  syncIdx: index('sync_tombstones_sync_idx').on(table.storyId, table.deletedAt) }));
+
+/** Whole-project deletion removes manuscript data but retains delivery/access IDs. */
+export const deletedStories = pgTable('deleted_stories', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  recipients: jsonb('recipients').$type<string[]>().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
+});
+
+/** One durable checkout reservation per user. Immutable parameters make
+ * provider retries safe even if the process dies before saving its response. */
+export const checkoutAttempts = pgTable('checkout_attempts', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id').notNull().unique(),
+  customerId: text('customer_id'),
+  email: text('email').notNull(),
+  priceId: text('price_id').notNull(),
+  plan: text('plan').notNull(),
+  interval: text('interval').notNull(),
+  appUrl: text('app_url').notNull(),
+  sessionId: text('session_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
+});

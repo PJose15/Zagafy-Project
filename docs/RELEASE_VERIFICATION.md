@@ -1,4 +1,4 @@
-# Zagafy release verification — October 2, 2026
+# Zagafy release verification — October 3, 2026
 
 ## Observed results
 
@@ -219,3 +219,42 @@ commit. No new hosted two-device, authenticated staging, payment, deployment or
 browser-download acceptance is claimed by these local history tests. The next
 storage checkpoint is session history and WIP/legacy migration recovery; cloud
 deletion delivery and initial checkout concurrency remain open.
+
+
+## Session, deletion and checkout checkpoint — October 3
+
+This batch closes the local session fallback/recovery, cloud deletion delivery
+and checkout concurrency implementation gaps. It does not close hosted launch
+acceptance. See PRODUCT_STATUS.md for behavior and operational tradeoffs.
+
+- Real IndexedDB tests cover scoped session reads, corrupt history, concurrent
+  scores/additions, rich completed-session retry, WIP heartbeat/abandonment,
+  deleted projects, and migration validation/rollback without deleting source bytes.
+- Migrated Postgres tests cover chapter/dependent deletion receipts, incremental
+  delivery, stale resurrection attempts, transaction rollback, owner/collaborator
+  authorization, whole-project deletion and deletion before initial upload.
+- Client tests cover offline manuscript/history backups, quota rollback including
+  watermark/queue, pending textarea capture, typing during checkpoint, cross-tab
+  pending recovery, stale autosave refusal and durable account-scoped deletion retry.
+- Checkout tests use migrated Postgres plus a deterministic mocked Stripe provider:
+  competing requests/plans, legacy open sessions, immutable replay keys/parameters,
+  lost responses, DB failure, expiration failure, old uncertain outcomes,
+  completed checkout before webhook, ongoing subscriptions and incomplete listings.
+  No live provider operations or charges were made.
+
+Local combined validation and uploaded-commit CI results are recorded below when
+complete. The production rollout must apply migration 0006 before enabling the
+new routes; required staging acceptance must exercise two real devices and Stripe
+test mode. Normal PR browser skips do not satisfy those release gates.
+
+Local final verification: 221 test files / 3,016 tests passed; production build,
+TypeScript and lint pass (six pre-existing lint warnings), and `git diff --check`
+is clean. The old global-fallback session tests were replaced with real IndexedDB
+regressions, so counts should not be compared as a completion percentage.
+
+If a checkout attempt has an unresolved provider outcome older than 23 hours,
+inspect that user's customer, attempt metadata and checkout/subscription status
+in Stripe test mode or the approved operations environment before resetting its
+reservation. Confirm all old subscription checkouts are expired or completed and
+that no ongoing subscription would be duplicated. Do not blindly delete the
+attempt row and retry. No automatic cleanup of uncertain attempts is implemented.

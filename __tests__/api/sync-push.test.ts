@@ -58,6 +58,8 @@ vi.mock('@/db/client', () => ({
       where: mockDeleteWhere,
     })),
     query: {
+      deletedStories: { findFirst: vi.fn(async () => null) },
+      syncTombstones: { findFirst: vi.fn(async () => null), findMany: vi.fn(async () => []) },
       stories: { findFirst: mockStoryFindFirst },
       storyCollaborators: { findFirst: mockCollabFindFirst },
       chapters: { findFirst: mockChapterFindFirst },
@@ -70,6 +72,8 @@ vi.mock('@/db/client', () => ({
 }));
 
 vi.mock('@/db/schema', () => ({
+  deletedStories: { id: 'id' },
+  syncTombstones: { storyId: 'storyId', entityType: 'entityType', entityId: 'entityId', deletedAt: 'deletedAt' },
   stories: { id: 'id', ownerId: 'ownerId' },
   storyCollaborators: { storyId: 'storyId', userId: 'userId', role: 'role' },
   chapters: { id: 'id', storyId: 'storyId' },

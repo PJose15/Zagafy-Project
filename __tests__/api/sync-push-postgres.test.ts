@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import * as schema from '@/db/schema';
 import { POST } from '@/app/api/sync/push/route';
 import { GET } from '@/app/api/sync/pull/route';
+import { DELETE as removeStory } from '@/app/api/stories/route';
 import { GET as catalog } from '@/app/api/stories/route';
 const identity = vi.hoisted(() => ({ userId: 'user_writer' }));
 vi.mock('@/lib/auth', () => ({ requireCloudUser: async () => ({ userId: identity.userId }), isAuthError: () => false }));
@@ -207,6 +208,64 @@ describe('Transactional sync push against migrated Postgres', () => {
     const types = (await pg.query<{ data_type: string }>("SELECT data_type FROM information_schema.columns WHERE column_name='synced_at'")).rows;
     expect(types).toHaveLength(6);
     expect(types.every(row => row.data_type === 'timestamp with time zone')).toBe(true);
+  });
+
+  it('delivers chapter and dependent deletion receipts and blocks stale resurrection', async () => {
+    await pg.exec(`UPDATE stories SET state='{"title":"Server title","chapters":[{"id":"gone","title":"Removed"}]}' WHERE id='story_1';
+      INSERT INTO chapters (id,story_id,title,content) VALUES ('gone','story_1','Chapter','Current cloud writing');
+      INSERT INTO chapter_versions (id,chapter_id,data) VALUES ('old-version','gone','{}');
+      INSERT INTO comments (id,story_id,chapter_id,data,updated_at) VALUES ('old-comment','story_1','gone','{}',now());`);
+    const before = (await (await GET(new NextRequest('http://localhost/api/sync/pull?storyId=story_1'))).json()).data.serverTimestamp;
+    const response = await POST(request([{ entityType: 'chapter', entityId: 'gone', op: 'delete', payload: null, timestamp: Date.now() }]));
+    expect(response.status).toBe(200);
+    expect((await response.json()).data.storyVersion).toBe(1);
+    const pulled = (await (await GET(new NextRequest(`http://localhost/api/sync/pull?storyId=story_1&since=${encodeURIComponent(before)}`))).json()).data;
+    expect(pulled.chapters).toEqual([]);
+    expect(pulled.tombstones).toEqual(expect.arrayContaining([
+      expect.objectContaining({ entityType: 'chapter', entityId: 'gone' }),
+      expect.objectContaining({ entityType: 'chapterVersion', entityId: 'old-version' }),
+      expect.objectContaining({ entityType: 'comment', entityId: 'old-comment' }),
+    ]));
+    expect(pulled.story.state.chapters).toEqual([]);
+    const stale = await POST(request([chapter('gone', 'Offline old writing'),
+      { entityType: 'chapterVersion', entityId: 'new-offline-version', op: 'upsert', payload: { chapterId: 'gone', data: {} }, timestamp: Date.now() }]));
+    const result = (await stale.json()).data;
+    expect(result.applied).toBe(0); expect(result.conflicts).toHaveLength(2);
+    expect(result.conflicts.every((conflict: { serverPayload: unknown }) => conflict.serverPayload === null)).toBe(true);
+    expect(await database.query.chapters.findFirst({ where: undefined })).toBeUndefined();
+  });
+
+  it('receipts and cascading deletion roll back with a failed batch', async () => {
+    await pg.exec(`INSERT INTO chapters (id,story_id,title) VALUES ('gone','story_1','Chapter'), ('foreign','story_other','Private');`);
+    const response = await POST(request([{ entityType: 'chapter', entityId: 'gone', op: 'delete', payload: null, timestamp: Date.now() }, chapter('foreign')]));
+    expect(response.status).toBe(500);
+    expect(await database.query.syncTombstones.findMany()).toEqual([]);
+    expect(await database.query.chapters.findMany()).toHaveLength(2);
+  });
+
+  it('a whole-project receipt reaches its former collaborators without leaking manuscript or unrelated accounts', async () => {
+    await pg.exec(`INSERT INTO story_collaborators (story_id,user_id,role) VALUES ('story_1','user_other','reader');
+      INSERT INTO chapters (id,story_id,title,content) VALUES ('secret','story_1','Chapter','Manuscript to remove');`);
+    const removed = await removeStory(new NextRequest('http://localhost/api/stories', { method: 'DELETE', body: JSON.stringify({ storyId: 'story_1' }) }));
+    expect(removed.status).toBe(200);
+    expect(await database.query.chapters.findMany()).toEqual([]);
+    expect(await database.query.storyCollaborators.findMany()).toEqual([]);
+    identity.userId = 'user_other';
+    const result = (await (await GET(new NextRequest('http://localhost/api/sync/pull?storyId=story_1'))).json()).data;
+    expect(result.storyDeletedAt).toEqual(expect.any(String)); expect(result.story).toBeNull(); expect(result.chapters).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain('Manuscript to remove');
+    expect((await POST(request([chapter()], 'story_1'))).status).toBe(410);
+    await pg.exec(`INSERT INTO users (id,email,plan) VALUES ('stranger','stranger@example.com','writer')`);
+    identity.userId = 'stranger';
+    const stranger = (await (await GET(new NextRequest('http://localhost/api/sync/pull?storyId=story_1'))).json()).data;
+    expect(stranger.storyDeletedAt).toBeUndefined();
+    expect((await POST(request([chapter()], 'story_1'))).status).toBe(403);
+  });
+
+  it('deleting an unuploaded project also prevents its delayed first upload', async () => {
+    const removed = await removeStory(new NextRequest('http://localhost/api/stories', { method: 'DELETE', body: JSON.stringify({ storyId: 'not-uploaded-yet' }) }));
+    expect((await removed.json()).data.deleted).toBe(true);
+    expect((await POST(request([chapter()], 'not-uploaded-yet'))).status).toBe(410);
   });
 
 });

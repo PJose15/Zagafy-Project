@@ -8,11 +8,14 @@
  * This module is client-only ('use client' implied by its consumers).
  */
 
+import { capturePendingRecovery, preservePendingRecovery } from '@/lib/storage/pending-recovery';
 import { db as dexieDb } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 import { wordCount } from '@/lib/editor/serialization';
 import { prepareInitialUpload } from './initial-upload';
 import { LOCAL_MUTATION_EVENT } from './local-mutation';
+import { flushCloudDeletes } from './cloud-delete-outbox';
+import { applyDeletionReceipts, deletionTables } from './cloud-deletions';
 import { applyCloudData } from './apply-cloud-data';
 import type {
   SyncDelta,
@@ -148,7 +151,11 @@ export class SyncEngine {
       // Bind the entire push cycle to one project: resolvePayload/getStoryTitle
       // re-reading the active project mid-push would push the wrong story after
       // a project switch.
+      await flushCloudDeletes();
+      if (this.destroyed) return;
       const projectId = getActiveProjectId();
+      const deletionMeta = await getSyncMeta(projectId);
+      if (deletionMeta?.serverDeletedAt) throw new Error('Cloud project was deleted. Your local copy and recovery snapshot are retained; export or copy it before syncing again.');
       let pending = await readQueue(projectId);
       if (pending.entries.length === 0) {
         this.setStatus('idle');
@@ -223,6 +230,16 @@ export class SyncEngine {
       });
 
       if (!res.ok) {
+        if (res.status === 410) {
+          const receiptResponse = await fetch(`/api/sync/pull?storyId=${encodeURIComponent(serverStoryId)}`);
+          if (!receiptResponse.ok) throw new Error('Unable to verify cloud project deletion; local changes retained');
+          const receipt = (await receiptResponse.json()).data as PullResponse;
+          if (!receipt.storyDeletedAt || this.destroyed) throw new Error('Cloud project deletion is not confirmed');
+          await this.applyPulledData(receipt, projectId);
+          this.setStatus('error');
+          this.emit({ type: 'error', message: 'Cloud project was deleted. Your local writing and recovery snapshot are retained.' });
+          return;
+        }
         if (res.status === 401) {
           this.setStatus('error');
           this.emit({ type: 'error', message: 'Authentication expired' });
@@ -347,7 +364,8 @@ export class SyncEngine {
         this.broadcastStateUpdated();
       }
 
-      this.setStatus(prevStatus === 'conflict' ? 'conflict' : 'idle');
+      this.setStatus(result.storyDeletedAt ? 'error' : prevStatus === 'conflict' ? 'conflict' : 'idle');
+      if (result.storyDeletedAt) this.emit({ type: 'error', message: 'Cloud project was deleted. Your local writing and recovery snapshot are retained.' });
       this.emit({ type: 'pull-complete', counts });
     } catch (e) {
       if (this.isOffline()) {
@@ -378,7 +396,14 @@ export class SyncEngine {
     // getAllChapterContents(projectId) and its content silently vanishes from the
     // active project. Scope the overwrite to the active project like applyPulledData.
     for (const c of conflicts) {
-      if (c.entityType === 'chapter' && c.serverPayload) {
+      if (c.entityType !== 'story' && c.serverPayload === null) {
+        const recovery = capturePendingRecovery(projectId);
+        await dexieDb.transaction('rw', deletionTables(), async () => {
+          await preservePendingRecovery(projectId, recovery);
+          await applyDeletionReceipts([{ entityType: c.entityType as Exclude<SyncEntityType, 'story'>, entityId: c.entityId, deletedAt: c.serverUpdatedAt }], projectId);
+        });
+        recovery.forEach(capture => capture.committed());
+      } else if (c.entityType === 'chapter' && c.serverPayload) {
         const sp = c.serverPayload;
         // C3: preserve the losing local edit before adopting the server copy so a
         // reconnect conflict never silently discards offline work. The current

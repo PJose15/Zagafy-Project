@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MotionConfig } from 'motion/react';
 import { StoryProvider } from '@/lib/store';
 import { SessionProvider } from '@/lib/session';
@@ -16,6 +16,8 @@ import { DiagnosticGate } from '@/components/diagnostic/diagnostic-gate';
 import { useSessionTracker } from '@/hooks/use-session-tracker';
 import { useWordMilestones } from '@/hooks/use-word-milestones';
 import { FlowScoreModal } from '@/components/writing-map/flow-score-modal';
+import { exportProjectRecovery } from '@/lib/storage/export-recovery';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 import { updateSessionFlowScore } from '@/lib/types/writing-session';
 import type { FlowScore } from '@/lib/types/writing-session';
 import { readGamification } from '@/lib/types/gamification';
@@ -24,6 +26,7 @@ import { GamificationProvider } from '@/hooks/use-gamification';
 import { AuthenticatedSyncProvider } from '@/lib/sync/authenticated-sync-provider';
 import { OnboardingTour } from '@/components/onboarding/onboarding-tour';
 import { AiStatusBanner } from '@/components/ai/ai-status-banner';
+import { useTranslations } from 'next-intl';
 import { useProfile } from '@/hooks/use-profile';
 
 function StreakWarningToast() {
@@ -42,14 +45,18 @@ function StreakWarningToast() {
 }
 
 function LibraryShellInner({ children }: { children: React.ReactNode }) {
-  const { pendingFlowScore, dismissFlowScore } = useSessionTracker();
+  const { pendingFlowScore, dismissFlowScore, recoveryError, retryRecovery } = useSessionTracker();
+  const [flowError, setFlowError] = useState(false);
+  const t = useTranslations('writingStats.recovery');
   // A4: gold moments when the manuscript crosses a round word count.
   useWordMilestones();
 
   const handleFlowSubmit = useCallback((sessionId: string, score: FlowScore) => {
-    updateSessionFlowScore(sessionId, score).catch(() => { /* best effort */ });
-    dismissFlowScore();
-  }, [dismissFlowScore]);
+    void updateSessionFlowScore(sessionId, score, pendingFlowScore?.projectId).then(() => {
+      setFlowError(false);
+      dismissFlowScore();
+    }).catch(() => setFlowError(true));
+  }, [dismissFlowScore, pendingFlowScore]);
 
   return (
     <>
@@ -61,6 +68,18 @@ function LibraryShellInner({ children }: { children: React.ReactNode }) {
         className="flex-1 overflow-y-auto md:rounded-tl-3xl border-t md:border-t-0 md:border-l border-mahogany-700/30 relative"
       >
         <AiStatusBanner />
+        {(recoveryError || flowError) && (
+          <div role="alert" className="p-3 text-sm bg-parchment-100 text-red-700">
+            {t(flowError ? 'scoreError' : 'saveError')}
+            {recoveryError && <button type="button" className="underline ml-2" onClick={retryRecovery}>{t('retry')}</button>}
+            <button type="button" className="underline ml-2" onClick={() => {
+              void exportProjectRecovery(getActiveProjectId()).then(data => {
+                const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+                const link = document.createElement('a'); link.href = url; link.download = 'zagafy-session-recovery.json'; link.click(); URL.revokeObjectURL(url);
+              }).catch(() => setFlowError(true));
+            }}>{t('export')}</button>
+          </div>
+        )}
         {/* Desk vignette — pinned to the viewport, never intercepts input */}
         <div aria-hidden="true" className="print:hidden pointer-events-none sticky top-0 z-30 h-0">
           <div className="h-screen w-full desk-vignette" />

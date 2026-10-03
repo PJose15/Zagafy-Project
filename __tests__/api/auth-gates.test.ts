@@ -30,7 +30,7 @@ vi.mock('@/db/client', () => ({
   db: vi.fn(() => ({
     transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({
       execute: vi.fn(),
-      query: { stories: mockQueryStories, storyCollaborators: { findFirst: mockCollabFindFirst } },
+      query: { deletedStories: { findFirst: vi.fn(async () => null) }, stories: mockQueryStories, storyCollaborators: { findFirst: mockCollabFindFirst } },
     }),
     query: {
       stories: mockQueryStories,

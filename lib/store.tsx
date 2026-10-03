@@ -11,6 +11,7 @@ import {
   putStory,
 } from '@/lib/storage/dexie-db';
 import type { WorldBibleSection } from '@/lib/types/world-bible';
+import { checkpointPendingRecovery, registerPendingRecovery } from '@/lib/storage/pending-recovery';
 import { persistProjectState } from '@/lib/storage/persist-project';
 import { useSync } from '@/lib/sync/sync-context';
 import { wordCount as countWords } from '@/lib/editor/serialization';
@@ -280,27 +281,17 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   // a project switch can flush it to the OLD project id and beforeunload can
   // fire it before the tab dies.
   const pendingSaveRef = useRef<{ state: StoryState; projectId: string } | null>(null);
+  const savingStatesRef = useRef(new Set<object>());
 
   useEffect(() => {
     let active = true;
     async function loadState() {
-      // Run Dexie migration first (idempotent). This also moves any legacy
-      // localStorage state blob into the Dexie stories table.
+      // Copy the old alias before the one-time migration, and keep its recovery
+      // bytes until all IndexedDB records have committed successfully.
+      const legacyAlias = localStorage.getItem('story_memory_state');
+      if (legacyAlias && !localStorage.getItem('zagafy_state')) localStorage.setItem('zagafy_state', legacyAlias);
       await migrateFromLocalStorage();
-
-      // Legacy rename: copy story_memory_state → zagafy_state if it still exists
-      // so the migration function picks it up on a second pass.
-      try {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('story_memory_state')) {
-          if (!localStorage.getItem('zagafy_state')) {
-            localStorage.setItem('zagafy_state', localStorage.getItem('story_memory_state')!);
-          }
-          localStorage.removeItem('story_memory_state');
-          await migrateFromLocalStorage();
-        }
-      } catch {
-        // Ignore — legacy cleanup is best-effort
-      }
+      if (legacyAlias && !localStorage.getItem('zagafy_state')) localStorage.removeItem('story_memory_state');
 
       const activeId = getActiveProjectId();
       activeProjectIdRef.current = activeId;
@@ -354,15 +345,17 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     // when the timer fires can write project A's state under project B's id if
     // a switch happened mid-debounce.
     const pid = activeProjectIdRef.current;
-    pendingSaveRef.current = { state, projectId: pid };
+    const pending = { state, projectId: pid };
+    pendingSaveRef.current = pending;
     saveTimerRef.current = setTimeout(async () => {
-      pendingSaveRef.current = null;
+      savingStatesRef.current.add(pending);
       try {
         await persistState(state, pid);
+        if (pendingSaveRef.current === pending) pendingSaveRef.current = null;
         if (saveError) setSaveError(false);
       } catch {
         if (!saveError) setSaveError(true);
-      }
+      } finally { savingStatesRef.current.delete(pending); }
     }, 500);
 
     return () => {
@@ -375,20 +368,35 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   const saveNow = useCallback(async (next?: StoryState) => {
     if (!isLoaded || loadError) throw new Error('Project has not loaded successfully');
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
-    pendingSaveRef.current = null;
     const target = next ?? state;
+    const pending = { state: target, projectId: activeProjectIdRef.current };
+    pendingSaveRef.current = pending;
     if (next) {
       lastRemoteStateRef.current = next;
       setState(next);
     }
+    savingStatesRef.current.add(pending);
     try {
-      await persistState(target, activeProjectIdRef.current);
+      await persistState(target, pending.projectId);
+      if (pendingSaveRef.current === pending) pendingSaveRef.current = null;
       setSaveError(false);
     } catch (error) {
       setSaveError(true);
       throw error;
-    }
+    } finally { savingStatesRef.current.delete(pending); }
   }, [state, persistState, isLoaded, loadError]);
+
+  useEffect(() => registerPendingRecovery({ projectId: activeProjectIdRef.current, priority: 0,
+    capture: () => {
+      const pending = pendingSaveRef.current;
+      if (!pending || pending.projectId !== activeProjectIdRef.current) return null;
+      return { state: pending.state, committed: () => {
+        if (pendingSaveRef.current !== pending) return;
+        pendingSaveRef.current = null;
+        if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+      } };
+    },
+  }), [state, isLoaded]);
 
   // Cross-tab sync via BroadcastChannel (Dexie writes don't fire storage events)
   useEffect(() => {
@@ -410,7 +418,10 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       hydrateTimer = setTimeout(() => {
         hydrateTimer = null;
         const pid = activeProjectIdRef.current;
-        hydrateFromDexie(pid).then(next => {
+        checkpointPendingRecovery(pid).then(() => hydrateFromDexie(pid)).then(next => {
+          // Typing during the async checkpoint stays visible until its next
+          // save; never replace newer in-memory state with an older read.
+          if (pendingSaveRef.current) return;
           if (activeProjectIdRef.current !== pid) return;
           lastRemoteStateRef.current = next;
           setState(next);
@@ -475,7 +486,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const flushPending = () => {
       const pending = pendingSaveRef.current;
-      if (!pending) return;
+      if (!pending || savingStatesRef.current.has(pending)) return;
       pendingSaveRef.current = null;
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);

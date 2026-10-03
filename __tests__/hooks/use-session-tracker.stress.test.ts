@@ -33,8 +33,19 @@ const mockGetProjectId = vi.fn(() => 'proj-1');
 
 vi.mock('@/lib/types/writing-session', () => ({
   addSession: (...args: unknown[]) => mockAddSession(args[0]),
+  saveCompletedSession: async (session: any) => { await mockAddSession(session); mockClearWipSession(); },
+  recoverSessions: async () => {
+    const wip = mockReadWipSession();
+    if (!wip) return;
+    const wordsAdded = wip.currentWords - wip.wordsStart;
+    if (wordsAdded >= 5) await mockAddSession({ ...wip, endedAt: new Date().toISOString(), wordsEnd: wip.currentWords, wordsAdded,
+      flowScore: null, heteronymId: wip.heteronymId ?? null, heteronymName: wip.heteronymName ?? null,
+      keystrokeMetrics: null, autoFlowScore: null, flowMoments: null });
+    mockClearWipSession();
+    mockReadWipSession.mockReturnValue(null);
+  },
   readWipSession: () => mockReadWipSession(),
-  saveWipSession: (...args: unknown[]) => mockSaveWipSession(args[0]),
+  saveWipSession: (...args: unknown[]) => ((mockSaveWipSession(args[0]), true), true),
   clearWipSession: () => mockClearWipSession(),
   getProjectId: () => mockGetProjectId(),
 }));
@@ -63,7 +74,8 @@ describe('useSessionTracker STRESS', () => {
     mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Chapter 1', content: '', summary: '' }]);
     mockPathname.mockReturnValue('/manuscript');
     mockTitle.mockReturnValue('My Novel');
-    mockAddSession.mockClear();
+    mockAddSession.mockReset().mockResolvedValue(undefined);
+    mockGetProjectId.mockReturnValue('proj-1');
     mockReadWipSession.mockReturnValue(null);
     mockSaveWipSession.mockClear();
     mockClearWipSession.mockClear();
@@ -82,7 +94,7 @@ describe('useSessionTracker STRESS', () => {
   // WORD COUNT BOUNDARIES (MIN_WORDS_TO_START = 10)
   // ──────────────────────────────────────────────────────
   describe('word count start threshold', () => {
-    it('exactly 9 new words → does NOT start session', () => {
+    it('exactly 9 new words → does NOT start session', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       // Establish baseline at 5 words
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(5), summary: '' }]);
@@ -94,7 +106,7 @@ describe('useSessionTracker STRESS', () => {
       expect(mockAddSession).not.toHaveBeenCalled();
     });
 
-    it('exactly 10 new words → starts session', () => {
+    it('exactly 10 new words → starts session', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(5), summary: '' }]);
       rerender();
@@ -104,7 +116,7 @@ describe('useSessionTracker STRESS', () => {
       expect(mockAddSession).toHaveBeenCalledTimes(1);
     });
 
-    it('11 new words → starts session', () => {
+    it('11 new words → starts session', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(5), summary: '' }]);
       rerender();
@@ -119,7 +131,7 @@ describe('useSessionTracker STRESS', () => {
   // MIN_SESSION_WORDS (= 5) BOUNDARY
   // ──────────────────────────────────────────────────────
   describe('minimum session words to save', () => {
-    it('4 words added → session NOT saved', () => {
+    it('4 words added → session NOT saved', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       // Set baseline at 5 words
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(5), summary: '' }]);
@@ -147,43 +159,47 @@ describe('useSessionTracker STRESS', () => {
       rerender();
     }
 
-    it('exactly 3 minutes → NO flow score (exclusive >3)', () => {
+    it('exactly 3 minutes → NO flow score (exclusive >3)', async () => {
       const { result, rerender } = renderHook(() => useSessionTracker());
       startSession(rerender);
       act(() => { vi.advanceTimersByTime(3 * 60 * 1000); });
       mockPathname.mockReturnValue('/other');
       rerender();
       expect(mockAddSession).toHaveBeenCalledTimes(1);
-      expect(result.current.pendingFlowScore).toBeNull();
+      await act(async () => {});
+    expect(result.current.pendingFlowScore).toBeNull();
     });
 
-    it('3 minutes + 1 second → shows flow score', () => {
+    it('3 minutes + 1 second → shows flow score', async () => {
       const { result, rerender } = renderHook(() => useSessionTracker());
       startSession(rerender);
       act(() => { vi.advanceTimersByTime(3 * 60 * 1000 + 1000); });
       mockPathname.mockReturnValue('/other2');
       rerender();
       expect(mockAddSession).toHaveBeenCalledTimes(1);
-      expect(result.current.pendingFlowScore).toEqual({ sessionId: 'test-sess-id' });
+      await act(async () => {});
+    expect(result.current.pendingFlowScore).toEqual({ sessionId: 'test-sess-id', projectId: 'proj-1' });
     });
 
-    it('2 minutes → NO flow score', () => {
+    it('2 minutes → NO flow score', async () => {
       const { result, rerender } = renderHook(() => useSessionTracker());
       startSession(rerender);
       act(() => { vi.advanceTimersByTime(2 * 60 * 1000); });
       mockPathname.mockReturnValue('/other3');
       rerender();
       expect(mockAddSession).toHaveBeenCalledTimes(1);
-      expect(result.current.pendingFlowScore).toBeNull();
+      await act(async () => {});
+    expect(result.current.pendingFlowScore).toBeNull();
     });
 
-    it('10 minutes → shows flow score', () => {
+    it('10 minutes → shows flow score', async () => {
       const { result, rerender } = renderHook(() => useSessionTracker());
       startSession(rerender);
       // Session runs for 5 minutes idle timeout (total > 3 min)
       act(() => { vi.advanceTimersByTime(5 * 60 * 1000 + 1000); });
       expect(mockAddSession).toHaveBeenCalledTimes(1);
-      expect(result.current.pendingFlowScore).toEqual({ sessionId: 'test-sess-id' });
+      await act(async () => {});
+    expect(result.current.pendingFlowScore).toEqual({ sessionId: 'test-sess-id', projectId: 'proj-1' });
     });
   });
 
@@ -191,7 +207,7 @@ describe('useSessionTracker STRESS', () => {
   // HETERONYM EDGE CASES
   // ──────────────────────────────────────────────────────
   describe('heteronym edge cases', () => {
-    it('captures heteronym when active', () => {
+    it('captures heteronym when active', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(3), summary: '' }]);
       rerender();
@@ -203,7 +219,7 @@ describe('useSessionTracker STRESS', () => {
       expect(session.heteronymName).toBe('Dark Poet');
     });
 
-    it('captures null when no active heteronym', () => {
+    it('captures null when no active heteronym', async () => {
       mockGetActiveHeteronymId.mockReturnValue(null);
       mockReadHeteronyms.mockReturnValue([]);
       const { rerender } = renderHook(() => useSessionTracker());
@@ -217,7 +233,7 @@ describe('useSessionTracker STRESS', () => {
       expect(session.heteronymName).toBeNull();
     });
 
-    it('captures null when activeId does not match any heteronym', () => {
+    it('captures null when activeId does not match any heteronym', async () => {
       mockGetActiveHeteronymId.mockReturnValue('nonexistent-id');
       mockReadHeteronyms.mockReturnValue([
         { id: 'het-1', name: 'Dark Poet', bio: '', styleNote: '', avatarColor: '#000', avatarEmoji: '🖊️', createdAt: '', isDefault: true },
@@ -233,7 +249,7 @@ describe('useSessionTracker STRESS', () => {
       expect(session.heteronymName).toBeNull();
     });
 
-    it('includes heteronym in WIP heartbeat', () => {
+    it('includes heteronym in WIP heartbeat', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(3), summary: '' }]);
       rerender();
@@ -251,7 +267,7 @@ describe('useSessionTracker STRESS', () => {
   // WIP RECOVERY EDGE CASES
   // ──────────────────────────────────────────────────────
   describe('WIP recovery edge cases', () => {
-    it('recovers WIP with heteronym data', () => {
+    it('recovers WIP with heteronym data', async () => {
       mockReadWipSession.mockReturnValue({
         id: 'recovered', projectId: 'p', projectName: 'Novel',
         startedAt: '2026-03-10T10:00:00Z', wordsStart: 100, currentWords: 200,
@@ -263,7 +279,7 @@ describe('useSessionTracker STRESS', () => {
       expect(recovered.heteronymName).toBe('Dark Poet');
     });
 
-    it('recovers WIP without heteronym data (legacy)', () => {
+    it('recovers WIP without heteronym data (legacy)', async () => {
       mockReadWipSession.mockReturnValue({
         id: 'recovered', projectId: 'p', projectName: 'Novel',
         startedAt: '2026-03-10T10:00:00Z', wordsStart: 100, currentWords: 200,
@@ -275,7 +291,7 @@ describe('useSessionTracker STRESS', () => {
       expect(recovered.heteronymName).toBeNull();
     });
 
-    it('does not recover WIP with exactly 4 words added', () => {
+    it('does not recover WIP with exactly 4 words added', async () => {
       mockReadWipSession.mockReturnValue({
         id: 'recovered', projectId: 'p', projectName: 'Novel',
         startedAt: '2026-03-10T10:00:00Z', wordsStart: 100, currentWords: 104,
@@ -283,10 +299,11 @@ describe('useSessionTracker STRESS', () => {
       });
       renderHook(() => useSessionTracker());
       expect(mockAddSession).not.toHaveBeenCalled();
-      expect(mockClearWipSession).toHaveBeenCalled();
+      await act(async () => {});
+    expect(mockClearWipSession).toHaveBeenCalled();
     });
 
-    it('recovers WIP with exactly 5 words added', () => {
+    it('recovers WIP with exactly 5 words added', async () => {
       mockReadWipSession.mockReturnValue({
         id: 'recovered', projectId: 'p', projectName: 'Novel',
         startedAt: '2026-03-10T10:00:00Z', wordsStart: 100, currentWords: 105,
@@ -302,7 +319,7 @@ describe('useSessionTracker STRESS', () => {
   // IDLE TIMER BEHAVIOR
   // ──────────────────────────────────────────────────────
   describe('idle timer behavior', () => {
-    it('continuous writing for 15 minutes keeps session alive', () => {
+    it('continuous writing for 15 minutes keeps session alive', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(3), summary: '' }]);
       rerender();
@@ -326,7 +343,7 @@ describe('useSessionTracker STRESS', () => {
       expect(mockAddSession).toHaveBeenCalledTimes(1);
     });
 
-    it('does not fire idle timer when session is not active', () => {
+    it('does not fire idle timer when session is not active', async () => {
       renderHook(() => useSessionTracker());
       act(() => { vi.advanceTimersByTime(10 * 60 * 1000); });
       expect(mockAddSession).not.toHaveBeenCalled();
@@ -337,7 +354,7 @@ describe('useSessionTracker STRESS', () => {
   // MULTIPLE CHAPTERS
   // ──────────────────────────────────────────────────────
   describe('multiple chapters', () => {
-    it('counts words across multiple chapters', () => {
+    it('counts words across multiple chapters', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       // 2 chapters with 3 words each = 6 total → sets baseline
       mockChapters.mockReturnValue([
@@ -355,7 +372,7 @@ describe('useSessionTracker STRESS', () => {
       expect(mockAddSession).toHaveBeenCalledTimes(1);
     });
 
-    it('handles empty chapter content', () => {
+    it('handles empty chapter content', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([
         { id: 'ch-1', title: 'Ch 1', content: '', summary: '' },
@@ -367,7 +384,7 @@ describe('useSessionTracker STRESS', () => {
       expect(mockAddSession).not.toHaveBeenCalled();
     });
 
-    it('handles whitespace-only content', () => {
+    it('handles whitespace-only content', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([
         { id: 'ch-1', title: 'Ch 1', content: '   \n\t  ', summary: '' },
@@ -382,7 +399,7 @@ describe('useSessionTracker STRESS', () => {
   // PATHNAME CHANGES
   // ──────────────────────────────────────────────────────
   describe('pathname changes', () => {
-    it('same pathname rerender does not end session', () => {
+    it('same pathname rerender does not end session', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(3), summary: '' }]);
       rerender();
@@ -394,7 +411,7 @@ describe('useSessionTracker STRESS', () => {
       expect(mockAddSession).not.toHaveBeenCalled();
     });
 
-    it('multiple pathname changes end session once', () => {
+    it('multiple pathname changes end session once', async () => {
       const { rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(3), summary: '' }]);
       rerender();
@@ -418,17 +435,19 @@ describe('useSessionTracker STRESS', () => {
   // DISMISS FLOW SCORE
   // ──────────────────────────────────────────────────────
   describe('dismissFlowScore', () => {
-    it('clears pendingFlowScore', () => {
+    it('clears pendingFlowScore', async () => {
       const { result, rerender } = renderHook(() => useSessionTracker());
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(3), summary: '' }]);
       rerender();
       mockChapters.mockReturnValue([{ id: 'ch-1', title: 'Ch', content: words(20), summary: '' }]);
       rerender();
       act(() => { vi.advanceTimersByTime(5 * 60 * 1000 + 1000); });
-      expect(result.current.pendingFlowScore).not.toBeNull();
+      await act(async () => {});
+    expect(result.current.pendingFlowScore).not.toBeNull();
 
       act(() => { result.current.dismissFlowScore(); });
-      expect(result.current.pendingFlowScore).toBeNull();
+      await act(async () => {});
+    expect(result.current.pendingFlowScore).toBeNull();
     });
   });
 });

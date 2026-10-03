@@ -14,7 +14,7 @@ import type { PushRequest, SyncDelta, ConflictRecord } from '@/lib/sync/types';
 
 export const runtime = 'nodejs';
 
-type SyncDatabase = Pick<ReturnType<typeof db>, 'query' | 'select' | 'insert' | 'update' | 'delete'>;
+type SyncDatabase = Pick<ReturnType<typeof db>, 'query' | 'select' | 'insert' | 'update' | 'delete' | 'execute'>;
 const ENTITY_TYPES = new Set(['story', 'chapter', 'chapterVersion', 'storySnapshot', 'session', 'chatMessage', 'writerInsight', 'comment']);
 function validPush(value: unknown): value is PushRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
@@ -97,6 +97,10 @@ export async function POST(req: NextRequest) {
       // a paid owner's story, and a paid collaborator cannot sync a free owner's
       // story. Checked BEFORE the first-push upsert so a free user never creates
       // a server story row.
+      const removed = await database.query.deletedStories.findFirst({ where: eq(schema.deletedStories.id, storyId) });
+      if (removed) return removed.ownerId === userId || removed.recipients.includes(userId)
+        ? err('not_found', 'This cloud project was deleted. Local writing is retained for recovery.', 410, undefined, { requestId })
+        : err('forbidden', 'You do not own this story', 403, undefined, { requestId });
       const storyRow = await database.query.stories.findFirst({
         where: eq(schema.stories.id, storyId),
         columns: { ownerId: true },
@@ -219,12 +223,23 @@ async function applyDelta(
   const { entityType, entityId, op, payload } = delta;
 
   if (op === 'delete') {
-    await applyDelete(database, storyId, entityType, entityId);
-    return {};
+    const newStoryVersion = await applyDelete(database, storyId, entityType, entityId);
+    return { newStoryVersion };
   }
 
   if (!payload) {
     throw new Error('Upsert delta missing payload');
+  }
+
+  const deleted = await database.query.syncTombstones.findFirst({ where: and(
+    eq(schema.syncTombstones.storyId, storyId), eq(schema.syncTombstones.entityType, entityType), eq(schema.syncTombstones.entityId, entityId)) });
+  const parentDeleted = ['chapterVersion', 'comment'].includes(entityType) && typeof payload.chapterId === 'string'
+    ? await database.query.syncTombstones.findFirst({ where: and(eq(schema.syncTombstones.storyId, storyId),
+      eq(schema.syncTombstones.entityType, 'chapter'), eq(schema.syncTombstones.entityId, payload.chapterId)) }) : null;
+  if (deleted || parentDeleted) {
+    const receipt = deleted ?? parentDeleted!;
+    return { conflict: { entityType, entityId, localPayload: payload, serverPayload: null,
+      serverUpdatedAt: receipt.deletedAt.toISOString(), detectedAt: new Date().toISOString() } };
   }
 
   switch (entityType) {
@@ -254,7 +269,26 @@ async function applyDelete(
   storyId: string,
   entityType: string,
   entityId: string,
-): Promise<void> {
+): Promise<number | undefined> {
+  await database.insert(schema.syncTombstones).values({ storyId, entityType, entityId }).onConflictDoNothing();
+  let newStoryVersion: number | undefined;
+  if (entityType === 'chapter') {
+    // Record dependent removals before the FK cascade, scoped through the owner
+    // story. Comments are explicitly removed because their anchor has no FK.
+    await database.execute(sql`INSERT INTO sync_tombstones (story_id, entity_type, entity_id)
+      SELECT ${storyId}, 'chapterVersion', v.id FROM chapter_versions v JOIN chapters c ON c.id=v.chapter_id
+      WHERE c.id=${entityId} AND c.story_id=${storyId} ON CONFLICT DO NOTHING`);
+    await database.execute(sql`INSERT INTO sync_tombstones (story_id, entity_type, entity_id)
+      SELECT ${storyId}, 'comment', id FROM comments WHERE story_id=${storyId} AND chapter_id=${entityId} ON CONFLICT DO NOTHING`);
+    await database.delete(schema.comments).where(and(eq(schema.comments.storyId, storyId), eq(schema.comments.chapterId, entityId)));
+    const story = await database.query.stories.findFirst({ where: eq(schema.stories.id, storyId) });
+    const state = story?.state as Record<string, unknown> | null;
+    if (state && Array.isArray(state.chapters) && state.chapters.some(ch => ch?.id === entityId)) {
+      newStoryVersion = (story?.version ?? 0) + 1;
+      await database.update(schema.stories).set({ state: { ...state, chapters: state.chapters.filter(ch => ch?.id !== entityId) },
+        version: newStoryVersion, updatedAt: sql`clock_timestamp() AT TIME ZONE 'UTC'` }).where(eq(schema.stories.id, storyId));
+    }
+  }
   switch (entityType) {
     case 'chapter':
       await database.delete(schema.chapters).where(
@@ -300,6 +334,7 @@ async function applyDelete(
       );
       break;
   }
+  return newStoryVersion;
 }
 
 async function applyStoryUpsert(
@@ -312,6 +347,11 @@ async function applyStoryUpsert(
   // version key so it isn't persisted inside `state`.
   const baseVersion = typeof payload.version === 'number' ? payload.version : 0;
   const { version: _clientVersion, ...state } = payload;
+  if (Array.isArray(state.chapters)) {
+    const removed = await database.query.syncTombstones.findMany({ where: and(eq(schema.syncTombstones.storyId, storyId), eq(schema.syncTombstones.entityType, 'chapter')) });
+    const ids = new Set(removed.map(row => row.entityId));
+    state.chapters = state.chapters.filter(ch => !ids.has(ch?.id));
+  }
 
   const existing = await database.query.stories.findFirst({
     where: eq(schema.stories.id, storyId),

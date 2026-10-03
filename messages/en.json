@@ -1846,6 +1846,7 @@
     }
   },
   "writingStats": {
+    "recovery": {"saveError": "Session history could not be saved or recovered. Keep this tab open and retry.", "scoreError": "Your flow score was not saved. Select it again to retry.", "retry": "Retry recovery", "export": "Export recovery"},
     "insight": {
       "keepWriting": "Keep writing!",
       "keepWritingDetail": "Keep writing — we need at least 5 sessions to reveal your patterns.",
@@ -1880,6 +1881,7 @@
       "scoreNA": "N/A"
     },
     "voice": {
+      "historyError": "Session history could not be loaded. Retry after storage is available.",
       "title": "Per-Voice Analytics",
       "allVoices": "All Voices",
       "totalWords": "Total Words",

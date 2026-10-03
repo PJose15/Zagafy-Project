@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { eq, and, or, gt, asc } from 'drizzle-orm';
+import { sql, eq, and, or, gt, asc } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
@@ -78,31 +78,33 @@ export async function DELETE(req: NextRequest) {
     return err('validation_failed', 'Invalid JSON body', 400, undefined, { requestId });
   }
   const storyId = body && typeof body.storyId === 'string' ? body.storyId : '';
-  if (!storyId) {
+  if (!storyId.trim() || storyId.length > 200) {
     return err('validation_failed', 'storyId is required', 400, undefined, { requestId });
   }
 
   try {
-    // Only the OWNER may delete a story — a destructive, irreversible action that
-    // an editor/reader collaborator must never be able to trigger.
-    const access = await getStoryAccess(storyId, userId);
-    if (access === null) {
-      // Nonexistent (or no access) — idempotent success so a client retrying a
-      // delete of an already-gone story doesn't error.
-      return ok({ deleted: false }, { requestId });
-    }
-    if (access !== 'owner') {
-      return err('forbidden', 'Only the owner can delete this story', 403, undefined, { requestId });
-    }
-
-    // Scope the delete to the owner as defense-in-depth against a stale access
-    // read; FK cascades remove all child rows.
-    await db()
-      .delete(schema.stories)
-      .where(and(eq(schema.stories.id, storyId), eq(schema.stories.ownerId, userId)));
-
+    return await db().transaction(async database => {
+      await database.execute(sql`SET LOCAL lock_timeout = '5s'`);
+      await database.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`zagafy-sync:${storyId}`}, 0))`);
+      const access = await getStoryAccess(storyId, userId, database);
+      if (access === null) {
+        const receipt = await database.query.deletedStories.findFirst({ where: eq(schema.deletedStories.id, storyId) });
+        const existing = await database.query.stories.findFirst({ where: eq(schema.stories.id, storyId), columns: { id: true } });
+        if (!receipt && !existing) {
+          // The initial upload may not have reached the server yet. Reserve a
+          // deletion receipt now so a delayed first push cannot resurrect it.
+          await database.insert(schema.deletedStories).values({ id: storyId, ownerId: userId, recipients: [userId] }).onConflictDoNothing();
+          return ok({ deleted: true, accountId: userId }, { requestId });
+        }
+        return ok({ deleted: receipt?.ownerId === userId, localOnly: receipt?.ownerId !== userId, accountId: userId }, { requestId });
+      }
+      if (access !== 'owner') return err('forbidden', 'Only the owner can delete this story', 403, { accountId: userId }, { requestId });
+      const collaborators = await database.query.storyCollaborators.findMany({ where: eq(schema.storyCollaborators.storyId, storyId) });
+      await database.insert(schema.deletedStories).values({ id: storyId, ownerId: userId, recipients: [userId, ...collaborators.map(row => row.userId)] }).onConflictDoNothing();
+      await database.delete(schema.stories).where(and(eq(schema.stories.id, storyId), eq(schema.stories.ownerId, userId)));
     log.info('story deleted', { storyId });
-    return ok({ deleted: true }, { requestId });
+      return ok({ deleted: true, accountId: userId }, { requestId });
+    });
   } catch (dbErr) {
     log.error('story delete failed', dbErr);
     return err('internal_error', 'Delete failed', 500, undefined, { requestId });

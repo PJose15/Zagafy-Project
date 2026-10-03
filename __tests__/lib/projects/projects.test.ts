@@ -15,6 +15,7 @@ import {
   deleteProject,
   getActiveProject,
 } from '@/lib/projects/projects';
+import { flushCloudDeletes } from '@/lib/sync/cloud-delete-outbox';
 import { getActiveProjectId, setActiveProjectId } from '@/lib/projects/active-project';
 
 describe('projects registry', () => {
@@ -28,8 +29,9 @@ describe('projects registry', () => {
     await db.writerInsights.clear();
     await db.syncQueue.clear();
     await db.syncMeta.clear();
+    await db.cloudDeleteQueue.clear();
 
-    storage = {};
+    storage = { zagafy_workspace_sync_owner: 'user-owner' };
     vi.stubGlobal('localStorage', {
       getItem: (k: string) => storage[k] ?? null,
       setItem: (k: string, v: string) => { storage[k] = v; },
@@ -118,8 +120,8 @@ describe('projects registry', () => {
   });
 
   // A9 — deleting a synced project must also delete the server story.
-  it('deleteProject calls DELETE /api/stories for a bound project', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+  it('deleteProject queues a durable owner-scoped cloud delete for the authenticated engine', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ data: { deleted: true, accountId: 'user-owner' } }) });
     vi.stubGlobal('fetch', fetchMock);
 
     const aId = await ensureActiveProject();
@@ -130,6 +132,8 @@ describe('projects registry', () => {
     setActiveProjectId(bId);
     await deleteProject(bId);
 
+    expect(await db.cloudDeleteQueue.count()).toBe(1);
+    await flushCloudDeletes();
     expect(fetchMock).toHaveBeenCalledWith('/api/stories', expect.objectContaining({ method: 'DELETE' }));
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body.storyId).toBe('server-xyz');
@@ -147,12 +151,14 @@ describe('projects registry', () => {
 
     setActiveProjectId(bId);
     await expect(deleteProject(bId)).resolves.toBeTruthy();
+    await expect(flushCloudDeletes()).rejects.toThrow('offline');
+    expect(await db.cloudDeleteQueue.count()).toBe(1);
     const list = await listProjects();
     expect(list.map(p => p.id)).not.toContain(bId);
   });
 
   it('deleteProject does not call the server for an unbound project', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ data: { deleted: true, accountId: 'user-owner' } }) });
     vi.stubGlobal('fetch', fetchMock);
 
     await ensureActiveProject();

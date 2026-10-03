@@ -9,6 +9,8 @@ import {
   isLexicalJson,
   hasFormatting,
 } from '@/lib/editor/serialization';
+import { getActiveProjectId } from '@/lib/projects/active-project';
+import { registerPendingRecovery } from '@/lib/storage/pending-recovery';
 import { addVersion } from '@/lib/types/chapter-version';
 
 /**
@@ -46,6 +48,20 @@ export function useFlowAutosave(chapterId: string | null) {
     contentRef.current = getPlainText(originalRawRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId]);
+
+  useEffect(() => registerPendingRecovery({ projectId: getActiveProjectId(), priority: 1,
+    capture: () => {
+      if (!chapterId || !timerRef.current) return null;
+      const pendingText = contentRef.current;
+      const json = JSON.stringify(buildLexicalStateFromText(pendingText));
+      return { state: { ...state, chapters: state.chapters.map(ch => ch.id === chapterId ? { ...ch, content: json } : ch) },
+        committed: () => {
+          if (contentRef.current !== pendingText) return;
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = null;
+        } };
+    },
+  }), [chapterId, state]);
 
   const save = useCallback(() => {
     if (!chapterId) return;

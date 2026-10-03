@@ -54,6 +54,16 @@ export async function GET(req: NextRequest) {
 
   try {
     return await db().transaction(async database => {
+      // Deletion receipts contain no manuscript data and remain readable by the
+      // accounts that had access when the owner removed the project.
+      if (storyIdParam) {
+        const removed = await database.query.deletedStories.findFirst({ where: eq(schema.deletedStories.id, storyIdParam) });
+        if (removed && (removed.ownerId === userId || removed.recipients.includes(userId))) {
+          return ok({ accountId: userId, storyId: storyIdParam, story: null, storyDeletedAt: removed.deletedAt.toISOString(),
+            chapters: [], chapterVersions: [], storySnapshots: [], sessions: [], chatMessages: [], writerInsights: [], comments: [],
+            tombstones: [], serverTimestamp: removed.deletedAt.toISOString() }, { requestId });
+        }
+      }
       // Find the user's story. If storyId is provided, verify the caller has
       // access (owner OR collaborator — collaborators pull shared stories).
       // Otherwise, return the user's most recent OWNED story.
@@ -136,6 +146,9 @@ export async function GET(req: NextRequest) {
           fetchComments(database, storyId, sinceDate),
         ]);
 
+      const tombstones = await database.query.syncTombstones.findMany({ where: and(eq(schema.syncTombstones.storyId, storyId),
+        sinceDate ? gte(schema.syncTombstones.deletedAt, sinceDate) : undefined) });
+
       // Only include the story state if it was updated since the timestamp
       const includeStory = !sinceDate || story.updatedAt >= sinceDate;
 
@@ -167,6 +180,7 @@ export async function GET(req: NextRequest) {
         chatMessages: chatMessages.map(serializeChatMessage),
         writerInsights: writerInsights.map(serializeInsight),
         comments: comments.map(serializeComment),
+        tombstones: tombstones.map(row => ({ entityType: row.entityType, entityId: row.entityId, deletedAt: row.deletedAt.toISOString() })),
         accountId: userId,
         serverTimestamp,
       }, { requestId });
