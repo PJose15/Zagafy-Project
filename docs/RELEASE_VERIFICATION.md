@@ -201,3 +201,21 @@ insights and comments survive, with local scopes restored and no upload echo.
 Insight confidence round trips correctly for both fractional local values and
 older percentage values. This is an embedded two-workspace test, not a hosted
 Clerk/browser or multi-process acceptance result.
+
+## Chapter-history continuation
+
+The chapter history suite now uses real Dexie transactions with fake-indexeddb,
+rather than forcing every operation into a localStorage fallback. Regressions
+cover simultaneous additions, canonical selection, one-time initial seeding,
+concurrent add/rename/delete, project isolation, legacy migration, corrupt records
+and rollback when the sync queue cannot persist. Hook and editor tests cover
+failed loads/saves, retry, stale chapter/project responses, awaiting a recovery
+snapshot before switching, and preserving typing during that await.
+
+Final local checks: 220 suites / 3,017 tests passed; clean production build
+and TypeScript passed; lint completed with six existing warnings and no errors.
+GitHub checks for this continuation are recorded in PR #121 against the uploaded
+commit. No new hosted two-device, authenticated staging, payment, deployment or
+browser-download acceptance is claimed by these local history tests. The next
+storage checkpoint is session history and WIP/legacy migration recovery; cloud
+deletion delivery and initial checkout concurrency remain open.

@@ -17,7 +17,7 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
 | Manuscript | Lexical editor, chapter organization, word counts, find/replace | Real browser save/reload regression; storage transactions and failure regressions. |
 | Narrative design | Story bible, canon, characters, timeline, conflicts and outlines | Existing component/API tests; complete author journey and narrative quality review remain. |
 | Assistance | Main chat, coaching, polish, flow, character chat and helper analysis | Auth, quota and helper ownership/replay tests; real model quality, latency and spend remain. |
-| History | Chapter versions and manuscript snapshots | Atomic local write/queue and cloud update tests; legacy fallback/concurrent mutation coverage and hosted acceptance remain. |
+| History | Chapter versions and manuscript snapshots | Chapter-version mutations now serialize read/write and queue in one transaction, with explicit failures and safe editor switching. Session history, legacy migration recovery and hosted acceptance remain. |
 | Publishing | Query materials, manuscript DOCX/PDF and JSON backup/restore | Real document round trips and browser downloads/restores; live AI publishing quality remains. |
 | Billing | Tier limits, monthly/yearly checkout, portal and webhooks | Transactional Postgres webhook regressions, price matching, authenticated plan display and API tests; live Stripe lifecycle remains. |
 | Cloud/collaboration | Project binding, push/pull, invitations, roles, comments | Database transactions, concurrency and authorization regressions; gaps below still block a complete cloud promise. |
@@ -74,11 +74,28 @@ checkboxes. A feature existing in code is distinct from a verified hosted featur
   displaying Free, suppresses old-account responses, and supports yearly checkout.
   Customers with ongoing subscriptions are directed to manage their existing one.
 
+## Chapter-history audit checkpoint
+
+Chapter-version creation, rename, canonical selection and deletion now read and
+write in one IndexedDB transaction with their durable sync queue. Concurrent
+additions retain every version, canonical selection remains unique per chapter,
+and simultaneous initial seeding creates one version. Normal history operations
+no longer read or write the global legacy localStorage key; dedicated migration
+remains the import path. Corrupt records and storage failures reject without
+silently discarding history or reporting success.
+
+The history hook captures project scope, suppresses stale chapter/project
+responses, and exposes retryable errors. Flow version switching waits for a
+recovery snapshot to commit; failure or new typing during the wait keeps the
+current editor text. Error messages are available in English and Spanish.
+These are local guarantees, not proof of hosted deletion delivery or live
+collaboration.
+
 ## Remaining implementation work, in priority order
 
 | Priority | Concrete gap | Acceptance needed |
 | --- | --- | --- |
-| 1 | Legacy history/session localStorage fallbacks can still report success outside the durable queue; read/modify/replace history operations can race concurrent edits | Scoped recovery and explicit failure handling; atomic per-record history mutations, concurrent editing tests and hosted two-device round trips. |
+| 1 | Session-history localStorage fallbacks still bypass the durable queue, flow-score updates can race, and legacy migration/recovery needs further review | Preserve WIP until durable commit; scoped atomic session mutations, migration rollback/recovery tests and hosted two-device round trips. Chapter-version operations are fixed in the checkpoint above. |
 | 1 | Cloud deletions lack a general tombstone/delivery protocol | Verify deletion propagation across disconnected devices, including dependent rows and retained recovery copies. |
 | 1 | New simultaneous checkouts can still race before a subscription exists | Serialize/reuse checkout attempts and verify Stripe's one-subscription redirect plus portal configuration in staging. |
 | 2 | Chat-history storage, local conflict backup delivery and full reconciliation still need end-to-end coverage | Verify all intended history appears after a fresh-device import; make any unsynced recovery records explicit. |

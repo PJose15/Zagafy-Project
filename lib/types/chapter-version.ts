@@ -1,12 +1,6 @@
 import { getActiveProjectId } from '@/lib/projects/active-project';
-import {
-  getAllVersions as dexieGetAll,
-  putAllVersions as dexiePutAll,
-  putVersion as dexiePut,
-  deleteVersionById as dexieDelete,
-} from '@/lib/storage/dexie-db';
-
-const VERSIONS_KEY = 'zagafy_chapter_versions';
+import { db } from '@/lib/storage/dexie-db';
+import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 
 export type VersionSource = 'manual' | 'scene-change' | 'auto-snapshot';
 
@@ -44,48 +38,48 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-// ─── localStorage fallback (sync) ───
-
-function readAllVersionsSync(): ChapterVersion[] {
-  try {
-    const raw = localStorage.getItem(VERSIONS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isChapterVersion);
-  } catch {
-    return [];
-  }
-}
-
-function writeAllVersionsSync(versions: ChapterVersion[]): void {
-  try {
-    localStorage.setItem(VERSIONS_KEY, JSON.stringify(versions));
-  } catch {
-    // Quota exceeded — best effort
-  }
-}
-
-// ─── Async Dexie-backed public API ───
-
+/** Legacy localStorage history is imported by migrateFromLocalStorage, never
+ * treated as an alternate live store. A failed IndexedDB write must reject. */
 export async function readAllVersions(projectId: string = getActiveProjectId()): Promise<ChapterVersion[]> {
-  try {
-    const rows = await dexieGetAll(projectId);
-    const versions = (rows as unknown[]).filter(isChapterVersion);
-    if (versions.length > 0) return versions;
-    // Fallback: read from localStorage if Dexie is empty (pre-migration)
-    return readAllVersionsSync();
-  } catch {
-    return readAllVersionsSync();
-  }
+  const rows = await db.chapterVersions.where('projectId').equals(projectId).toArray();
+  return rows.map(row => {
+    const value: unknown = JSON.parse(row.data);
+    if (!isChapterVersion(value) || value.id !== row.id || value.chapterId !== row.chapterId) {
+      throw new Error('Chapter history is damaged. Export a recovery backup before editing history.');
+    }
+    return value;
+  });
 }
 
-async function writeAllVersions(versions: ChapterVersion[], projectId: string): Promise<void> {
-  try {
-    await dexiePutAll(versions as unknown[] as Record<string, unknown>[], projectId);
-  } catch {
-    writeAllVersionsSync(versions);
-  }
+/** Serialize the read and write together across tabs. Only changed rows are
+ * written, and their cloud queue entries commit in the same transaction. */
+async function mutateVersions<T>(projectId: string, change: (versions: ChapterVersion[]) => T): Promise<T> {
+  const result = await db.transaction('rw', [db.chapterVersions, db.syncQueue], async () => {
+    const versions = await readAllVersions(projectId);
+    const previous = new Map(versions.map(version => [version.id, JSON.stringify(version)]));
+    const result = change(versions);
+    const remaining = new Set(versions.map(version => version.id));
+    for (const version of versions) {
+      const data = JSON.stringify(version);
+      if (previous.get(version.id) === data) continue;
+      const existing = await db.chapterVersions.get(version.id);
+      if (existing && existing.projectId !== projectId) throw new Error('Version belongs to another project');
+      await db.chapterVersions.put({ id: version.id, projectId, chapterId: version.chapterId, createdAt: version.createdAt, data });
+      await queueLocalMutation(projectId, 'chapterVersion', version.id);
+    }
+    for (const id of previous.keys()) {
+      if (remaining.has(id)) continue;
+      await db.chapterVersions.delete(id);
+      await queueLocalMutation(projectId, 'chapterVersion', id, 'delete');
+    }
+    return result;
+  });
+  notifyLocalMutation();
+  return result;
+}
+
+function makeVersion(chapterId: string, content: string, label: string, source: VersionSource, isCanonical: boolean): ChapterVersion {
+  return { id: crypto.randomUUID(), chapterId, label, content, createdAt: new Date().toISOString(), isCanonical, source, wordCount: countWords(content) };
 }
 
 export async function readVersions(chapterId: string, projectId: string = getActiveProjectId()): Promise<ChapterVersion[]> {
@@ -101,83 +95,50 @@ export async function addVersion(
   isCanonical = false,
   projectId: string = getActiveProjectId(),
 ): Promise<ChapterVersion> {
-  const all = await readAllVersions(projectId);
-
-  // If marking as canonical, unmark existing canonical for this chapter
-  if (isCanonical) {
-    for (const v of all) {
-      if (v.chapterId === chapterId && v.isCanonical) {
-        v.isCanonical = false;
-      }
+  return mutateVersions(projectId, versions => {
+    if (isCanonical) {
+      for (const version of versions) if (version.chapterId === chapterId) version.isCanonical = false;
     }
-  }
-
-  const version: ChapterVersion = {
-    id: crypto.randomUUID(),
-    chapterId,
-    label,
-    content,
-    createdAt: new Date().toISOString(),
-    isCanonical,
-    source,
-    wordCount: countWords(content),
-  };
-
-  all.push(version);
-  await writeAllVersions(all, projectId);
-  return version;
+    const version = makeVersion(chapterId, content, label, source, isCanonical);
+    versions.push(version);
+    return version;
+  });
 }
 
 export async function setCanonical(versionId: string, projectId: string = getActiveProjectId()): Promise<void> {
-  const all = await readAllVersions(projectId);
-  const target = all.find(v => v.id === versionId);
-  if (!target) return;
-
-  for (const v of all) {
-    if (v.chapterId === target.chapterId) {
-      v.isCanonical = v.id === versionId;
-    }
-  }
-  await writeAllVersions(all, projectId);
+  await mutateVersions(projectId, versions => {
+    const target = versions.find(version => version.id === versionId);
+    if (!target) return;
+    for (const version of versions) if (version.chapterId === target.chapterId) version.isCanonical = version.id === versionId;
+  });
 }
 
 export async function deleteVersion(versionId: string, projectId: string = getActiveProjectId()): Promise<void> {
-  try {
-    const all = await readAllVersions(projectId);
-    const filtered = all.filter(v => v.id !== versionId);
-    await writeAllVersions(filtered, projectId);
-  } catch {
-    // Fallback: delete from localStorage
-    const all = readAllVersionsSync();
-    const filtered = all.filter(v => v.id !== versionId);
-    writeAllVersionsSync(filtered);
-  }
+  await mutateVersions(projectId, versions => {
+    const index = versions.findIndex(version => version.id === versionId);
+    if (index !== -1) versions.splice(index, 1);
+  });
 }
 
 export async function renameVersion(versionId: string, newLabel: string, projectId: string = getActiveProjectId()): Promise<void> {
-  const all = await readAllVersions(projectId);
-  const target = all.find(v => v.id === versionId);
-  if (target) {
-    target.label = newLabel;
-    await writeAllVersions(all, projectId);
-  }
+  await mutateVersions(projectId, versions => {
+    const target = versions.find(version => version.id === versionId);
+    if (target) target.label = newLabel;
+  });
 }
 
-/**
- * Auto-migrate: creates "Version A" from existing chapter content
- * if no versions exist for this chapter yet.
- */
+/** Concurrent mounts/tabs seed a chapter only once. */
 export async function ensureInitialVersion(chapterId: string, currentContent: string, projectId: string = getActiveProjectId()): Promise<ChapterVersion[]> {
-  const existing = await readVersions(chapterId, projectId);
-  if (existing.length > 0) return existing;
-
-  if (currentContent.trim().length === 0) return [];
-
-  const version = await addVersion(chapterId, currentContent, 'Version A', 'auto-snapshot', true, projectId);
-  return [version];
+  return mutateVersions(projectId, versions => {
+    const existing = versions.filter(version => version.chapterId === chapterId);
+    if (existing.length > 0 || !currentContent.trim()) return existing;
+    const version = makeVersion(chapterId, currentContent, 'Version A', 'auto-snapshot', true);
+    versions.push(version);
+    return [version];
+  });
 }
 
-export async function getCanonicalVersion(chapterId: string): Promise<ChapterVersion | null> {
-  const versions = await readVersions(chapterId);
-  return versions.find(v => v.isCanonical) ?? null;
+export async function getCanonicalVersion(chapterId: string, projectId: string = getActiveProjectId()): Promise<ChapterVersion | null> {
+  const versions = await readVersions(chapterId, projectId);
+  return versions.find(version => version.isCanonical) ?? null;
 }
