@@ -247,7 +247,7 @@ complete. The production rollout must apply migration 0006 before enabling the
 new routes; required staging acceptance must exercise two real devices and Stripe
 test mode. Normal PR browser skips do not satisfy those release gates.
 
-Local final verification: 221 test files / 3,016 tests passed; production build,
+Local final verification: 221 test files / 3,018 tests passed; production build,
 TypeScript and lint pass (six pre-existing lint warnings), and `git diff --check`
 is clean. The old global-fallback session tests were replaced with real IndexedDB
 regressions, so counts should not be compared as a completion percentage.
@@ -258,3 +258,11 @@ in Stripe test mode or the approved operations environment before resetting its
 reservation. Confirm all old subscription checkouts are expired or completed and
 that no ongoing subscription would be duplicated. Do not blindly delete the
 attempt row and retry. No automatic cleanup of uncertain attempts is implemented.
+
+
+Recovery retention follow-up: ordinary snapshot caps exclude marked recovery
+copies and older conflict backups, and initial upload/payload resolution exclude
+these local-only records. Regressions verify cap pressure retains recovery while
+explicit deletion remains possible, and initial upload still includes ordinary
+snapshots. Restoration after a cloud deletion must use fresh chapter/project IDs;
+stale IDs are deliberately rejected rather than resurrected.

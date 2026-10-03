@@ -1,3 +1,4 @@
+import { isRecoverySnapshot } from '@/lib/storage/recovery-snapshot';
 import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 import { db, type DexieStorySnapshot } from '@/lib/storage/dexie-db';
 import type { StoryState } from '@/lib/store';
@@ -108,9 +109,10 @@ export async function createSnapshot(
       .where('storyId')
       .equals(storyId)
       .sortBy('createdAt');
-    if (all.length > cap) {
-      const excess = all.length - cap;
-      const oldestIds = all.slice(0, excess).map(r => r.id);
+    const ordinary = all.filter(row => !isRecoverySnapshot(row));
+    if (ordinary.length > cap) {
+      const excess = ordinary.length - cap;
+      const oldestIds = ordinary.slice(0, excess).map(r => r.id);
       await db.storySnapshots.bulkDelete(oldestIds);
       for (const id of oldestIds) await queueLocalMutation(storyId, 'storySnapshot', id, 'delete');
     }

@@ -111,7 +111,7 @@ collaboration.
   failed snapshots roll back removals and the watermark. Cross-tab hydration also
   checkpoints pending text before replacement. Accepted local receipts block stale
   manuscript autosaves from recreating deleted chapter IDs. These recovery copies
-  are local-only at creation and intentionally retained until the user removes them.
+  are excluded from upload and ordinary snapshot pruning, and retained until the user removes them. Older conflict backups are recognized too.
 - Whole-project receipts preserve the disconnected device's local copy and block
   re-upload through the deleted binding. Local project deletion atomically queues
   an account-scoped server deletion outbox; network failures retain it for retry.
@@ -138,7 +138,7 @@ an offline device may reconnect after a long absence.
 | 2 | Chat-history storage, local conflict backup delivery and full reconciliation still need end-to-end coverage | Verify all intended history appears after a fresh-device import; make any unsynced recovery records explicit. |
 | 2 | Browser project switching and cross-tab hydration need further in-flight save coverage | Rapid switches, pending saves, concurrent tabs, failed hydration and account changes cannot transfer or lose edits. |
 | 2 | Notification delivery is best-effort after billing commits | Decide whether reliable email is required; use a durable outbox if it is, with idempotent retry tests. |
-| 2 | Snapshot pruning can remove recovery history | Define retention rules for conflict backups and verify predictable, user-visible recovery. |
+| 2 | Protected recovery growth and restore workflows need product acceptance | Automatic pruning now preserves recovery copies. Verify visible cleanup and restoration into fresh IDs/projects after cloud deletion; define ordinary snapshot tier caps. |
 | 3 | Historical roadmap and counts overstate some completion and understate other shipped features | Keep this inventory and release evidence current; complete accessibility, localization and author usability review. |
 
 ## Hosted release gates

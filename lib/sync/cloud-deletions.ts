@@ -69,7 +69,7 @@ export async function preserveDeletionRecovery(projectId: string, records: unkno
   const rows = await db.chapters.where('projectId').equals(projectId).toArray();
   const refs = Array.isArray(state.chapters) ? state.chapters : [];
   const chapters = rows.map(row => ({ ...refs.find((ref: { id: string }) => ref.id === row.id), ...row }));
-  await db.storySnapshots.put({ id: crypto.randomUUID(), storyId: projectId, name: 'Cloud deletion recovery (local only)',
+  await db.storySnapshots.put({ recoveryProtected: true, id: crypto.randomUUID(), storyId: projectId, name: 'Cloud deletion recovery (local only)',
     description: 'Local manuscript and removed history preserved before applying a cloud deletion. Export recovery for the raw history records.',
     createdAt: Date.now(), chapterCount: chapters.length, wordCount: chapters.reduce((sum, row) => sum + wordCount(row.content), 0),
     data: JSON.stringify({ ...state, chapters, deletionRecoveryRecords: records }) });

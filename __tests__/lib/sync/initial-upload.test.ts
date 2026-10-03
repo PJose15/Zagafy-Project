@@ -48,3 +48,8 @@ describe('Complete initial upload', () => {
     await prepareInitialUpload('p_1'); expect((await db.syncQueue.toArray()).some(row => row.entityId === 'private_ch')).toBe(false);
   });
 });
+it('initial upload excludes automatic recovery copies while including ordinary snapshots', async () => {
+  await db.storySnapshots.put({ id: 'recovery', storyId: 'p_1', recoveryProtected: true, name: 'Recovery', description: '', createdAt: 1, wordCount: 0, chapterCount: 0, data: '{}' });
+  await prepareInitialUpload('p_1');
+  const queue = await db.syncQueue.toArray(); expect(queue.some(row => row.entityId === 'recovery')).toBe(false); expect(queue.some(row => row.entityId === 'snap_1')).toBe(true);
+});

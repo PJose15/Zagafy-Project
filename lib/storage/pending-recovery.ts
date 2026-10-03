@@ -18,7 +18,7 @@ export function capturePendingRecovery(projectId: string): Capture[] {
 export async function preservePendingRecovery(projectId: string, captures: Capture[]): Promise<void> {
   if (!captures.length) return;
   const state = captures[captures.length-1].state;
-  await db.storySnapshots.put({ id: crypto.randomUUID(), storyId: projectId, name: 'Unsaved text recovery (local only)',
+  await db.storySnapshots.put({ recoveryProtected: true, id: crypto.randomUUID(), storyId: projectId, name: 'Unsaved text recovery (local only)',
     description: 'Editor text preserved before a cloud update or deletion.', createdAt: Date.now(),
     chapterCount: state.chapters.length, wordCount: state.chapters.reduce((sum,ch) => sum+wordCount(ch.content),0), data: JSON.stringify(state) });
 }

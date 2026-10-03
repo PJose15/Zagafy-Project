@@ -1,3 +1,4 @@
+import { isRecoverySnapshot } from '@/lib/storage/recovery-snapshot';
 import { db } from '@/lib/storage/dexie-db';
 import { cloudTables } from './apply-cloud-data';
 import type { SyncEntityType } from './types';
@@ -21,7 +22,7 @@ export async function prepareInitialUpload(projectId: string): Promise<string> {
     const scoped = [
       ['chapter', chapters],
       ['chapterVersion', await db.chapterVersions.where('projectId').equals(projectId).toArray()],
-      ['storySnapshot', await db.storySnapshots.where('storyId').equals(projectId).toArray()],
+      ['storySnapshot', (await db.storySnapshots.where('storyId').equals(projectId).toArray()).filter(row => !isRecoverySnapshot(row))],
       ['session', await db.sessions.where('projectId').equals(projectId).toArray()],
       ['chatMessage', await db.chatMessages.where('projectId').equals(projectId).toArray()],
       ['writerInsight', await db.writerInsights.where('projectId').equals(projectId).toArray()],

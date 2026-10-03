@@ -1,3 +1,4 @@
+import { isRecoverySnapshot } from '@/lib/storage/recovery-snapshot';
 /**
  * Phase 5.4 -- client-side sync engine.
  *
@@ -492,7 +493,7 @@ export class SyncEngine {
       const payload = { ...localState, chapters: recoveredChapters };
       const id = crypto.randomUUID();
       await dexieDb.storySnapshots.put({
-        id, storyId: projectId, name: 'Sync conflict backup (local edit)',
+        recoveryProtected: true, id, storyId: projectId, name: 'Sync conflict backup (local edit)',
         description: 'Local story and manuscript preserved before adopting the cloud version.',
         createdAt: Date.now(), chapterCount: recoveredChapters.length,
         wordCount: recoveredChapters.reduce((sum, chapter) => sum + wordCount(chapter.content as string), 0),
@@ -633,7 +634,7 @@ async function resolvePayload(
     }
     case 'storySnapshot': {
       const row = await dexieDb.storySnapshots.get(entityId);
-      if (!row) return null;
+      if (!row || isRecoverySnapshot(row)) return null;
       return {
         id: row.id,
         storyId: row.storyId,

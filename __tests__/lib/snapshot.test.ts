@@ -142,3 +142,17 @@ describe('DEFAULT_SNAPSHOT_CAP', () => {
     expect(Number.isInteger(DEFAULT_SNAPSHOT_CAP)).toBe(true);
   });
 });
+
+describe('Recovery snapshot retention', () => {
+  it('ordinary snapshot caps retain marked recovery and legacy conflict backups', async () => {
+    const storyId = 'recovery_project';
+    for (const row of [
+      { id: 'protected', name: 'Renamed recovery', recoveryProtected: true },
+      { id: 'legacy_conflict', name: 'Sync conflict backup (local edit)' },
+    ]) await db.storySnapshots.put({ ...row, storyId, description: '', createdAt: 0, wordCount: 0, chapterCount: 0, data: JSON.stringify(makeState()) });
+    for (let i=0;i<4;i++) await createSnapshot(makeState(), { storyId, name: `Regular ${i}`, cap: 1 });
+    const rows = await listSnapshots(storyId);
+    expect(rows).toHaveLength(3); expect(await getSnapshot('protected')).not.toBeNull(); expect(await getSnapshot('legacy_conflict')).not.toBeNull();
+    await deleteSnapshot('protected'); expect(await getSnapshot('protected')).toBeNull();
+  });
+});

@@ -76,6 +76,7 @@ export interface DexieChapterAnalysis {
 }
 
 export interface DexieStorySnapshot {
+  recoveryProtected?: boolean;
   id: string;
   storyId: string;
   name: string;
