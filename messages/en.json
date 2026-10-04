@@ -1,11 +1,12 @@
 {
   "storage": {
-      "loadTitle": "Your project could not be loaded",
-      "loadError": "Saved data could not be read. Editing is paused to protect your manuscript. Retry after restoring access to browser storage.",
-      "retry": "Retry loading",
-      "downloadRecovery": "Download stored records for recovery",
-      "recoveryNote": "This recovery file contains the original stored records, including chapter text. Keep it private; it is not a normal project backup.",
-      "recoveryError": "The recovery download failed. Please keep this browser data and retry."
+    "loadTitle": "Your project could not be loaded",
+    "loadError": "Saved data could not be read. Editing is paused to protect your manuscript. Retry after restoring access to browser storage.",
+    "switchError": "Could not switch projects. Your current draft is still available; restore browser storage access and retry.",
+    "retry": "Retry loading",
+    "downloadRecovery": "Download stored records for recovery",
+    "recoveryNote": "This recovery file contains the original stored records, including chapter text. Keep it private; it is not a normal project backup.",
+    "recoveryError": "The recovery download failed. Please keep this browser data and retry."
   },
   "sync": {
     "workspaceAccountNotice": "Cloud sync is paused: this browser’s local writing workspace was linked to another account. Use a separate browser profile for this account. Local manuscripts remain on this device after sign-out."
@@ -682,8 +683,10 @@
     "canonSavedToast": "Insight sealed into canon",
     "clearSessionAria": "Clear this conversation",
     "clearConfirmTitle": "Clear conversation?",
-    "clearConfirmMessage": "The full exchange with {name} will be discarded. Saved canon insights remain in your bible.",
-    "savedAsCanon": "Saved as Canon"
+    "clearConfirmMessage": "Clear this conversation? A local recovery copy will be kept. Saved canon insights remain in your bible.",
+    "savedAsCanon": "Saved as Canon",
+    "loadEarlier": "Load {count} earlier messages",
+    "errorHistory": "Conversation history could not be saved or loaded. Retry recovery or export your project."
   },
   "flow": {
     "errorTitle": "Flow Editor",
@@ -1595,7 +1598,7 @@
     "clear": "Clear",
     "clearAria": "Clear chat history",
     "clearConfirmTitle": "Clear chat history?",
-    "clearConfirmMessage": "This will remove all messages. This cannot be undone.",
+    "clearConfirmMessage": "This clears the messages and keeps a local recovery copy in Versions.",
     "clearConfirmLabel": "Clear",
     "auditError": "Failed to perform continuity audit.",
     "auditFailed": "Audit failed",
@@ -1642,7 +1645,9 @@
     "copiedAllToast": "Conversation copied as markdown",
     "copyFailedToast": "Copy failed",
     "youLabel": "You",
-    "assistantLabel": "Assistant"
+    "assistantLabel": "Assistant",
+    "historyError": "Chat history could not be saved or loaded. Your visible text is retained. Retry or export recovery.",
+    "historyRetry": "Retry history"
   },
   "gamification": {
     "durationTarget": "{duration}m · {target}w target",
@@ -1846,7 +1851,12 @@
     }
   },
   "writingStats": {
-    "recovery": {"saveError": "Session history could not be saved or recovered. Keep this tab open and retry.", "scoreError": "Your flow score was not saved. Select it again to retry.", "retry": "Retry recovery", "export": "Export recovery"},
+    "recovery": {
+      "saveError": "Session history could not be saved or recovered. Keep this tab open and retry.",
+      "scoreError": "Your flow score was not saved. Select it again to retry.",
+      "retry": "Retry recovery",
+      "export": "Export recovery"
+    },
     "insight": {
       "keepWriting": "Keep writing!",
       "keepWritingDetail": "Keep writing — we need at least 5 sessions to reveal your patterns.",

@@ -11,7 +11,7 @@ import {
   putStory,
 } from '@/lib/storage/dexie-db';
 import type { WorldBibleSection } from '@/lib/types/world-bible';
-import { checkpointPendingRecovery, registerPendingRecovery } from '@/lib/storage/pending-recovery';
+import { capturePendingRecovery, preservePendingRecovery, checkpointPendingRecovery, registerPendingRecovery } from '@/lib/storage/pending-recovery';
 import { persistProjectState } from '@/lib/storage/persist-project';
 import { useSync } from '@/lib/sync/sync-context';
 import { wordCount as countWords } from '@/lib/editor/serialization';
@@ -223,6 +223,7 @@ export const defaultState: StoryState = {
 };
 
 interface StoryContextType {
+  projectId: string;
   state: StoryState;
   setState: React.Dispatch<React.SetStateAction<StoryState>>;
   updateField: <K extends keyof StoryState>(field: K, value: StoryState[K]) => void;
@@ -237,8 +238,9 @@ interface StoryContextType {
 
 const StoryContext = createContext<StoryContextType | undefined>(undefined);
 
-async function hydrateFromDexie(projectId: string = getActiveProjectId()): Promise<StoryState> {
+async function hydrateFromDexie(projectId: string = getActiveProjectId(), requireExisting = false): Promise<StoryState> {
   const saved = await getStory(projectId);
+  if(requireExisting && !saved) throw new Error('Project no longer exists');
   let loadedState: StoryState = defaultState;
   if (saved) {
     loadedState = { ...defaultState, ...(saved as Partial<StoryState>) };
@@ -265,6 +267,10 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [recoveryError, setRecoveryError] = useState(false);
   const [state, setState] = useState<StoryState>(defaultState);
+  const latestStateRef = useRef(state);
+  latestStateRef.current = state;
+  const loadGenerationRef = useRef(0);
+  const switchInProgressRef = useRef(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const channelRef = useRef<BroadcastChannel | null>(null);
   // The project the store is currently bound to. Persist writes target this id;
@@ -285,7 +291,11 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    const generation = ++loadGenerationRef.current;
     async function loadState() {
+      const previous=pendingSaveRef.current;
+      if(previous) { await persistProjectState(previous.state,previous.projectId); if(pendingSaveRef.current===previous) pendingSaveRef.current=null; }
+
       // Copy the old alias before the one-time migration, and keep its recovery
       // bytes until all IndexedDB records have committed successfully.
       const legacyAlias = localStorage.getItem('story_memory_state');
@@ -303,7 +313,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       }
 
       const loaded = await hydrateFromDexie(activeId);
-      if (!active || activeProjectIdRef.current !== activeId) return;
+      if (!active || generation !== loadGenerationRef.current || activeProjectIdRef.current !== activeId) return;
       lastRemoteStateRef.current = loaded;
       setState(loaded);
       setIsLoaded(true);
@@ -363,15 +373,27 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state, isLoaded, saveError, persistState]);
 
+  const boundProjectId = activeProjectIdRef.current;
+  const boundGeneration = loadGenerationRef.current;
+  const scopedSetState = useCallback<React.Dispatch<React.SetStateAction<StoryState>>>((update) => {
+    if (!isLoaded || loadError || activeProjectIdRef.current !== boundProjectId ||
+        getActiveProjectId() !== boundProjectId || loadGenerationRef.current !== boundGeneration) return;
+    const next = typeof update === 'function' ? update(latestStateRef.current) : update;
+    latestStateRef.current = next;
+    pendingSaveRef.current = { state: next, projectId: boundProjectId };
+    setState(next);
+  }, [isLoaded, loadError, boundProjectId, boundGeneration]);
+
   // Imperative flush — persist now and resolve when written. Adopts `next` into
   // store state and suppresses the debounce's duplicate write of the same ref.
   const saveNow = useCallback(async (next?: StoryState) => {
-    if (!isLoaded || loadError) throw new Error('Project has not loaded successfully');
+    if (!isLoaded || loadError || getActiveProjectId() !== boundProjectId || activeProjectIdRef.current !== boundProjectId || loadGenerationRef.current !== boundGeneration) throw new Error('Project changed or has not loaded successfully');
     if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
-    const target = next ?? state;
+    const target = next ?? latestStateRef.current;
     const pending = { state: target, projectId: activeProjectIdRef.current };
     pendingSaveRef.current = pending;
     if (next) {
+      latestStateRef.current = next;
       lastRemoteStateRef.current = next;
       setState(next);
     }
@@ -384,7 +406,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       setSaveError(true);
       throw error;
     } finally { savingStatesRef.current.delete(pending); }
-  }, [state, persistState, isLoaded, loadError]);
+  }, [persistState, isLoaded, loadError, boundProjectId, boundGeneration]);
 
   useEffect(() => registerPendingRecovery({ projectId: activeProjectIdRef.current, priority: 0,
     capture: () => {
@@ -400,14 +422,10 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
 
   // Cross-tab sync via BroadcastChannel (Dexie writes don't fire storage events)
   useEffect(() => {
-    if (typeof BroadcastChannel === 'undefined') return;
-
-    let channel: BroadcastChannel;
+    let channel: BroadcastChannel | null = null;
     try {
-      channel = new BroadcastChannel(SYNC_CHANNEL);
-    } catch {
-      return;
-    }
+      if(typeof BroadcastChannel!=='undefined') channel = new BroadcastChannel(SYNC_CHANNEL);
+    } catch { /* same-tab events still work without BroadcastChannel */ }
     channelRef.current = channel;
 
     // Debounce remote hydration so a burst of write-notifications from another
@@ -418,11 +436,12 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       hydrateTimer = setTimeout(() => {
         hydrateTimer = null;
         const pid = activeProjectIdRef.current;
+        const generation = loadGenerationRef.current;
         checkpointPendingRecovery(pid).then(() => hydrateFromDexie(pid)).then(next => {
           // Typing during the async checkpoint stays visible until its next
           // save; never replace newer in-memory state with an older read.
           if (pendingSaveRef.current) return;
-          if (activeProjectIdRef.current !== pid) return;
+          if (activeProjectIdRef.current !== pid || generation !== loadGenerationRef.current) return;
           lastRemoteStateRef.current = next;
           setState(next);
         }).catch(() => {
@@ -436,29 +455,44 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     // value (localStorage), so every tab follows the switch.
     const switchActive = () => {
       const id = getActiveProjectId();
-      // Flush any pending debounced save to the OLD project before re-binding —
-      // letting the timer fire after the ref moves would write the old
-      // project's state under the new project's id.
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = null;
-      }
+      if (id === activeProjectIdRef.current && !switchInProgressRef.current) return;
+      switchInProgressRef.current=true;
+      const generation = ++loadGenerationRef.current;
+      const oldProjectId = activeProjectIdRef.current;
+      // Capture editor/store buffers synchronously before the skeleton unmounts
+      // children. The full recovery and manuscript save then commit together.
+      const captures = capturePendingRecovery(oldProjectId);
       const pending = pendingSaveRef.current;
-      if (pending) {
-        pendingSaveRef.current = null;
-        persistState(pending.state, pending.projectId).catch(() => {});
-      }
-      activeProjectIdRef.current = id;
-      setIsLoaded(false);
-      setLoadError(false);
-      hydrateFromDexie(id).then(next => {
-        if (activeProjectIdRef.current !== id) return;
-        lastRemoteStateRef.current = next;
-        setState(next);
-        setIsLoaded(true);
-      }).catch(() => {
-        if (activeProjectIdRef.current === id) setLoadError(true);
-      });
+      const pendingTarget=captures.length ? {state:captures.at(-1)!.state,projectId:oldProjectId} : pending;
+      pendingSaveRef.current=pendingTarget;
+      if (saveTimerRef.current) { clearTimeout(saveTimerRef.current); saveTimerRef.current = null; }
+      setIsLoaded(false); setLoadError(false);
+      const flush = async () => {
+        const target = captures.at(-1)?.state ?? pending?.state;
+        if (target) {
+          const { db } = await import('@/lib/storage/dexie-db');
+          await db.transaction('rw',[db.stories,db.chapters,db.syncQueue,db.syncMeta,db.storySnapshots],async () => {
+            // An explicit project removal cannot be undone by a late autosave.
+            if (!await db.stories.get(oldProjectId)) return;
+            await preservePendingRecovery(oldProjectId,captures);
+            const receipts=(await db.syncMeta.get(oldProjectId))?.serverDeletedEntities ?? {};
+            const chapters=target.chapters.filter(ch=>!receipts[`chapter:${ch.id}`]);
+            const ids=new Set(chapters.map(ch=>ch.id));
+            await persistProjectState({...target,chapters,scenes:target.scenes.filter(scene=>ids.has(scene.chapterId))},oldProjectId);
+          });
+          captures.forEach(capture=>capture.committed());
+          if (pendingSaveRef.current === pendingTarget) pendingSaveRef.current = null;
+          notifySyncWrite();
+        }
+        if (generation !== loadGenerationRef.current) return;
+        const next = await hydrateFromDexie(id,true);
+        if (generation !== loadGenerationRef.current || getActiveProjectId() !== id) return;
+        activeProjectIdRef.current = id;
+        latestStateRef.current = next; lastRemoteStateRef.current = next;
+        switchInProgressRef.current=false;
+        setState(next); setIsLoaded(true);
+      };
+      void flush().catch(() => { if(generation===loadGenerationRef.current) { switchInProgressRef.current=false;setSaveError(true); setLoadError(true); } });
     };
 
     const handleMessage = (e: MessageEvent) => {
@@ -467,18 +501,18 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       else if (e.data.type === PROJECT_CHANGED) switchActive();
     };
 
-    channel.addEventListener('message', handleMessage);
+    channel?.addEventListener('message', handleMessage);
     // Same-tab switch signal (BroadcastChannel does not deliver to the poster).
     window.addEventListener(PROJECT_CHANGED_EVENT, switchActive);
     return () => {
       if (hydrateTimer) clearTimeout(hydrateTimer);
-      channel.removeEventListener('message', handleMessage);
+      channel?.removeEventListener('message', handleMessage);
       window.removeEventListener(PROJECT_CHANGED_EVENT, switchActive);
-      channel.close();
+      channel?.close();
       channelRef.current = null;
     };
     // persistState is referentially stable (its only dep is a stable context fn).
-  }, [persistState]);
+  }, [persistState, notifySyncWrite]);
 
   // Flush the pending debounced save on tab close — best-effort: the async
   // Dexie write is kicked off synchronously and usually completes before the
@@ -499,8 +533,8 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   }, [persistState]);
 
   const updateField = useCallback(<K extends keyof StoryState>(field: K, value: StoryState[K]) => {
-    setState((prev) => ({ ...prev, [field]: value }));
-  }, []);
+    scopedSetState((prev) => ({ ...prev, [field]: value }));
+  }, [scopedSetState]);
 
   if (loadError) {
     return <main className="mx-auto max-w-xl p-8 space-y-4" role="alert">
@@ -522,13 +556,13 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
   if (!isLoaded) return <StoreSkeleton />;
 
   return (
-    <StoryContext.Provider value={{ state, setState, updateField, saveNow }}>
+    <StoryContext.Provider value={{ projectId: boundProjectId, state, setState: scopedSetState, updateField, saveNow }}>
       {saveError && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-red-900/90 text-red-100 text-sm text-center px-4 py-2 backdrop-blur">
           Storage quota exceeded — your changes may not be saved. Export your project from Settings.
         </div>
       )}
-      {children}
+      <React.Fragment key={boundProjectId}>{children}</React.Fragment>
     </StoryContext.Provider>
   );
 }

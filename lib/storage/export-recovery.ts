@@ -1,11 +1,12 @@
+import { capturePendingRecovery } from './pending-recovery';
 import { db } from './dexie-db';
 /** Preserve raw records without parsing corrupt story/history blobs or mutating storage. */
 export async function exportProjectRecovery(projectId: string) {
   const legacyRecovery: Record<string, string> = {};
   for (let index = 0; index < localStorage.length; index++) {
     const key = localStorage.key(index);
-    if (key && (['zagafy_state', 'story_memory_state', 'zagafy_sessions', 'zagafy_chapter_versions', 'zagafy_session_wip'].includes(key) ||
-        key.startsWith('zagafy_session_wip:') || key.startsWith('zagafy_session_pending:'))) {
+    if (key && (['zagafy_state', 'story_memory_state', 'zagafy_sessions', 'zagafy_chapter_versions', 'zagafy_session_wip','zagafy_character_chats','zagafy_character_insights'].includes(key) ||
+        key.startsWith('zagafy_session_wip:') || key.startsWith('zagafy_session_pending:') || key.startsWith('zagafy_chat_pending:') || key.startsWith('zagafy_character_pending:'))) {
       const value = localStorage.getItem(key);
       if (value !== null) legacyRecovery[key] = value;
     }
@@ -13,6 +14,7 @@ export async function exportProjectRecovery(projectId: string) {
   const tables = [db.stories, db.chapters, db.chapterVersions, db.sessions, db.chatMessages, db.chapterAnalysis, db.writerInsights, db.storySnapshots, db.comments];
   return db.transaction('r', tables, async () => ({
     legacyRecovery,
+    pendingEditorRecovery: capturePendingRecovery(projectId).map(capture=>capture.state),
     format: 'zagafy-raw-recovery', version: 1, projectId, exportedAt: new Date().toISOString(),
     story: await db.stories.get(projectId),
     chapters: await db.chapters.where('projectId').equals(projectId).toArray(),

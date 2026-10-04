@@ -92,6 +92,7 @@ export interface PushResponse {
   /** Optional: new server version per successfully applied chapter id. When
    *  absent the client falls back to incrementing the version it pushed. */
   chapterVersions?: Record<string, number>;
+  chatVersions?: Record<string, number>;
   /** New server version of the story `state` blob after an accepted story
    *  upsert. The client adopts it as the base version for the next push. */
   storyVersion?: number;

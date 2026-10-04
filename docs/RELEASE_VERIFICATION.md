@@ -266,3 +266,39 @@ these local-only records. Regressions verify cap pressure retains recovery while
 explicit deletion remains possible, and initial upload still includes ordinary
 snapshots. Restoration after a cloud deletion must use fresh chapter/project IDs;
 stale IDs are deliberately rejected rather than resurrected.
+
+
+## Chat, recovery and project-switching checkpoint — October 4
+
+This batch moves assistant and character history onto scoped, durable chat
+records, including structured replies, character memory and insights. It adds
+metadata/version cloud round trips and conflict backups/merges, completion
+journals and unambiguous legacy import. The old storage caps no longer delete
+conversations; model context and render windows are bounded.
+
+Snapshot restore now validates project ownership and payloads, preserves current
+and unsaved manuscript text, and saves before success feedback. Cloud-deleted
+chapters receive fresh IDs with remapped scene references. Whole-project recovery
+creates an unbound project, copies chat records with new IDs and retains insight
+session links. Clear operations keep protected local snapshots; raw exports
+include history journals and pending editor buffers.
+
+Project switches await old-project saves, capture editor buffers before unmount,
+and suppress stale setter/save/hydration closures by project and generation.
+Real-provider regressions cover A→B→C, A→B→A, pending Flow text and deleted chapter
+buffers. Active-pointer storage failures roll back and emit no switch event.
+
+Local final verification: **225 files / 3,038 tests passed**, TypeScript and
+production build passed; lint has zero errors and six existing warnings. New
+Postgres tests apply all committed migrations and prove JSON chat metadata/pull,
+committed versions and competing same-base updates. Real Dexie tests exercise
+rollback, completed reply replay, clears, scoped ownership, conflict backup,
+snapshot rollback, deleted IDs and linked chat recovery. These are local
+regressions; CI browser checks are not authenticated hosted acceptance.
+
+Migration `0007_chat_history` adds `chat_messages.metadata` and `.version`.
+Apply the full migration chain, including `0006_deletion_and_checkout`, to the
+isolated staging database before deploying. No hosted migration, merge or
+production deployment was performed in this batch. Protected conflict/clear
+snapshots are intentionally local: export or explicit restore is required to
+carry those recovery copies to another device. The launch gates above remain open.

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ChevronsUpDown, Check, Library, Plus } from 'lucide-react';
+import { useToast } from '@/components/toast';
 import { useProjects } from '@/hooks/use-projects';
 import { createProject, switchProject } from '@/lib/projects/projects';
 
@@ -14,6 +15,8 @@ import { createProject, switchProject } from '@/lib/projects/projects';
 export function ProjectSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   const t = useTranslations('projectSwitcher');
   const router = useRouter();
+  const tStorage=useTranslations('storage');
+  const {toast}=useToast();
   const { projects, activeId } = useProjects();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -73,13 +76,13 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   };
 
   const handleSwitch = (id: string) => {
-    if (id !== activeId) switchProject(id);
-    go('/');
+    try {if (id !== activeId) switchProject(id);go('/');}
+    catch {toast(tStorage('switchError'),'error');}
   };
 
   const handleCreate = async () => {
-    await createProject('Untitled Project');
-    go('/');
+    try {await createProject('Untitled Project');go('/');}
+    catch {toast(tStorage('switchError'),'error');}
   };
 
   return (

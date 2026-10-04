@@ -171,6 +171,7 @@ export async function POST(req: NextRequest) {
       let applied = 0;
       const conflicts: ConflictRecord[] = [];
       const chapterVersions: Record<string, number> = {};
+      const chatVersions: Record<string, number> = {};
       let storyVersion: number | undefined;
 
       for (const delta of deltas) {
@@ -180,6 +181,7 @@ export async function POST(req: NextRequest) {
         } else {
           applied++;
           if (typeof result.newChapterVersion === 'number') chapterVersions[delta.entityId] = result.newChapterVersion;
+          if (typeof result.newChatVersion === 'number') chatVersions[delta.entityId] = result.newChatVersion;
           if (typeof result.newStoryVersion === 'number') storyVersion = result.newStoryVersion;
         }
       }
@@ -194,7 +196,7 @@ export async function POST(req: NextRequest) {
 
       const serverTimestamp = new Date().toISOString();
       log.info('push complete', { applied, conflicts: conflicts.length, deltas: deltas.length });
-      return ok({ applied, conflicts, chapterVersions, storyVersion, serverTimestamp }, { requestId });
+      return ok({ applied, conflicts, chapterVersions, chatVersions, storyVersion, serverTimestamp }, { requestId });
     });
   } catch (dbErr) {
     log.error('push failed', dbErr);
@@ -205,6 +207,7 @@ export async function POST(req: NextRequest) {
 // ─── Delta application ───
 
 interface ApplyResult {
+  newChatVersion?: number;
   conflict?: ConflictRecord;
   /** New server version for accepted chapter upserts — echoed to the client
    *  so its local copy tracks the server and later pushes don't false-conflict. */
@@ -578,6 +581,12 @@ async function applyChatMessageUpsert(
   entityId: string,
   payload: Record<string, unknown>,
 ): Promise<ApplyResult> {
+  const existing = await database.query.chatMessages.findFirst({ where: eq(schema.chatMessages.id, entityId) });
+  if (existing && existing.storyId !== storyId) throw new Error('Entity id is not writable in this story');
+  if (existing && existing.version !== (payload.version ?? 0)) return { conflict: {
+    entityType: 'chatMessage', entityId, serverPayload: existing as unknown as Record<string, unknown>, localPayload: payload,
+    serverUpdatedAt: existing.syncedAt.toISOString(), detectedAt: new Date().toISOString(),
+  } };
   const saved = await database
     .insert(schema.chatMessages)
     .values({
@@ -586,6 +595,8 @@ async function applyChatMessageUpsert(
       chapterId: (payload.chapterId as string) ?? null,
       role: (payload.role as string) ?? 'user',
       content: (payload.content as string) ?? '',
+      metadata: (payload.metadata as Record<string, unknown>) ?? null,
+      version: (existing?.version ?? 0) + 1,
       timestamp: payload.timestamp
         ? new Date(payload.timestamp as number)
         : new Date(),
@@ -597,6 +608,8 @@ async function applyChatMessageUpsert(
         chapterId: (payload.chapterId as string) ?? null,
         role: (payload.role as string) ?? 'user',
         content: (payload.content as string) ?? '',
+      metadata: (payload.metadata as Record<string, unknown>) ?? null,
+      version: (existing?.version ?? 0) + 1,
         timestamp: payload.timestamp
           ? new Date(payload.timestamp as number)
           : new Date(),
@@ -604,7 +617,7 @@ async function applyChatMessageUpsert(
       },
     }).returning({ id: schema.chatMessages.id });
   if (saved.length !== 1) throw new Error('Entity id is not writable in this story');
-  return {};
+  return { newChatVersion: (existing?.version ?? 0) + 1 };
 }
 
 async function applyInsightUpsert(

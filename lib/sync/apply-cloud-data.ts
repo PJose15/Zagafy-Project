@@ -198,9 +198,11 @@ export async function applyCloudData(data: PullResponse, projectId: string): Pro
           await dexieDb.chatMessages.put({
             id: m.id as string,
             projectId,
+            metadata: m.metadata as Record<string, unknown> | undefined,
+            version: typeof m.version === 'number' ? m.version : 0,
             role: (m.role as 'user' | 'assistant') ?? 'user',
             content: (m.content as string) ?? '',
-            timestamp: (m.timestamp as number) ?? Date.now(),
+            timestamp: typeof m.timestamp === 'number' ? m.timestamp : Date.parse(m.timestamp as string),
             chapterId: m.chapterId as string | undefined,
           });
           applied++;

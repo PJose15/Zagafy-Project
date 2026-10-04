@@ -24,7 +24,8 @@ export function useFlowAutosave(chapterId: string | null) {
   // i18n: auto-snapshot labels are stored strings shown in the version
   // switcher — created in the active locale.
   const t = useTranslations('versionLabels');
-  const { state, setState } = useStory();
+  const { state, setState, projectId: loadedProjectId } = useStory();
+  const projectId = loadedProjectId ?? getActiveProjectId();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef<string>('');
 
@@ -49,7 +50,7 @@ export function useFlowAutosave(chapterId: string | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterId]);
 
-  useEffect(() => registerPendingRecovery({ projectId: getActiveProjectId(), priority: 1,
+  useEffect(() => registerPendingRecovery({ projectId, priority: 1,
     capture: () => {
       if (!chapterId || !timerRef.current) return null;
       const pendingText = contentRef.current;
@@ -61,7 +62,7 @@ export function useFlowAutosave(chapterId: string | null) {
           timerRef.current = null;
         } };
     },
-  }), [chapterId, state]);
+  }), [chapterId, state, projectId]);
 
   const save = useCallback(() => {
     if (!chapterId) return;

@@ -1,4 +1,4 @@
-# Zagafy product status — October 3, 2026
+# Zagafy product status — October 4, 2026
 
 Zagafy is an offline-first narrative workshop for authors. The product centers on
 an editable manuscript, project-specific canon and characters, deliberate AI
@@ -130,15 +130,48 @@ routes. It has been verified against an isolated embedded Postgres instance,
 not applied to a hosted database. Receipts are not automatically pruned because
 an offline device may reconnect after a long absence.
 
+## Chat, recovery and project-switching continuation — October 4
+
+- Assistant turns and structured replies now live in project-scoped Dexie chat
+  records. Character sessions, evolving state, memory and insights use the same
+  durable local/cloud history protocol. Storage no longer discards history at
+  the former session/message caps; rendering and model context remain bounded.
+- Legacy assistant history imports once per project. Global character history is
+  imported only when exactly one stored project owns the character. Ambiguous
+  source bytes remain available in raw recovery exports rather than being assigned
+  to an unrelated project. Completed reply journals replay without another model call.
+- Cloud chat records retain JSON metadata and optimistic versions. Conflicting
+  character sessions merge turns and clear timestamps after preserving raw local
+  records. Changed assistant messages retain both copies; accepted server versions
+  advance the next mutation's base. Same-tab writes and cloud notifications refresh
+  history. Migration `0007_chat_history` is required before these routes deploy.
+- Clearing chat first saves a protected local recovery snapshot and durably queues
+  deletion. Restoration validates scope/content, preserves current writing and
+  editor buffers, then commits manuscript and history with their sync entries.
+  Deleted chapter IDs and scene references are remapped. Whole deleted projects
+  restore into a fresh unbound project with copied chat IDs and linked insight
+  session references, retaining the original project and deletion receipt.
+- Project switching captures pending editor text before unmount, waits for its
+  transaction, and scopes setters, saves and async hydration to a project and load
+  generation. Rapid A→B→A/B→C changes cannot adopt stale results. Removed chapters
+  remain in recovery instead of being resurrected by an old buffer. Pointer storage
+  failures announce no switch; failed hydration pauses editing and retains recovery.
+
+Local verification: 225 test files / 3,038 tests, TypeScript, production build and
+lint (six existing warnings). Regressions include real Dexie rollback/journal
+replay, same-tab chat reconciliation, rapid switches, deleted chapter buffers,
+linked recovery records and migrated Postgres metadata/version round trips.
+Neither local tests nor ordinary CI prove authenticated two-device acceptance.
+
 ## Remaining implementation work, in priority order
 
 | Priority | Concrete gap | Acceptance needed |
 | --- | --- | --- |
 | 1 | Hosted acceptance of the session/deletion/checkout protocol | Dedicated accounts/devices, interrupted writes, quota failures, offline deletion/reconnect, completed checkout/webhook delay and safe migration rollout. Local implementation and regressions are complete in the checkpoint above. |
-| 2 | Chat-history storage, local conflict backup delivery and full reconciliation still need end-to-end coverage | Verify all intended history appears after a fresh-device import; make any unsynced recovery records explicit. |
-| 2 | Browser project switching and cross-tab hydration need further in-flight save coverage | Rapid switches, pending saves, concurrent tabs, failed hydration and account changes cannot transfer or lose edits. |
+| 2 | Hosted chat/history acceptance and local recovery delivery | Verify fresh-device conversation import, simultaneous turns, clear/reconnect and completed-reply replay. Protected raw recovery snapshots remain local and need explicit export/restore. |
+| 2 | Browser acceptance of switching/recovery under multiple tabs and storage failures | Local generation and transaction regressions pass; verify authenticated account changes, concurrent tabs, failed hydration/retry and active editor buffers in staging. |
 | 2 | Notification delivery is best-effort after billing commits | Decide whether reliable email is required; use a durable outbox if it is, with idempotent retry tests. |
-| 2 | Protected recovery growth and restore workflows need product acceptance | Automatic pruning now preserves recovery copies. Verify visible cleanup and restoration into fresh IDs/projects after cloud deletion; define ordinary snapshot tier caps. |
+| 2 | Protected recovery growth and restore workflows need product acceptance | Automatic pruning now preserves recovery copies. Restoration into fresh IDs/projects has local regressions. Verify visible cleanup, protected-copy growth, fresh-device recovery expectations and ordinary snapshot tier caps. |
 | 3 | Historical roadmap and counts overstate some completion and understate other shipped features | Keep this inventory and release evidence current; complete accessibility, localization and author usability review. |
 
 ## Hosted release gates

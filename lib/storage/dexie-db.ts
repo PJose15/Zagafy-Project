@@ -45,6 +45,8 @@ export interface DexieMeta {
 }
 
 export interface DexieChatMessage {
+  metadata?: Record<string, unknown>;
+  version?: number;
   id: string;
   projectId?: string;
   role: 'user' | 'assistant';

@@ -63,11 +63,18 @@ export function getActiveProjectId(): string {
  */
 export function setActiveProjectId(id: string): void {
   if (typeof localStorage === 'undefined') return;
+  if(!id.trim()) throw new Error('Invalid project ID');
+  const previousActive=localStorage.getItem(ACTIVE_KEY);
+  const previousLegacy=localStorage.getItem(LEGACY_KEY);
   try {
     localStorage.setItem(ACTIVE_KEY, id);
     localStorage.setItem(LEGACY_KEY, id);
-  } catch {
-    // Ignore — quota/availability failures are non-fatal.
+  } catch(error) {
+    try {
+      if(previousActive===null) localStorage.removeItem(ACTIVE_KEY); else localStorage.setItem(ACTIVE_KEY,previousActive);
+      if(previousLegacy===null) localStorage.removeItem(LEGACY_KEY); else localStorage.setItem(LEGACY_KEY,previousLegacy);
+    } catch { /* no switch is announced when pointer storage fails */ }
+    throw error;
   }
   broadcastProjectChanged(id);
 }

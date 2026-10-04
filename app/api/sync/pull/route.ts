@@ -332,6 +332,8 @@ function serializeChatMessage(m: typeof schema.chatMessages.$inferSelect): Recor
     chapterId: m.chapterId,
     role: m.role,
     content: m.content,
+    metadata: m.metadata,
+    version: m.version,
     timestamp: m.timestamp.getTime(),
   };
 }

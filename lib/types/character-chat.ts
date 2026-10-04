@@ -1,3 +1,5 @@
+import { readCharacterRecords, mutateCharacterRecord, mergeCharacterSession } from '@/lib/storage/character-history';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 import type { CharacterState } from '@/lib/store';
 
 export type ChatMode = 'exploration' | 'scene' | 'confrontation';
@@ -88,6 +90,7 @@ export interface CharacterChatMessage {
 }
 
 export interface CharacterChatSession {
+  clearedAt?: string;
   id: string;
   characterId: string;
   characterName: string;
@@ -134,7 +137,7 @@ export function isChatSession(v: unknown): v is CharacterChatSession {
     typeof o.id === 'string' &&
     typeof o.characterId === 'string' &&
     typeof o.characterName === 'string' &&
-    Array.isArray(o.messages) &&
+    Array.isArray(o.messages) && o.messages.every(isChatMessage) &&
     (o.mode === 'exploration' || o.mode === 'scene' || o.mode === 'confrontation') &&
     typeof o.createdAt === 'string' &&
     typeof o.updatedAt === 'string'
@@ -154,90 +157,37 @@ export function isCharacterInsight(v: unknown): v is CharacterInsight {
   );
 }
 
-// localStorage CRUD
-const CHATS_KEY = 'zagafy_character_chats';
-const INSIGHTS_KEY = 'zagafy_character_insights';
+// Atomic, project-scoped conversation records. Caps are presentation limits only.
 const MAX_CHAT_SESSIONS = 50;
 const MAX_MESSAGES_PER_SESSION = 200;
-
-export function readChatSessions(): CharacterChatSession[] {
-  try {
-    const raw = localStorage.getItem(CHATS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isChatSession);
-  } catch {
-    return [];
-  }
+export async function readChatSessions(projectId = getActiveProjectId()): Promise<CharacterChatSession[]> {
+  return await readCharacterRecords('character-session', projectId) as CharacterChatSession[];
 }
-
-export function writeChatSessions(sessions: CharacterChatSession[]): void {
-  try {
-    const trimmed = sessions.slice(-MAX_CHAT_SESSIONS);
-    localStorage.setItem(CHATS_KEY, JSON.stringify(trimmed));
-  } catch {
-    // Storage quota exceeded
-  }
+export async function addChatSession(session: CharacterChatSession, projectId = getActiveProjectId()): Promise<boolean> {
+  await mutateCharacterRecord(session.id,'character-session',old => old ?? session,projectId); return true;
 }
-
-export function addChatSession(session: CharacterChatSession): boolean {
-  const sessions = readChatSessions();
-  sessions.push(session);
-  // writeChatSessions keeps only the newest MAX_CHAT_SESSIONS, so at the cap the
-  // OLDEST session is evicted rather than the new one being silently dropped.
-  // (Previously this returned false without persisting, yet callers still set the
-  // session in React state — so the 51st character's messages/insights never
-  // persisted and later updateChatSession() calls no-op'd.)
-  writeChatSessions(sessions);
-  return true;
+export async function writeChatSessions(sessions: CharacterChatSession[], projectId = getActiveProjectId()): Promise<void> {
+  for (const session of sessions) await addChatSession(session,projectId);
 }
-
-export function updateChatSession(id: string, updates: Partial<CharacterChatSession>): void {
-  const sessions = readChatSessions();
-  const idx = sessions.findIndex(s => s.id === id);
-  if (idx === -1) return;
-  const updated = { ...sessions[idx], ...updates };
-  // Enforce message limit
-  if (updated.messages.length > MAX_MESSAGES_PER_SESSION) {
-    updated.messages = updated.messages.slice(-MAX_MESSAGES_PER_SESSION);
-  }
-  sessions[idx] = updated;
-  writeChatSessions(sessions);
+export async function updateChatSession(id: string, updates: Partial<CharacterChatSession>, projectId = getActiveProjectId()): Promise<void> {
+  await mutateCharacterRecord(id,'character-session',old => {
+    if (!isChatSession(old)) throw new Error('Character session no longer exists');
+    return mergeCharacterSession(old, { ...old, ...updates, id });
+  },projectId);
 }
-
-export function readInsights(): CharacterInsight[] {
-  try {
-    const raw = localStorage.getItem(INSIGHTS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isCharacterInsight);
-  } catch {
-    return [];
-  }
+export async function readInsights(projectId = getActiveProjectId()): Promise<CharacterInsight[]> {
+  return await readCharacterRecords('character-insight',projectId) as CharacterInsight[];
 }
-
-export function writeInsights(insights: CharacterInsight[]): void {
-  try {
-    localStorage.setItem(INSIGHTS_KEY, JSON.stringify(insights));
-  } catch {
-    // Storage quota exceeded
-  }
+export async function addInsight(insight: CharacterInsight, projectId = getActiveProjectId()): Promise<void> {
+  await mutateCharacterRecord(insight.id,'character-insight',old=>old??insight,projectId);
 }
-
-export function addInsight(insight: CharacterInsight): void {
-  const insights = readInsights();
-  insights.push(insight);
-  writeInsights(insights);
+export async function writeInsights(insights: CharacterInsight[], projectId = getActiveProjectId()): Promise<void> {
+  for (const insight of insights) await addInsight(insight,projectId);
 }
-
-export function markInsightAsCanon(id: string): void {
-  const insights = readInsights();
-  const idx = insights.findIndex(i => i.id === id);
-  if (idx === -1) return;
-  insights[idx] = { ...insights[idx], savedAsCanon: true };
-  writeInsights(insights);
+export async function markInsightAsCanon(id: string, projectId = getActiveProjectId()): Promise<void> {
+  await mutateCharacterRecord(id,'character-insight',old=>{
+    if (!isCharacterInsight(old)) throw new Error('Insight no longer exists');
+    return { ...old, savedAsCanon: true };
+  },projectId);
 }
-
 export { MAX_CHAT_SESSIONS, MAX_MESSAGES_PER_SESSION };

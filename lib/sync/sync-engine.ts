@@ -1,3 +1,4 @@
+import { reconcileChatConflict } from './chat-conflict';
 import { isRecoverySnapshot } from '@/lib/storage/recovery-snapshot';
 /**
  * Phase 5.4 -- client-side sync engine.
@@ -270,6 +271,10 @@ export class SyncEngine {
       // Adopt the server's post-push chapter versions so the next push
       // round-trips them instead of re-sending a stale version forever.
       await this.adoptPushedChapterVersions(deltas, result);
+      for (const delta of deltas) if (delta.entityType === 'chatMessage' && delta.op === 'upsert' && !result.conflicts.some(c=>c.entityType==='chatMessage'&&c.entityId===delta.entityId)) {
+        const version = result.chatVersions?.[delta.entityId];
+        if(typeof version === 'number') await dexieDb.chatMessages.update(delta.entityId,{version});
+      }
 
       // Adopt the story blob's new server version so the next story push is
       // based on it and doesn't false-conflict.
@@ -404,6 +409,8 @@ export class SyncEngine {
           await applyDeletionReceipts([{ entityType: c.entityType as Exclude<SyncEntityType, 'story'>, entityId: c.entityId, deletedAt: c.serverUpdatedAt }], projectId);
         });
         recovery.forEach(capture => capture.committed());
+      } else if (c.entityType === 'chatMessage' && c.serverPayload) {
+        await reconcileChatConflict(c,projectId);
       } else if (c.entityType === 'chapter' && c.serverPayload) {
         const sp = c.serverPayload;
         // C3: preserve the losing local edit before adopting the server copy so a
@@ -660,6 +667,8 @@ async function resolvePayload(
       if (!row) return null;
       return {
         id: row.id,
+        metadata: row.metadata,
+        version: row.version ?? 0,
         role: row.role,
         content: row.content,
         timestamp: row.timestamp,

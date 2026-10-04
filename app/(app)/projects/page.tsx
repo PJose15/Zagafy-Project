@@ -51,6 +51,7 @@ function relativeTimeKey(ms: number): { key: string; count?: number } {
 export default function ProjectsPage() {
   const router = useRouter();
   const t = useTranslations('projects');
+  const tStorage=useTranslations('storage');
   const { projects, activeId, loading, refresh } = useProjects();
   const { confirm } = useConfirm();
   const { toast } = useToast();
@@ -64,8 +65,8 @@ export default function ProjectsPage() {
   };
 
   const openProject = (id: string) => {
-    if (id !== activeId) switchProject(id);
-    router.push('/');
+    try {if (id !== activeId) switchProject(id);router.push('/');}
+    catch {toast(tStorage('switchError'),'error');}
   };
 
   const handleCreate = async () => {

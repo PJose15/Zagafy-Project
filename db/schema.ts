@@ -169,7 +169,7 @@ export const sessions = pgTable(
   }),
 );
 
-// chat_messages — AI copilot history
+// chat_messages — AI and character conversation history
 export const chatMessages = pgTable(
   'chat_messages',
   {
@@ -181,6 +181,8 @@ export const chatMessages = pgTable(
     chapterId: text('chapter_id'), // nullable — global vs per-chapter
     role: text('role').notNull(), // 'user' | 'assistant'
     content: text('content').notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    version: integer('version').default(0).notNull(),
     timestamp: timestamp('timestamp').notNull(),
   },
   (t) => ({

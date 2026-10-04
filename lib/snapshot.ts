@@ -133,17 +133,19 @@ export async function listSnapshots(
 }
 
 /** Retrieve a full snapshot (including payload) by ID, or null if not found. */
-export async function getSnapshot(id: string): Promise<StorySnapshot | null> {
+export async function getSnapshot(id: string, projectId?: string): Promise<StorySnapshot | null> {
   const row = await db.storySnapshots.get(id);
   if (!row) return null;
+  if(projectId && row.storyId!==projectId) throw new Error("Snapshot belongs to another project");
   return rowToFull(row);
 }
 
 /** Delete a snapshot by ID from the local database. */
-export async function deleteSnapshot(id: string): Promise<void> {
+export async function deleteSnapshot(id: string, projectId?: string): Promise<void> {
   await db.transaction('rw', [db.storySnapshots, db.syncQueue], async () => {
     const row = await db.storySnapshots.get(id);
     if (!row) return;
+    if(projectId && row.storyId!==projectId) throw new Error("Snapshot belongs to another project");
     await db.storySnapshots.delete(id);
     await queueLocalMutation(row.storyId, 'storySnapshot', id, 'delete');
   });

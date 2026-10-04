@@ -268,4 +268,20 @@ describe('Transactional sync push against migrated Postgres', () => {
     expect((await POST(request([chapter()], 'not-uploaded-yet'))).status).toBe(410);
   });
 
+  it('round-trips structured chat metadata and returns committed versions',async()=>{
+    const metadata={kind:'character-session',payload:{id:'chat',messages:[{content:'Retained writing'}]}};
+    const delta={entityType:'chatMessage',entityId:'chat',op:'upsert',timestamp:Date.now(),payload:{role:'assistant',content:'',timestamp:Date.now(),metadata,version:0}};
+    const result=(await(await POST(request([delta]))).json()).data;
+    expect(result.applied).toBe(1);expect(result.chatVersions).toEqual({chat:1});
+    const pulled=(await(await GET(new NextRequest('http://localhost/api/sync/pull?storyId=story_1'))).json()).data;
+    expect(pulled.chatMessages).toEqual(expect.arrayContaining([expect.objectContaining({id:'chat',metadata,version:1})]));
+  });
+  it('returns a chat conflict instead of overwriting a newer session',async()=>{
+    const delta=(content:string,version:number)=>({entityType:'chatMessage',entityId:'chat',op:'upsert',timestamp:Date.now(),payload:{role:'assistant',content,version,timestamp:Date.now(),metadata:{kind:'assistant'}}});
+    await POST(request([delta('Original',0)]));
+    const results=await Promise.all((await Promise.all([POST(request([delta('First edit',1)])),POST(request([delta('Second edit',1)]))])).map(r=>r.json()));
+    expect(results.map(r=>r.data.applied).sort()).toEqual([0,1]);
+    expect(results.flatMap(r=>r.data.conflicts)).toEqual([expect.objectContaining({entityId:'chat',localPayload:expect.objectContaining({content:'Second edit'}),serverPayload:expect.objectContaining({content:'First edit',version:2})})]);
+  });
+
 });

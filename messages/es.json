@@ -1,11 +1,12 @@
 {
   "storage": {
-      "loadTitle": "No se pudo cargar tu proyecto",
-      "loadError": "No se pudieron leer los datos guardados. La edición está pausada para proteger tu manuscrito. Reintenta cuando puedas acceder al almacenamiento del navegador.",
-      "retry": "Reintentar carga",
-      "downloadRecovery": "Descargar registros para recuperar el proyecto",
-      "recoveryNote": "Este archivo contiene los registros originales, incluido el texto de los capítulos. Guárdalo en privado; no es una copia de seguridad normal.",
-      "recoveryError": "No se pudo descargar el archivo. Conserva los datos de este navegador y reintenta."
+    "loadTitle": "No se pudo cargar tu proyecto",
+    "loadError": "No se pudieron leer los datos guardados. La edición está pausada para proteger tu manuscrito. Reintenta cuando puedas acceder al almacenamiento del navegador.",
+    "switchError": "No se pudo cambiar de proyecto. Tu borrador actual sigue disponible; restablece el acceso al almacenamiento del navegador y reintenta.",
+    "retry": "Reintentar carga",
+    "downloadRecovery": "Descargar registros para recuperar el proyecto",
+    "recoveryNote": "Este archivo contiene los registros originales, incluido el texto de los capítulos. Guárdalo en privado; no es una copia de seguridad normal.",
+    "recoveryError": "No se pudo descargar el archivo. Conserva los datos de este navegador y reintenta."
   },
   "sync": {
     "workspaceAccountNotice": "La sincronización está en pausa: el espacio de escritura local de este navegador se vinculó a otra cuenta. Usa un perfil de navegador separado para esta cuenta. Los manuscritos locales permanecen en este dispositivo después de cerrar sesión."
@@ -682,8 +683,10 @@
     "canonSavedToast": "Revelación sellada en el canon",
     "clearSessionAria": "Borrar esta conversación",
     "clearConfirmTitle": "¿Borrar la conversación?",
-    "clearConfirmMessage": "Se descartará todo el intercambio con {name}. Las revelaciones guardadas como canon permanecen en tu biblia.",
-    "savedAsCanon": "Guardado como canon"
+    "clearConfirmMessage": "¿Borrar esta conversación? Se conservará una copia local de recuperación. Las revelaciones guardadas como canon permanecen en tu biblia.",
+    "savedAsCanon": "Guardado como canon",
+    "loadEarlier": "Cargar {count} mensajes anteriores",
+    "errorHistory": "No se pudo guardar o cargar la conversación. Reintenta la recuperación o exporta el proyecto."
   },
   "flow": {
     "errorTitle": "Editor de Flujo",
@@ -1595,7 +1598,7 @@
     "clear": "Limpiar",
     "clearAria": "Limpiar el historial del chat",
     "clearConfirmTitle": "¿Limpiar el historial del chat?",
-    "clearConfirmMessage": "Esto eliminará todos los mensajes. Esto no se puede deshacer.",
+    "clearConfirmMessage": "Esto borra los mensajes y conserva una copia local de recuperación en Versiones.",
     "clearConfirmLabel": "Limpiar",
     "auditError": "No se pudo realizar la auditoría de continuidad.",
     "auditFailed": "La auditoría falló",
@@ -1642,7 +1645,9 @@
     "copiedAllToast": "Conversación copiada como markdown",
     "copyFailedToast": "No se pudo copiar",
     "youLabel": "Tú",
-    "assistantLabel": "Asistente"
+    "assistantLabel": "Asistente",
+    "historyError": "No se pudo guardar o cargar el historial. El texto visible se conserva. Reintenta o exporta la recuperación.",
+    "historyRetry": "Reintentar historial"
   },
   "gamification": {
     "durationTarget": "{duration} min · meta de {target} palabras",
@@ -1846,7 +1851,12 @@
     }
   },
   "writingStats": {
-    "recovery": {"saveError": "No se pudo guardar o recuperar el historial de sesiones. Mantén esta pestaña abierta y reintenta.", "scoreError": "No se guardó tu puntuación de fluidez. Selecciónala de nuevo para reintentar.", "retry": "Reintentar recuperación", "export": "Exportar recuperaci\u00f3n"},
+    "recovery": {
+      "saveError": "No se pudo guardar o recuperar el historial de sesiones. Mantén esta pestaña abierta y reintenta.",
+      "scoreError": "No se guardó tu puntuación de fluidez. Selecciónala de nuevo para reintentar.",
+      "retry": "Reintentar recuperación",
+      "export": "Exportar recuperación"
+    },
     "insight": {
       "keepWriting": "¡Sigue escribiendo!",
       "keepWritingDetail": "Sigue escribiendo — necesitamos al menos 5 sesiones para revelar tus patrones.",
