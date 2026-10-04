@@ -181,7 +181,7 @@ The workflow requires separate test accounts and isolation confirmation, pins
 and rechecks the release commit, and rejects missing/skipped/flaky browser results.
 Production config verification now rejects missing deployment mode as well as embeds.
 
-Local evidence: 229 files / 3,075 tests pass, including migrated Postgres schema
+Local evidence: 230 files / 3,078 tests pass, including migrated Postgres schema
 attestation/removal, secret-redaction and false-green preflight/report regressions.
 Production build, TypeScript and lint pass (six existing warnings). Eight required
 Playwright journeys are discoverable. Authenticated hosted execution has **not**

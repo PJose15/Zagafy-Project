@@ -326,7 +326,7 @@ An ordinary browser regression clears, restores and reloads a single completed
 user turn without repeating its failed model call. Production config checking also
 requires explicit SaaS mode instead of accepting an unspecified mode.
 
-Local checks: **229 files / 3,075 tests passed**, production build and TypeScript
+Local checks: **230 files / 3,078 tests passed**, production build and TypeScript
 passed, lint zero errors/six existing warnings, diff clean. Playwright discovers
 eight required journeys in five selected files. New real-service cloud journeys
 have not been executed against authenticated staging; the three are explicitly
