@@ -154,10 +154,12 @@ an offline device may reconnect after a long absence.
 - Project switching captures pending editor text before unmount, waits for its
   transaction, and scopes setters, saves and async hydration to a project and load
   generation. Rapid A→B→A/B→C changes cannot adopt stale results. Removed chapters
-  remain in recovery instead of being resurrected by an old buffer. Pointer storage
+  remain in recovery instead of being resurrected by an old buffer. Failed-switch
+  retries use the same protected checkpoint transaction; buffers from a whole
+  deleted project are checkpointed without queuing stale manuscript uploads. Pointer storage
   failures announce no switch; failed hydration pauses editing and retains recovery.
 
-Local verification: 225 test files / 3,038 tests, TypeScript, production build and
+Local verification: 225 test files / 3,040 tests, TypeScript, production build and
 lint (six existing warnings). Regressions include real Dexie rollback/journal
 replay, same-tab chat reconciliation, rapid switches, deleted chapter buffers,
 linked recovery records and migrated Postgres metadata/version round trips.

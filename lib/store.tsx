@@ -261,6 +261,22 @@ async function hydrateFromDexie(projectId: string = getActiveProjectId(), requir
   return loadedState;
 }
 
+/** Retain a switch buffer even if cloud deletion made its chapter IDs unwritable.
+ * The same transaction is used on the first switch and after a failed write. */
+async function persistSwitchBuffer(state:StoryState, projectId:string, captures:Parameters<typeof preservePendingRecovery>[1]) {
+  const {db}=await import('@/lib/storage/dexie-db');
+  await db.transaction('rw',[db.stories,db.chapters,db.syncQueue,db.syncMeta,db.storySnapshots],async()=>{
+    if(!await db.stories.get(projectId)) return;
+    await preservePendingRecovery(projectId,captures);
+    const meta=await db.syncMeta.get(projectId);
+    if(meta?.serverDeletedAt) return; // retained locally; only explicit restore creates new IDs
+    const receipts=meta?.serverDeletedEntities ?? {};
+    const chapters=state.chapters.filter(ch=>!receipts[`chapter:${ch.id}`]);
+    const ids=new Set(chapters.map(ch=>ch.id));
+    await persistProjectState({...state,chapters,scenes:state.scenes.filter(scene=>ids.has(scene.chapterId))},projectId);
+  });
+}
+
 export function StoryProvider({ children }: { children: React.ReactNode }) {
   const tStorage = useTranslations('storage');
   const [loadError, setLoadError] = useState(false);
@@ -294,7 +310,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
     const generation = ++loadGenerationRef.current;
     async function loadState() {
       const previous=pendingSaveRef.current;
-      if(previous) { await persistProjectState(previous.state,previous.projectId); if(pendingSaveRef.current===previous) pendingSaveRef.current=null; }
+      if(previous) { await persistSwitchBuffer(previous.state,previous.projectId,[{state:previous.state,committed:()=>{}}]); if(pendingSaveRef.current===previous) pendingSaveRef.current=null; }
 
       // Copy the old alias before the one-time migration, and keep its recovery
       // bytes until all IndexedDB records have committed successfully.
@@ -470,16 +486,7 @@ export function StoryProvider({ children }: { children: React.ReactNode }) {
       const flush = async () => {
         const target = captures.at(-1)?.state ?? pending?.state;
         if (target) {
-          const { db } = await import('@/lib/storage/dexie-db');
-          await db.transaction('rw',[db.stories,db.chapters,db.syncQueue,db.syncMeta,db.storySnapshots],async () => {
-            // An explicit project removal cannot be undone by a late autosave.
-            if (!await db.stories.get(oldProjectId)) return;
-            await preservePendingRecovery(oldProjectId,captures);
-            const receipts=(await db.syncMeta.get(oldProjectId))?.serverDeletedEntities ?? {};
-            const chapters=target.chapters.filter(ch=>!receipts[`chapter:${ch.id}`]);
-            const ids=new Set(chapters.map(ch=>ch.id));
-            await persistProjectState({...target,chapters,scenes:target.scenes.filter(scene=>ids.has(scene.chapterId))},oldProjectId);
-          });
+          await persistSwitchBuffer(target,oldProjectId,captures);
           captures.forEach(capture=>capture.committed());
           if (pendingSaveRef.current === pendingTarget) pendingSaveRef.current = null;
           notifySyncWrite();

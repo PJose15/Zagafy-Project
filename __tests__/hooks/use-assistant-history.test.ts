@@ -1,11 +1,12 @@
 import 'fake-indexeddb/auto';
-import {act,renderHook,waitFor} from '@testing-library/react';
-import {beforeEach,it,expect} from 'vitest';
+import {act,renderHook,waitFor,cleanup} from '@testing-library/react';
+import {beforeEach,afterEach,it,expect} from 'vitest';
 import {db} from '@/lib/storage/dexie-db';
 import {defaultState,type ChatMessage} from '@/lib/store';
 import {useAssistantHistory} from '@/hooks/use-assistant-history';
 import {appendAssistantMessage,clearAssistantHistory} from '@/lib/storage/chat-history';
 const legacy:ChatMessage[]=[];
+afterEach(cleanup);
 beforeEach(async()=>{localStorage.clear();for(const table of [db.stories,db.chatMessages,db.syncQueue,db.syncMeta,db.storySnapshots,db.chapters,db.meta]) await table.clear();for(const id of ['a','b']) await db.stories.put({id,data:JSON.stringify(defaultState),updatedAt:0});});
 it('reconciles same-tab writes and clears without retaining stale messages',async()=>{
  const {result}=renderHook(()=>useAssistantHistory('a',legacy));await waitFor(()=>expect(result.current.ready).toBe(true));

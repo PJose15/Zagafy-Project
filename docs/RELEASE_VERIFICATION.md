@@ -286,9 +286,9 @@ include history journals and pending editor buffers.
 Project switches await old-project saves, capture editor buffers before unmount,
 and suppress stale setter/save/hydration closures by project and generation.
 Real-provider regressions cover A→B→C, A→B→A, pending Flow text and deleted chapter
-buffers. Active-pointer storage failures roll back and emit no switch event.
+buffers, failed checkpoint/retry and whole-project deletion buffers. Active-pointer storage failures roll back and emit no switch event.
 
-Local final verification: **225 files / 3,038 tests passed**, TypeScript and
+Local final verification: **225 files / 3,040 tests passed**, TypeScript and
 production build passed; lint has zero errors and six existing warnings. New
 Postgres tests apply all committed migrations and prove JSON chat metadata/pull,
 committed versions and competing same-base updates. Real Dexie tests exercise
