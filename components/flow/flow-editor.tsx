@@ -553,6 +553,12 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
           <span className="text-xs text-sepia-600">{t('words', { count: wordCount })}</span>
         </div>
         <div className="flex items-center gap-2">
+          {chapterVersions.error && (
+            <div role="alert" className="text-xs text-red-700 max-w-xs">
+              {t(chapterVersions.error === 'load' ? 'historyLoadError' : 'historySaveError')}
+              <button type="button" className="underline ml-2" onClick={() => { void chapterVersions.refresh(); }}>{t('retryHistory')}</button>
+            </div>
+          )}
           <div className="relative">
             <button
               onClick={() => setVersionPanelOpen(!versionPanelOpen)}
@@ -570,10 +576,13 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
               <VersionSwitcher
                 versions={chapterVersions.versions}
                 activeVersionId={chapterVersions.activeVersion?.id ?? null}
-                onSwitch={(id) => {
+                onSwitch={async (id) => {
                   // Save current content to current version before switching
                   if (chapterVersions.activeVersion) {
-                    chapterVersions.createVersion(content, chapterVersions.activeVersion.label + t('autoSuffix'), 'auto-snapshot');
+                    const saved = await chapterVersions.createVersion(content, chapterVersions.activeVersion.label + t('autoSuffix'), 'auto-snapshot');
+                    // Typing while the snapshot commits must not be replaced
+                    // by the older version after the await completes.
+                    if (!saved || textareaRef.current?.value !== content) return;
                   }
                   const target = chapterVersions.switchVersion(id);
                   if (target) {
@@ -588,9 +597,9 @@ export function FlowEditor({ chapterId, onExit }: FlowEditorProps) {
                 onRename={chapterVersions.rename}
                 onMarkCanonical={chapterVersions.markCanonical}
                 onDelete={chapterVersions.remove}
-                onCreate={() => {
-                  chapterVersions.createVersion(content, t('versionLabel', { letter: String.fromCharCode(65 + chapterVersions.versionCount) }), 'manual');
-                  setVersionPanelOpen(false);
+                onCreate={async () => {
+                  const saved = await chapterVersions.createVersion(content, t('versionLabel', { letter: String.fromCharCode(65 + chapterVersions.versionCount) }), 'manual');
+                  if (saved) setVersionPanelOpen(false);
                 }}
                 onCompare={() => {
                   setVersionPanelOpen(false);

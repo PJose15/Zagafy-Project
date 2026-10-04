@@ -59,7 +59,7 @@ export default defineConfig({
   // Start the app for E2E in every environment. In CI (no external staging
   // URL is wired) Playwright boots a fresh dev server; locally it reuses one
   // if already running. Without this, CI tests hit a dead localhost:3000.
-  webServer: {
+  webServer: process.env.BASE_URL && !/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(process.env.BASE_URL) ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,

@@ -21,6 +21,7 @@ describe('lib/auth', () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = { ...originalEnv };
   });
 
@@ -52,6 +53,16 @@ describe('lib/auth', () => {
   });
 
   describe('requireUser', () => {
+    it.each(['publishable', 'secret'])('blocks production SaaS when the %s key is missing', async (missing) => {
+      vi.stubEnv('NODE_ENV', 'production');
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = missing === 'publishable' ? '' : 'pk_test_xxx';
+      process.env.CLERK_SECRET_KEY = missing === 'secret' ? '' : 'sk_test_xxx';
+      const auth = await freshAuthModule();
+      const result = await auth.requireUser();
+      expect(auth.isAuthError(result)).toBe(true);
+      if (auth.isAuthError(result)) expect(result.status).toBe(503);
+      expect(mockAuth).not.toHaveBeenCalled();
+    });
     it('returns synthetic embed user when auth disabled', async () => {
       const auth = await freshAuthModule();
       const result = await auth.requireUser();

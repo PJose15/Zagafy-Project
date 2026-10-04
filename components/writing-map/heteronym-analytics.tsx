@@ -11,7 +11,9 @@ export function HeteronymAnalytics() {
   const t = useTranslations('writingStats.voice');
   const [sessions, setSessions] = useState<WritingSession[]>([]);
   const [heteronyms] = useState<Heteronym[]>(() => readHeteronyms());
-  useEffect(() => { readSessions().then(setSessions); }, []);
+  const [readError, setReadError] = useState(false);
+  useEffect(() => { let active = true; readSessions().then(value => { if (active) setSessions(value); })
+    .catch(() => { if (active) setReadError(true); }); return () => { active = false; }; }, []);
   const [selectedId, setSelectedId] = useState<string | 'all'>('all');
 
   const stats = useMemo(() => {
@@ -52,6 +54,8 @@ export function HeteronymAnalytics() {
         }
         return { words: s.words, sessions: s.sessions, avgFlow, bestHour };
       })();
+
+  if (readError) return <p role="alert">{t('historyError')}</p>;
 
   return (
     <div className="space-y-4">

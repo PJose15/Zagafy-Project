@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
-import { enforceAiQuota } from '@/lib/ai-quota';
+import { enforceAiQuota, quotaUnavailable } from '@/lib/ai-quota';
+import { issueAiTurn } from '@/lib/ai-turn';
 import { getErrorStatus } from '@/lib/api-error';
 import { err, statusToCode, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
@@ -120,11 +121,6 @@ export async function POST(req: NextRequest) {
   const authResult = await requireUser();
   if (isAuthError(authResult)) return authResult;
 
-  // Only the main chat turn is metered — the auxiliary state/insight/
-  // contradiction/memory routes are fire-and-forget sidecars of this turn
-  // and deliberately do NOT count against the monthly AI quota.
-  const quotaResponse = await enforceAiQuota(authResult, { requestId });
-  if (quotaResponse) return quotaResponse;
 
   try {
     const body = await req.json();
@@ -197,6 +193,13 @@ export async function POST(req: NextRequest) {
     // usual JSON error envelope, so the client branches on res.ok. (An empty
     // stream is treated as an error client-side, where the accumulated text is
     // known.)
+    // Validate input/config before reserving a paid turn. Helpers receive a
+    // short-lived user-bound grant only after this metered request succeeds.
+    const turnId = await issueAiTurn(authResult);
+    if (!turnId) return quotaUnavailable({ requestId });
+    const quotaResponse = await enforceAiQuota(authResult, { requestId });
+    if (quotaResponse) return quotaResponse;
+
     const streamResult = await streamGeminiText({
       apiKey,
       system: systemPrompt,
@@ -216,6 +219,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-store',
+        'X-AI-Turn-ID': turnId,
         'X-Accel-Buffering': 'no', // disable proxy buffering so tokens flush live
       },
     });

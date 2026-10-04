@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
+vi.mock('@/lib/projects/active-project', () => ({ getActiveProjectId: vi.fn(() => 'project-a') }));
+
 vi.mock('@/lib/types/chapter-version', () => {
   let store: any[] = [];
   return {
@@ -57,6 +59,8 @@ describe('useChapterVersions', () => {
     const mod = await import('@/lib/types/chapter-version') as any;
     mod.__resetStore();
     vi.clearAllMocks();
+    const { getActiveProjectId } = await import('@/lib/projects/active-project');
+    vi.mocked(getActiveProjectId).mockReturnValue('project-a');
   });
 
   async function importHook() {
@@ -136,7 +140,7 @@ describe('useChapterVersions', () => {
       result.current.createVersion('Branch content', 'Version B', 'manual');
     });
 
-    expect(mod.addVersion).toHaveBeenCalledWith('ch-1', 'Branch content', 'Version B', 'manual', false);
+    expect(mod.addVersion).toHaveBeenCalledWith('ch-1', 'Branch content', 'Version B', 'manual', false, 'project-a');
     expect(mod.readVersions).toHaveBeenCalled();
     await waitFor(() => {
       expect(result.current.versionCount).toBe(2);
@@ -200,7 +204,7 @@ describe('useChapterVersions', () => {
       result.current.markCanonical(secondVersionId);
     });
 
-    expect(mod.setCanonical).toHaveBeenCalledWith(secondVersionId);
+    expect(mod.setCanonical).toHaveBeenCalledWith(secondVersionId, 'project-a');
     expect(mod.readVersions).toHaveBeenCalled();
   });
 
@@ -219,7 +223,7 @@ describe('useChapterVersions', () => {
       result.current.rename(versionId, 'Renamed Draft');
     });
 
-    expect(mod.renameVersion).toHaveBeenCalledWith(versionId, 'Renamed Draft');
+    expect(mod.renameVersion).toHaveBeenCalledWith(versionId, 'Renamed Draft', 'project-a');
     expect(mod.readVersions).toHaveBeenCalled();
   });
 
@@ -246,7 +250,7 @@ describe('useChapterVersions', () => {
       result.current.remove(firstId);
     });
 
-    expect(mod.deleteVersion).toHaveBeenCalledWith(firstId);
+    expect(mod.deleteVersion).toHaveBeenCalledWith(firstId, 'project-a');
     expect(mod.readVersions).toHaveBeenCalled();
     await waitFor(() => {
       expect(result.current.versionCount).toBe(1);
@@ -269,7 +273,7 @@ describe('useChapterVersions', () => {
     });
 
     expect(mod.readVersions.mock.calls.length).toBeGreaterThan(callCountBefore);
-    expect(mod.readVersions).toHaveBeenCalledWith('ch-1');
+    expect(mod.readVersions).toHaveBeenCalledWith('ch-1', 'project-a');
   });
 
   it('does not re-run ensureInitialVersion on content changes (per-keystroke guard)', async () => {
@@ -308,11 +312,68 @@ describe('useChapterVersions', () => {
     rerender({ chapterId: 'ch-2', content: 'Second chapter text' });
 
     await waitFor(() => {
-      expect(mod.ensureInitialVersion).toHaveBeenCalledWith('ch-2', 'Second chapter text');
+      expect(mod.ensureInitialVersion).toHaveBeenCalledWith('ch-2', 'Second chapter text', 'project-a');
     });
     await waitFor(() => {
       expect(result.current.versions[0]?.chapterId).toBe('ch-2');
     });
+  });
+
+  it('reports initial storage failures without an unhandled rejection', async () => {
+    const mod = await import('@/lib/types/chapter-version');
+    vi.mocked(mod.ensureInitialVersion).mockRejectedValueOnce(new Error('unavailable'));
+    const useChapterVersions = await importHook();
+    const { result } = renderHook(() => useChapterVersions('ch-1', 'Current text'));
+    await waitFor(() => expect(result.current.error).toBe('load'));
+    expect(result.current.versions).toEqual([]);
+  });
+
+  it('failed saves return false and retain the loaded history; retry succeeds', async () => {
+    const mod = await import('@/lib/types/chapter-version');
+    const useChapterVersions = await importHook();
+    const { result } = renderHook(() => useChapterVersions('ch-1', 'Initial'));
+    await waitFor(() => expect(result.current.versionCount).toBe(1));
+    vi.mocked(mod.addVersion).mockRejectedValueOnce(new Error('QuotaExceededError'));
+    await act(async () => { expect(await result.current.createVersion('unsaved', 'Draft', 'manual')).toBe(false); });
+    expect(result.current.versionCount).toBe(1);
+    expect(result.current.error).toBe('save');
+    await act(async () => { expect(await result.current.createVersion('unsaved', 'Draft', 'manual')).toBe(true); });
+    expect(result.current.versionCount).toBe(2);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('late saves from a previous chapter cannot replace the current history', async () => {
+    const mod = await import('@/lib/types/chapter-version');
+    const useChapterVersions = await importHook();
+    const { result, rerender } = renderHook(({ id }) => useChapterVersions(id, 'Initial'), { initialProps: { id: 'ch-1' } });
+    await waitFor(() => expect(result.current.versionCount).toBe(1));
+    let resolve!: (value: never) => void;
+    vi.mocked(mod.addVersion).mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    let pending!: Promise<boolean>;
+    act(() => { pending = result.current.createVersion('old chapter edit', 'Draft', 'manual'); });
+    rerender({ id: 'ch-2' });
+    await waitFor(() => expect(result.current.versions[0]?.chapterId).toBe('ch-2'));
+    await act(async () => { resolve(undefined as never); expect(await pending).toBe(false); });
+    expect(result.current.versions[0]?.chapterId).toBe('ch-2');
+  });
+
+  it('keeps in-flight mutations scoped to their original project during a project switch', async () => {
+    const mod = await import('@/lib/types/chapter-version');
+    const { getActiveProjectId } = await import('@/lib/projects/active-project');
+    const useChapterVersions = await importHook();
+    const { result, rerender } = renderHook(() => useChapterVersions('shared-chapter-id', 'Initial'));
+    await waitFor(() => expect(result.current.versionCount).toBe(1));
+    let resolve!: (value: never) => void;
+    vi.mocked(mod.addVersion).mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    let pending!: Promise<boolean>;
+    act(() => { pending = result.current.createVersion('old project edit', 'Draft', 'manual'); });
+    vi.mocked(getActiveProjectId).mockReturnValue('project-b');
+    rerender();
+    await waitFor(() => expect(mod.ensureInitialVersion).toHaveBeenCalledWith('shared-chapter-id', 'Initial', 'project-b'));
+    await act(async () => { resolve(undefined as never); expect(await pending).toBe(false); });
+    expect(mod.addVersion).toHaveBeenCalledWith('shared-chapter-id', 'old project edit', 'Draft', 'manual', false, 'project-a');
+    expect(mod.readVersions).toHaveBeenCalledWith('shared-chapter-id', 'project-a');
+    expect(result.current.error).toBeNull();
   });
 
   it('returns null activeVersion when no versions exist (empty content)', async () => {

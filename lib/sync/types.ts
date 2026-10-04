@@ -53,6 +53,8 @@ export interface SyncMeta {
    *  the base version on the next story push so a stale overwrite is detected as
    *  a conflict rather than silently clobbering server-side bible edits. */
   serverStoryVersion?: number | null;
+  serverDeletedAt?: string | null;
+  serverDeletedEntities?: Record<string, string>;
 }
 
 /** A conflict detected during push (server version wins). */
@@ -90,6 +92,7 @@ export interface PushResponse {
   /** Optional: new server version per successfully applied chapter id. When
    *  absent the client falls back to incrementing the version it pushed. */
   chapterVersions?: Record<string, number>;
+  chatVersions?: Record<string, number>;
   /** New server version of the story `state` blob after an accepted story
    *  upsert. The client adopts it as the base version for the next push. */
   storyVersion?: number;
@@ -102,8 +105,13 @@ export type SyncEvent =
   | { type: 'pull-complete'; counts: Record<string, number> }
   | { type: 'error'; message: string };
 
+export interface DeletionReceipt { entityType: Exclude<SyncEntityType, 'story'>; entityId: string; deletedAt: string; }
+
 /** Shape returned by GET /api/sync/pull. */
 export interface PullResponse {
+  tombstones?: DeletionReceipt[];
+  storyDeletedAt?: string;
+  accountId?: string;
   storyId: string | null;
   story: Record<string, unknown> | null;
   chapters: Record<string, unknown>[];

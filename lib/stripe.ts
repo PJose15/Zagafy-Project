@@ -18,7 +18,7 @@ export function stripe(): Stripe {
       'STRIPE_SECRET_KEY is not set. Add it to .env.local for billing features.',
     );
   }
-  cached = new Stripe(key);
+  cached = new Stripe(key, { timeout: 10_000, maxNetworkRetries: 1 });
   return cached;
 }
 

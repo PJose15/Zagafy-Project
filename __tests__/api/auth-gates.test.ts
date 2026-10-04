@@ -28,6 +28,10 @@ const mockCollabFindFirst = vi.fn(async () => null);
 
 vi.mock('@/db/client', () => ({
   db: vi.fn(() => ({
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({
+      execute: vi.fn(),
+      query: { deletedStories: { findFirst: vi.fn(async () => null) }, stories: mockQueryStories, storyCollaborators: { findFirst: mockCollabFindFirst } },
+    }),
     query: {
       stories: mockQueryStories,
       storyCollaborators: { findFirst: mockCollabFindFirst },
@@ -179,7 +183,7 @@ describe('Auth gates (Phase 5.13)', () => {
       const res = await mod.POST(makeRequest('http://localhost/api/sync/push', 'POST', {
         storyId: 'story-victim',
         storyTitle: 'Stolen Story',
-        deltas: [{ entityType: 'chapter', entityId: 'ch-1', op: 'upsert', payload: { title: 'x', content: 'x' } }],
+        deltas: [{ entityType: 'chapter', entityId: 'ch-1', op: 'upsert', timestamp: Date.now(), payload: { title: 'x', content: 'x' } }],
       }));
       expect(res.status).toBe(403);
       const body = await res.json();

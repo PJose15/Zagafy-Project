@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
 import { stripe } from '@/lib/stripe';
 import { db, isDatabaseConfigured } from '@/db/client';
 import { users, stripeEvents } from '@/db/schema';
-import { isPlanId, type PlanId } from '@/lib/billing';
+import { isPlanId } from '@/lib/billing';
+import { reconcileSubscriptionPlan } from '@/lib/billing-reconciliation';
 import { sendEmail, type EmailTemplate } from '@/lib/email';
 import type Stripe from 'stripe';
 
@@ -32,52 +33,6 @@ const HANDLED_EVENTS = new Set([
   'customer.subscription.deleted',
   'invoice.payment_failed',
 ]);
-
-/**
- * Resolve a plan from subscription metadata or the Stripe price lookup.
- * Metadata is the primary source; price-based lookup is the fallback.
- */
-function planFromMetadata(metadata: Stripe.Metadata | null): PlanId | null {
-  const raw = metadata?.plan;
-  return raw && isPlanId(raw) ? raw : null;
-}
-
-async function planFromSubscription(subscription: Stripe.Subscription): Promise<PlanId> {
-  // Check subscription metadata first
-  const fromMeta = planFromMetadata(subscription.metadata);
-  if (fromMeta) return fromMeta;
-
-  // Fallback: infer from price amount (monthly cents)
-  const item = subscription.items.data[0];
-  if (!item?.price?.unit_amount) return 'free';
-
-  const monthlyCents = item.price.recurring?.interval === 'year'
-    ? Math.round((item.price.unit_amount ?? 0) / 12)
-    : (item.price.unit_amount ?? 0);
-
-  if (monthlyCents >= 4900) return 'studio';
-  if (monthlyCents >= 2400) return 'author';
-  if (monthlyCents >= 1200) return 'writer';
-  return 'free';
-}
-
-async function updateUserPlan(
-  customerId: string,
-  plan: PlanId,
-  log: ReturnType<typeof createRouteLogger>,
-): Promise<void> {
-  const result = await db()
-    .update(users)
-    .set({ plan })
-    .where(eq(users.stripeCustomerId, customerId))
-    .returning({ id: users.id });
-
-  if (result.length === 0) {
-    log.warn('No user found for Stripe customer', { customerId, plan });
-  } else {
-    log.info('user plan updated', { userId: result[0].id, plan, customerId });
-  }
-}
 
 /**
  * Send a best-effort transactional email to the user behind a Stripe customer.
@@ -143,145 +98,72 @@ export async function POST(req: NextRequest) {
     return err('unauthorized', 'Invalid webhook signature', 401, undefined, { requestId });
   }
 
-  // Idempotency: atomically *claim* the event before processing. A separate
-  // check-then-record left a TOCTOU window where concurrent or retried
-  // duplicate deliveries could both pass the check and double-process (e.g. send
-  // two confirmation emails). Insert-with-onConflictDoNothing is atomic: an
-  // empty returning means another delivery already claimed it → skip.
-  if (HANDLED_EVENTS.has(event.type)) {
-    try {
-      const claimed = await db()
-        .insert(stripeEvents)
+  if (!HANDLED_EVENTS.has(event.type)) {
+    return ok({ ignored: event.type }, { requestId });
+  }
+
+  // The claim and entitlement update commit together. An exception or process
+  // crash rolls both back; a duplicate waits for the transaction before deciding
+  // whether the original event actually completed.
+  try {
+    const result = await db().transaction(async tx => {
+      const claimed = await tx.insert(stripeEvents)
         .values({ id: event.id, type: event.type })
         .onConflictDoNothing()
         .returning({ id: stripeEvents.id });
+      if (claimed.length === 0) return { duplicate: true } as const;
 
-      if (claimed.length === 0) {
-        log.info('duplicate event skipped', { eventId: event.id, type: event.type });
-        return ok({ skipped: 'duplicate' }, { requestId });
+      const object = event.data.object as Stripe.Checkout.Session | Stripe.Subscription | Stripe.Invoice;
+      if (event.type === 'checkout.session.completed' &&
+          ((object as Stripe.Checkout.Session).mode !== 'subscription' ||
+           !(object as Stripe.Checkout.Session).subscription)) {
+        return { ignored: true } as const;
       }
-    } catch (dbErr) {
-      log.error('Idempotency claim failed', dbErr);
-      // Continue processing — better to double-process than drop.
+      const customer = object.customer;
+      const customerId = typeof customer === 'string' ? customer : customer?.id;
+      if (!customerId) throw new Error('Handled billing event has no customer');
+
+      // Serialize reconciliation per customer, including provider reads. Different
+      // event IDs for the same customer must not race to overwrite the new plan.
+      await tx.execute(sql`SET LOCAL lock_timeout = '5s'`);
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`zagafy-billing:${customerId}`}, 0))`);
+      const [user] = await tx.select({ id: users.id, plan: users.plan })
+        .from(users).where(eq(users.stripeCustomerId, customerId)).limit(1);
+      // Checkout links the customer before creating a session. A missing row can
+      // indicate delayed account provisioning; retry rather than acknowledge a
+      // billing update that was never applied. Event metadata cannot relink users.
+      if (!user) throw new Error('Billing customer is not linked to a Zagafy user');
+
+      const subscriptions = await stripe().subscriptions.list({ customer: customerId, status: 'all', limit: 100 });
+      if (subscriptions.has_more) throw new Error('Incomplete customer subscription list');
+      const plan = reconcileSubscriptionPlan(subscriptions.data, isPlanId(user.plan) ? user.plan : 'free');
+      const updated = await tx.update(users).set({ plan })
+        .where(eq(users.id, user.id)).returning({ id: users.id });
+      if (updated.length !== 1) throw new Error('Billing user disappeared during reconciliation');
+
+      let notification: { template: EmailTemplate; data: Record<string, string> } | undefined;
+      if (event.type === 'checkout.session.completed' && plan !== 'free') {
+        notification = { template: 'subscription_confirmed', data: { plan } };
+      } else if (event.type === 'customer.subscription.deleted' && plan === 'free') {
+        notification = { template: 'subscription_canceled', data: {} };
+      } else if (event.type === 'invoice.payment_failed') {
+        notification = { template: 'payment_failed', data: {} };
+      }
+      return { customerId, notification, plan } as const;
+    });
+
+    if ('duplicate' in result) return ok({ skipped: 'duplicate' }, { requestId });
+    if ('ignored' in result) return ok({ ignored: event.type }, { requestId });
+    log.info('billing reconciled', { eventId: event.id, customerId: result.customerId, plan: result.plan });
+    // Notifications remain best-effort after commit. A mail outage cannot roll
+    // back the entitlement or repeat payment processing. Durable mail delivery
+    // requires an outbox; it is not guaranteed by the webhook event guard.
+    if (result.notification) {
+      await notifyCustomer(result.customerId, result.notification.template, result.notification.data, log);
     }
-  }
-
-  try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        if (session.mode !== 'subscription' || !session.customer || !session.subscription) {
-          log.info('non-subscription checkout ignored', { sessionId: session.id });
-          break;
-        }
-        const customerId = typeof session.customer === 'string'
-          ? session.customer
-          : session.customer.id;
-
-        // Prefer the plan our checkout route stamped into metadata. If it's
-        // absent (e.g. a Checkout Session created outside the app), derive the
-        // tier from the actual subscription price rather than assuming a tier —
-        // a hard-coded 'writer' fallback would over-grant on a cheaper plan.
-        let plan = planFromMetadata(session.metadata);
-        if (!plan) {
-          try {
-            const subId = typeof session.subscription === 'string'
-              ? session.subscription
-              : session.subscription.id;
-            const subscription = await stripe().subscriptions.retrieve(subId);
-            plan = await planFromSubscription(subscription);
-          } catch (subErr) {
-            log.warn('could not derive plan from subscription; defaulting to free', {
-              customerId,
-              err: String(subErr),
-            });
-            plan = 'free';
-          }
-        }
-
-        // Link stripeCustomerId + set plan via userId from metadata
-        const userId = session.metadata?.userId;
-        if (userId) {
-          await db()
-            .update(users)
-            .set({ stripeCustomerId: customerId, plan })
-            .where(eq(users.id, userId));
-          log.info('checkout completed — user linked', { userId, customerId, plan });
-        } else {
-          // Fallback: update by customer ID (already linked via checkout route)
-          await updateUserPlan(customerId, plan, log);
-        }
-
-        // Confirmation email (only here — renewals/plan changes on
-        // customer.subscription.updated stay silent to avoid duplicate mail).
-        await notifyCustomer(customerId, 'subscription_confirmed', { plan }, log);
-        break;
-      }
-
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = typeof subscription.customer === 'string'
-          ? subscription.customer
-          : subscription.customer.id;
-
-        const status = subscription.status;
-        if (status === 'active' || status === 'trialing') {
-          const plan = await planFromSubscription(subscription);
-          await updateUserPlan(customerId, plan, log);
-        } else if (status === 'past_due' || status === 'unpaid') {
-          log.warn('subscription past due', { customerId, status });
-          // Keep current plan during grace period — downgrade happens on delete
-        } else {
-          log.info('subscription status change', { customerId, status });
-        }
-        break;
-      }
-
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = typeof subscription.customer === 'string'
-          ? subscription.customer
-          : subscription.customer.id;
-        await updateUserPlan(customerId, 'free', log);
-        log.info('subscription deleted — downgraded to free', { customerId });
-        await notifyCustomer(customerId, 'subscription_canceled', {}, log);
-        break;
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const customerId = typeof invoice.customer === 'string'
-          ? invoice.customer
-          : invoice.customer?.id;
-        log.warn('invoice payment failed', {
-          customerId,
-          invoiceId: invoice.id,
-          attemptCount: invoice.attempt_count,
-        });
-        if (customerId) {
-          await notifyCustomer(customerId, 'payment_failed', {}, log);
-        }
-        break;
-      }
-
-      default:
-        log.info('ignoring unhandled event type', { type: event.type });
-        return ok({ ignored: event.type }, { requestId });
-    }
-
     return ok({ processed: event.type }, { requestId });
   } catch (e) {
-    // Processing failed after the event was claimed — release the claim so
-    // Stripe's automatic retry can re-process it instead of being skipped as a
-    // duplicate against a claim whose work never completed.
-    if (HANDLED_EVENTS.has(event.type)) {
-      try {
-        await db().delete(stripeEvents).where(eq(stripeEvents.id, event.id));
-      } catch (delErr) {
-        log.warn('Failed to release idempotency claim after error', { err: String(delErr) });
-      }
-    }
-    log.error('Webhook processing failed', e);
-    return err('internal_error', 'Webhook processing failed', 500, undefined, { requestId });
+    log.error('Webhook reconciliation failed; event transaction rolled back', e);
+    return err('internal_error', 'Webhook processing failed; retry required', 503, undefined, { requestId });
   }
 }

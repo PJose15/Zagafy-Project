@@ -15,7 +15,7 @@ describe('billing', () => {
       expect(isPlanId(plan)).toBe(true);
     });
 
-    it.each([null, undefined, '', 'pro', 'enterprise', 42, true])(
+    it.each([null, undefined, '', 'pro', 'enterprise', 42, true, 'constructor', 'toString', '__proto__'])(
       'returns false for %s',
       (val) => {
         expect(isPlanId(val)).toBe(false);
@@ -68,10 +68,10 @@ describe('billing', () => {
       }
     });
 
-    it('free has restrictive limits', () => {
+    it('free limits paid services without restricting local writing', () => {
       const limits = getLimits('free');
-      expect(limits.maxStories).toBe(1);
-      expect(limits.maxChaptersPerStory).toBe(50);
+      expect(limits.maxStories).toBe(Infinity);
+      expect(limits.maxChaptersPerStory).toBe(Infinity);
       expect(limits.aiCallsPerMonth).toBe(100);
       expect(limits.cloudSync).toBe(false);
       expect(limits.maxCollaborators).toBe(0);
@@ -88,7 +88,7 @@ describe('billing', () => {
       const limits = getLimits('studio');
       expect(limits.maxCollaborators).toBe(5);
       expect(limits.customHeteronyms).toBe(true);
-      expect(limits.apiAccess).toBe(true);
+      expect(limits.apiAccess).toBe(false);
     });
 
     it('limits increase monotonically across tiers', () => {

@@ -1,4 +1,16 @@
 {
+  "storage": {
+    "loadTitle": "Your project could not be loaded",
+    "loadError": "Saved data could not be read. Editing is paused to protect your manuscript. Retry after restoring access to browser storage.",
+    "switchError": "Could not switch projects. Your current draft is still available; restore browser storage access and retry.",
+    "retry": "Retry loading",
+    "downloadRecovery": "Download stored records for recovery",
+    "recoveryNote": "This recovery file contains the original stored records, including chapter text. Keep it private; it is not a normal project backup.",
+    "recoveryError": "The recovery download failed. Please keep this browser data and retry."
+  },
+  "sync": {
+    "workspaceAccountNotice": "Cloud sync is paused: this browser’s local writing workspace was linked to another account. Use a separate browser profile for this account. Local manuscripts remain on this device after sign-out."
+  },
   "app": {
     "name": "Zagafy",
     "version": "CanonKeeper v1.0"
@@ -367,7 +379,24 @@
     "ariaDelete": "Delete {title}",
     "rename": "Rename",
     "delete": "Delete",
-    "importedProjectTitle": "Imported Manuscript"
+    "importedProjectTitle": "Imported Manuscript",
+    "cloud": {
+      "title": "Cloud projects",
+      "description": "Open your synced projects and projects shared with you on this device.",
+      "error": "Unable to load or open the cloud project. Check your connection and signed-in account, then retry.",
+      "retry": "Retry",
+      "loading": "Loading cloud projects…",
+      "empty": "No cloud projects yet.",
+      "planRequired": "The owner needs a plan with cloud sync to download this project.",
+      "opening": "Downloading…",
+      "open": "Open project",
+      "more": "Load more",
+      "roles": {
+        "owner": "Your project",
+        "editor": "Shared · Editor",
+        "reader": "Shared · Reader"
+      }
+    }
   },
   "genesis": {
     "mode": "Genesis Mode",
@@ -654,8 +683,10 @@
     "canonSavedToast": "Insight sealed into canon",
     "clearSessionAria": "Clear this conversation",
     "clearConfirmTitle": "Clear conversation?",
-    "clearConfirmMessage": "The full exchange with {name} will be discarded. Saved canon insights remain in your bible.",
-    "savedAsCanon": "Saved as Canon"
+    "clearConfirmMessage": "Clear this conversation? A local recovery copy will be kept. Saved canon insights remain in your bible.",
+    "savedAsCanon": "Saved as Canon",
+    "loadEarlier": "Load {count} earlier messages",
+    "errorHistory": "Conversation history could not be saved or loaded. Retry recovery or export your project."
   },
   "flow": {
     "errorTitle": "Flow Editor",
@@ -664,6 +695,9 @@
       "fallbackTitle": "Flow Mode",
       "words": "{count} words",
       "versionHistory": "Version history",
+      "historyLoadError": "Chapter history could not be loaded. Retry before using versions.",
+      "historySaveError": "Chapter history could not be saved or loaded. Your current text is still in the editor. Retry the action.",
+      "retryHistory": "Retry history",
       "storyCoach": "Story coach",
       "switchVoice": "Switch writing voice",
       "sceneChange": "Scene change",
@@ -1287,6 +1321,8 @@
     "editorPlaceholder": "Start writing your chapter here...",
     "summaryPlaceholder": "Brief summary for the Story Bible...",
     "saveChapter": "Save Chapter",
+    "saving": "Saving…",
+    "saveError": "Could not save this chapter. Your draft is still open; please retry.",
     "moveUpAria": "Move {title} up",
     "moveDownAria": "Move {title} down",
     "editAria": "Edit {title}",
@@ -1562,7 +1598,7 @@
     "clear": "Clear",
     "clearAria": "Clear chat history",
     "clearConfirmTitle": "Clear chat history?",
-    "clearConfirmMessage": "This will remove all messages. This cannot be undone.",
+    "clearConfirmMessage": "This clears the messages and keeps a local recovery copy in Versions.",
     "clearConfirmLabel": "Clear",
     "auditError": "Failed to perform continuity audit.",
     "auditFailed": "Audit failed",
@@ -1609,7 +1645,9 @@
     "copiedAllToast": "Conversation copied as markdown",
     "copyFailedToast": "Copy failed",
     "youLabel": "You",
-    "assistantLabel": "Assistant"
+    "assistantLabel": "Assistant",
+    "historyError": "Chat history could not be saved or loaded. Your visible text is retained. Retry or export recovery.",
+    "historyRetry": "Retry history"
   },
   "gamification": {
     "durationTarget": "{duration}m · {target}w target",
@@ -1813,6 +1851,12 @@
     }
   },
   "writingStats": {
+    "recovery": {
+      "saveError": "Session history could not be saved or recovered. Keep this tab open and retry.",
+      "scoreError": "Your flow score was not saved. Select it again to retry.",
+      "retry": "Retry recovery",
+      "export": "Export recovery"
+    },
     "insight": {
       "keepWriting": "Keep writing!",
       "keepWritingDetail": "Keep writing — we need at least 5 sessions to reveal your patterns.",
@@ -1847,6 +1891,7 @@
       "scoreNA": "N/A"
     },
     "voice": {
+      "historyError": "Session history could not be loaded. Retry after storage is available.",
       "title": "Per-Voice Analytics",
       "allVoices": "All Voices",
       "totalWords": "Total Words",
@@ -2117,6 +2162,12 @@
     "defaultTitle": "My Novel"
   },
   "billing": {
+    "statusError": "Could not load your billing status. Please retry.",
+    "retry": "Retry",
+    "interval": "Billing interval",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "perYear": "${price}/yr",
     "title": "Billing",
     "currentPlan": "Current plan:",
     "perMonth": "${price}/mo",
@@ -2209,7 +2260,7 @@
         "period": "forever",
         "description": "Perfect for trying Zagafy on a single project.",
         "cta": "Get Started",
-        "f1": "1 story",
+        "f1": "Local writing workspace",
         "f2": "50 AI requests per day",
         "f3": "Local storage",
         "f4": "Manuscript editor",

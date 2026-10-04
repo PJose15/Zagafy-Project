@@ -37,6 +37,7 @@ interface CaseResult {
 }
 
 interface RunSummary {
+  qualityReview: 'manual_required';
   timestamp: string;
   baseUrl: string;
   total: number;
@@ -53,7 +54,10 @@ interface RunSummary {
 function parseArgs(): { baseUrl: string } {
   const args = process.argv.slice(2);
   const idx = args.indexOf('--base-url');
-  const baseUrl = idx !== -1 && args[idx + 1] ? args[idx + 1] : 'http://localhost:3000';
+  const baseUrl = idx !== -1 && args[idx + 1] ? args[idx + 1] : process.env.STAGING_URL;
+  if (!baseUrl) throw new Error('A running authenticated staging URL is required (--base-url or STAGING_URL)');
+  const parsed = new URL(baseUrl);
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Invalid staging URL');
   return { baseUrl: baseUrl.replace(/\/+$/, '') };
 }
 
@@ -70,6 +74,7 @@ function loadCases(casesDir: string): TestCase[] {
 
 function gradeResponse(body: string, rubric: Rubric): string[] {
   const violations: string[] = [];
+  if (!body.trim()) violations.push('Empty AI response');
   const lower = body.toLowerCase();
 
   for (const phrase of rubric.mustContain) {
@@ -93,6 +98,8 @@ function gradeResponse(body: string, rubric: Rubric): string[] {
 
 async function main() {
   const { baseUrl } = parseArgs();
+  const token = process.env.EVAL_AUTH_TOKEN;
+  if (!token) throw new Error('EVAL_AUTH_TOKEN must be a current JWT for a dedicated staging user');
   const casesDir = path.resolve(__dirname, 'cases');
   const resultsDir = path.resolve(__dirname, 'results');
 
@@ -101,6 +108,7 @@ async function main() {
   }
 
   const cases = loadCases(casesDir);
+  if (!cases.length) throw new Error('No evaluation cases loaded');
   console.log(`\n  Eval Pipeline -- ${cases.length} test case(s) against ${baseUrl}\n`);
 
   const results: CaseResult[] = [];
@@ -115,7 +123,7 @@ async function main() {
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(tc.input),
         signal: AbortSignal.timeout(30_000),
       });
@@ -133,8 +141,12 @@ async function main() {
 
         try {
           const json = JSON.parse(raw);
-          bodyText = json.text ?? json.response ?? json.message ?? raw;
-        } catch {
+          if (json.ok === false) throw new Error('API returned an error envelope');
+          const data = json.data ?? json;
+          if (data.error || data.feedbackError || data.insightsError || data.degraded || data.blocked || (Array.isArray(data.insights) && !data.insights.length)) throw new Error('AI returned an empty or degraded result');
+          bodyText = data.text ?? data.response ?? data.assistant_reply ?? data.message ?? JSON.stringify(data.insights ?? data);
+        } catch (error) {
+          if (!(error instanceof SyntaxError)) throw error;
           // Not JSON -- use raw text (possibly streamed)
         }
 
@@ -165,6 +177,7 @@ async function main() {
 
   // Summary
   const summary: RunSummary = {
+    qualityReview: 'manual_required',
     timestamp: new Date().toISOString(),
     baseUrl,
     total: results.length,

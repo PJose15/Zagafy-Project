@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Users, UserPlus, BookOpen, LogOut, Trash2, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ParchmentCard,
@@ -14,7 +15,6 @@ import {
 import { useToast } from '@/components/toast';
 import { parseApiResponse } from '@/lib/api-response';
 import { getSyncMeta } from '@/lib/sync/sync-queue';
-import { useSync } from '@/lib/sync/sync-context';
 import { importSharedStory } from '@/lib/collab-client';
 
 /**
@@ -47,7 +47,6 @@ export function CollaborationSection() {
   const t = useTranslations('collab');
   const { toast } = useToast();
   const { confirm } = useConfirm();
-  const { syncNow } = useSync();
 
   const [serverStoryId, setServerStoryId] = useState<string | null>(null);
   const [metaLoaded, setMetaLoaded] = useState(false);
@@ -60,6 +59,7 @@ export function CollaborationSection() {
   const [opening, setOpening] = useState<string | null>(null);
 
   // SaaS-only: render nothing in embed/keyless mode.
+  const router = useRouter();
   const authEnabled =
     Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) &&
     process.env.NEXT_PUBLIC_DEPLOYMENT_MODE !== 'embed';
@@ -206,22 +206,15 @@ export function CollaborationSection() {
     async (s: SharedStory) => {
       setOpening(s.storyId);
       try {
-        await importSharedStory(s.storyId, s.title);
+        await importSharedStory(s.storyId, s.title, me);
         toast(t('openSuccess'), 'success');
-        // Pull the shared story now that the (new) active project is bound,
-        // then reload so the whole app rehydrates from the new project.
-        try {
-          await syncNow();
-        } catch {
-          // The pull will also run when SyncProvider restarts after reload.
-        }
-        window.location.assign('/');
+        router.push('/');
       } catch {
         toast(t('genericError'), 'error');
         setOpening(null);
       }
     },
-    [syncNow, t, toast],
+    [me, router, t, toast],
   );
 
   if (!authEnabled) return null;

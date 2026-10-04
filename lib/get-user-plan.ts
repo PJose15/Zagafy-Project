@@ -10,10 +10,10 @@ import { isPlanId, type PlanId } from '@/lib/billing';
  * Shared by export gating, cloud-sync gating, collaborator limits, and the
  * monthly AI quota (lib/ai-quota.ts).
  */
-export async function getUserPlan(userId: string): Promise<PlanId> {
+export async function getUserPlan(userId: string, database?: Pick<ReturnType<typeof db>, 'select'>): Promise<PlanId> {
   if (!isDatabaseConfigured()) return 'free';
   try {
-    const rows = await db()
+    const rows = await (database ?? db())
       .select({ plan: schema.users.plan })
       .from(schema.users)
       .where(eq(schema.users.id, userId))

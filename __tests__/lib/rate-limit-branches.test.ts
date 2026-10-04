@@ -144,7 +144,7 @@ describe('rate-limit production safeguards', () => {
     vi.unstubAllEnvs();
   });
 
-  it('degrades to memory (allows requests) in production when Upstash is not configured', async () => {
+  it('fails closed in production when Upstash is not configured', async () => {
     vi.resetModules();
     vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
     vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
@@ -152,14 +152,14 @@ describe('rate-limit production safeguards', () => {
     vi.stubEnv('RATE_LIMIT_STRICT', '');
 
     const mod = await import('@/lib/rate-limit');
-    expect(mod.getRateLimitMode()).toBe('memory');
+    expect(mod.getRateLimitMode()).toBe('disabled');
 
-    // First request is allowed (no 503) — the app stays functional.
+    // Production never silently falls back to per-process limits.
     const result = await mod.rateLimit(makeRequest('60.0.0.1'), { maxRequests: 10, windowMs: 60000 });
-    expect(result).toBeNull();
+    expect(result?.status).toBe(503);
   });
 
-  it('still enforces the limit in production memory fallback (429 over cap)', async () => {
+  it('rejects every production request while distributed limits are unavailable', async () => {
     vi.resetModules();
     vi.stubEnv('UPSTASH_REDIS_REST_URL', '');
     vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
@@ -168,9 +168,9 @@ describe('rate-limit production safeguards', () => {
 
     const mod = await import('@/lib/rate-limit');
     const allowed = await mod.rateLimit(makeRequest('60.0.0.9'), { maxRequests: 1, windowMs: 60000 });
-    expect(allowed).toBeNull();
+    expect(allowed?.status).toBe(503);
     const blocked = await mod.rateLimit(makeRequest('60.0.0.9'), { maxRequests: 1, windowMs: 60000 });
-    expect(blocked!.status).toBe(429);
+    expect(blocked!.status).toBe(503);
   });
 
   it('fails closed with 503 in production when RATE_LIMIT_STRICT=true and Upstash is absent', async () => {

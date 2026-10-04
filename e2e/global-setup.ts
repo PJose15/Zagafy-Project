@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import { clerkSetup } from '@clerk/testing/playwright';
 
 /**
@@ -10,6 +12,8 @@ import { clerkSetup } from '@clerk/testing/playwright';
  * the unauthenticated app.
  */
 export default async function globalSetup(): Promise<void> {
+  // Execute the .mjs CLI natively: Playwright loads this TS setup as CommonJS.
+  if (process.env.E2E_REQUIRE_CLOUD === 'true') execFileSync(process.execPath, [resolve('scripts/staging-preflight.mjs')], { stdio: 'inherit' });
   if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY) {
     await clerkSetup();
   }

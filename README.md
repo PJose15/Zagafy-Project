@@ -1,3 +1,8 @@
+> Release work: see [the current launch checklist](docs/LAUNCH_READINESS.md).
+> Gemini powers writing and the main character-chat reply; Anthropic powers its
+> background state, insight, contradiction and memory helpers. Production requires
+> configured authentication and distributed rate/quota limits.
+
 <div align="center">
 <img width="1200" height="475" alt="Zagafy Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 
@@ -32,14 +37,14 @@ A continuity-aware writing application that helps authors craft consistent, deep
 
 ### Prerequisites
 
-- Node.js ≥ 20
+- Node.js `>=20.16.0 <21 || >=22.3.0` (CI uses Node 22)
 - A [Google AI Studio](https://aistudio.google.com/) API key (Gemini)
 
 ### Setup
 
 ```bash
-git clone https://github.com/PJose15/story-memory-writer.git
-cd story-memory-writer
+git clone https://github.com/PJose15/Zagafy-Project.git
+cd Zagafy-Project
 npm install
 cp .env.example .env.local
 # Edit .env.local and add your GEMINI_API_KEY
@@ -49,6 +54,11 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) and start with the Genesis wizard.
 
 ### Environment Variables
+
+The table below describes local development. Production SaaS requires Clerk,
+Postgres and Redis; billing and AI also require their service configuration.
+Use [launch readiness](docs/LAUNCH_READINESS.md) for the complete checklist and
+[product status](docs/PRODUCT_STATUS.md) for shipped features and remaining gaps.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -101,7 +111,7 @@ graph TB
 
 ```
 app/                  # Next.js App Router pages
-  api/                # Server-side API endpoints (14 routes)
+  api/                # Server-side API endpoints
   (auth)/             # Clerk sign-in/sign-up
   (marketing)/        # Marketing site (home, features, pricing)
   genesis/            # Story creation wizard

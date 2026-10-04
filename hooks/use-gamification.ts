@@ -75,7 +75,10 @@ function useGamificationInternal(): GamificationAPI {
   const evaluateDaily = useCallback(async () => {
     // readSessions is async (Dexie-backed); read the blob AFTER awaiting so
     // any direct write that landed in the meantime is merged, not clobbered.
-    const sessions = await readSessions();
+    const projectId = getActiveProjectId();
+    let sessions;
+    try { sessions = await readSessions(projectId); } catch { return; }
+    if (getActiveProjectId() !== projectId) return;
     const todayKey = formatDateKey(new Date());
     const current = readGamification();
 

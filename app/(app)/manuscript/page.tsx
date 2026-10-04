@@ -77,7 +77,7 @@ export default function ManuscriptPage() {
   const tCommon = useTranslations('common');
   const tVersionLabels = useTranslations('versionLabels');
   const readingTime = useReadingTimeLabel();
-  const { state, updateField } = useStory();
+  const { state, updateField, saveNow } = useStory();
   const { confirm } = useConfirm();
   const { toast } = useToast();
   // Latest chapters for deferred callbacks (undo restore fires seconds later).
@@ -88,6 +88,8 @@ export default function ManuscriptPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Chapter>>({});
   const [isNewItem, setIsNewItem] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   useUnsavedChanges(editingId !== null);
 
   // MP-05 — margin comments: latest non-collapsed editor selection (ref so
@@ -131,8 +133,11 @@ export default function ManuscriptPage() {
   };
 
   const handleSave = async () => {
-    if (!editingId) return;
+    if (!editingId || savingRef.current) return;
     if (!editForm.title?.trim()) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
 
     // CB-07: snapshot the pre-migration plain text before the rich-text editor
     // first persists Lexical JSON over it, so the conversion stays reversible.
@@ -151,12 +156,18 @@ export default function ManuscriptPage() {
     const updatedChapters = state.chapters.map((c) =>
       c.id === editingId ? { ...c, ...editForm } : c
     );
-    updateField('chapters', updatedChapters as Chapter[]);
+    await saveNow({ ...state, chapters: updatedChapters as Chapter[] });
     toast(t('savedToast'), 'success');
     setEditingId(null);
     setIsNewItem(false);
     setPendingSelection(null);
     selectionRef.current = null;
+    } catch {
+      toast(t('saveError'), 'error');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   // A9: Ctrl/Cmd+S saves the open chapter instead of invoking the browser
@@ -284,7 +295,6 @@ export default function ManuscriptPage() {
   const [compact, setCompact] = useState(false);
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- two-pass hydration-safe storage restore
       if (localStorage.getItem('zagafy_manuscript_compact') === '1') setCompact(true);
     } catch { /* default expanded */ }
   }, []);
@@ -417,7 +427,7 @@ export default function ManuscriptPage() {
             >
             <ParchmentCard padding="none" className="overflow-hidden page-stack">
               {editingId === chapter.id ? (
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-4" inert={saving} aria-busy={saving}>
                   <ParchmentInput
                     type="text"
                     value={editForm.title || ''}
@@ -465,8 +475,8 @@ export default function ManuscriptPage() {
                     <InkStampButton variant="ghost" onClick={handleCancel} icon={<X size={18} />}>
                       {tCommon('cancel')}
                     </InkStampButton>
-                    <InkStampButton variant="primary" onClick={handleSave} icon={<Save size={18} />}>
-                      {t('saveChapter')}
+                    <InkStampButton variant="primary" onClick={handleSave} disabled={saving} icon={<Save size={18} />}>
+                      {saving ? t('saving') : t('saveChapter')}
                     </InkStampButton>
                   </div>
                 </div>

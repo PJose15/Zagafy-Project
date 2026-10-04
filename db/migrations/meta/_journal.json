@@ -29,6 +29,34 @@
       "when": 1785100000000,
       "tag": "0003_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790906400000,
+      "tag": "0004_stripe_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790989200000,
+      "tag": "0005_sync_receipts",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791040621484,
+      "tag": "0006_deletion_and_checkout",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791079283971,
+      "tag": "0007_chat_history",
+      "breakpoints": true
     }
   ]
 }

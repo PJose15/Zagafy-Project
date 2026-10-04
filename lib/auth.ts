@@ -35,6 +35,10 @@ export function isAuthError(result: AuthResult): result is NextResponse {
  * Returns a NextResponse (401) when auth is enabled but the user is not signed in.
  */
 export async function requireUser(): Promise<AuthResult> {
+  if (process.env.NODE_ENV === 'production' && !isEmbedMode() &&
+      (!isClerkConfigured() || !process.env.CLERK_SECRET_KEY)) {
+    return err('upstream_unavailable', 'Authentication is not configured for this deployment', 503);
+  }
   if (!isAuthEnabled()) {
     return { userId: EMBED_USER_ID, embedMode: true };
   }

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { GoogleGenAI, Type, FinishReason } from '@google/genai';
-import pdf from 'pdf-parse';
+import { readPdfText } from '@/lib/import/read-pdf';
 import mammoth from 'mammoth';
 import { rateLimit } from '@/lib/rate-limit';
 import { requireUser, isAuthError } from '@/lib/auth';
@@ -583,8 +583,7 @@ export async function POST(req: NextRequest) {
         let text = '';
 
         if (file.name.endsWith('.pdf')) {
-          const textResult = await pdf(buffer);
-          text = textResult.text;
+          text = await readPdfText(buffer);
         } else if (file.name.endsWith('.docx')) {
           const result = await mammoth.extractRawText({ buffer });
           text = result.value;

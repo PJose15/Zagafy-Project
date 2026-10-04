@@ -41,6 +41,11 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
     containerRef.current?.focus();
   }, []);
 
+  const handleSubmit = useCallback((score: FlowScore) => {
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    onSubmit(sessionId, score);
+  }, [onSubmit, sessionId]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -50,10 +55,10 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
       // Number keys 1-5 to select score
       const num = parseInt(e.key, 10);
       if (num >= 1 && num <= 5) {
-        onSubmit(sessionId, num as FlowScore);
+        handleSubmit(num as FlowScore);
       }
     },
-    [sessionId, onSubmit, onDismiss]
+    [handleSubmit, onDismiss]
   );
 
   return (
@@ -86,7 +91,7 @@ export function FlowScoreModal({ sessionId, onSubmit, onDismiss }: FlowScoreModa
             return (
             <button
               key={score}
-              onClick={() => onSubmit(sessionId, score)}
+              onClick={() => handleSubmit(score)}
               aria-label={t('optionAria', { label, score })}
               className="flex flex-col items-center gap-1.5 px-1 py-1.5 rounded-lg hover:bg-parchment-200 transition-colors focus:outline-none focus:ring-2 focus:ring-brass-400 focus:outline-offset-1"
             >

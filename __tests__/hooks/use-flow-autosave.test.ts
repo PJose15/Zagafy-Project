@@ -316,3 +316,34 @@ describe('useFlowAutosave', () => {
     ).toBe('Second chapter text');
   });
 });
+
+describe('Flow pending recovery capture', () => {
+  beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); setupLocalStorage([testChapter]); });
+  afterEach(() => vi.useRealTimers());
+  it('captures the latest textarea before its five-second autosave', async () => {
+    const { capturePendingRecovery } = await import('@/lib/storage/pending-recovery');
+    const { getActiveProjectId } = await import('@/lib/projects/active-project');
+    const { result, unmount } = renderHook(() => ({ autosave: useFlowAutosave('ch-1'), story: useStory() }), { wrapper });
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => result.current.autosave.scheduleAutosave('Newest unsaved textarea'));
+    const captures = capturePendingRecovery(getActiveProjectId());
+    expect(getPlainText(captures[captures.length-1].state.chapters[0].content)).toBe('Newest unsaved textarea');
+    act(() => captures.forEach(capture => capture.committed()));
+    await act(async () => { await vi.advanceTimersByTimeAsync(5001); });
+    expect(getPlainText(result.current.story.state.chapters[0].content)).toBe('Once upon a time...');
+    unmount();
+  });
+  it('keeps new typing that arrives while an earlier recovery write is pending', async () => {
+    const { capturePendingRecovery } = await import('@/lib/storage/pending-recovery');
+    const { getActiveProjectId } = await import('@/lib/projects/active-project');
+    const { result, unmount } = renderHook(() => ({ autosave: useFlowAutosave('ch-1'), story: useStory() }), { wrapper });
+    await act(async () => { await vi.runAllTimersAsync(); });
+    act(() => result.current.autosave.scheduleAutosave('First checkpoint'));
+    const captures = capturePendingRecovery(getActiveProjectId());
+    act(() => result.current.autosave.scheduleAutosave('Typed during checkpoint'));
+    act(() => captures.forEach(capture => capture.committed()));
+    await act(async () => { await vi.advanceTimersByTimeAsync(5001); });
+    expect(getPlainText(result.current.story.state.chapters[0].content)).toBe('Typed during checkpoint');
+    unmount();
+  });
+});

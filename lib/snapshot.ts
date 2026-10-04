@@ -1,3 +1,5 @@
+import { isRecoverySnapshot } from '@/lib/storage/recovery-snapshot';
+import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 import { db, type DexieStorySnapshot } from '@/lib/storage/dexie-db';
 import type { StoryState } from '@/lib/store';
 import { getPlainText } from '@/lib/editor/serialization';
@@ -100,19 +102,23 @@ export async function createSnapshot(
     data: JSON.stringify(state),
   };
 
-  await db.transaction('rw', db.storySnapshots, async () => {
+  await db.transaction('rw', [db.storySnapshots, db.syncQueue], async () => {
     await db.storySnapshots.put(row);
+    await queueLocalMutation(storyId, 'storySnapshot', row.id);
     const all = await db.storySnapshots
       .where('storyId')
       .equals(storyId)
       .sortBy('createdAt');
-    if (all.length > cap) {
-      const excess = all.length - cap;
-      const oldestIds = all.slice(0, excess).map(r => r.id);
+    const ordinary = all.filter(row => !isRecoverySnapshot(row));
+    if (ordinary.length > cap) {
+      const excess = ordinary.length - cap;
+      const oldestIds = ordinary.slice(0, excess).map(r => r.id);
       await db.storySnapshots.bulkDelete(oldestIds);
+      for (const id of oldestIds) await queueLocalMutation(storyId, 'storySnapshot', id, 'delete');
     }
   });
 
+  notifyLocalMutation();
   return rowToMetadata(row);
 }
 
@@ -127,15 +133,23 @@ export async function listSnapshots(
 }
 
 /** Retrieve a full snapshot (including payload) by ID, or null if not found. */
-export async function getSnapshot(id: string): Promise<StorySnapshot | null> {
+export async function getSnapshot(id: string, projectId?: string): Promise<StorySnapshot | null> {
   const row = await db.storySnapshots.get(id);
   if (!row) return null;
+  if(projectId && row.storyId!==projectId) throw new Error("Snapshot belongs to another project");
   return rowToFull(row);
 }
 
 /** Delete a snapshot by ID from the local database. */
-export async function deleteSnapshot(id: string): Promise<void> {
-  await db.storySnapshots.delete(id);
+export async function deleteSnapshot(id: string, projectId?: string): Promise<void> {
+  await db.transaction('rw', [db.storySnapshots, db.syncQueue], async () => {
+    const row = await db.storySnapshots.get(id);
+    if (!row) return;
+    if(projectId && row.storyId!==projectId) throw new Error("Snapshot belongs to another project");
+    await db.storySnapshots.delete(id);
+    await queueLocalMutation(row.storyId, 'storySnapshot', id, 'delete');
+  });
+  notifyLocalMutation();
 }
 
 export interface SnapshotDelta {

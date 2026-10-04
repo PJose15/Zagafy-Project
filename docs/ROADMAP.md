@@ -1,3 +1,7 @@
+> Current launch status: [LAUNCH_READINESS.md](LAUNCH_READINESS.md). The phase
+> tables below are historical planning records; implemented code and release
+> evidence take precedence over their deferred/completed labels.
+
 # Roadmap
 
 > Living document. Updated as features land.

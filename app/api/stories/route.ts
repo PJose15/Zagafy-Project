@@ -1,14 +1,48 @@
 import { NextRequest } from 'next/server';
-import { eq, and } from 'drizzle-orm';
+import { sql, eq, and, or, gt, asc } from 'drizzle-orm';
 import { db, isDatabaseConfigured } from '@/db/client';
 import * as schema from '@/db/schema';
 import { requireCloudUser, isAuthError } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 import { ok, err, makeRequestId } from '@/lib/api-response';
 import { createRouteLogger } from '@/lib/logger';
+import { getLimits, isPlanId } from '@/lib/billing';
 import { getStoryAccess } from '@/lib/collab';
 
 export const runtime = 'nodejs';
+
+/** Catalog includes only owned or explicitly shared projects; no manuscript payloads. */
+export async function GET(req: NextRequest) {
+  const requestId = makeRequestId();
+  const authResult = await requireCloudUser();
+  if (isAuthError(authResult)) return authResult;
+  const { userId } = authResult;
+  const limited = await rateLimit(req, { maxRequests: 30, windowMs: 60_000 });
+  if (limited) return limited;
+  if (!isDatabaseConfigured()) return err('internal_error', 'Database not configured', 500);
+  const cursor = req.nextUrl.searchParams.get('cursor');
+  if (cursor !== null && (!cursor || cursor.length > 200)) return err('validation_failed', 'Invalid cursor', 400);
+  try {
+    const rows = await db().select({ storyId: schema.stories.id, title: schema.stories.title,
+      ownerId: schema.stories.ownerId, role: schema.storyCollaborators.role,
+      plan: schema.users.plan, updatedAt: schema.stories.updatedAt })
+      .from(schema.stories)
+      .innerJoin(schema.users, eq(schema.users.id, schema.stories.ownerId))
+      .leftJoin(schema.storyCollaborators, and(eq(schema.storyCollaborators.storyId, schema.stories.id), eq(schema.storyCollaborators.userId, userId)))
+      .where(and(or(eq(schema.stories.ownerId, userId), eq(schema.storyCollaborators.userId, userId)), cursor ? gt(schema.stories.id, cursor) : undefined))
+      .orderBy(asc(schema.stories.id)).limit(51);
+    const page = rows.slice(0, 50);
+    const response = ok({ me: userId, stories: page.map(row => ({ storyId: row.storyId, title: row.title,
+      role: row.ownerId === userId ? 'owner' : row.role,
+      canSync: isPlanId(row.plan) && getLimits(row.plan).cloudSync,
+      updatedAt: row.updatedAt.toISOString() })), nextCursor: rows.length > 50 ? page[49].storyId : null }, { requestId });
+    response.headers.set('Cache-Control', 'private, no-store');
+    return response;
+  } catch (error) {
+    createRouteLogger({ endpoint: '/api/stories', requestId }).error('catalog failed', error);
+    return err('internal_error', 'Unable to load cloud projects', 500, undefined, { requestId });
+  }
+}
 
 /**
  * DELETE /api/stories  — permanently delete a synced story and all its data.
@@ -43,32 +77,34 @@ export async function DELETE(req: NextRequest) {
   } catch {
     return err('validation_failed', 'Invalid JSON body', 400, undefined, { requestId });
   }
-  const storyId = typeof body.storyId === 'string' ? body.storyId : '';
-  if (!storyId) {
+  const storyId = body && typeof body.storyId === 'string' ? body.storyId : '';
+  if (!storyId.trim() || storyId.length > 200) {
     return err('validation_failed', 'storyId is required', 400, undefined, { requestId });
   }
 
   try {
-    // Only the OWNER may delete a story — a destructive, irreversible action that
-    // an editor/reader collaborator must never be able to trigger.
-    const access = await getStoryAccess(storyId, userId);
-    if (access === null) {
-      // Nonexistent (or no access) — idempotent success so a client retrying a
-      // delete of an already-gone story doesn't error.
-      return ok({ deleted: false }, { requestId });
-    }
-    if (access !== 'owner') {
-      return err('forbidden', 'Only the owner can delete this story', 403, undefined, { requestId });
-    }
-
-    // Scope the delete to the owner as defense-in-depth against a stale access
-    // read; FK cascades remove all child rows.
-    await db()
-      .delete(schema.stories)
-      .where(and(eq(schema.stories.id, storyId), eq(schema.stories.ownerId, userId)));
-
+    return await db().transaction(async database => {
+      await database.execute(sql`SET LOCAL lock_timeout = '5s'`);
+      await database.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`zagafy-sync:${storyId}`}, 0))`);
+      const access = await getStoryAccess(storyId, userId, database);
+      if (access === null) {
+        const receipt = await database.query.deletedStories.findFirst({ where: eq(schema.deletedStories.id, storyId) });
+        const existing = await database.query.stories.findFirst({ where: eq(schema.stories.id, storyId), columns: { id: true } });
+        if (!receipt && !existing) {
+          // The initial upload may not have reached the server yet. Reserve a
+          // deletion receipt now so a delayed first push cannot resurrect it.
+          await database.insert(schema.deletedStories).values({ id: storyId, ownerId: userId, recipients: [userId] }).onConflictDoNothing();
+          return ok({ deleted: true, accountId: userId }, { requestId });
+        }
+        return ok({ deleted: receipt?.ownerId === userId, localOnly: receipt?.ownerId !== userId, accountId: userId }, { requestId });
+      }
+      if (access !== 'owner') return err('forbidden', 'Only the owner can delete this story', 403, { accountId: userId }, { requestId });
+      const collaborators = await database.query.storyCollaborators.findMany({ where: eq(schema.storyCollaborators.storyId, storyId) });
+      await database.insert(schema.deletedStories).values({ id: storyId, ownerId: userId, recipients: [userId, ...collaborators.map(row => row.userId)] }).onConflictDoNothing();
+      await database.delete(schema.stories).where(and(eq(schema.stories.id, storyId), eq(schema.stories.ownerId, userId)));
     log.info('story deleted', { storyId });
-    return ok({ deleted: true }, { requestId });
+      return ok({ deleted: true, accountId: userId }, { requestId });
+    });
   } catch (dbErr) {
     log.error('story delete failed', dbErr);
     return err('internal_error', 'Delete failed', 500, undefined, { requestId });

@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+import { db } from '@/lib/storage/dexie-db';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   isChatMessage,
@@ -8,7 +10,6 @@ import {
   addChatSession,
   updateChatSession,
   readInsights,
-  writeInsights,
   addInsight,
   markInsightAsCanon,
   normalizePressureLevel,
@@ -55,8 +56,10 @@ function makeInsight(overrides: Partial<CharacterInsight> = {}): CharacterInsigh
   };
 }
 
-beforeEach(() => {
-  localStorage.clear();
+beforeEach(async () => {
+  localStorage.clear();localStorage.setItem('zagafy_active_project','project');
+  await db.chatMessages.clear();await db.syncQueue.clear();await db.meta.clear();await db.stories.clear();await db.syncMeta.clear();
+  await db.stories.put({id:'project',data:JSON.stringify({characters:[{id:'char-1'}]}),updatedAt:0});
 });
 
 // --- Type Guards ---
@@ -117,83 +120,14 @@ describe('isCharacterInsight', () => {
 
 // --- localStorage CRUD ---
 
-describe('readChatSessions / writeChatSessions', () => {
-  it('returns empty array when nothing stored', () => {
-    expect(readChatSessions()).toEqual([]);
-  });
-
-  it('writes and reads sessions', () => {
-    const session = makeSession();
-    writeChatSessions([session]);
-    expect(readChatSessions()).toEqual([session]);
-  });
-
-  it('filters invalid entries', () => {
-    localStorage.setItem('zagafy_character_chats', JSON.stringify([{ bad: true }, makeSession()]));
-    expect(readChatSessions()).toHaveLength(1);
-  });
-
-  it('handles corrupted JSON', () => {
-    localStorage.setItem('zagafy_character_chats', 'not-json');
-    expect(readChatSessions()).toEqual([]);
-  });
-});
-
-describe('addChatSession', () => {
-  it('adds a session', () => {
-    expect(addChatSession(makeSession())).toBe(true);
-    expect(readChatSessions()).toHaveLength(1);
-  });
-
-  it('evicts the oldest session at the limit so the new one still persists', () => {
-    const sessions = Array.from({ length: MAX_CHAT_SESSIONS }, (_, i) =>
-      makeSession({ id: `sess-${i}` })
-    );
-    writeChatSessions(sessions);
-    expect(addChatSession(makeSession({ id: 'overflow' }))).toBe(true);
-    const stored = readChatSessions();
-    expect(stored).toHaveLength(MAX_CHAT_SESSIONS);
-    expect(stored.some(s => s.id === 'overflow')).toBe(true); // new session persisted
-    expect(stored.some(s => s.id === 'sess-0')).toBe(false);  // oldest evicted
-  });
-});
-
-describe('updateChatSession', () => {
-  it('updates a session', () => {
-    addChatSession(makeSession());
-    updateChatSession('sess-1', { mode: 'confrontation' });
-    expect(readChatSessions()[0].mode).toBe('confrontation');
-  });
-
-  it('does nothing for unknown id', () => {
-    addChatSession(makeSession());
-    updateChatSession('unknown', { mode: 'confrontation' });
-    expect(readChatSessions()[0].mode).toBe('exploration');
-  });
-});
-
-// --- Insights CRUD ---
-
-describe('insights CRUD', () => {
-  it('reads empty insights', () => {
-    expect(readInsights()).toEqual([]);
-  });
-
-  it('adds and reads insight', () => {
-    addInsight(makeInsight());
-    expect(readInsights()).toHaveLength(1);
-  });
-
-  it('marks insight as canon', () => {
-    addInsight(makeInsight());
-    markInsightAsCanon('ins-1');
-    expect(readInsights()[0].savedAsCanon).toBe(true);
-  });
-
-  it('handles corrupted insights JSON', () => {
-    localStorage.setItem('zagafy_character_insights', 'broken');
-    expect(readInsights()).toEqual([]);
-  });
+describe('Scoped durable character history', () => {
+  it('starts empty',async()=>{ expect(await readChatSessions()).toEqual([]);expect(await readInsights()).toEqual([]); });
+  it('adds and patches sessions with a durable queue',async()=>{await addChatSession(makeSession());await updateChatSession('sess-1',{mode:'confrontation'});expect((await readChatSessions())[0].mode).toBe('confrontation');expect(await db.syncQueue.count()).toBe(2);});
+  it('retains every session beyond presentation caps',async()=>{await writeChatSessions(Array.from({length:MAX_CHAT_SESSIONS+1},(_,i)=>makeSession({id:`session-${i}`})));expect(await readChatSessions()).toHaveLength(MAX_CHAT_SESSIONS+1);});
+  it('reports missing sessions',async()=>{await expect(updateChatSession('missing',{})).rejects.toThrow('no longer exists');});
+  it('adds insights and marks canon durably',async()=>{await addInsight(makeInsight());await markInsightAsCanon('ins-1');expect((await readInsights())[0].savedAsCanon).toBe(true);});
+  it('keeps corrupt legacy bytes for recovery',async()=>{localStorage.setItem('zagafy_character_chats','broken');await expect(readChatSessions()).rejects.toThrow();expect(localStorage.getItem('zagafy_character_chats')).toBe('broken');});
+  it('imports legacy records only for an unambiguous character owner',async()=>{localStorage.setItem('zagafy_character_chats',JSON.stringify([makeSession()]));expect(await readChatSessions()).toHaveLength(1);expect(localStorage.getItem('zagafy_character_chats')).not.toBeNull();});
 });
 
 describe('normalizePressureLevel', () => {

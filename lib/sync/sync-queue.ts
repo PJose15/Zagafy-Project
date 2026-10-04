@@ -9,13 +9,14 @@
  * push time so payloads are always fresh.
  */
 
+import { queueLocalMutation, notifyLocalMutation } from './local-mutation';
 import { db } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 import type { SyncEntityType, SyncQueueEntry, SyncMeta } from './types';
 
 /**
- * Record a local mutation in the sync queue. Call this after a successful
- * Dexie write so the sync engine knows what to push.
+ * Record a standalone mutation. Failures propagate so callers can retry.
+ * Entity writes should use queueLocalMutation inside their storage transaction.
  *
  * Safe to call when sync is disabled -- the queue will simply accumulate
  * entries that are never flushed (and cleared on project reset).
@@ -24,20 +25,10 @@ export async function recordDelta(
   entityType: SyncEntityType,
   entityId: string,
   op: 'upsert' | 'delete',
+  projectId: string = getActiveProjectId(),
 ): Promise<void> {
-  try {
-    await db.syncQueue.put({
-      id: crypto.randomUUID(),
-      projectId: getActiveProjectId(),
-      entityType,
-      entityId,
-      op,
-      timestamp: Date.now(),
-    });
-  } catch {
-    // Sync queue write failures are non-fatal. The data is safe in Dexie;
-    // the sync engine will catch up on the next full push.
-  }
+  await queueLocalMutation(projectId, entityType, entityId, op);
+  notifyLocalMutation();
 }
 
 export interface ReadQueueResult {
@@ -47,6 +38,8 @@ export interface ReadQueueResult {
    *  Clear these after a successful push — clearing only the deduped entry ids
    *  leaves older duplicate rows to resurface as "latest" on the next push. */
   coveredIds: string[];
+  /** Raw rows grouped by entity, for safe bounded push batches. */
+  coveredIdsByEntity?: Record<string, string[]>;
 }
 
 /**
@@ -66,14 +59,17 @@ export async function readQueue(
 
   // Deduplicate: keep the latest entry per entityType+entityId
   const map = new Map<string, SyncQueueEntry>();
+  const coveredIdsByEntity: Record<string, string[]> = {};
   for (const entry of all) {
     const key = `${entry.entityType}:${entry.entityId}`;
     map.set(key, entry as SyncQueueEntry);
+    (coveredIdsByEntity[key] ??= []).push(entry.id);
   }
 
   return {
     entries: Array.from(map.values()),
     coveredIds: all.map(e => e.id),
+    coveredIdsByEntity,
   };
 }
 
@@ -101,8 +97,8 @@ export async function hasPendingDeltas(): Promise<boolean> {
 // ─── Sync metadata (one row per project) ───
 
 /** Read the active project's sync metadata. Returns null if not yet initialized. */
-export async function getSyncMeta(): Promise<SyncMeta | null> {
-  const row = await db.syncMeta.get(getActiveProjectId());
+export async function getSyncMeta(projectId: string = getActiveProjectId()): Promise<SyncMeta | null> {
+  const row = await db.syncMeta.get(projectId);
   return (row as SyncMeta | undefined) ?? null;
 }
 
@@ -126,6 +122,8 @@ export async function updateSyncMeta(
     lastPulledAt: existing?.lastPulledAt ?? null,
     lastPushedAt: existing?.lastPushedAt ?? null,
     serverStoryVersion: existing?.serverStoryVersion ?? null,
+    serverDeletedAt: existing?.serverDeletedAt ?? null,
+    serverDeletedEntities: existing?.serverDeletedEntities ?? {},
     ...updates,
   });
 }

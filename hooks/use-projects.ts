@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { listProjects, type ProjectSummary } from '@/lib/projects/projects';
 import { getActiveProjectId, PROJECT_CHANGED, PROJECT_CHANGED_EVENT } from '@/lib/projects/active-project';
 
@@ -16,9 +16,12 @@ export function useProjects() {
   const [activeId, setActiveId] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
+  const requestRef=useRef(0);
   const refresh = useCallback(async () => {
+    const request=++requestRef.current;
     try {
       const list = await listProjects();
+      if(request!==requestRef.current) return;
       setProjects(list);
       setActiveId(getActiveProjectId());
     } catch (e) {
@@ -27,10 +30,11 @@ export function useProjects() {
       // and keep the prior list so a transient storage error doesn't blank the page.
       console.error('[use-projects] failed to load projects', e);
     } finally {
-      setLoading(false);
+      if(request===requestRef.current) setLoading(false);
     }
   }, []);
 
+  const invalidate=useCallback(()=>{requestRef.current++;},[]);
   useEffect(() => {
     refresh();
 
@@ -50,10 +54,11 @@ export function useProjects() {
     }
 
     return () => {
+      invalidate();
       window.removeEventListener(PROJECT_CHANGED_EVENT, onLocalChange);
       channel?.close();
     };
-  }, [refresh]);
+  }, [refresh,invalidate]);
 
   return { projects, activeId, loading, refresh };
 }

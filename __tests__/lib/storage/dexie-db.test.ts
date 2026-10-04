@@ -97,7 +97,7 @@ describe('dexie-db', () => {
 
     it('migrates writing sessions and removes localStorage key', async () => {
       const sessions = [
-        { id: 's1', startedAt: '2026-01-01T10:00:00Z', endedAt: '2026-01-01T10:30:00Z', wordsAdded: 100, flowScore: null, heteronymId: null },
+        { id: 's1', projectId: getActiveProjectId(), projectName: 'Novel', wordsStart: 0, wordsEnd: 100, startedAt: '2026-01-01T10:00:00Z', endedAt: '2026-01-01T10:30:00Z', wordsAdded: 100, flowScore: null, heteronymId: null },
       ];
       storage['zagafy_sessions'] = JSON.stringify(sessions);
 
@@ -107,6 +107,27 @@ describe('dexie-db', () => {
       expect(rows).toHaveLength(1);
       expect(JSON.parse(rows[0].data).id).toBe('s1');
       expect(storage['zagafy_sessions']).toBeUndefined();
+    });
+
+    it('transaction failure keeps all legacy bytes and permits a safe retry', async () => {
+      const raw = JSON.stringify({ title: 'Legacy', chapters: [{ id: 'ch1', title: 'Chapter', content: 'Recovery text', summary: '' }] });
+      storage['zagafy_state'] = raw;
+      const write = vi.spyOn(db.meta, 'put').mockRejectedValueOnce(new Error('quota'));
+      await expect(migrateFromLocalStorage()).rejects.toThrow('quota');
+      expect(storage['zagafy_state']).toBe(raw);
+      expect(await db.chapters.count()).toBe(0); expect(await db.stories.count()).toBe(0);
+      write.mockRestore(); await migrateFromLocalStorage();
+      expect((await db.chapters.get('ch1'))?.content).toBe('Recovery text');
+      expect(storage['zagafy_state']).toBeUndefined();
+    });
+
+    it('migration cannot overwrite a newer or foreign existing record', async () => {
+      storage['zagafy_state'] = JSON.stringify({ chapters: [{ id: 'ch1', title: 'Old', content: 'Legacy text', summary: '' }] });
+      await db.chapters.put({ id: 'ch1', projectId: 'another', title: 'New', content: 'Newer writing', summary: '', updatedAt: 0 });
+      await expect(migrateFromLocalStorage()).rejects.toThrow('conflicts');
+      expect((await db.chapters.get('ch1'))?.content).toBe('Newer writing');
+      expect(storage['zagafy_state']).toContain('Legacy text');
+      expect(await db.meta.get('migration')).toBeUndefined();
     });
 
     it('is idempotent — skips on second call', async () => {
@@ -131,16 +152,16 @@ describe('dexie-db', () => {
       expect(chapters).toHaveLength(0);
     });
 
-    it('handles corrupt JSON in localStorage gracefully', async () => {
+    it('retains corrupt legacy bytes and rejects migration', async () => {
       storage['zagafy_state'] = 'not-json{{{';
       storage['zagafy_chapter_versions'] = 'also-bad';
       storage['zagafy_sessions'] = '{nope}';
 
-      await migrateFromLocalStorage();
-
-      // Should complete without throwing; migration marked done
-      const meta = await db.meta.get('migration');
-      expect(meta).toBeTruthy();
+      await expect(migrateFromLocalStorage()).rejects.toThrow();
+      expect(await db.meta.get('migration')).toBeUndefined();
+      expect(storage['zagafy_state']).toBe('not-json{{{');
+      expect(storage['zagafy_chapter_versions']).toBe('also-bad');
+      expect(storage['zagafy_sessions']).toBe('{nope}');
     });
   });
 
@@ -194,7 +215,7 @@ describe('dexie-db', () => {
 
   describe('session CRUD', () => {
     it('putSession / getSessions round-trip', async () => {
-      await putSession({ id: 's1', startedAt: '2026-01-01T10:00:00Z', endedAt: '2026-01-01T10:30:00Z', wordsAdded: 100 });
+      await putSession({ id: 's1', projectId: getActiveProjectId(), projectName: 'Novel', wordsStart: 0, wordsEnd: 100, startedAt: '2026-01-01T10:00:00Z', endedAt: '2026-01-01T10:30:00Z', wordsAdded: 100 });
       const sessions = await getSessions();
       expect(sessions).toHaveLength(1);
       expect(sessions[0].id).toBe('s1');
@@ -233,9 +254,10 @@ describe('dexie-db', () => {
       expect(all).toHaveLength(1);
     });
 
-    it('getStory returns null when stored JSON is corrupt', async () => {
+    it('getStory rejects corrupt JSON without overwriting the original', async () => {
       await db.stories.put({ id: getActiveProjectId(), data: '{not-json', updatedAt: Date.now() });
-      expect(await getStory()).toBeNull();
+      await expect(getStory()).rejects.toThrow();
+      expect((await db.stories.get(getActiveProjectId()))?.data).toBe('{not-json');
     });
   });
 

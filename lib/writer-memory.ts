@@ -1,3 +1,4 @@
+import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 import { db, type DexieWriterInsight } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 
@@ -51,7 +52,7 @@ function rowToInsight(row: DexieWriterInsight): WriterInsight | null {
     observation: row.observation,
     evidenceCount: row.evidenceCount,
     lastObservedAt: row.lastObservedAt,
-    confidence: row.confidence,
+    confidence: Math.min(1, Math.max(0, row.confidence > 1 ? row.confidence / 100 : row.confidence)),
     pinned: row.pinned === 1,
   };
 }
@@ -145,7 +146,7 @@ export async function observe(input: ObserveInput): Promise<WriterInsight> {
   const weight = input.evidenceWeight ?? 1;
 
   const projectId = getActiveProjectId();
-  return db.transaction('rw', db.writerInsights, async () => {
+  const result = await db.transaction('rw', [db.writerInsights, db.syncQueue], async () => {
     const existingRows = await db.writerInsights
       .where('category')
       .equals(input.category)
@@ -165,6 +166,7 @@ export async function observe(input: ObserveInput): Promise<WriterInsight> {
         pinned: match.pinned === 1,
       };
       await db.writerInsights.put(insightToRow(updated, projectId));
+      await queueLocalMutation(projectId, 'writerInsight', updated.id);
       return updated;
     }
 
@@ -178,25 +180,44 @@ export async function observe(input: ObserveInput): Promise<WriterInsight> {
       pinned: false,
     };
     await db.writerInsights.put(insightToRow(fresh, projectId));
+    await queueLocalMutation(projectId, 'writerInsight', fresh.id);
     return fresh;
   });
+  notifyLocalMutation();
+  return result;
 }
 
 /** Delete a single writer insight by ID. */
 export async function deleteInsight(id: string): Promise<void> {
-  await db.writerInsights.delete(id);
+  await db.transaction('rw', [db.writerInsights, db.syncQueue], async () => {
+    const row = await db.writerInsights.get(id);
+    if (!row) return;
+    await db.writerInsights.delete(id);
+    await queueLocalMutation(row.projectId ?? getActiveProjectId(), 'writerInsight', id, 'delete');
+  });
+  notifyLocalMutation();
 }
 
 /** Pin or unpin an insight, affecting its injection priority in AI prompts. */
 export async function setInsightPinned(id: string, pinned: boolean): Promise<void> {
-  const row = await db.writerInsights.get(id);
-  if (!row) return;
-  await db.writerInsights.put({ ...row, pinned: pinned ? 1 : 0 });
+  await db.transaction('rw', [db.writerInsights, db.syncQueue], async () => {
+    const row = await db.writerInsights.get(id);
+    if (!row) return;
+    await db.writerInsights.put({ ...row, pinned: pinned ? 1 : 0 });
+    await queueLocalMutation(row.projectId ?? getActiveProjectId(), 'writerInsight', id);
+  });
+  notifyLocalMutation();
 }
 
 /** Remove the active project's writer insights from the local database. */
 export async function clearAllInsights(): Promise<void> {
-  await db.writerInsights.where('projectId').equals(getActiveProjectId()).delete();
+  const projectId = getActiveProjectId();
+  await db.transaction('rw', [db.writerInsights, db.syncQueue], async () => {
+    const rows = await db.writerInsights.where('projectId').equals(projectId).toArray();
+    await db.writerInsights.where('projectId').equals(projectId).delete();
+    for (const row of rows) await queueLocalMutation(projectId, 'writerInsight', row.id, 'delete');
+  });
+  notifyLocalMutation();
 }
 
 /**
