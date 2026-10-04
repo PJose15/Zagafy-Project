@@ -1,3 +1,4 @@
+import { stagingPreflight } from '../scripts/staging-preflight.mjs';
 import { clerkSetup } from '@clerk/testing/playwright';
 
 /**
@@ -10,6 +11,7 @@ import { clerkSetup } from '@clerk/testing/playwright';
  * the unauthenticated app.
  */
 export default async function globalSetup(): Promise<void> {
+  if (process.env.E2E_REQUIRE_CLOUD === 'true') await stagingPreflight();
   if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY) {
     await clerkSetup();
   }

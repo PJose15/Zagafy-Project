@@ -14,7 +14,8 @@ The Playwright suite runs in two modes:
 
 ## One-time setup
 
-The only manual step is copying the two keys — everything else is scripted.
+The helper below configures the primary test account. Two-device hosted release
+acceptance additionally needs the isolated staging setup in [STAGING.md](STAGING.md).
 
 1. In [Clerk](https://dashboard.clerk.com), open the Zagafy application with
    the **Development** instance selected (never use production keys for E2E),
@@ -58,8 +59,9 @@ Without those vars, `npm run test:e2e` runs keyless exactly as before.
 | Spec files | All auth-gated flows start with `await gotoApp(page, …)` instead of a hardcoded skip |
 | `ci.yml` e2e job | Maps the `E2E_CLERK_*` secrets into the Playwright process (empty → keyless mode) |
 
-Visual-regression specs remain excluded in CI — they need committed baseline
-screenshots, which is a separate piece of work.
+Ordinary CI includes the committed Linux visual-regression baselines. Hosted cloud
+acceptance specs are intentionally excluded unless `E2E_REQUIRE_CLOUD=true`; the
+required release workflow enables them after its staging preflight succeeds.
 
 ## Visual regression baselines
 
@@ -90,3 +92,18 @@ can drop its `--grep-invert "Visual regression"` filter and include the
 visual spec.
 
 <!-- ci: baselines regenerated chore/dep-audit-remediation -->
+
+
+## Cloud-history acceptance
+
+`release-cloud.spec.ts` uses independent browser contexts and real authenticated
+sync routes for concurrent turns, offline clearing/recovery and account isolation.
+It requires the isolated staging preflight and two dedicated Clerk accounts; it
+cannot prove live acceptance in ordinary keyless CI. Only model responses are
+stubbed. `release-chat-local.spec.ts` runs in ordinary CI and covers the single
+saved-message clear/restore/reload regression without replaying a model call.
+
+The release workflow selects eight required tests and validates the JSON report:
+zero skips, zero failures, zero flaky retries. The protected readiness probe must
+attest the same full commit as the workflow. See [STAGING.md](STAGING.md) for the
+required flags, credentials, entitlement and migration chain.

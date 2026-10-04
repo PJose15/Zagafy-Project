@@ -177,7 +177,7 @@ export default function AssistantPage() {
   }, []);
 
   const handleClearChat = async () => {
-    if (messages.length <= 1) return;
+    if (!messages.some(message => message.id !== 'welcome')) return;
     const confirmed = await confirm({
       title: t('clearConfirmTitle'),
       message: t('clearConfirmMessage'),
@@ -370,7 +370,7 @@ export default function AssistantPage() {
                     toast(t('copyFailedToast'), 'error');
                   }
                 }}
-                disabled={messages.length <= 1}
+                disabled={!messages.some(message => message.id !== 'welcome')}
                 className="flex items-center gap-2 text-sm text-sepia-600 hover:text-brass-700 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
               >
                 <BookOpen size={16} aria-hidden="true" />
@@ -378,7 +378,7 @@ export default function AssistantPage() {
               </button>
               <button
                 onClick={handleClearChat}
-                disabled={messages.length <= 1 || isLoading || isAuditing}
+                disabled={!messages.some(message => message.id !== 'welcome') || isLoading || isAuditing}
                 className="flex items-center gap-2 text-sm text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
                 aria-label={t('clearAria')}
               >

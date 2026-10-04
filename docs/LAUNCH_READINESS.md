@@ -76,8 +76,10 @@ npm run build
 Run the **Authenticated release readiness** workflow against an isolated staging
 deployment with `STAGING_URL`, Clerk development-instance E2E keys, and a dedicated
 test user's email/password. Missing configuration fails this workflow. It exercises
-the required manuscript, DOCX/PDF download and JSON backup/restore journeys;
-remaining real-world journeys below need evidence. All four required tests have
+the required manuscript, DOCX/PDF download, JSON backup/restore, single-message
+recovery and authenticated two-device chat/offline-clear/account-isolation journeys.
+The isolated staging probe must match the release commit and migrated schema;
+remaining real-world journeys below need evidence. All eight required tests have
 unconditional assertions and must prove an active Clerk session in staging.
 
 The nightly eval uses `STAGING_URL` and `EVAL_AUTH_TOKEN`, a current Clerk JWT for

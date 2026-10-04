@@ -19,6 +19,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "verify:ratelimit": "node scripts/verify-ratelimit.mjs",
+    "verify:staging": "node scripts/staging-preflight.mjs",
     "verify:production-config": "node scripts/check-production-config.mjs",
     "prepare": "husky",
     "test:e2e": "playwright test",

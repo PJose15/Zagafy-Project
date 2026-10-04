@@ -1,35 +1,45 @@
 name: Authenticated release readiness
 on:
   workflow_dispatch:
+concurrency:
+  group: isolated-staging-release-readiness
+  cancel-in-progress: false
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      BASE_URL: ${{ secrets.STAGING_URL }}
+      HEALTH_TOKEN: ${{ secrets.STAGING_HEALTH_TOKEN }}
+      STAGING_ISOLATED: ${{ vars.STAGING_ISOLATED }}
+      STAGING_EXPECTED_SHA: ${{ github.sha }}
+      PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/release-readiness.json
+      PLAYWRIGHT_HTML_OPEN: never
+      E2E_REQUIRE_AUTH: 'true'
+      E2E_REQUIRE_CLOUD: 'true'
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      E2E_OTHER_CLERK_USER_EMAIL: ${{ secrets.E2E_OTHER_CLERK_USER_EMAIL }}
+      E2E_OTHER_CLERK_USER_PASSWORD: ${{ secrets.E2E_OTHER_CLERK_USER_PASSWORD }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # Match ordinary CI's cross-platform optional-dependency reconciliation.
+      - run: npm install --no-audit --no-fund
+      - name: Verify isolated staging configuration, schema and release commit
+        run: npm run verify:staging
       - run: npx playwright install --with-deps chromium
-      - name: Require authenticated staging configuration
-        env:
-          BASE_URL: ${{ secrets.STAGING_URL }}
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
-          E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
-          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
-        run: |
-          node -e "for (const key of ['BASE_URL','NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY','CLERK_SECRET_KEY','E2E_CLERK_USER_EMAIL','E2E_CLERK_USER_PASSWORD']) { if (!process.env[key]) throw new Error('Missing '+key); }"
-      - name: Verify authenticated core journey without skips
-        run: npx playwright test e2e/release-core.spec.ts e2e/release-export.spec.ts e2e/release-backup.spec.ts
-        env:
-          BASE_URL: ${{ secrets.STAGING_URL }}
-          E2E_REQUIRE_AUTH: 'true'
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
-          E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
-          E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+      - name: Verify authenticated core and two-device cloud journeys
+        run: npx playwright test e2e/release-core.spec.ts e2e/release-export.spec.ts e2e/release-backup.spec.ts e2e/release-chat-local.spec.ts e2e/release-cloud.spec.ts --reporter=html,github,json
+      - name: Recheck the deployed commit after browser acceptance
+        run: npm run verify:staging
+      - name: Reject skipped, missing or flaky required journeys
+        run: node scripts/check-release-results.mjs test-results/release-readiness.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:

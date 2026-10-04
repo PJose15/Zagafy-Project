@@ -165,6 +165,30 @@ replay, same-tab chat reconciliation, rapid switches, deleted chapter buffers,
 linked recovery records and migrated Postgres metadata/version round trips.
 Neither local tests nor ordinary CI prove authenticated two-device acceptance.
 
+## Staging acceptance hardening — October 4
+
+The automated release suite now selects eight required journeys, including three
+real authenticated cloud-history journeys using independent browser contexts.
+Those cover concurrent turns and fresh-device import/reload, offline clearing
+and recovery under new IDs, and second-account access/workspace isolation.
+Only AI generation is stubbed. Synthetic fixture cleanup is limited to the test's
+UUID and exact unique title. The single-message clear/copy guard was corrected
+and has an ordinary browser clear/restore/reload regression.
+
+An always-token-gated read-only readiness probe checks explicit isolated-preview
+attestation, SaaS mode, development auth keys, cloud schema and deployed commit.
+The workflow requires separate test accounts and isolation confirmation, pins
+and rechecks the release commit, and rejects missing/skipped/flaky browser results.
+Production config verification now rejects missing deployment mode as well as embeds.
+
+Local evidence: 229 files / 3,075 tests pass, including migrated Postgres schema
+attestation/removal, secret-redaction and false-green preflight/report regressions.
+Production build, TypeScript and lint pass (six existing warnings). Eight required
+Playwright journeys are discoverable. Authenticated hosted execution has **not**
+passed: authorized preview access, isolated preview configuration/database and
+dedicated accounts are still required. Ordinary CI intentionally skips the three
+hosted-only cloud journeys. See STAGING.md for the concrete setup contract.
+
 ## Remaining implementation work, in priority order
 
 | Priority | Concrete gap | Acceptance needed |

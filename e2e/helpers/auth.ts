@@ -20,12 +20,14 @@ import { setupClerkTestingToken } from '@clerk/testing/playwright';
 const E2E_EMAIL = process.env.E2E_CLERK_USER_EMAIL;
 const E2E_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD;
 
-export function clerkE2ECredentialsConfigured(): boolean {
+export interface E2EIdentity { email: string; password: string }
+
+export function clerkE2ECredentialsConfigured(identity?: E2EIdentity): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
     process.env.CLERK_SECRET_KEY &&
-    E2E_EMAIL &&
-    E2E_PASSWORD,
+    (identity?.email ?? E2E_EMAIL) &&
+    (identity?.password ?? E2E_PASSWORD),
   );
 }
 
@@ -45,8 +47,8 @@ async function verifyRequiredSession(page: Page): Promise<void> {
  * Skips the current test (with setup instructions) when auth is enabled but
  * the E2E credentials are not configured.
  */
-export async function gotoApp(page: Page, path: string = '/'): Promise<void> {
-  const useClerk = clerkE2ECredentialsConfigured();
+export async function gotoApp(page: Page, path: string = '/', identity?: E2EIdentity): Promise<void> {
+  const useClerk = clerkE2ECredentialsConfigured(identity);
   if (process.env.E2E_REQUIRE_AUTH === 'true' && !useClerk) {
     throw new Error('Release readiness requires Clerk keys and dedicated test-user credentials');
   }
@@ -77,12 +79,12 @@ export async function gotoApp(page: Page, path: string = '/'): Promise<void> {
   // Clerk <SignIn /> flow: identifier first, then password.
   const identifier = page.locator('input[name="identifier"]');
   await identifier.waitFor({ state: 'visible', timeout: 15_000 });
-  await identifier.fill(E2E_EMAIL!);
+  await identifier.fill(identity?.email ?? E2E_EMAIL!);
   await page.getByRole('button', { name: /continue/i }).click();
 
   const password = page.locator('input[name="password"]');
   await password.waitFor({ state: 'visible', timeout: 15_000 });
-  await password.fill(E2E_PASSWORD!);
+  await password.fill(identity?.password ?? E2E_PASSWORD!);
   await page.getByRole('button', { name: /continue|sign in/i }).first().click();
 
   // Signed in — Clerk redirects back into the app.

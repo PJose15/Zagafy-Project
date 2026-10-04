@@ -302,3 +302,34 @@ isolated staging database before deploying. No hosted migration, merge or
 production deployment was performed in this batch. Protected conflict/clear
 snapshots are intentionally local: export or explicit restore is required to
 carry those recovery copies to another device. The launch gates above remain open.
+
+
+## Staging acceptance hardening checkpoint — October 4
+
+Added a protected, read-only cloud-schema/deployment readiness probe and a runner
+preflight that refuses live Clerk keys, missing isolation confirmation, ordinary
+accounts, missing secrets and stale deployment commits. Token checks use fixed-
+length SHA-256 digests with timing-safe comparison; configuration and database
+failure output never includes secret values. A real migrated Postgres regression
+proves the probe accepts the required schema and rejects a removed chat column.
+
+The authenticated release workflow now selects eight required browser journeys,
+including independent-device concurrent chat/import/reload, offline clear/restore
+with fresh IDs, and account/workspace isolation. Model responses alone are stubbed;
+Clerk, database, sync routes and cloud fixture writes must be real staging services.
+Cleanup is limited to generated synthetic project IDs and exact fixture titles.
+It rechecks the deployed commit and rejects missing, skipped or flaky reports.
+
+Preparing this coverage exposed a one-message UI bug: clear/copy assumed every
+conversation retained a welcome bubble. The guard now checks for stored messages.
+An ordinary browser regression clears, restores and reloads a single completed
+user turn without repeating its failed model call. Production config checking also
+requires explicit SaaS mode instead of accepting an unspecified mode.
+
+Local checks: **229 files / 3,075 tests passed**, production build and TypeScript
+passed, lint zero errors/six existing warnings, diff clean. Playwright discovers
+eight required journeys in five selected files. New real-service cloud journeys
+have not been executed against authenticated staging; the three are explicitly
+skipped in ordinary CI. Staging authorization/configuration, isolated migrated
+database and dedicated test users remain blocking prerequisites, documented in
+STAGING.md. No production promotion, hosted migration or live payment was made.

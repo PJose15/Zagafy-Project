@@ -6,6 +6,7 @@ import { drizzle, type PgliteDatabase } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { NextRequest } from 'next/server';
 import * as schema from '@/db/schema';
+import { GET as readiness } from '@/app/api/health/readiness/route';
 import { POST } from '@/app/api/sync/push/route';
 import { GET } from '@/app/api/sync/pull/route';
 import { DELETE as removeStory } from '@/app/api/stories/route';
@@ -282,6 +283,16 @@ describe('Transactional sync push against migrated Postgres', () => {
     const results=await Promise.all((await Promise.all([POST(request([delta('First edit',1)])),POST(request([delta('Second edit',1)]))])).map(r=>r.json()));
     expect(results.map(r=>r.data.applied).sort()).toEqual([0,1]);
     expect(results.flatMap(r=>r.data.conflicts)).toEqual([expect.objectContaining({entityId:'chat',localPayload:expect.objectContaining({content:'Second edit'}),serverPayload:expect.objectContaining({content:'First edit',version:2})})]);
+  });
+
+  it('attests the migrated staging schema and fails after a required chat column is removed',async()=>{
+    for(const [key,value] of Object.entries({HEALTH_TOKEN:'probe',ZAGAFY_STAGING:'true',VERCEL_ENV:'preview',NEXT_PUBLIC_DEPLOYMENT_MODE:'saas',NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:'pk_test_a',CLERK_SECRET_KEY:'sk_test_a',DATABASE_URL:'configured',UPSTASH_REDIS_REST_URL:'configured',UPSTASH_REDIS_REST_TOKEN:'configured',VERCEL_GIT_COMMIT_SHA:'a'.repeat(40)}))vi.stubEnv(key,value);
+    const req=()=>new NextRequest('http://localhost/api/health/readiness',{headers:{'x-health-token':'probe'}});
+    try {
+      expect((await readiness(req())).status).toBe(200);
+      await pg.exec('ALTER TABLE chat_messages DROP COLUMN metadata');
+      const response=await readiness(req());expect(response.status).toBe(503);expect((await response.json()).data.missing).toContain('schema:chat_messages.metadata');
+    } finally {await pg.exec('ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS metadata jsonb');vi.unstubAllEnvs();}
   });
 
 });
