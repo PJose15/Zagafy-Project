@@ -35,6 +35,7 @@ export function ProjectSwitcher({ onNavigate }: { onNavigate?: () => void }) {
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.stopPropagation();
         setOpen(false);
         triggerRef.current?.focus();
       }

@@ -1,70 +1,43 @@
 import { test, expect } from '@playwright/test';
 import { gotoApp } from './helpers/auth';
 
-/**
- * E2E Flow 1: Sign up → Genesis → first chapter → save → reload → still there
- *
- * This test covers the critical onboarding path. In CI, Clerk test-mode
- * credentials sign in a dedicated test user (see docs/E2E.md); with auth
- * disabled the app is reached directly.
- */
-test.describe('Sign-up and Genesis flow', () => {
-  test('complete genesis and verify first chapter persists', async ({ page }) => {
-    // Signs in via Clerk when auth is enabled and credentials are configured.
-    await gotoApp(page, '/');
-    await expect(page).toHaveTitle(/Zagafy|Story/i);
-
-    // Look for genesis or dashboard
-    const hasGenesis = await page.locator('[data-testid="genesis"], [href*="genesis"]').count();
-    if (hasGenesis > 0) {
-      await page.locator('[data-testid="genesis"], [href*="genesis"]').first().click();
-    }
-
-    // Genesis form: fill in story basics
-    const titleInput = page.locator('input[name="title"], [data-testid="story-title"]');
-    if (await titleInput.count() > 0) {
-      await titleInput.fill('Test Story — E2E');
-    }
-
-    const genreSelect = page.locator('select[name="genre"], [data-testid="genre-select"]');
-    if (await genreSelect.count() > 0) {
-      await genreSelect.selectOption({ index: 1 });
-    }
-
-    // Submit genesis if there's a submit button
-    const submitBtn = page.locator('button[type="submit"], [data-testid="genesis-submit"]');
-    if (await submitBtn.count() > 0) {
-      await submitBtn.click();
-      await page.waitForURL(/\/(manuscript|dashboard|story)/, { timeout: 10_000 });
-    }
-
-    // Navigate to manuscript / editor
-    const manuscriptLink = page.locator('[href*="manuscript"], [data-testid="manuscript"]');
-    if (await manuscriptLink.count() > 0) {
-      await manuscriptLink.first().click();
-    }
-
-    // Type in the editor
-    const editor = page.locator('textarea, [contenteditable="true"], [data-testid="editor"]');
-    if (await editor.count() > 0) {
-      await editor.first().click();
-      await editor.first().fill('It was a dark and stormy night. The E2E test had begun.');
-    }
-
-    // Save (Ctrl+S or auto-save)
-    await page.keyboard.press('Control+s');
-    await page.waitForTimeout(1000);
-
-    // Reload and verify content persists
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-
-    const editorAfterReload = page.locator('textarea, [contenteditable="true"], [data-testid="editor"]');
-    if (await editorAfterReload.count() > 0) {
-      const content = await editorAfterReload.first().inputValue().catch(() => '');
-      const textContent = await editorAfterReload.first().textContent().catch(() => '');
-      const hasContent = content.includes('dark and stormy') || (textContent ?? '').includes('dark and stormy');
-      expect(hasContent).toBe(true);
-    }
-  });
+// This verifies project setup, not account registration. Auth is independently
+// required by the authenticated staging workflow.
+test('complete all Genesis steps and persist the project and first chapter', async ({ page }) => {
+  await gotoApp(page, '/genesis');
+  const title = `Genesis acceptance ${Date.now()}`;
+  const next = page.getByRole('button', { name: 'Next', exact: true });
+  await expect(next).toBeDisabled();
+  await page.getByTestId('genesis-name-input').fill(title);
+  await next.click();
+  await page.getByTestId('genesis-logline-input').fill('A keeper discovers a letter from tomorrow.');
+  await next.click();
+  await page.getByRole('button', { name: 'Fantasy', exact: true }).click();
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  await next.click();
+  await page.getByTestId('genesis-protag-name').fill('Mara Keeper');
+  await next.click();
+  await page.getByTestId('genesis-antag-name').fill('The Archivist');
+  await next.click();
+  await page.getByTestId('genesis-world-setting').fill('An island lighthouse beyond the charted sea.');
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Create Project', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  // Isolate manuscript persistence from the optional guided-tour overlay.
+  await page.evaluate(() => localStorage.setItem('zagafy_tour_completed', 'true'));
+  await page.goto('/characters');
+  await expect(page.getByText('Mara Keeper', { exact: true })).toBeVisible();
+  await expect(page.getByText('The Archivist', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Mara Keeper', { exact: true })).toBeVisible();
+  await page.goto('/manuscript');
+  await page.getByRole('button', { name: 'New Chapter', exact: true }).click();
+  await page.getByPlaceholder('Chapter Title', { exact: true }).fill('The first letter');
+  await page.locator('[contenteditable="true"]').first().fill('Mara opened a letter addressed to tomorrow.');
+  await page.getByRole('button', { name: 'Save Chapter', exact: true }).click();
+  await expect(page.getByText('The first letter', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Edit The first letter', exact: true }).click();
+  await expect(page.locator('[contenteditable="true"]').first()).toContainText('addressed to tomorrow');
 });

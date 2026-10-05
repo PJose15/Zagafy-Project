@@ -1,0 +1,48 @@
+# UI and UX launch audit — October 5, 2026
+
+## Scope and changes
+
+This batch checks local project creation and mobile navigation. It does not
+establish hosted authentication, payment, collaboration or full accessibility.
+
+- The mobile drawer now exposes the active project and project menu, previously
+  confined to the desktop header. The navigation trigger communicates its state.
+- The drawer uses the existing modal stack for Escape, keyboard containment,
+  scroll locking and opener focus restoration. A visible close control starts
+  keyboard focus. Resizing to desktop clears the mobile open state.
+- Escape first closes the project menu without closing its parent drawer.
+- Genesis acceptance now completes every required step, creates the project,
+  confirms both characters after reload, and saves/reopens a first chapter.
+  Missing controls fail assertions. This is project setup, not a sign-up test.
+- Accessibility smoke visits the intended routes directly. Its dashboard fixture
+  has a saved chapter, avoiding the empty dashboard redirect to Genesis. Every
+  violation and incomplete result is attached to the browser report, including
+  serious/moderate findings. CI retains artifacts on success as well as failure.
+
+## Verification contract
+
+Ordinary browser CI exercises the keyless local product. The new mobile tests
+cover project-menu Escape, drawer focus wrapping, Escape/return focus, link
+navigation, horizontal overflow, and desktop/mobile resizing at 390 pixels wide.
+Desktop visual baselines still apply. Unit/integration tests and build/type/lint
+checks must pass on the same uploaded release candidate.
+
+The accessibility gate still rejects critical findings only. A green smoke check
+is **not WCAG AA compliance**. Inspect retained JSON findings and resolve serious
+issues, contrast, targets, keyboard behavior and screen-reader usability before
+claiming accessibility acceptance.
+
+## Remaining launch work
+
+1. Review populated writing/recovery screens on mobile, tablet and desktop,
+   including touch keyboards, long manuscripts, long titles and Spanish.
+2. Run an author usability session through setup, writing, AI suggestions,
+   recovery and publishing; verify navigation and local/cloud expectations.
+3. Replace remaining legacy conditional import/Flow/find/billing/collaboration
+   smoke tests with concrete fixtures and unconditional success assertions.
+4. Execute isolated authenticated staging without required-flow skips. Account
+   registration, invitations/revocation, two-device sync and Stripe lifecycle
+   are still live acceptance gates.
+5. Verify real AI quality/cost, Redis outages, alerts, database restore and rollback.
+
+No hosted migration, production merge or promotion is part of this batch.
