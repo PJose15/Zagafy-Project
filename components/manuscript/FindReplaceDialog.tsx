@@ -22,6 +22,8 @@ import { addVersion } from '@/lib/types/chapter-version';
 interface FindReplaceDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Capture the owning project; never resolve it again between awaited snapshots. */
+  projectId: string;
   chapters: Chapter[];
   /** Optional id of the chapter currently in focus — drives the
    *  current-chapter scope option. */
@@ -45,6 +47,7 @@ export function FindReplaceDialog({
   open,
   onClose,
   chapters,
+  projectId,
   currentChapterId,
   excludedChapterId,
   onApplyEdits,
@@ -164,6 +167,7 @@ export function FindReplaceDialog({
           tVersionLabels('preReplace', { query: query.slice(0, 40) }),
           'auto-snapshot',
           false,
+          projectId,
         );
         edits.push({ chapterId: ch.id, newContent: result.newContent });
         totalReplaced += result.replaced;

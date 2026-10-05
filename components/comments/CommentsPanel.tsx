@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown, ChevronRight, MessageSquare, Unlink, X } from 'lucide-react';
@@ -47,6 +48,9 @@ export function CommentsPanel({
   const [draft, setDraft] = useState('');
   const [showResolved, setShowResolved] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [desktop, setDesktop] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   // Load this chapter's comments.
   useEffect(() => {
@@ -83,12 +87,29 @@ export function CommentsPanel({
   // sheet is derived-open while a pending selection exists, unless the writer
   // explicitly dismissed the sheet for that selection.
   const [dismissedSelection, setDismissedSelection] = useState<CommentSelection | null>(null);
-  const sheetVisible =
-    sheetOpen || (pendingSelection !== null && pendingSelection !== dismissedSelection);
+  const sheetVisible = !desktop &&
+    (sheetOpen || (pendingSelection !== null && pendingSelection !== dismissedSelection));
   const closeSheet = () => {
     setSheetOpen(false);
     setDismissedSelection(pendingSelection);
   };
+  useModalHygiene(sheetRef, closeSheet, sheetVisible);
+  useEffect(() => {
+    if (sheetVisible) closeRef.current?.focus();
+  }, [sheetVisible]);
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const resize = () => {
+      setDesktop(media.matches);
+      if (media.matches) {
+        setSheetOpen(false);
+        setDismissedSelection(pendingSelection);
+      }
+    };
+    resize();
+    media.addEventListener('change', resize);
+    return () => media.removeEventListener('change', resize);
+  }, [pendingSelection]);
 
   const open = useMemo(
     () =>
@@ -272,18 +293,20 @@ export function CommentsPanel({
         </ParchmentCard>
       </aside>
 
-      {/* Mobile: floating button + bottom sheet */}
-      <div className="lg:hidden">
+      {/* Keep the mobile trigger in flow so it cannot cover chapter actions. */}
+      <div className="lg:hidden w-full">
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="fixed bottom-4 right-4 z-40 flex items-center justify-center w-12 h-12 rounded-full bg-forest-700 text-cream shadow-lg hover:bg-forest-600 transition-colors"
+          className="inline-flex items-center justify-center gap-2 min-h-11 px-4 py-2 rounded-lg bg-forest-700 text-cream-50 shadow-lg hover:bg-forest-600 transition-colors"
           aria-label={t('mobileButtonAria', { count: totalCount })}
+          aria-expanded={sheetVisible}
         >
           <MessageSquare size={20} aria-hidden="true" />
+          <span>{t('panelTitle')}</span>
           {totalCount > 0 && (
             <span
-              className="absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 rounded-full bg-brass-500 text-parchment-50 text-xs font-bold flex items-center justify-center"
+              className="min-w-[1.25rem] h-5 px-1 rounded-full bg-brass-500 text-parchment-50 text-xs font-bold flex items-center justify-center"
               aria-hidden="true"
             >
               {totalCount}
@@ -294,12 +317,14 @@ export function CommentsPanel({
         <AnimatePresence>
           {sheetVisible && (
             <motion.div
+              ref={sheetRef}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={springs.gentle}
               className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-parchment-100 border-t border-x border-sepia-300/50 shadow-2xl p-4 custom-scrollbar"
               role="dialog"
+              aria-modal="true"
               aria-label={t('panelTitle')}
             >
               <div className="flex items-center justify-between mb-3">
@@ -307,6 +332,7 @@ export function CommentsPanel({
                   {t('panelTitle')}
                 </h3>
                 <button
+                  ref={closeRef}
                   type="button"
                   onClick={closeSheet}
                   className="p-1.5 rounded text-sepia-600 hover:text-sepia-800 hover:bg-parchment-200/60 transition-colors"

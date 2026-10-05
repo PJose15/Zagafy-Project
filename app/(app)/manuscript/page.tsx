@@ -4,6 +4,7 @@ import { useStory, Chapter, CanonStatus } from '@/lib/store';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { useManuscriptRecovery } from '@/hooks/use-manuscript-recovery';
 import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy, GripVertical, Search } from 'lucide-react';
 import { readVersions } from '@/lib/types/chapter-version';
 import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from 'motion/react';
@@ -77,7 +78,7 @@ export default function ManuscriptPage() {
   const tCommon = useTranslations('common');
   const tVersionLabels = useTranslations('versionLabels');
   const readingTime = useReadingTimeLabel();
-  const { state, updateField, saveNow } = useStory();
+  const { projectId, state, updateField, saveNow } = useStory();
   const { confirm } = useConfirm();
   const { toast } = useToast();
   // Latest chapters for deferred callbacks (undo restore fires seconds later).
@@ -91,6 +92,7 @@ export default function ManuscriptPage() {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   useUnsavedChanges(editingId !== null);
+  useManuscriptRecovery(projectId, state, editingId, editForm);
 
   // MP-05 — margin comments: latest non-collapsed editor selection (ref so
   // selection churn doesn't re-render) + the selection pinned for composing.
@@ -436,8 +438,8 @@ export default function ManuscriptPage() {
                     placeholder={t('titlePlaceholder')}
                     autoFocus
                   />
-                  <div className="flex gap-4 items-start">
-                    <div className="flex-1 min-w-0">
+                  <div className="flex flex-col lg:flex-row gap-4 items-start">
+                    <div className="w-full flex-1 min-w-0">
                       <ManuscriptEditor
                         initialContent={editForm.content || ''}
                         onChange={(json) => setEditForm((f) => ({ ...f, content: json }))}
@@ -461,7 +463,7 @@ export default function ManuscriptPage() {
                     className="h-24"
                     placeholder={t('summaryPlaceholder')}
                   />
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <ParchmentSelect
                       value={editForm.canonStatus || 'draft'}
                       onChange={(e) => setEditForm({ ...editForm, canonStatus: e.target.value as CanonStatus })}
@@ -575,6 +577,7 @@ export default function ManuscriptPage() {
       </Reorder.Group>
 
       <FindReplaceDialog
+        projectId={projectId}
         open={findOpen}
         onClose={() => setFindOpen(false)}
         chapters={state.chapters}
