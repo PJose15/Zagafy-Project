@@ -6,7 +6,7 @@ test.describe('Mobile navigation', () => {
 
   test('project navigation traps focus, restores it on Escape and supports project menus', async ({ page }) => {
     await gotoApp(page, '/manuscript');
-    const opener = page.getByRole('button', { name: 'Open navigation', exact: true });
+    const opener = page.locator('button[aria-controls="project-navigation"]');
     await opener.focus();
     await opener.press('Enter');
     const drawer = page.getByRole('dialog', { name: 'Zagafy', exact: true });
