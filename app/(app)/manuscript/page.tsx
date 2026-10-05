@@ -348,16 +348,16 @@ export default function ManuscriptPage() {
   }, []);
 
   const handleFindReplaceApply = useCallback(
-    (edits: Array<{ chapterId: string; newContent: string }>) => {
+    async (edits: Array<{ chapterId: string; newContent: string }>) => {
       const idToContent = new Map(edits.map(e => [e.chapterId, e.newContent]));
-      updateField(
-        'chapters',
-        state.chapters.map(c =>
+      await saveNow({
+        ...state,
+        chapters: state.chapters.map(c =>
           idToContent.has(c.id) ? { ...c, content: idToContent.get(c.id)! } : c,
         ),
-      );
+      });
     },
-    [state.chapters, updateField],
+    [state, saveNow],
   );
 
   return (

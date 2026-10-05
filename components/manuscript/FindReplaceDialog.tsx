@@ -34,9 +34,9 @@ interface FindReplaceDialogProps {
   excludedChapterId?: string | null;
   /**
    * Apply edits to chapter content. The callback should perform the
-   * StoryState update (typically via useStory().updateField('chapters', ...)).
+   * StoryState update and resolve only when local persistence completes.
    */
-  onApplyEdits: (edits: Array<{ chapterId: string; newContent: string }>) => void;
+  onApplyEdits: (edits: Array<{ chapterId: string; newContent: string }>) => void | Promise<void>;
 }
 
 const PREVIEW_LIMIT = 200;
@@ -169,14 +169,18 @@ export function FindReplaceDialog({
         totalReplaced += result.replaced;
       }
       if (edits.length > 0) {
-        onApplyEdits(edits);
+        await onApplyEdits(edits);
       }
-      // Surface in console for now; no toast plumbing in this dialog.
+      // Only acknowledge completion after the persistence callback resolves.
       console.info(`[find-replace] replaced ${totalReplaced} occurrence(s) across ${edits.length} chapter(s)`);
       if (totalReplaced < expected) {
         const gap = expected - totalReplaced;
         setNotice(t('formattingNotice', { count: gap }));
+      } else {
+        setNotice(t('savedNotice'));
       }
+    } catch {
+      setNotice(t('saveError'));
     } finally {
       setWorking(false);
     }

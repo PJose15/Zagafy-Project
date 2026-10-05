@@ -2,7 +2,7 @@
 
 ## Scope and changes
 
-This batch checks local project creation and mobile navigation. It does not
+These batches check local project creation, mobile navigation, bilingual writing and cross-chapter replacement. It does not
 establish hosted authentication, payment, collaboration or full accessibility.
 
 - The mobile drawer now exposes the active project and project menu, previously
@@ -18,6 +18,14 @@ establish hosted authentication, payment, collaboration or full accessibility.
   has a saved chapter, avoiding the empty dashboard redirect to Genesis. Every
   violation and incomplete result is attached to the browser report, including
   serious/moderate findings. CI retains artifacts on success as well as failure.
+
+- Spanish navigation now has a translated screen-reader name. Acceptance writes
+  accented prose and a long title at phone/tablet widths, reloads the saved locale
+  and chapter, then switches back to English without altering the manuscript.
+- Find/replace awaits an explicit local save before acknowledging completion and
+  reports failed writes. Acceptance creates two chapters, cancels a replacement,
+  confirms it, and reloads immediately after the saved acknowledgement. Unit
+  regressions cover pending and rejected persistence callbacks.
 
 ## Verification contract
 
@@ -41,7 +49,7 @@ manual acceptance.
    including touch keyboards, long manuscripts, long titles and Spanish.
 2. Run an author usability session through setup, writing, AI suggestions,
    recovery and publishing; verify navigation and local/cloud expectations.
-3. Replace remaining legacy conditional import/Flow/find/billing/collaboration
+3. Replace remaining legacy conditional import/Flow/billing/collaboration
    smoke tests with concrete fixtures and unconditional success assertions.
 4. Execute isolated authenticated staging without required-flow skips. Account
    registration, invitations/revocation, two-device sync and Stripe lifecycle

@@ -105,6 +105,28 @@ describe('FindReplaceDialog', () => {
     expect(edits.map(e => e.chapterId).sort()).toEqual(['a', 'b']);
   });
 
+  it('keeps replacement disabled until persistence completes', async () => {
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    const apply = vi.fn(() => pending);
+    renderDialog({ onApplyEdits: apply });
+    typeQuery('the', 'a');
+    const button = screen.getByText('Replace all') as HTMLButtonElement;
+    fireEvent.click(button);
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+    expect(button.disabled).toBe(true);
+    finish();
+    await waitFor(() => expect(button.disabled).toBe(false));
+  });
+
+  it('reports persistence failure instead of leaving an unhandled rejection', async () => {
+    renderDialog({ onApplyEdits: vi.fn().mockRejectedValue(new Error('Storage unavailable')) });
+    typeQuery('the', 'a');
+    fireEvent.click(screen.getByText('Replace all'));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Could not save replacements'));
+    expect((screen.getByText('Replace all') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   // ── The chapter open in the manuscript editor is excluded from replace:
   // its edits live in local editForm state, so a store write would be
   // silently erased by the next Save. ──

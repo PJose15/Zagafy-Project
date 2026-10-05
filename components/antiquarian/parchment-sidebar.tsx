@@ -191,7 +191,7 @@ export function ParchmentSidebar() {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto" aria-label="Primary">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto" aria-label={tSide('primaryNav')}>
           {navItems.map((item, index) => {
             const isActive = pathname === item.href;
             return (

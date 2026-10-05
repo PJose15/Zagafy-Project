@@ -38,6 +38,7 @@
     "settings": "Ajustes"
   },
   "sidebar": {
+    "primaryNav": "Navegación principal",
     "openNav": "Abrir navegación",
     "closeNav": "Cerrar navegación",
     "project": "Proyecto",
@@ -2040,6 +2041,8 @@
     }
   },
   "findReplace": {
+    "savedNotice": "Reemplazos guardados.",
+    "saveError": "No se pudieron guardar los reemplazos. Mantén esta página abierta y vuelve a intentarlo cuando recuperes el acceso al almacenamiento del navegador.",
     "title": "Buscar y reemplazar",
     "close": "Cerrar",
     "findPlaceholder": "Buscar…",

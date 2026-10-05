@@ -38,6 +38,7 @@
     "settings": "Settings"
   },
   "sidebar": {
+    "primaryNav": "Primary",
     "openNav": "Open navigation",
     "closeNav": "Close navigation",
     "project": "Project",
@@ -2040,6 +2041,8 @@
     }
   },
   "findReplace": {
+    "savedNotice": "Replacements saved.",
+    "saveError": "Could not save replacements. Keep this page open and retry after restoring browser storage access.",
     "title": "Find & replace",
     "close": "Close",
     "findPlaceholder": "Find…",
