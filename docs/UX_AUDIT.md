@@ -27,10 +27,13 @@ navigation, horizontal overflow, and desktop/mobile resizing at 390 pixels wide.
 Desktop visual baselines still apply. Unit/integration tests and build/type/lint
 checks must pass on the same uploaded release candidate.
 
-The accessibility gate still rejects critical findings only. A green smoke check
-is **not WCAG AA compliance**. Inspect retained JSON findings and resolve serious
-issues, contrast, targets, keyboard behavior and screen-reader usability before
-claiming accessibility acceptance.
+The initial reports exposed 13 serious contrast failures: nine on the populated
+dashboard, one on Genesis and three on Settings. Targeted labels now use light
+text on wood and dark text on parchment; the danger title uses a light wax token.
+All reported violations now fail these five fixture-specific page scans. Green
+automated scans are **not WCAG AA compliance**: incomplete findings, additional
+page states, targets, keyboard behavior and screen-reader usability still need
+manual acceptance.
 
 ## Remaining launch work
 

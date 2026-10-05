@@ -67,7 +67,7 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
             key={key}
             className={[
               'flex-1 text-center text-[9px] font-mono uppercase tracking-wider',
-              i === phaseIndex ? 'text-forest-700 font-semibold' : 'text-sepia-600',
+              i === phaseIndex ? 'text-forest-400 font-semibold' : 'text-cream-300',
             ].join(' ')}
           >
             <abbr title={key} className="no-underline">{t(`phase.${key}`)}</abbr>
@@ -77,7 +77,7 @@ export function FinishingProgress({ finishing }: FinishingProgressProps) {
 
       {/* Next suggestion */}
       {suggestionText && (
-        <p className="text-xs text-sepia-600 italic mt-1">
+        <p className="text-xs text-cream-300 italic mt-1">
           {t('next', { suggestion: suggestionText })}
         </p>
       )}

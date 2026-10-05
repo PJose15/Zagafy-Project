@@ -219,7 +219,7 @@ export default function GenesisPage() {
           <p className="text-sm text-sepia-600">{t('tagline')}</p>
           <button
             onClick={goImport}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-brass-700 hover:text-brass-900 transition-colors mt-1"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-sepia-700 hover:text-sepia-900 transition-colors mt-1"
           >
             <UploadCloud size={15} aria-hidden="true" /> {t('importInstead')}
           </button>

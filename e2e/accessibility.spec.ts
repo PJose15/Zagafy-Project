@@ -2,10 +2,10 @@ import { test, expect } from '@playwright/test';
 import { gotoApp } from './helpers/auth';
 import AxeBuilder from '@axe-core/playwright';
 
-// This remains a critical-violation smoke gate, not a WCAG compliance claim.
-// Full findings are retained even on green CI for the contrast/AA follow-up.
+// All reported violations fail these fixture-specific scans. Automated scans
+// do not certify WCAG compliance; incomplete findings still need manual review.
 test.describe('Accessibility smoke with complete WCAG findings', () => {
-  test('populated dashboard has no critical a11y violations', async ({ page }, testInfo) => {
+  test('populated dashboard has no reported a11y violations', async ({ page }, testInfo) => {
     await gotoApp(page, '/manuscript');
     await page.getByRole('button', { name: 'New Chapter', exact: true }).click();
     await page.getByPlaceholder('Chapter Title', { exact: true }).fill('Accessibility fixture');
@@ -20,11 +20,11 @@ test.describe('Accessibility smoke with complete WCAG findings', () => {
       body: JSON.stringify({ route: '/', violations: results.violations, incomplete: results.incomplete }, null, 2),
       contentType: 'application/json',
     });
-    expect(results.violations.filter(v => v.impact === 'critical')).toEqual([]);
+    expect(results.violations).toEqual([]);
   });
   for (const [name, path] of [['genesis', '/genesis'], ['settings', '/settings'],
     ['manuscript', '/manuscript'], ['flow', '/flow']] as const) {
-    test(`${name} has no critical a11y violations`, async ({ page }, testInfo) => {
+    test(`${name} has no reported a11y violations`, async ({ page }, testInfo) => {
       await gotoApp(page, path);
       await expect.poll(() => new URL(page.url()).pathname).toBe(path);
       await page.waitForLoadState('networkidle');
@@ -33,7 +33,7 @@ test.describe('Accessibility smoke with complete WCAG findings', () => {
         body: JSON.stringify({ route: path, violations: results.violations, incomplete: results.incomplete }, null, 2),
         contentType: 'application/json',
       });
-      expect(results.violations.filter(v => v.impact === 'critical')).toEqual([]);
+      expect(results.violations).toEqual([]);
     });
   }
 });

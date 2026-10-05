@@ -341,7 +341,7 @@ export default function SettingsPage() {
           </label>
           <p className="text-xs text-sepia-600/80">
             {t.rich('spellcheck.roadmap', {
-              code: (chunks) => <code className="font-mono text-[10px] bg-parchment-200 px-1 rounded">{chunks}</code>,
+              code: (chunks) => <code className="font-mono text-[10px] text-sepia-700 bg-parchment-200 px-1 rounded">{chunks}</code>,
             })}
           </p>
         </ParchmentCard>
@@ -434,11 +434,11 @@ export default function SettingsPage() {
         </ParchmentCard>
 
         <section className="bg-wax-900/10 border border-wax-700/30 rounded-xl p-6 space-y-4">
-          <h2 className="text-xl font-serif font-semibold text-wax-700 flex items-center gap-2">
+          <h2 className="text-xl font-serif font-semibold text-wax-300 flex items-center gap-2">
             <AlertTriangle size={20} />
             {t('danger.heading')}
           </h2>
-          <p className="text-sepia-600 text-sm leading-relaxed">
+          <p className="text-cream-300 text-sm leading-relaxed">
             {t('danger.description')}
           </p>
           <InkStampButton
