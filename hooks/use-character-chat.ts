@@ -1,4 +1,5 @@
 'use client';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -25,7 +26,7 @@ export type CharacterInsightErrorReason = 'timeout' | 'parse_error' | 'rate_limi
 
 // Stable send-failure codes — the hook has no t(); the rendering component
 // translates these (serverMessage, when present, is shown as-is).
-export type CharacterChatErrorCode = 'httpError' | 'emptyReply' | 'networkError';
+export type CharacterChatErrorCode = 'httpError' | 'emptyReply' | 'networkError' | 'historyError';
 
 export interface CharacterChatError {
   code: CharacterChatErrorCode;
@@ -103,7 +104,10 @@ function buildStoryContext(state: StoryState, character: Character): StoryContex
 }
 
 export function useCharacterChat(characterId: string | null) {
-  const { state, updateField } = useStory();
+  const { state, updateField, projectId: loadedProjectId } = useStory();
+  const projectId = loadedProjectId ?? getActiveProjectId();
+  const projectRef = useRef(projectId);
+  projectRef.current = projectId;
   const [session, setSession] = useState<CharacterChatSession | null>(null);
   const [messages, setMessages] = useState<CharacterChatMessage[]>([]);
   const [mode, setModeState] = useState<ChatMode>('exploration');
@@ -140,14 +144,16 @@ export function useCharacterChat(characterId: string | null) {
   // Mirrors the current characterId so async continuations (stream loop,
   // fire-and-forget callbacks) can detect a character switch and never write
   // the old character's data into the new character's panels.
+  const abortProjectRef = useRef(projectId);
   const characterIdRef = useRef<string | null>(characterId);
 
   // Abort in-flight work when switching characters; reset transient send state
   // that the load effect below doesn't own. (Kept separate from the load effect
   // so re-runs on state.characters changes don't abort a healthy stream.)
   useEffect(() => {
-    if (characterIdRef.current !== characterId) {
+    if (characterIdRef.current !== characterId || abortProjectRef.current !== projectId) {
       abortRef.current?.abort();
+      setSession(null);setMessages([]);setInsights([]);
       setIsLoading(false);
       setIsStreaming(false);
       setError(null);
@@ -155,7 +161,8 @@ export function useCharacterChat(characterId: string | null) {
       setLastInsightError(null);
     }
     characterIdRef.current = characterId;
-  }, [characterId]);
+    abortProjectRef.current = projectId;
+  }, [characterId, projectId]);
 
   // Abort in-flight work on unmount.
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -170,72 +177,36 @@ export function useCharacterChat(characterId: string | null) {
       return;
     }
 
-    const sessions = readChatSessions();
-    const existing = sessions.find(s => s.characterId === characterId);
-    if (existing) {
-      setSession(existing);
-      setMessages(existing.messages);
-      setModeState(existing.mode);
-      setLiveState(existing.evolvedState ?? toEvolved(state.characters.find(c => c.id === characterId)?.currentState));
+    let active = true;
+    async function load() {
+      const sessions = await readChatSessions(projectId);
+      if (!active) return;
+      let existing = sessions.find(s => s.characterId === characterId);
+      if (!existing) {
+        existing = { id: crypto.randomUUID(), characterId: characterId!, characterName: state.characters.find(c=>c.id===characterId)?.name ?? 'Unknown', messages: [], mode:'exploration', createdAt:new Date().toISOString(),updatedAt:new Date().toISOString() };
+        await addChatSession(existing,projectId);
+      }
+      const loadedInsights = await readInsights(projectId);
+      if (!active) return;
+      setSession(existing); setMessages(existing.messages); setModeState(existing.mode);
+      setLiveState(existing.evolvedState ?? toEvolved(state.characters.find(c=>c.id===characterId)?.currentState));
       memoryRef.current = existing.memory;
-    } else {
-      const character = state.characters.find(c => c.id === characterId);
-      setLiveState(toEvolved(character?.currentState));
-      memoryRef.current = undefined;
-      const newSession: CharacterChatSession = {
-        id: crypto.randomUUID(),
-        characterId,
-        characterName: character?.name || 'Unknown',
-        messages: [],
-        mode: 'exploration',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      addChatSession(newSession);
-      setSession(newSession);
-      setMessages([]);
-      setModeState('exploration');
+      setInsights(loadedInsights.filter(i=>i.characterId===characterId));
     }
-
-    const allInsights = readInsights().filter(i => {
-      const sessions2 = readChatSessions();
-      const s = sessions2.find(s2 => s2.id === i.sessionId);
-      return s?.characterId === characterId;
-    });
-    setInsights(allInsights);
-  }, [characterId, state.characters, setLiveState]);
-
-  // Cross-tab sync
-  useEffect(() => {
-    function handleStorage(e: StorageEvent) {
-      if (e.key === 'zagafy_character_chats' && session) {
-        const sessions = readChatSessions();
-        const updated = sessions.find(s => s.id === session.id);
-        if (updated) {
-          setSession(updated);
-          setMessages(updated.messages);
-          if (updated.evolvedState) setLiveState(updated.evolvedState);
-        }
-      }
-      if (e.key === 'zagafy_character_insights' && characterId) {
-        const allInsights = readInsights().filter(i => {
-          const sessions = readChatSessions();
-          const s = sessions.find(s2 => s2.id === i.sessionId);
-          return s?.characterId === characterId;
-        });
-        setInsights(allInsights);
-      }
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [session, characterId, setLiveState]);
+    void load().catch(() => { if(active) setError({code:'historyError',notConfigured:false,lastInput:''}); });
+    const refresh = () => { if(!abortRef.current || abortRef.current.signal.aborted) void load().catch(()=>{}); };
+    let channel: BroadcastChannel | null = null;
+    if(typeof BroadcastChannel !== 'undefined') { channel = new BroadcastChannel('zagafy_sync'); channel.addEventListener('message',refresh); }
+    window.addEventListener('zagafy:local-mutation',refresh);
+    return () => { active=false; channel?.close(); window.removeEventListener('zagafy:local-mutation',refresh); };
+  }, [characterId, projectId, state.characters, setLiveState]);
 
   const setMode = useCallback((newMode: ChatMode) => {
     setModeState(newMode);
     if (session) {
-      updateChatSession(session.id, { mode: newMode, updatedAt: new Date().toISOString() });
+      void updateChatSession(session.id, { mode: newMode, updatedAt: new Date().toISOString() }, projectId).catch(()=>setError({code:'networkError',notConfigured:false,lastInput:''}));
     }
-  }, [session]);
+  }, [session, projectId]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!session || !characterId || !content.trim()) return;
@@ -248,6 +219,7 @@ export function useCharacterChat(characterId: string | null) {
     // mid-flight character switch can't bleed state across characters.
     // (Persistence to the old session is still allowed to complete.)
     const sentFor = characterId;
+    const sentProject = projectId;
 
     const userMsg: CharacterChatMessage = {
       id: crypto.randomUUID(),
@@ -269,7 +241,10 @@ export function useCharacterChat(characterId: string | null) {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    let completedReply = false;
     try {
+      await updateChatSession(session.id,{messages:updatedMessages,updatedAt:new Date().toISOString()},sentProject);
+      if(controller.signal.aborted) return;
       const characterMessages = updatedMessages.filter(m => m.role === 'character');
       const shouldGenerateInsight = characterMessages.length >= 5;
 
@@ -299,12 +274,16 @@ export function useCharacterChat(characterId: string | null) {
           message: content.trim(),
           mode,
           character: characterPayload,
-          messages: updatedMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: updatedMessages.slice(-200).map(m => ({ role: m.role, content: m.content })),
           storyContext,
           memory: memoryRef.current,
         }),
         signal: controller.signal,
       });
+
+      const turnId = res.headers?.get('X-AI-Turn-ID');
+      const helperHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (turnId) helperHeaders['X-AI-Turn-ID'] = turnId;
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
@@ -343,7 +322,7 @@ export function useCharacterChat(characterId: string | null) {
           acc += decoder.decode(value, { stream: true });
           // A character switch aborts this stream, but a read already in
           // flight can still resolve — never paint into the new chat.
-          if (characterIdRef.current !== sentFor) continue;
+          if ((characterIdRef.current !== sentFor || projectRef.current !== sentProject)) continue;
           if (!started) {
             started = true;
             setIsLoading(false); // first token arrived — drop the "thinking" pulse
@@ -360,12 +339,13 @@ export function useCharacterChat(characterId: string | null) {
         throw e;
       }
 
+      completedReply=true;
       const finalMessages = [...updatedMessages, { ...charMsg, content: acc }];
-      if (characterIdRef.current === sentFor) setMessages(finalMessages);
-      updateChatSession(session.id, {
+      if ((characterIdRef.current === sentFor && projectRef.current === sentProject)) setMessages(finalMessages);
+      await updateChatSession(session.id, {
         messages: finalMessages,
         updatedAt: new Date().toISOString(),
-      });
+      }, sentProject);
 
       // Insight is generated by a separate, non-blocking request so the reply
       // above is shown immediately and is never lost to the insight call's
@@ -376,16 +356,16 @@ export function useCharacterChat(characterId: string | null) {
         const transcript = finalMessages
           .map(m => `${m.role === 'character' ? 'assistant' : 'user'}: ${m.content}`)
           .join('\n')
-          .slice(0, 30_000);
+          .slice(-30_000);
         void (async () => {
           try {
             const ires = await fetch('/api/character-chat/insight', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({ characterName: character.name, transcript, language: state.language }),
             });
             if (!ires.ok) {
-              if (characterIdRef.current === sentFor) setLastInsightError('upstream_error');
+              if ((characterIdRef.current === sentFor && projectRef.current === sentProject)) setLastInsightError('upstream_error');
               return;
             }
             const idata = await ires.json();
@@ -398,15 +378,15 @@ export function useCharacterChat(characterId: string | null) {
                 savedAsCanon: false,
                 createdAt: new Date().toISOString(),
               };
-              addInsight(newInsight); // persist even after a switch — it belongs to the old session
-              if (characterIdRef.current !== sentFor) return;
+              await addInsight(newInsight, sentProject); // persist even after a switch — it belongs to the old session
+              if ((characterIdRef.current !== sentFor || projectRef.current !== sentProject)) return;
               setLastInsightError(null);
               setInsights(prev => [...prev, newInsight]);
             } else if (idata.insightError) {
-              if (characterIdRef.current === sentFor) setLastInsightError(idata.insightError as CharacterInsightErrorReason);
+              if ((characterIdRef.current === sentFor && projectRef.current === sentProject)) setLastInsightError(idata.insightError as CharacterInsightErrorReason);
             }
           } catch {
-            if (characterIdRef.current === sentFor) setLastInsightError('upstream_error');
+            if ((characterIdRef.current === sentFor && projectRef.current === sentProject)) setLastInsightError('upstream_error');
           }
         })();
       }
@@ -418,13 +398,13 @@ export function useCharacterChat(characterId: string | null) {
         const stateTranscript = finalMessages
           .map(m => `${m.role === 'character' ? 'assistant' : 'user'}: ${m.content}`)
           .join('\n')
-          .slice(0, 30_000);
+          .slice(-30_000);
         const priorState = liveStateRef.current ?? toEvolved(character.currentState);
         void (async () => {
           try {
             const sres = await fetch('/api/character-chat/state', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({
                 characterName: character.name,
                 mode,
@@ -437,11 +417,11 @@ export function useCharacterChat(characterId: string | null) {
             if (sdata.state) {
               // Guard the live meter (and its ref) — persisting to the old
               // session below is still correct after a switch.
-              if (characterIdRef.current === sentFor) setLiveState(sdata.state as EvolvedState);
-              updateChatSession(session.id, {
+              if ((characterIdRef.current === sentFor && projectRef.current === sentProject)) setLiveState(sdata.state as EvolvedState);
+              await updateChatSession(session.id, {
                 evolvedState: sdata.state,
                 updatedAt: new Date().toISOString(),
-              });
+              }, sentProject);
             }
           } catch {
             /* non-blocking — leave the meter as-is */
@@ -457,7 +437,7 @@ export function useCharacterChat(characterId: string | null) {
           try {
             const cres = await fetch('/api/character-chat/contradiction', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({
                 characterName: character.name,
                 reply: replyText,
@@ -466,7 +446,7 @@ export function useCharacterChat(characterId: string | null) {
             });
             if (!cres.ok) return;
             const cdata = await cres.json();
-            if (characterIdRef.current !== sentFor) return;
+            if ((characterIdRef.current !== sentFor || projectRef.current !== sentProject)) return;
             if (Array.isArray(cdata.contradictions) && cdata.contradictions.length) {
               setContradictions(cdata.contradictions as ContradictionFlag[]);
             }
@@ -483,13 +463,13 @@ export function useCharacterChat(characterId: string | null) {
         const memTranscript = finalMessages
           .map(m => `${m.role === 'character' ? 'assistant' : 'user'}: ${m.content}`)
           .join('\n')
-          .slice(0, 30_000);
+          .slice(-30_000);
         const existingMemory = memoryRef.current;
         void (async () => {
           try {
             const mres = await fetch('/api/character-chat/memory', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: helperHeaders,
               body: JSON.stringify({ characterName: character.name, transcript: memTranscript, existingMemory, language: state.language }),
             });
             if (!mres.ok) return;
@@ -497,8 +477,8 @@ export function useCharacterChat(characterId: string | null) {
             if (typeof mdata.memory === 'string' && mdata.memory.trim()) {
               // memoryRef belongs to whichever character is now active — only
               // write it if we're still on the one this send was for.
-              if (characterIdRef.current === sentFor) memoryRef.current = mdata.memory;
-              updateChatSession(session.id, { memory: mdata.memory, updatedAt: new Date().toISOString() });
+              if ((characterIdRef.current === sentFor && projectRef.current === sentProject)) memoryRef.current = mdata.memory;
+              await updateChatSession(session.id, { memory: mdata.memory, updatedAt: new Date().toISOString() }, sentProject);
             }
           } catch {
             /* non-blocking — keep existing memory */
@@ -508,13 +488,13 @@ export function useCharacterChat(characterId: string | null) {
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
       // Stale failure from before a character switch — the new chat owns the UI.
-      if (characterIdRef.current !== sentFor) return;
+      if ((characterIdRef.current !== sentFor || projectRef.current !== sentProject)) return;
       // Revert the optimistic user message and surface a visible, retryable error
       // (instead of the message silently disappearing).
-      setMessages(messages);
+      if(!completedReply) setMessages(messages);
       const ex = err as Partial<CharacterChatError>;
       setError({
-        code: ex.code ?? 'networkError',
+        code: completedReply ? 'historyError' : ex.code ?? 'networkError',
         status: ex.status,
         serverMessage: ex.serverMessage,
         notConfigured: !!ex.notConfigured,
@@ -524,25 +504,28 @@ export function useCharacterChat(characterId: string | null) {
       // A newer request may have aborted this one; if so, leave the spinner
       // up for the request still in flight instead of clearing it here.
       // Likewise, after a character switch these flags belong to the new chat.
-      if (!controller.signal.aborted && characterIdRef.current === sentFor) {
+      if (!controller.signal.aborted && (characterIdRef.current === sentFor && projectRef.current === sentProject)) {
         setIsLoading(false);
         setIsStreaming(false);
+        if(abortRef.current===controller) abortRef.current=null;
       }
     }
-  }, [session, characterId, messages, mode, state, setLiveState]);
+  }, [session, characterId, messages, mode, state, setLiveState, projectId]);
 
-  const saveInsightAsCanon = useCallback((insightId: string) => {
-    markCanon(insightId);
+  const saveInsightAsCanon = useCallback(async (insightId: string) => {
+    try { await markCanon(insightId,projectId);
+    } catch { setError({code:'historyError',notConfigured:false,lastInput:''}); return false; }
+    if (projectRef.current !== projectId) return false;
     setInsights(prev => prev.map(i => i.id === insightId ? { ...i, savedAsCanon: true } : i));
 
     // Actually promote the insight into the story's canon so it grounds/enforces
     // future AI (previously this only flipped a localStorage flag and the insight
     // never reached state.canon_items).
     const insight = insights.find(i => i.id === insightId);
-    if (!insight) return;
+    if (!insight) return false;
     const existing = Array.isArray(state.canon_items) ? state.canon_items : [];
     const sourceReference = `character-chat:${insightId}`;
-    if (existing.some(c => c.sourceReference === sourceReference)) return; // idempotent
+    if (existing.some(c => c.sourceReference === sourceReference)) return true; // idempotent
     const character = state.characters.find(c => c.id === insight.characterId);
     const canonItem: CanonItem = {
       id: crypto.randomUUID(),
@@ -552,31 +535,34 @@ export function useCharacterChat(characterId: string | null) {
       sourceReference,
     };
     updateField('canon_items', [...existing, canonItem]);
-  }, [insights, state.canon_items, state.characters, updateField]);
+    return true;
+  }, [insights, state.canon_items, state.characters, updateField, projectId]);
 
-  const clearSession = useCallback(() => {
+  const clearSession = useCallback(async () => {
     if (!session) return;
     const cleared: CharacterChatMessage[] = [];
-    setMessages(cleared);
-    setContradictions([]);
+
     // Reset the evolving state back to the character's authored baseline.
     const baseline = toEvolved(state.characters.find(c => c.id === characterId)?.currentState);
     setLiveState(baseline);
-    updateChatSession(session.id, {
+    try { await updateChatSession(session.id, {
+      clearedAt: new Date().toISOString(),
       messages: cleared,
       evolvedState: baseline ?? undefined,
       updatedAt: new Date().toISOString(),
-    });
-  }, [session, characterId, state.characters, setLiveState]);
+    }, projectId); } catch { setError({code:'historyError',notConfigured:false,lastInput:''});return; }
+    if(projectRef.current===projectId) {setMessages(cleared);setContradictions([]);}
+  }, [session, characterId, state.characters, setLiveState, projectId]);
 
   const clearError = useCallback(() => setError(null), []);
 
   const retry = useCallback(() => {
     if (!error) return;
+    if(error.code==='historyError') { void readChatSessions(projectId).then(rows=>{const saved=rows.find(s=>s.characterId===characterId);if(saved&&projectRef.current===projectId){setSession(saved);setMessages(saved.messages);setError(null);}}).catch(()=>{});return; }
     const input = error.lastInput;
     setError(null);
     sendMessage(input);
-  }, [error, sendMessage]);
+  }, [error, sendMessage, projectId, characterId]);
 
   return {
     session,

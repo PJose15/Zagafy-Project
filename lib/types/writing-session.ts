@@ -1,12 +1,15 @@
 import {
+  db,
   getSessions as dexieGetSessions,
+  updateSessionScore,
   putSession as dexiePutSession,
   putAllSessions as dexiePutAllSessions,
 } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
 
-const SESSIONS_KEY = 'zagafy_sessions';
 const WIP_KEY = 'zagafy_session_wip';
+const WIP_PREFIX = WIP_KEY + ':';
+const PENDING_PREFIX = 'zagafy_session_pending:';
 
 export type FlowScore = 1 | 2 | 3 | 4 | 5;
 
@@ -64,7 +67,7 @@ function isNullableArray(v: unknown): boolean {
   return v === null || v === undefined || Array.isArray(v);
 }
 
-function isWritingSession(v: unknown): v is WritingSession {
+export function isWritingSession(v: unknown): v is WritingSession {
   if (typeof v !== 'object' || v === null) return false;
   const o = v as Record<string, unknown>;
   if (
@@ -97,74 +100,69 @@ function isWritingSession(v: unknown): v is WritingSession {
   return true;
 }
 
-// ─── localStorage fallback (sync) ───
-
-function readSessionsSync(): WritingSession[] {
-  try {
-    const raw = localStorage.getItem(SESSIONS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isWritingSession);
-  } catch {
-    return [];
-  }
+/** IndexedDB is authoritative. Legacy history is imported by migration only. */
+export async function readSessions(projectId: string = getActiveProjectId()): Promise<WritingSession[]> {
+  const rows = await dexieGetSessions(projectId);
+  return rows.map(value => {
+    if (!isWritingSession(value) || value.projectId !== projectId) throw new Error('Session history is damaged');
+    return value;
+  });
 }
 
-function writeSessionsSync(sessions: WritingSession[]): void {
-  try {
-    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
-  } catch {
-    // Storage quota exceeded — caller should handle via toast
-  }
+export async function writeSessions(sessions: WritingSession[], projectId: string = getActiveProjectId()): Promise<void> {
+  if (sessions.some(session => !isWritingSession(session) || session.projectId !== projectId)) throw new Error('Invalid session project');
+  await dexiePutAllSessions(sessions as unknown as Record<string, unknown>[], projectId);
 }
 
-// ─── Async Dexie-backed public API ───
-
-export async function readSessions(): Promise<WritingSession[]> {
-  try {
-    const rows = await dexieGetSessions();
-    const sessions = (rows as unknown[]).filter(isWritingSession);
-    if (sessions.length > 0) return sessions;
-    return readSessionsSync();
-  } catch {
-    return readSessionsSync();
-  }
+export async function addSession(session: WritingSession, recovery = false): Promise<void> {
+  if (!isWritingSession(session)) throw new Error('Invalid writing session');
+  // Replaying a recovery checkpoint cannot overwrite a later flow score or metrics.
+  await dexiePutSession(session as unknown as Record<string, unknown>, session.projectId, recovery);
 }
 
-export async function writeSessions(sessions: WritingSession[]): Promise<void> {
-  try {
-    await dexiePutAllSessions(sessions as unknown as Record<string, unknown>[]);
-  } catch {
-    writeSessionsSync(sessions);
-  }
+export async function updateSessionFlowScore(sessionId: string, score: FlowScore, projectId: string = getActiveProjectId()): Promise<void> {
+  if (!isFlowScore(score) || score === null) throw new Error('Invalid flow score');
+  await updateSessionScore(sessionId, score, projectId);
 }
 
-export async function addSession(session: WritingSession): Promise<void> {
-  try {
-    await dexiePutSession(session as unknown as Record<string, unknown>);
-  } catch {
-    // Fallback: add to localStorage
-    const sessions = readSessionsSync();
-    sessions.push(session);
-    writeSessionsSync(sessions);
-  }
+/** Preserve the full completed session until both the row and queue commit.
+ * The journal is recovery data, never an alternate successful history store. */
+export async function saveCompletedSession(session: WritingSession, recovery = false): Promise<void> {
+  const journalKey = PENDING_PREFIX + crypto.randomUUID();
+  try { localStorage.setItem(journalKey, JSON.stringify(session)); } catch { /* IndexedDB may still succeed */ }
+  await addSession(session, recovery);
+  try { localStorage.removeItem(journalKey); } catch { /* idempotent recovery on next mount */ }
+  clearWipSession(session.id, session.wordsEnd);
 }
 
-export async function updateSessionFlowScore(sessionId: string, score: FlowScore): Promise<void> {
-  try {
-    const sessions = await readSessions();
-    const idx = sessions.findIndex(s => s.id === sessionId);
-    if (idx === -1) return;
-    sessions[idx] = { ...sessions[idx], flowScore: score };
-    await writeSessions(sessions);
-  } catch {
-    // Fallback: update in localStorage
-    const sessions = readSessionsSync();
-    const idx = sessions.findIndex(s => s.id === sessionId);
-    if (idx === -1) return;
-    sessions[idx] = { ...sessions[idx], flowScore: score };
-    writeSessionsSync(sessions);
+export async function recoverSessions(): Promise<void> {
+  const pending = new Map<string, WritingSession>();
+  const journalKeys: { key: string; raw: string; id: string }[] = [];
+  for (let index = 0; index < localStorage.length; index++) {
+    const key = localStorage.key(index);
+    if (!key?.startsWith(PENDING_PREFIX)) continue;
+    const raw = localStorage.getItem(key)!;
+    const session: unknown = JSON.parse(raw);
+    if (!isWritingSession(session)) throw new Error('Session recovery record is damaged');
+    const prior = pending.get(session.id);
+    if (!prior || session.endedAt > prior.endedAt) pending.set(session.id, session);
+    journalKeys.push({ key, raw, id: session.id });
+  }
+  for (const wip of readWipSessions()) {
+    if (pending.has(wip.id) || (wip.heartbeatAt && !wip.abandoned && Date.now() - wip.heartbeatAt < 90_000)) continue;
+    const wordsAdded = wip.currentWords - wip.wordsStart;
+    if (wordsAdded < 5) { clearWipSession(wip.id); continue; }
+    pending.set(wip.id, { ...wip, endedAt: new Date().toISOString(), wordsEnd: wip.currentWords, wordsAdded,
+      flowScore: null, keystrokeMetrics: null, autoFlowScore: null, flowMoments: null });
+  }
+  for (const session of pending.values()) {
+    // Only recover into a project that still exists. A deleted project must not
+    // reappear just because an old WIP checkpoint remains on this browser.
+    if (!await db.stories.get(session.projectId)) continue;
+    await saveCompletedSession(session, true);
+    for (const journal of journalKeys.filter(record => record.id === session.id)) {
+      try { if (localStorage.getItem(journal.key) === journal.raw) localStorage.removeItem(journal.key); } catch { /* keep for idempotent retry */ }
+    }
   }
 }
 
@@ -176,46 +174,52 @@ export function getProjectId(): string {
   return getActiveProjectId();
 }
 
-type WipSession = Omit<WritingSession, 'endedAt' | 'wordsEnd' | 'wordsAdded' | 'flowScore' | 'keystrokeMetrics' | 'autoFlowScore' | 'flowMoments'> & { currentWords: number };
+type WipSession = Omit<WritingSession, 'endedAt' | 'wordsEnd' | 'wordsAdded' | 'flowScore' | 'keystrokeMetrics' | 'autoFlowScore' | 'flowMoments'> & { currentWords: number; heartbeatAt?: number; abandoned?: boolean };
 
-export function saveWipSession(session: WipSession): void {
-  try {
-    localStorage.setItem(WIP_KEY, JSON.stringify(session));
-  } catch {
-    // Quota exceeded — best effort
-  }
+export function saveWipSession(session: WipSession): boolean {
+  try { localStorage.setItem(WIP_PREFIX + session.id, JSON.stringify({ ...session, heartbeatAt: Date.now() })); return true; }
+  catch { return false; }
 }
 
-export function readWipSession(): WipSession | null {
-  try {
-    const raw = localStorage.getItem(WIP_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      typeof parsed.id === 'string' &&
-      typeof parsed.projectId === 'string' &&
-      typeof parsed.projectName === 'string' &&
-      typeof parsed.startedAt === 'string' &&
-      typeof parsed.wordsStart === 'number' &&
-      typeof parsed.currentWords === 'number'
-    ) {
-      // Normalize missing heteronym fields
-      parsed.heteronymId = parsed.heteronymId ?? null;
-      parsed.heteronymName = parsed.heteronymName ?? null;
-      return parsed;
+function parseWip(raw: string | null): WipSession | null {
+  if (!raw) return null;
+  const parsed = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object' || typeof parsed.id !== 'string' || typeof parsed.projectId !== 'string' ||
+      typeof parsed.projectName !== 'string' || typeof parsed.startedAt !== 'string' || typeof parsed.wordsStart !== 'number' ||
+      typeof parsed.currentWords !== 'number') throw new Error('Session recovery record is damaged');
+  return { ...parsed, heteronymId: parsed.heteronymId ?? null, heteronymName: parsed.heteronymName ?? null };
+}
+
+export function readWipSessions(): WipSession[] {
+  const records = new Map<string, WipSession>();
+  const legacy = parseWip(localStorage.getItem(WIP_KEY));
+  if (legacy) records.set(legacy.id, legacy);
+  for (let index = 0; index < localStorage.length; index++) {
+    const key = localStorage.key(index);
+    if (!key?.startsWith(WIP_PREFIX)) continue;
+    const value = parseWip(localStorage.getItem(key));
+    if (value) {
+      if (key !== WIP_PREFIX + value.id) throw new Error('Session recovery identity is damaged');
+      records.set(value.id, value);
     }
-    return null;
-  } catch {
-    return null;
   }
+  return [...records.values()];
 }
 
-export function clearWipSession(): void {
+/** Compatibility reader; recovery uses every record and reports corruption. */
+export function readWipSession(): WipSession | null {
+  try { return readWipSessions()[0] ?? null; } catch { return null; }
+}
+
+export function clearWipSession(id?: string, wordsEnd?: number): void {
   try {
-    localStorage.removeItem(WIP_KEY);
-  } catch {
-    // best effort
-  }
+    if (id) {
+      const current = parseWip(localStorage.getItem(WIP_PREFIX + id));
+      if (wordsEnd === undefined || !current || current.currentWords <= wordsEnd) localStorage.removeItem(WIP_PREFIX + id);
+      const legacy = parseWip(localStorage.getItem(WIP_KEY));
+      if (legacy?.id === id && (wordsEnd === undefined || legacy.currentWords <= wordsEnd)) localStorage.removeItem(WIP_KEY);
+    } else {
+      for (const wip of readWipSessions()) clearWipSession(wip.id);
+    }
+  } catch { /* Keep corrupt/unreadable recovery records for export. */ }
 }

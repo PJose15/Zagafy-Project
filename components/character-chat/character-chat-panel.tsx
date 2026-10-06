@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Trash2, AlertTriangle, RotateCcw, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -55,6 +55,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     contradictions,
   } = useCharacterChat(characterId);
 
+  const [visibleCount,setVisibleCount]=useState(200);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -68,8 +69,8 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
     if (ok) clearSession();
   }, [confirm, t, characterName, clearSession]);
 
-  const handleSaveInsight = useCallback((insightId: string) => {
-    saveInsightAsCanon(insightId);
+  const handleSaveInsight = useCallback(async (insightId: string) => {
+    if(!await saveInsightAsCanon(insightId)) return;
     toast(t('canonSavedToast'), 'success');
   }, [saveInsightAsCanon, toast, t]);
 
@@ -156,7 +157,8 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
             {t('startConversation', { name: characterName, mode: t(`modes.${mode}`) })}
           </div>
         )}
-        {messages.map(msg => (
+        {messages.length > visibleCount && <button type="button" className="text-sm underline mb-4" onClick={()=>setVisibleCount(count=>count+200)}>{t('loadEarlier', {count:messages.length-visibleCount})}</button>}
+        {messages.slice(-visibleCount).map(msg => (
           <ChatMessageBubble
             key={msg.id}
             message={msg}
@@ -236,6 +238,7 @@ export function CharacterChatPanel({ characterId, characterName }: CharacterChat
                 {error.serverMessage ?? (
                   error.code === 'httpError'
                     ? t('errorHttp', { status: error.status ?? 0 })
+                    : error.code === 'historyError' ? t('errorHistory')
                     : error.code === 'emptyReply'
                       ? t('errorEmptyReply')
                       : t('errorNetwork')

@@ -20,17 +20,23 @@ vi.mock('@/lib/collab', () => ({
 
 const mockDeleteWhere = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/db/client', () => ({
-  db: vi.fn(() => ({
+  db: vi.fn(() => { const database = {
+    execute: vi.fn(async () => undefined),
+    transaction: async (work: (database: unknown) => unknown): Promise<unknown> => work(database),
+    query: { storyCollaborators: { findMany: vi.fn(async () => []) }, deletedStories: { findFirst: vi.fn(async () => null) }, stories: { findFirst: vi.fn(async () => null) } },
+    insert: vi.fn(() => ({ values: vi.fn(() => ({ onConflictDoNothing: vi.fn(async () => undefined) })) })),
     delete: vi.fn(() => ({ where: mockDeleteWhere })),
-  })),
+  }; return database; }),
   isDatabaseConfigured: vi.fn(() => true),
 }));
 
 vi.mock('@/db/schema', () => ({
   stories: { id: 'id', ownerId: 'ownerId' },
+  deletedStories: { id: 'id' }, storyCollaborators: { storyId: 'storyId' },
 }));
 
 vi.mock('drizzle-orm', () => ({
+  sql: vi.fn((...args: unknown[]) => args),
   eq: vi.fn((...a: any[]) => a),
   and: vi.fn((...a: any[]) => a),
 }));
@@ -73,12 +79,12 @@ describe('DELETE /api/stories', () => {
     expect(mockDeleteWhere).not.toHaveBeenCalled();
   });
 
-  it('is idempotent: no access / nonexistent story returns 200 deleted:false', async () => {
+  it('reserves a receipt for a nonexistent project to block a delayed first upload', async () => {
     mockGetStoryAccess.mockResolvedValue(null);
     const res = await DELETE(makeRequest({ storyId: 'ghost' }));
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.data.deleted).toBe(false);
+    expect(data.data.deleted).toBe(true);
     expect(mockDeleteWhere).not.toHaveBeenCalled();
   });
 

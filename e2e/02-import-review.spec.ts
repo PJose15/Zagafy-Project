@@ -1,45 +1,27 @@
 import { test, expect } from '@playwright/test';
 import { gotoApp } from './helpers/auth';
-import path from 'path';
 
-/**
- * E2E Flow 2: Import file → review queue → accept → manuscript updated
- */
-test.describe('Import flow', () => {
-  test('import a text file and verify manuscript update', async ({ page }) => {
-    await gotoApp(page, '/');
-
-    // Navigate to import
-    const importLink = page.locator('[href*="import"], [data-testid="import"]');
-    if (await importLink.count() === 0) {
-      test.skip(true, 'Import page not found');
-    }
-    await importLink.first().click();
-
-    // Upload a test file
-    const fileInput = page.locator('input[type="file"]');
-    if (await fileInput.count() > 0) {
-      // Create a test file path — the test will use the fixture
-      const testFilePath = path.join(__dirname, 'fixtures', 'test-manuscript.txt');
-      await fileInput.setInputFiles(testFilePath).catch(() => {
-        // If fixture doesn't exist, skip
-      });
-    }
-
-    // Look for confirm / accept button
-    const confirmBtn = page.locator(
-      'button:has-text("Confirm"), button:has-text("Accept"), button:has-text("Import"), [data-testid="confirm-import"]'
-    );
-    if (await confirmBtn.count() > 0) {
-      await confirmBtn.first().click();
-      await page.waitForTimeout(2000);
-    }
-
-    // Verify content appears in manuscript
-    const manuscriptLink = page.locator('[href*="manuscript"], [data-testid="manuscript"]');
-    if (await manuscriptLink.count() > 0) {
-      await manuscriptLink.first().click();
-      await page.waitForLoadState('networkidle');
-    }
+// Deterministic ingestion response exercises review and real browser persistence.
+// Real model quality is a separate authenticated staging gate.
+test('accepted imported prose survives navigation and reload', async ({ page }) => {
+  const title = `Imported ledger ${Date.now()}`;
+  const prose = 'The lighthouse keeper discovered a letter addressed to tomorrow.';
+  let ingested = false;
+  await page.route('**/api/ingest', async route => {
+    expect(route.request().method()).toBe('POST');
+    expect(route.request().postData()).toContain('chapter.txt');
+    ingested = true;
+    await route.fulfill({ json: { extractedData: { chapters: [{ title, summary: 'A strange letter', raw_text_reference: prose }] } } });
   });
+  await gotoApp(page, '/import');
+  await page.locator('input[type=file]').setInputFiles({ name: 'chapter.txt', mimeType: 'text/plain', buffer: Buffer.from(prose) });
+  await page.getByRole('button', { name: 'Start Ingestion', exact: true }).click();
+  await page.getByRole('button', { name: 'Accept All', exact: true }).click();
+  await page.getByRole('button', { name: 'Import 1 Accepted', exact: true }).click();
+  await expect(page.getByText('Ingestion Complete', { exact: true })).toBeVisible();
+  expect(ingested).toBe(true);
+  await page.goto('/manuscript');
+  await page.reload();
+  await page.getByRole('button', { name: `Edit ${title}`, exact: true }).click();
+  await expect(page.locator('[contenteditable=true]').first()).toContainText(prose);
 });

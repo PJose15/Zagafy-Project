@@ -22,6 +22,7 @@ import { clearAllInsights, readWriterInsights } from '@/lib/writer-memory';
 // Only these keys from StoryState are allowed during import
 const ALLOWED_KEYS = new Set<keyof StoryState>([
   'language', 'title', 'genre', 'synopsis', 'author_intent',
+  'author_name', 'author_email', 'author_address',
   'chapters', 'scenes', 'characters', 'timeline_events',
   'open_loops', 'world_rules', 'style_profile', 'active_conflicts',
   'foreshadowing_elements', 'locations', 'themes', 'canon_items',
@@ -61,11 +62,17 @@ function validateImportShape(data: unknown): { ok: true } | { ok: false; reason:
     }
   }
   // Cap common scalar string fields
-  for (const k of ['genre', 'synopsis', 'author_intent', 'language'] as const) {
+  for (const k of ['synopsis', 'author_intent', 'language', 'author_name', 'author_email', 'author_address'] as const) {
     const v = data[k];
     if (v !== undefined && (typeof v !== 'string' || v.length > MAX_STRING_FIELD)) {
       return { ok: false, reason: `${k} must be a string under ${MAX_STRING_FIELD} chars` };
     }
+  }
+  if (data.genre !== undefined && (
+    !Array.isArray(data.genre) || data.genre.length > MAX_ARRAY_ITEMS ||
+    data.genre.some(v => typeof v !== 'string' || v.length > MAX_STRING_FIELD)
+  )) {
+    return { ok: false, reason: `genre must be an array of strings under ${MAX_STRING_FIELD} chars` };
   }
   // Cap remaining arrays to prevent balloon state
   for (const k of [
@@ -334,7 +341,7 @@ export default function SettingsPage() {
           </label>
           <p className="text-xs text-sepia-600/80">
             {t.rich('spellcheck.roadmap', {
-              code: (chunks) => <code className="font-mono text-[10px] bg-parchment-200 px-1 rounded">{chunks}</code>,
+              code: (chunks) => <code className="font-mono text-[10px] text-sepia-700 bg-parchment-200 px-1 rounded">{chunks}</code>,
             })}
           </p>
         </ParchmentCard>
@@ -427,11 +434,11 @@ export default function SettingsPage() {
         </ParchmentCard>
 
         <section className="bg-wax-900/10 border border-wax-700/30 rounded-xl p-6 space-y-4">
-          <h2 className="text-xl font-serif font-semibold text-wax-700 flex items-center gap-2">
+          <h2 className="text-xl font-serif font-semibold text-wax-300 flex items-center gap-2">
             <AlertTriangle size={20} />
             {t('danger.heading')}
           </h2>
-          <p className="text-sepia-600 text-sm leading-relaxed">
+          <p className="text-cream-300 text-sm leading-relaxed">
             {t('danger.description')}
           </p>
           <InkStampButton

@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'motion/react';
 import { springs, strikeFade, strikeLine } from '@/lib/animations';
 import { Save, RotateCcw, Trash2 } from 'lucide-react';
-import { useStory, defaultState } from '@/lib/store';
+import { restoreRecoverySnapshot } from '@/lib/storage/restore-snapshot';
+import { useStory } from '@/lib/store';
 import {
   createSnapshot,
   listSnapshots,
@@ -30,7 +31,9 @@ import { useToast } from '@/components/toast';
 export default function VersionsPage() {
   const t = useTranslations('versions');
   const tCommon = useTranslations('common');
-  const { state, setState } = useStory();
+  const { state, setState, projectId } = useStory();
+  const liveRef=useRef({state,projectId});liveRef.current={state,projectId};
+  const [restoring,setRestoring]=useState(false);
   const { confirm } = useConfirm();
   const { toast } = useToast();
 
@@ -60,12 +63,13 @@ export default function VersionsPage() {
   const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
-    setSnapshots(await listSnapshots());
-  }, []);
+    const rows=await listSnapshots(projectId);
+    if(liveRef.current.projectId===projectId) setSnapshots(rows);
+  }, [projectId]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    void refresh().catch(()=>toast(t('toastRestoreError'),'error'));
+  }, [refresh,toast,t]);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -73,6 +77,7 @@ export default function VersionsPage() {
       const meta = await createSnapshot(state, {
         name: name.trim() || t('snapDefaultName', { date: new Date().toLocaleString() }),
         description: description.trim(),
+        storyId: projectId,
       });
       setName('');
       setDescription('');
@@ -87,9 +92,10 @@ export default function VersionsPage() {
   };
 
   const handleRestore = async (snap: SnapshotMetadata) => {
+    if(restoring) return;
     let full: Awaited<ReturnType<typeof getSnapshot>>;
     try {
-      full = await getSnapshot(snap.id);
+      full = await getSnapshot(snap.id,projectId);
     } catch {
       toast(t('toastRestoreError'), 'error');
       return;
@@ -120,13 +126,16 @@ export default function VersionsPage() {
       confirmLabel: t('restoreConfirm'),
       variant: 'danger',
     });
-    if (!ok) return;
+    if (!ok || liveRef.current.projectId!==projectId || liveRef.current.state!==state) return;
 
-    // Spread over defaultState so snapshots taken before newer StoryState
-    // fields existed (e.g. author_name, world_bible) restore with defaults
-    // instead of leaving those fields undefined until the next reload.
-    setState({ ...defaultState, ...full.payload });
-    toast(t('toastRestored', { name: snap.name }), 'success');
+    setRestoring(true);
+    try {
+      const result=await restoreRecoverySnapshot(snap.id,projectId,state);
+      if(liveRef.current.projectId===projectId && liveRef.current.state===state && !result.copied) setState(result.state);
+      if(liveRef.current.projectId===projectId) toast(t('toastRestored',{name:snap.name}),'success');
+    } catch { toast(t('toastRestoreError'),'error'); }
+    finally {setRestoring(false);}
+
   };
 
   const handleDelete = async (snap: SnapshotMetadata) => {
@@ -138,7 +147,7 @@ export default function VersionsPage() {
     });
     if (!ok) return;
     try {
-      await deleteSnapshot(snap.id);
+      await deleteSnapshot(snap.id,projectId);
       await refresh();
     } catch {
       toast(t('toastDeleteError'), 'error');
@@ -180,7 +189,7 @@ export default function VersionsPage() {
               placeholder={t('descPlaceholder')}
               aria-label={t('descLabel')}
             />
-            <InkStampButton onClick={handleCreate} disabled={creating} icon={<Save size={16} />}>
+            <InkStampButton onClick={handleCreate} disabled={creating || restoring} icon={<Save size={16} />}>
               {creating ? t('saving') : t('saveBtn')}
             </InkStampButton>
           </div>
@@ -260,6 +269,7 @@ export default function VersionsPage() {
                     variant="ghost"
                     size="sm"
                     icon={<RotateCcw size={14} />}
+                    disabled={restoring || creating}
                     onClick={() => handleRestore(snap)}
                   >
                     {t('restore')}

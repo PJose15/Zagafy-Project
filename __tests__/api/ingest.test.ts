@@ -38,8 +38,8 @@ vi.mock('@/lib/ai-config', () => ({
 
 // Mock pdf-parse and mammoth with per-test controllable fns
 const mockPdfParse = vi.fn().mockResolvedValue({ text: 'Parsed PDF text' });
-vi.mock('pdf-parse', () => ({
-  default: (...args: unknown[]) => mockPdfParse(...args),
+vi.mock('@/lib/import/read-pdf', () => ({
+  readPdfText: async (...args: unknown[]) => (await mockPdfParse(...args)).text,
 }));
 
 const mockMammoth = vi.fn().mockResolvedValue({ value: 'Parsed DOCX text' });

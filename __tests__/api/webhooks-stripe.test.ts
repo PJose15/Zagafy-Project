@@ -1,394 +1,216 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+// @vitest-environment node
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle, type PgliteDatabase } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
+import * as schema from '@/db/schema';
 import type Stripe from 'stripe';
+import { POST } from '@/app/api/webhooks/stripe/route';
 
-const originalEnv = { ...process.env };
-
-// Mock Stripe SDK
-const mockConstructEvent = vi.fn();
-const mockSubRetrieve = vi.fn();
-vi.mock('@/lib/stripe', () => ({
-  stripe: () => ({
-    webhooks: { constructEvent: mockConstructEvent },
-    subscriptions: { retrieve: mockSubRetrieve },
-  }),
+const { constructEvent, listSubscriptions, sendEmail } = vi.hoisted(() => ({
+  constructEvent: vi.fn(), listSubscriptions: vi.fn(), sendEmail: vi.fn(),
 }));
+vi.mock('@/lib/stripe', () => ({ stripe: () => ({
+  webhooks: { constructEvent }, subscriptions: { list: listSubscriptions },
+}) }));
+vi.mock('@/lib/email', () => ({ sendEmail }));
+let database: PgliteDatabase<typeof schema>;
+vi.mock('@/db/client', () => ({ db: () => database, isDatabaseConfigured: () => true }));
+let pg: PGlite;
 
-// Mock the email module (also avoids importing 'server-only' from lib/email).
-const mockSendEmail = vi.fn().mockResolvedValue(true);
-vi.mock('@/lib/email', () => ({
-  sendEmail: mockSendEmail,
-}));
-
-// Mock DB
-// Idempotency claim: insert(...).values(...).onConflictDoNothing().returning().
-// A non-empty return = claimed (proceed); [] = duplicate (skip).
-const mockClaimReturning = vi.fn().mockResolvedValue([{ id: 'evt_test_123' }]);
-const mockInsertOnConflictDoNothing = vi.fn(() => ({ returning: mockClaimReturning }));
-const mockInsertValues = vi.fn(() => ({ onConflictDoNothing: mockInsertOnConflictDoNothing }));
-const mockInsert = vi.fn(() => ({ values: mockInsertValues }));
-
-const mockUpdateReturning = vi.fn().mockResolvedValue([{ id: 'user_abc' }]);
-const mockUpdateSetWhere = vi.fn(() => ({ returning: mockUpdateReturning }));
-const mockUpdateSet = vi.fn(() => ({ where: mockUpdateSetWhere }));
-const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
-
-// Release-claim-on-failure path: delete(...).where(...).
-const mockDeleteWhere = vi.fn().mockResolvedValue(undefined);
-const mockDelete = vi.fn(() => ({ where: mockDeleteWhere }));
-
-// Contact lookup for emails: select(...).from(...).where(...).limit().
-const mockSelectLimit = vi.fn().mockResolvedValue([]);
-const mockSelectFrom = vi.fn(() => ({ where: () => ({ limit: mockSelectLimit }) }));
-const mockSelect = vi.fn(() => ({ from: mockSelectFrom }));
-
-vi.mock('@/db/client', () => ({
-  db: vi.fn(() => ({
-    insert: mockInsert,
-    update: mockUpdate,
-    select: mockSelect,
-    delete: mockDelete,
-  })),
-  isDatabaseConfigured: vi.fn(() => true),
-}));
-
-vi.mock('@/db/schema', () => ({
-  users: { id: 'id', stripeCustomerId: 'stripe_customer_id', plan: 'plan', email: 'email', name: 'name' },
-  stripeEvents: { id: 'id', type: 'type' },
-}));
-
-vi.mock('@/lib/billing', () => ({
-  isPlanId: (v: unknown) => typeof v === 'string' && ['free', 'writer', 'author', 'studio'].includes(v),
-}));
-
-function makeRequest(body: string, signature = 'sig_test') {
-  return new Request('http://localhost/api/webhooks/stripe', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'stripe-signature': signature,
-    },
-    body,
+function subscription(plan = 'writer', status = 'active') {
+  return { id: `sub_${plan}`, status, customer: 'cus_abc', metadata: { plan: 'studio' },
+    items: { data: [{ price: { id: `price_${plan}_monthly`, unit_amount: 1 } }], has_more: false },
+  } as unknown as Stripe.Subscription;
+}
+function event(type = 'checkout.session.completed', object: Record<string, unknown> = {}, id = 'evt_test') {
+  return { id, type, data: { object: {
+    id: 'cs_test', mode: 'subscription', customer: 'cus_abc', subscription: 'sub_writer',
+    metadata: { userId: 'user_wrong', plan: 'studio' }, ...object,
+  } } } as unknown as Stripe.Event;
+}
+function request(signature = 'sig_test') {
+  return new Request('http://localhost/api/webhooks/stripe', { method: 'POST',
+    headers: { 'stripe-signature': signature }, body: '{}',
   }) as unknown as import('next/server').NextRequest;
 }
-
-function fakeEvent(
-  type: string,
-  data: Record<string, unknown>,
-  id = 'evt_test_123',
-) {
-  return { id, type, data: { object: data } } as unknown as Stripe.Event;
+async function storedPlan() {
+  return (await pg.query<{ plan: string }>("SELECT plan FROM users WHERE id='user_abc'")).rows[0].plan;
 }
+async function claims() { return (await pg.query('SELECT id FROM stripe_events')).rows; }
 
-describe('POST /api/webhooks/stripe', () => {
-  beforeEach(() => {
-    process.env = {
-      ...originalEnv,
-      STRIPE_SECRET_KEY: 'sk_test_123',
-      STRIPE_WEBHOOK_SECRET: 'whsec_test',
-      DATABASE_URL: 'postgresql://test',
-    };
-    mockConstructEvent.mockReset();
-    mockInsert.mockClear();
-    mockInsertValues.mockClear();
-    mockInsertOnConflictDoNothing.mockClear();
-    mockUpdate.mockClear();
-    mockUpdateSet.mockClear();
-    mockUpdateSetWhere.mockClear();
-    mockUpdateReturning.mockClear().mockResolvedValue([{ id: 'user_abc' }]);
-    mockSelectLimit.mockReset().mockResolvedValue([]); // no contact by default
-    mockClaimReturning.mockReset().mockResolvedValue([{ id: 'evt_test_123' }]); // claimed by default
-    mockDeleteWhere.mockClear();
-    mockSendEmail.mockClear().mockResolvedValue(true);
-    mockSubRetrieve.mockReset();
+describe('Stripe webhooks with real Postgres transactions and registered migrations', () => {
+  beforeAll(async () => {
+    pg = new PGlite(); database = drizzle(pg, { schema });
+    await migrate(database, { migrationsFolder: 'db/migrations' });
+  }, 30_000);
+  afterAll(async () => { await pg.close(); });
+  afterEach(() => { vi.unstubAllEnvs(); });
+  beforeEach(async () => {
+    await pg.exec('DROP TRIGGER IF EXISTS fail_billing_update ON users; TRUNCATE users CASCADE; TRUNCATE stripe_events;');
+    await pg.exec("INSERT INTO users (id,email,name,plan,stripe_customer_id) VALUES ('user_abc','writer@example.com','Ada','writer','cus_abc');");
+    vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test');
+    for (const plan of ['WRITER', 'AUTHOR', 'STUDIO']) {
+      for (const interval of ['MONTHLY', 'YEARLY']) vi.stubEnv(`STRIPE_PRICE_${plan}_${interval}`, `price_${plan.toLowerCase()}_${interval.toLowerCase()}`);
+    }
+    constructEvent.mockReset().mockReturnValue(event());
+    listSubscriptions.mockReset().mockResolvedValue({ data: [subscription()], has_more: false });
+    sendEmail.mockReset().mockResolvedValue(true);
   });
 
-  it('returns 500 when STRIPE_WEBHOOK_SECRET is unset', async () => {
-    delete process.env.STRIPE_WEBHOOK_SECRET;
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(500);
+  it('creates the previously missing table and migration-only columns', async () => {
+    const columns = (await pg.query<{ table_name: string; column_name: string }>("SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public'")).rows;
+    for (const [table, column] of [['stripe_events', 'processed_at'], ['users', 'onboarding_stage'], ['stories', 'version'], ['comments', 'data']]) {
+      expect(columns).toContainEqual({ table_name: table, column_name: column });
+    }
   });
-
-  it('returns 401 when stripe-signature header is missing', async () => {
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const req = new Request('http://localhost/api/webhooks/stripe', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: '{}',
-    }) as unknown as import('next/server').NextRequest;
-    const res = await POST(req);
-    expect(res.status).toBe(401);
+  it('refuses missing webhook configuration', async () => {
+    vi.stubEnv('STRIPE_WEBHOOK_SECRET', '');
+    expect((await POST(request())).status).toBe(500);
+    expect(constructEvent).not.toHaveBeenCalled();
   });
-
-  it('returns 401 when signature verification fails', async () => {
-    mockConstructEvent.mockImplementation(() => {
-      throw new Error('bad signature');
+  it('refuses an unsigned request', async () => {
+    expect((await POST(request(''))).status).toBe(401);
+    expect(await claims()).toEqual([]);
+  });
+  it('refuses an invalid signature', async () => {
+    constructEvent.mockImplementation(() => { throw new Error('bad signature'); });
+    expect((await POST(request())).status).toBe(401);
+    expect(await claims()).toEqual([]);
+  });
+  it('ignores unhandled events without recording or reading Stripe', async () => {
+    constructEvent.mockReturnValue(event('payment_intent.succeeded'));
+    expect((await POST(request())).status).toBe(200);
+    expect(await claims()).toEqual([]);
+    expect(listSubscriptions).not.toHaveBeenCalled();
+  });
+  it('ignores non-subscription checkout without changing entitlement', async () => {
+    constructEvent.mockReturnValue(event('checkout.session.completed', { mode: 'payment' }));
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('writer');
+    expect(listSubscriptions).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+  it('derives checkout access from current prices, ignoring stale metadata and amount', async () => {
+    listSubscriptions.mockResolvedValue({ data: [subscription('author')], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('author');
+    expect(listSubscriptions).toHaveBeenCalledWith({ customer: 'cus_abc', status: 'all', limit: 100 });
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ template: 'subscription_confirmed', data: expect.objectContaining({ plan: 'author' }) }));
+  });
+  it('handles configured annual prices regardless of discount or dollar amount', async () => {
+    const sub = subscription('studio'); sub.items.data[0].price.id = 'price_studio_yearly';
+    listSubscriptions.mockResolvedValue({ data: [sub], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('studio');
+  });
+  it.each(['active', 'trialing'])('reconciles %s upgrades', async status => {
+    constructEvent.mockReturnValue(event('customer.subscription.updated'));
+    listSubscriptions.mockResolvedValue({ data: [subscription('author', status)], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('author');
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+  it('retains existing past-due grace without upgrading unpaid access', async () => {
+    constructEvent.mockReturnValue(event('customer.subscription.updated'));
+    listSubscriptions.mockResolvedValue({ data: [subscription('studio', 'past_due')], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('writer');
+  });
+  it.each(['unpaid', 'canceled', 'incomplete', 'incomplete_expired', 'paused'])('revokes access for %s subscriptions', async status => {
+    constructEvent.mockReturnValue(event('customer.subscription.updated'));
+    listSubscriptions.mockResolvedValue({ data: [subscription('writer', status)], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('free');
+  });
+  it('does not grant access when checkout payment remains incomplete', async () => {
+    await pg.exec("UPDATE users SET plan='free';");
+    listSubscriptions.mockResolvedValue({ data: [subscription('studio', 'incomplete')], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('free');
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+  it('processes a cancellation and sends mail only after the transaction commits', async () => {
+    constructEvent.mockReturnValue(event('customer.subscription.deleted'));
+    listSubscriptions.mockResolvedValue({ data: [], has_more: false });
+    sendEmail.mockImplementation(async () => {
+      expect(await storedPlan()).toBe('free'); expect(await claims()).toHaveLength(1); return true;
     });
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(401);
+    expect((await POST(request())).status).toBe(200);
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ template: 'subscription_canceled' }));
   });
-
-  it('processes checkout.session.completed and updates user plan', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('checkout.session.completed', {
-        id: 'cs_test_123',
-        mode: 'subscription',
-        customer: 'cus_abc',
-        subscription: 'sub_abc',
-        metadata: { userId: 'user_abc', plan: 'writer' },
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.processed).toBe('checkout.session.completed');
-    expect(mockUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ stripeCustomerId: 'cus_abc', plan: 'writer' }),
-    );
+  it('does not revoke a replacement subscription on delayed cancellation', async () => {
+    constructEvent.mockReturnValue(event('customer.subscription.deleted', { status: 'canceled' }));
+    listSubscriptions.mockResolvedValue({ data: [subscription('author'), subscription('writer', 'canceled')], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('author');
+    expect(sendEmail).not.toHaveBeenCalled();
   });
-
-  it('derives the plan from the subscription price when metadata.plan is absent', async () => {
-    // No plan in metadata → retrieve the subscription and infer from price
-    // ($49/mo → studio) instead of hard-coding 'writer'.
-    mockSubRetrieve.mockResolvedValue({
-      metadata: {},
-      items: { data: [{ price: { unit_amount: 4900, recurring: { interval: 'month' } } }] },
-    });
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('checkout.session.completed', {
-        id: 'cs_no_plan',
-        mode: 'subscription',
-        customer: 'cus_abc',
-        subscription: 'sub_xyz',
-        metadata: { userId: 'user_abc' }, // no plan
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    expect(mockSubRetrieve).toHaveBeenCalledWith('sub_xyz');
-    expect(mockUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ stripeCustomerId: 'cus_abc', plan: 'studio' }),
-    );
+  it('does not replay stale upgrades over a newer downgrade', async () => {
+    constructEvent.mockReturnValue(event('customer.subscription.updated', { status: 'active', metadata: { plan: 'studio' } }));
+    listSubscriptions.mockResolvedValue({ data: [subscription('writer')], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('writer');
   });
-
-  it('skips non-subscription checkout sessions', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('checkout.session.completed', {
-        id: 'cs_test_456',
-        mode: 'payment', // not subscription
-        customer: 'cus_abc',
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    // Should not attempt to update user plan
-    expect(mockUpdateSet).not.toHaveBeenCalledWith(
-      expect.objectContaining({ plan: expect.any(String) }),
-    );
+  it('deduplicates sequential and overlapping deliveries with a real unique constraint', async () => {
+    const responses = await Promise.all([POST(request()), POST(request())]);
+    expect(responses.map(r => r.status)).toEqual([200, 200]);
+    const bodies = await Promise.all(responses.map(r => r.json()));
+    expect(bodies.filter(b => b.skipped === 'duplicate')).toHaveLength(1);
+    expect(await claims()).toHaveLength(1);
+    expect(listSubscriptions).toHaveBeenCalledTimes(1);
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect((await (await POST(request())).json()).skipped).toBe('duplicate');
   });
-
-  it('processes customer.subscription.updated for active subscription', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('customer.subscription.updated', {
-        customer: 'cus_abc',
-        status: 'active',
-        metadata: { plan: 'author' },
-        items: { data: [{ price: { unit_amount: 2400, recurring: { interval: 'month' } } }] },
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    expect(mockUpdateSet).toHaveBeenCalled();
+  it('rolls back the claim on a provider outage and processes the same event on retry', async () => {
+    listSubscriptions.mockRejectedValueOnce(new Error('provider timeout'));
+    expect((await POST(request())).status).toBe(503);
+    expect(await claims()).toEqual([]);
+    expect(await storedPlan()).toBe('writer');
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect((await POST(request())).status).toBe(200);
+    expect(await claims()).toHaveLength(1);
   });
-
-  it('processes customer.subscription.deleted and downgrades to free', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('customer.subscription.deleted', {
-        customer: 'cus_abc',
-        status: 'canceled',
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.processed).toBe('customer.subscription.deleted');
-    expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ plan: 'free' }));
+  it('rolls back the claim on a database update failure with no notification', async () => {
+    await pg.exec(`CREATE OR REPLACE FUNCTION reject_billing_update() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected update failure'; END; $$;
+      CREATE TRIGGER fail_billing_update BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION reject_billing_update();`);
+    listSubscriptions.mockResolvedValue({ data: [subscription('author')], has_more: false });
+    expect((await POST(request())).status).toBe(503);
+    expect(await claims()).toEqual([]);
+    expect(await storedPlan()).toBe('writer');
+    expect(sendEmail).not.toHaveBeenCalled();
+    await pg.exec('DROP TRIGGER fail_billing_update ON users;');
+    expect((await POST(request())).status).toBe(200);
+    expect(await storedPlan()).toBe('author');
   });
-
-  it('processes invoice.payment_failed without crashing', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('invoice.payment_failed', {
-        id: 'in_test_123',
-        customer: 'cus_abc',
-        attempt_count: 2,
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.processed).toBe('invoice.payment_failed');
+  it('refuses unconfigured prices without consuming the event', async () => {
+    const sub = subscription(); sub.items.data[0].price.id = 'price_unknown';
+    listSubscriptions.mockResolvedValue({ data: [sub], has_more: false });
+    expect((await POST(request())).status).toBe(503);
+    expect(await claims()).toEqual([]);
+    expect(await storedPlan()).toBe('writer');
   });
-
-  it('ignores unhandled event types with 200', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('payment_intent.succeeded', { id: 'pi_test' }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.ignored).toBe('payment_intent.succeeded');
+  it('refuses an incomplete provider page', async () => {
+    listSubscriptions.mockResolvedValue({ data: [subscription('author')], has_more: true });
+    expect((await POST(request())).status).toBe(503);
+    expect(await claims()).toEqual([]);
+    expect(await storedPlan()).toBe('writer');
   });
-
-  it('skips duplicate events (idempotency)', async () => {
-    // Simulate the claim losing the race — onConflictDoNothing returns no row.
-    mockClaimReturning.mockResolvedValue([]);
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('checkout.session.completed', {
-        id: 'cs_test',
-        mode: 'subscription',
-        customer: 'cus_abc',
-        subscription: 'sub_abc',
-        metadata: { userId: 'user_abc', plan: 'writer' },
-      }, 'evt_dup'),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.skipped).toBe('duplicate');
-    // Should not have updated the user
-    expect(mockUpdateSet).not.toHaveBeenCalled();
+  it('retries an unlinked customer rather than acknowledging a lost entitlement', async () => {
+    constructEvent.mockReturnValue(event('checkout.session.completed', { customer: 'cus_missing' }));
+    expect((await POST(request())).status).toBe(503);
+    expect(await claims()).toEqual([]);
+    expect(listSubscriptions).not.toHaveBeenCalled();
+    expect(sendEmail).not.toHaveBeenCalled();
   });
-
-  it('claims the event (records it) before processing for idempotency', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('customer.subscription.deleted', {
-        customer: 'cus_abc',
-        status: 'canceled',
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    await POST(makeRequest('{}'));
-    expect(mockInsert).toHaveBeenCalled();
-    expect(mockInsertValues).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'customer.subscription.deleted' }),
-    );
-    // Successful processing keeps the claim (no release).
-    expect(mockDeleteWhere).not.toHaveBeenCalled();
+  it('supports expanded customer objects', async () => {
+    constructEvent.mockReturnValue(event('customer.subscription.updated', { customer: { id: 'cus_abc' } }));
+    expect((await POST(request())).status).toBe(200);
   });
-
-  it('releases the idempotency claim when processing fails so Stripe can retry', async () => {
-    // Make the plan update throw mid-processing.
-    mockUpdateReturning.mockRejectedValueOnce(new Error('db unavailable'));
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('customer.subscription.deleted', { customer: 'cus_abc', status: 'canceled' }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(500);
-    // The claim is released (deleted) so the retried delivery isn't skipped.
-    expect(mockDeleteWhere).toHaveBeenCalled();
-  });
-
-  it('sends a subscription_confirmed email on checkout when the user is resolvable', async () => {
-    // Only select now is the contact lookup (idempotency is an insert-claim).
-    mockSelectLimit.mockReset().mockResolvedValue([{ email: 'writer@example.com', name: 'Ada' }]);
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('checkout.session.completed', {
-        id: 'cs_email',
-        mode: 'subscription',
-        customer: 'cus_abc',
-        subscription: 'sub_abc',
-        metadata: { userId: 'user_abc', plan: 'author' },
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    expect(mockSendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: 'writer@example.com',
-        template: 'subscription_confirmed',
-        data: expect.objectContaining({ plan: 'author', name: 'Ada' }),
-      }),
-    );
-  });
-
-  it('sends a payment_failed email on invoice.payment_failed', async () => {
-    mockSelectLimit.mockReset().mockResolvedValue([{ email: 'writer@example.com', name: null }]);
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('invoice.payment_failed', {
-        id: 'in_email',
-        customer: 'cus_abc',
-        attempt_count: 1,
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    expect(mockSendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'writer@example.com', template: 'payment_failed' }),
-    );
-  });
-
-  it('sends a subscription_canceled email on subscription.deleted', async () => {
-    mockSelectLimit.mockReset().mockResolvedValue([{ email: 'writer@example.com', name: 'Ada' }]);
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('customer.subscription.deleted', { customer: 'cus_abc', status: 'canceled' }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    expect(mockSendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'writer@example.com', template: 'subscription_canceled' }),
-    );
-  });
-
-  it('does not send email when no user matches the Stripe customer', async () => {
-    // idempotency [] then contact [] (no user) → notifyCustomer no-ops.
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('customer.subscription.deleted', { customer: 'cus_missing', status: 'canceled' }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    expect(mockSendEmail).not.toHaveBeenCalled();
-  });
-
-  it('handles customer as object (expanded)', async () => {
-    mockConstructEvent.mockReturnValue(
-      fakeEvent('customer.subscription.deleted', {
-        customer: { id: 'cus_obj', name: 'Test' },
-        status: 'canceled',
-      }),
-    );
-
-    const { POST } = await import('@/app/api/webhooks/stripe/route');
-    const res = await POST(makeRequest('{}'));
-    expect(res.status).toBe(200);
-    expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ plan: 'free' }));
+  it('reconciles payment failures and sends the existing notification', async () => {
+    constructEvent.mockReturnValue(event('invoice.payment_failed'));
+    listSubscriptions.mockResolvedValue({ data: [subscription('writer', 'past_due')], has_more: false });
+    expect((await POST(request())).status).toBe(200);
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ template: 'payment_failed' }));
   });
 });

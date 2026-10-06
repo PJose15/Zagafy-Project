@@ -50,4 +50,15 @@ describe('active-project', () => {
 
     window.removeEventListener(PROJECT_CHANGED_EVENT, handler);
   });
+  it('rolls back the pointer and emits no event after a storage failure', () => {
+    storage['zagafy_active_project']='old'; storage['zagafy_project_id']='old';
+    const handler=vi.fn();window.addEventListener(PROJECT_CHANGED_EVENT,handler);
+    const spy=vi.spyOn(localStorage,'setItem').mockImplementation((key,value)=>{
+      if(key==='zagafy_project_id' && value==='new') throw new Error('quota');
+      storage[key]=value;
+    });
+    try {expect(()=>setActiveProjectId('new')).toThrow('quota');expect(getActiveProjectId()).toBe('old');expect(handler).not.toHaveBeenCalled();}
+    finally {spy.mockRestore();window.removeEventListener(PROJECT_CHANGED_EVENT,handler);}
+  });
+
 });

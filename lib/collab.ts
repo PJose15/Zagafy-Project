@@ -23,14 +23,15 @@ export type StoryRole = 'owner' | 'editor' | 'reader';
 export async function getStoryAccess(
   storyId: string,
   userId: string,
+  database: Pick<ReturnType<typeof db>, 'query'> = db(),
 ): Promise<StoryRole | null> {
-  const story = await db().query.stories.findFirst({
+  const story = await database.query.stories.findFirst({
     where: eq(schema.stories.id, storyId),
     columns: { ownerId: true },
   });
   if (story && story.ownerId === userId) return 'owner';
 
-  const collab = await db().query.storyCollaborators.findFirst({
+  const collab = await database.query.storyCollaborators.findFirst({
     where: and(
       eq(schema.storyCollaborators.storyId, storyId),
       eq(schema.storyCollaborators.userId, userId),

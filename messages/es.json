@@ -1,4 +1,16 @@
 {
+  "storage": {
+    "loadTitle": "No se pudo cargar tu proyecto",
+    "loadError": "No se pudieron leer los datos guardados. La edición está pausada para proteger tu manuscrito. Reintenta cuando puedas acceder al almacenamiento del navegador.",
+    "switchError": "No se pudo cambiar de proyecto. Tu borrador actual sigue disponible; restablece el acceso al almacenamiento del navegador y reintenta.",
+    "retry": "Reintentar carga",
+    "downloadRecovery": "Descargar registros para recuperar el proyecto",
+    "recoveryNote": "Este archivo contiene los registros originales, incluido el texto de los capítulos. Guárdalo en privado; no es una copia de seguridad normal.",
+    "recoveryError": "No se pudo descargar el archivo. Conserva los datos de este navegador y reintenta."
+  },
+  "sync": {
+    "workspaceAccountNotice": "La sincronización está en pausa: el espacio de escritura local de este navegador se vinculó a otra cuenta. Usa un perfil de navegador separado para esta cuenta. Los manuscritos locales permanecen en este dispositivo después de cerrar sesión."
+  },
   "app": {
     "name": "Zagafy",
     "version": "CanonKeeper v1.0"
@@ -26,6 +38,7 @@
     "settings": "Ajustes"
   },
   "sidebar": {
+    "primaryNav": "Navegación principal",
     "openNav": "Abrir navegación",
     "closeNav": "Cerrar navegación",
     "project": "Proyecto",
@@ -367,7 +380,24 @@
     "ariaDelete": "Eliminar {title}",
     "rename": "Renombrar",
     "delete": "Eliminar",
-    "importedProjectTitle": "Manuscrito importado"
+    "importedProjectTitle": "Manuscrito importado",
+    "cloud": {
+      "title": "Proyectos en la nube",
+      "description": "Abre en este dispositivo tus proyectos sincronizados y los que te han compartido.",
+      "error": "No se pudo cargar o abrir el proyecto. Comprueba tu conexión y la cuenta con la que has iniciado sesión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "loading": "Cargando proyectos…",
+      "empty": "Todavía no hay proyectos en la nube.",
+      "planRequired": "El propietario necesita un plan con sincronización en la nube para descargar este proyecto.",
+      "opening": "Descargando…",
+      "open": "Abrir proyecto",
+      "more": "Cargar más",
+      "roles": {
+        "owner": "Tu proyecto",
+        "editor": "Compartido · Editor",
+        "reader": "Compartido · Lector"
+      }
+    }
   },
   "genesis": {
     "mode": "Modo Génesis",
@@ -654,8 +684,10 @@
     "canonSavedToast": "Revelación sellada en el canon",
     "clearSessionAria": "Borrar esta conversación",
     "clearConfirmTitle": "¿Borrar la conversación?",
-    "clearConfirmMessage": "Se descartará todo el intercambio con {name}. Las revelaciones guardadas como canon permanecen en tu biblia.",
-    "savedAsCanon": "Guardado como canon"
+    "clearConfirmMessage": "¿Borrar esta conversación? Se conservará una copia local de recuperación. Las revelaciones guardadas como canon permanecen en tu biblia.",
+    "savedAsCanon": "Guardado como canon",
+    "loadEarlier": "Cargar {count} mensajes anteriores",
+    "errorHistory": "No se pudo guardar o cargar la conversación. Reintenta la recuperación o exporta el proyecto."
   },
   "flow": {
     "errorTitle": "Editor de Flujo",
@@ -664,6 +696,9 @@
       "fallbackTitle": "Modo Flujo",
       "words": "{count} palabras",
       "versionHistory": "Historial de versiones",
+      "historyLoadError": "No se pudo cargar el historial del capítulo. Reintenta antes de usar las versiones.",
+      "historySaveError": "No se pudo guardar o cargar el historial del capítulo. Tu texto actual sigue en el editor. Reintenta la acción.",
+      "retryHistory": "Reintentar historial",
       "storyCoach": "Mentor de la historia",
       "switchVoice": "Cambiar voz de escritura",
       "sceneChange": "Cambio de escena",
@@ -1287,6 +1322,8 @@
     "editorPlaceholder": "Empieza a escribir tu capítulo aquí...",
     "summaryPlaceholder": "Breve resumen para la Biblia de la Historia...",
     "saveChapter": "Guardar Capítulo",
+    "saving": "Guardando…",
+    "saveError": "No se pudo guardar el capítulo. Tu borrador sigue abierto; inténtalo de nuevo.",
     "moveUpAria": "Mover {title} hacia arriba",
     "moveDownAria": "Mover {title} hacia abajo",
     "editAria": "Editar {title}",
@@ -1440,6 +1477,8 @@
     "filterPlaceholder": "Filtrar este estante…"
   },
   "importPage": {
+    "retrySave": "Reintentar guardar la importación",
+    "saveError": "No se pudo guardar la importación. Mantén esta página abierta y vuelve a intentarlo.",
     "title": "Ingesta de Documentos",
     "subtitle": "Sube tu manuscrito, notas o esquemas para extraer automáticamente la inteligencia de tu historia.",
     "dragDrop": "Arrastra y Suelta los Archivos Aquí",
@@ -1562,7 +1601,7 @@
     "clear": "Limpiar",
     "clearAria": "Limpiar el historial del chat",
     "clearConfirmTitle": "¿Limpiar el historial del chat?",
-    "clearConfirmMessage": "Esto eliminará todos los mensajes. Esto no se puede deshacer.",
+    "clearConfirmMessage": "Esto borra los mensajes y conserva una copia local de recuperación en Versiones.",
     "clearConfirmLabel": "Limpiar",
     "auditError": "No se pudo realizar la auditoría de continuidad.",
     "auditFailed": "La auditoría falló",
@@ -1609,7 +1648,9 @@
     "copiedAllToast": "Conversación copiada como markdown",
     "copyFailedToast": "No se pudo copiar",
     "youLabel": "Tú",
-    "assistantLabel": "Asistente"
+    "assistantLabel": "Asistente",
+    "historyError": "No se pudo guardar o cargar el historial. El texto visible se conserva. Reintenta o exporta la recuperación.",
+    "historyRetry": "Reintentar historial"
   },
   "gamification": {
     "durationTarget": "{duration} min · meta de {target} palabras",
@@ -1813,6 +1854,12 @@
     }
   },
   "writingStats": {
+    "recovery": {
+      "saveError": "No se pudo guardar o recuperar el historial de sesiones. Mantén esta pestaña abierta y reintenta.",
+      "scoreError": "No se guardó tu puntuación de fluidez. Selecciónala de nuevo para reintentar.",
+      "retry": "Reintentar recuperación",
+      "export": "Exportar recuperación"
+    },
     "insight": {
       "keepWriting": "¡Sigue escribiendo!",
       "keepWritingDetail": "Sigue escribiendo — necesitamos al menos 5 sesiones para revelar tus patrones.",
@@ -1847,6 +1894,7 @@
       "scoreNA": "N/D"
     },
     "voice": {
+      "historyError": "No se pudo cargar el historial de sesiones. Reintenta cuando el almacenamiento esté disponible.",
       "title": "Analíticas por Voz",
       "allVoices": "Todas las Voces",
       "totalWords": "Palabras Totales",
@@ -1995,6 +2043,8 @@
     }
   },
   "findReplace": {
+    "savedNotice": "Reemplazos guardados.",
+    "saveError": "No se pudieron guardar los reemplazos. Mantén esta página abierta y vuelve a intentarlo cuando recuperes el acceso al almacenamiento del navegador.",
     "title": "Buscar y reemplazar",
     "close": "Cerrar",
     "findPlaceholder": "Buscar…",
@@ -2117,6 +2167,12 @@
     "defaultTitle": "Mi Novela"
   },
   "billing": {
+    "statusError": "No se pudo cargar tu plan. Inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "interval": "Periodo de facturación",
+    "monthly": "Mensual",
+    "yearly": "Anual",
+    "perYear": "${price}/año",
     "title": "Facturación",
     "currentPlan": "Plan actual:",
     "perMonth": "${price}/mes",
@@ -2209,7 +2265,7 @@
         "period": "para siempre",
         "description": "Perfecto para probar Zagafy en un único proyecto.",
         "cta": "Empezar",
-        "f1": "1 historia",
+        "f1": "Espacio de escritura local",
         "f2": "50 solicitudes de IA al día",
         "f3": "Almacenamiento local",
         "f4": "Editor de manuscritos",

@@ -27,6 +27,15 @@ describe('comments CRUD', () => {
     await db.comments.clear();
   });
 
+  it('keeps a captured comment project in the sync queue after asynchronous writes', async () => {
+    await db.syncQueue.clear();
+    const created = await addComment(baseInput, 'captured-comment-project');
+    await updateCommentText(created.id, 'Edited');
+    const queued = await db.syncQueue.toArray();
+    expect(queued.length).toBeGreaterThan(0);
+    expect(queued.every(row => row.projectId === 'captured-comment-project')).toBe(true);
+  });
+
   it('adds and lists comments for a chapter', async () => {
     const created = await addComment(baseInput, 'p1');
     expect(created.id).toBeTruthy();

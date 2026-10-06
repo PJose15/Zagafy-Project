@@ -38,6 +38,7 @@ import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { ProfileBadge } from '@/components/profile/profile-badge';
 import { CatalogHint } from '@/components/catalog/card-catalog';
 import { wordCount } from '@/lib/editor/serialization';
+import { useModalHygiene } from '@/hooks/use-modal-hygiene';
 
 export const navItems = [
   { key: 'dashboard', href: '/', icon: LayoutDashboard },
@@ -79,6 +80,16 @@ export function ParchmentSidebar() {
     return () => mq.removeEventListener('change', update);
   }, []);
   const drawerHidden = !isOpen && !isDesktop;
+  const drawerRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const mobileOpen = isOpen && !isDesktop;
+  useEffect(() => {
+    if (isDesktop) setIsOpen(false);
+  }, [isDesktop]);
+  useModalHygiene(drawerRef, () => setIsOpen(false), mobileOpen);
+  useEffect(() => {
+    if (mobileOpen) closeRef.current?.focus();
+  }, [mobileOpen]);
   const t = useTranslations('nav');
   const tSide = useTranslations('sidebar');
   const tApp = useTranslations('app');
@@ -139,7 +150,7 @@ export function ParchmentSidebar() {
       {/* Mobile Header */}
       <div className="md:hidden print:hidden flex items-center justify-between p-4 bg-mahogany-900 border-b border-mahogany-700/50">
         <span className="font-serif font-semibold text-cream-100 tracking-tight">{tApp('name')}</span>
-        <button onClick={() => setIsOpen(!isOpen)} className="text-cream-300 hover:text-cream-50" aria-label={isOpen ? tSide('closeNav') : tSide('openNav')}>
+        <button onClick={() => setIsOpen(!isOpen)} className="p-2 text-cream-300 hover:text-cream-50" aria-expanded={mobileOpen} aria-controls="project-navigation" aria-label={isOpen ? tSide('closeNav') : tSide('openNav')}>
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
@@ -147,6 +158,11 @@ export function ParchmentSidebar() {
       {/* Sidebar — sticky on desktop so the menu follows you down the page;
           the nav list scrolls internally when it outgrows the viewport. */}
       <aside
+        ref={drawerRef}
+        id="project-navigation"
+        role={mobileOpen ? 'dialog' : undefined}
+        aria-modal={mobileOpen || undefined}
+        aria-label={mobileOpen ? tApp('name') : undefined}
         className={`print:hidden fixed inset-y-0 left-0 z-50 w-64 bg-mahogany-900 texture-wood border-r border-mahogany-700/50 flex flex-col transition-transform duration-[380ms] ease-[cubic-bezier(0.34,1.25,0.64,1)] md:sticky md:top-0 md:h-screen md:shrink-0 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -155,6 +171,15 @@ export function ParchmentSidebar() {
         inert={drawerHidden}
         aria-hidden={drawerHidden || undefined}
       >
+        <div className="p-4 md:hidden">
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-serif font-semibold text-cream-100">{tApp('name')}</span>
+            <button ref={closeRef} onClick={() => setIsOpen(false)} className="p-2 text-cream-300 hover:text-cream-50" aria-label={tSide('closeNav')}>
+              <X size={24} aria-hidden="true" />
+            </button>
+          </div>
+          <ProjectSwitcher onNavigate={() => setIsOpen(false)} />
+        </div>
         <div className="p-6 hidden md:block">
           <p className="font-serif text-xl font-semibold text-cream-50 tracking-tight letterpress">
             {tApp('name')}
@@ -166,7 +191,7 @@ export function ParchmentSidebar() {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto" aria-label="Primary">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto" aria-label={tSide('primaryNav')}>
           {navItems.map((item, index) => {
             const isActive = pathname === item.href;
             return (
@@ -285,7 +310,7 @@ export function ParchmentSidebar() {
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden"
           role="button"
-          tabIndex={0}
+          tabIndex={-1}
           aria-label={tSide('closeNav')}
           onClick={() => setIsOpen(false)}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsOpen(false); } }}

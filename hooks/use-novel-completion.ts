@@ -47,7 +47,7 @@ export function useNovelCompletion(
 
         setCompletionStats(stats);
         setNovelJustCompleted(true);
-      });
+      }).catch(() => { /* Wait for readable session history before publishing stats. */ });
     }
   }, [finishing, isLoaded, state.chapters, state.title]);
 

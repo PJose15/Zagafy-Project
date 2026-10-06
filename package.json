@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=20.16.0 <21 || >=22.3.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -19,6 +19,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "verify:ratelimit": "node scripts/verify-ratelimit.mjs",
+    "verify:staging": "node scripts/staging-preflight.mjs",
+    "verify:production-config": "node scripts/check-production-config.mjs",
     "prepare": "husky",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
@@ -52,7 +54,7 @@
     "motion": "12.42.2",
     "next": "^15.5.19",
     "next-intl": "^4.13.7",
-    "pdf-parse": "1.1.4",
+    "pdf-parse": "2.4.5",
     "postcss": "8.5.26",
     "postgres": "^3.4.9",
     "posthog-js": "1.399.2",
@@ -73,13 +75,13 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@clerk/testing": "^2.2.28",
+    "@electric-sql/pglite": "0.5.8",
     "@next/bundle-analyzer": "^16.3.2",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "4.3.3",
     "@tailwindcss/typography": "^0.5.20",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
-    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.0",

@@ -52,7 +52,7 @@ describe('FinishingProgress', () => {
     // A non-current phase should not be highlighted
     const risingAbbr = screen.getByText('Rising');
     const risingContainer = risingAbbr.closest('div');
-    expect(risingContainer?.className).toContain('text-sepia-600');
+    expect(risingContainer?.className).not.toContain('font-semibold');
   });
 
   it('shows next suggestion text', () => {

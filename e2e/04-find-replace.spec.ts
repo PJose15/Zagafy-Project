@@ -1,43 +1,32 @@
 import { test, expect } from '@playwright/test';
 import { gotoApp } from './helpers/auth';
 
-/**
- * E2E Flow 4: Find-and-replace across chapters
- */
-test.describe('Find and replace', () => {
-  test('find text and replace across manuscript', async ({ page }) => {
-    await gotoApp(page, '/');
-
-    // Navigate to manuscript
-    const manuscriptLink = page.locator('[href*="manuscript"], [data-testid="manuscript"]');
-    if (await manuscriptLink.count() === 0) {
-      test.skip(true, 'Manuscript page not found');
-    }
-    await manuscriptLink.first().click();
-    await page.waitForLoadState('networkidle');
-
-    // Open find-and-replace (Ctrl+H or toolbar button)
-    await page.keyboard.press('Control+h');
-    await page.waitForTimeout(500);
-
-    const findInput = page.locator(
-      'input[placeholder*="Find"], input[data-testid="find-input"], [aria-label*="Find"]'
-    );
-    const replaceInput = page.locator(
-      'input[placeholder*="Replace"], input[data-testid="replace-input"], [aria-label*="Replace"]'
-    );
-
-    if (await findInput.count() > 0 && await replaceInput.count() > 0) {
-      await findInput.first().fill('dark');
-      await replaceInput.first().fill('bright');
-
-      const replaceAllBtn = page.locator(
-        'button:has-text("Replace All"), button:has-text("Replace all"), [data-testid="replace-all"]'
-      );
-      if (await replaceAllBtn.count() > 0) {
-        await replaceAllBtn.first().click();
-        await page.waitForTimeout(500);
-      }
-    }
-  });
+test('cancel leaves chapters unchanged; confirmed replacement persists across chapters', async ({ page }) => {
+  await gotoApp(page, '/manuscript');
+  for (const [title, content] of [['Harbor', 'The dark harbor held a dark secret.'], ['Letter', 'A dark letter arrived.']]) {
+    await page.getByRole('button', { name: 'New Chapter', exact: true }).click();
+    await page.getByPlaceholder('Chapter Title', { exact: true }).fill(title);
+    await page.locator('[contenteditable="true"]').first().fill(content);
+    await page.getByRole('button', { name: 'Save Chapter', exact: true }).click();
+    await expect(page.getByRole('button', { name: `Edit ${title}`, exact: true })).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Find and replace', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Find & replace', exact: true });
+  await dialog.getByLabel('Find query', { exact: true }).fill('dark');
+  await dialog.getByLabel('Replacement text', { exact: true }).fill('bright');
+  await expect(dialog.getByText('3 matches · 2 chapters', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Replace all', exact: true }).click();
+  const confirm = page.getByRole('alertdialog', { name: 'Confirm replace', exact: true });
+  await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(dialog.getByText('3 matches · 2 chapters', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Replace all', exact: true }).click();
+  await confirm.getByRole('button', { name: 'Replace', exact: true }).click();
+  await expect(dialog.getByRole('status')).toHaveText('Replacements saved.');
+  // Reload as soon as the acknowledged write completes, without debounce sleeps.
+  await page.reload();
+  for (const [title, content] of [['Harbor', 'The bright harbor held a bright secret.'], ['Letter', 'A bright letter arrived.']]) {
+    await page.getByRole('button', { name: `Edit ${title}`, exact: true }).click();
+    await expect(page.locator('[contenteditable="true"]').first()).toHaveText(content);
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  }
 });

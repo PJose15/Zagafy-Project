@@ -4,10 +4,10 @@ import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useStory } from '@/lib/store';
 import {
-  addSession,
+  saveCompletedSession,
+  recoverSessions,
   getProjectId,
   saveWipSession,
-  readWipSession,
   clearWipSession,
 } from '@/lib/types/writing-session';
 import type { WritingSession, FlowScore } from '@/lib/types/writing-session';
@@ -28,7 +28,9 @@ interface SessionTrackerOptions {
 }
 
 interface SessionTrackerState {
-  pendingFlowScore: { sessionId: string } | null;
+  pendingFlowScore: { sessionId: string; projectId: string } | null;
+  recoveryError: boolean;
+  retryRecovery: () => void;
   dismissFlowScore: () => void;
 }
 
@@ -37,7 +39,12 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
   const { state } = useStory();
   const pathname = usePathname();
 
-  const [pendingFlowScore, setPendingFlowScore] = useState<{ sessionId: string } | null>(null);
+  const [storedFlowScore, setPendingFlowScore] = useState<{ sessionId: string; projectId: string } | null>(null);
+  const [recoveryError, setRecoveryError] = useState(false);
+  const failedSessionsRef = useRef(new Map<string, WritingSession>());
+  const projectId = getProjectId();
+  const sessionProjectRef = useRef(projectId);
+  const pendingFlowScore = storedFlowScore?.projectId === projectId ? storedFlowScore : null;
 
   // Compute total word count across all chapters (CB-07: chapter.content is
   // Lexical JSON — wordCount() decodes it instead of splitting raw JSON)
@@ -82,10 +89,9 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       heartbeatTimerRef.current = null;
     }
 
-    clearWipSession();
-
     // Only save if meaningful writing occurred
     if (wordsAdded < MIN_SESSION_WORDS) {
+      clearWipSession(sessionIdRef.current);
       sessionIdRef.current = null;
       sessionStartRef.current = null;
       return;
@@ -103,7 +109,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
 
     const session: WritingSession = {
       id: sessionIdRef.current,
-      projectId: getProjectId(),
+      projectId: sessionProjectRef.current,
       projectName: projectNameRef.current,
       startedAt: sessionStartRef.current,
       endedAt,
@@ -118,6 +124,9 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       flowMoments: flowMoments && flowMoments.length > 0 ? flowMoments : null,
     };
 
+    saveCompletedSession(session).then(() => {
+      failedSessionsRef.current.delete(session.id);
+      setRecoveryError(failedSessionsRef.current.size > 0);
     // Award gamification XP for words and session completion
     try {
       let gam = readGamification();
@@ -126,7 +135,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       // `wordsAdded` let a writer farm XP by deleting then re-typing the same
       // words (the baseline resets on navigation); gating on a persistent
       // per-project high-water blocks that while still rewarding real new words.
-      const projectId = getProjectId();
+      const projectId = session.projectId;
       const awards = gam.awards ?? { streakMilestoneAwarded: 0, chapterHighWater: 0, wordHighWaterByProject: {} };
       const hwByProject = awards.wordHighWaterByProject ?? {};
       const highWater = hwByProject[projectId] ?? 0;
@@ -152,19 +161,11 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       // Best effort — gamification XP should not block session tracking
     }
 
-    // Notify the same-tab GamificationProvider (storage events are cross-tab
-    // only). Dispatched after the session commit settles so the provider's
-    // re-evaluation sees both the new session and the XP written above.
-    addSession(session)
-      .catch(() => { /* best effort */ })
-      .finally(() => {
-        window.dispatchEvent(new Event(GAMIFICATION_UPDATED_EVENT));
-      });
-
-    // Only show flow score modal for sessions longer than 3 minutes
-    if (durationMinutes > MIN_FLOW_SCORE_MINUTES) {
-      setPendingFlowScore({ sessionId: session.id });
-    }
+      window.dispatchEvent(new Event(GAMIFICATION_UPDATED_EVENT));
+      if (durationMinutes > MIN_FLOW_SCORE_MINUTES && getProjectId() === session.projectId) {
+        setPendingFlowScore({ sessionId: session.id, projectId: session.projectId });
+      }
+    }).catch(() => { failedSessionsRef.current.set(session.id, session); setRecoveryError(true); });
 
     sessionIdRef.current = null;
     sessionStartRef.current = null;
@@ -174,6 +175,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
     if (isActiveRef.current) return;
 
     isActiveRef.current = true;
+    sessionProjectRef.current = getProjectId();
     sessionIdRef.current = crypto.randomUUID();
     sessionStartRef.current = new Date().toISOString();
     wordsAtStartRef.current = wordsAtStart;
@@ -186,12 +188,16 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
     heteronymIdRef.current = active?.id ?? null;
     heteronymNameRef.current = active?.name ?? null;
 
+    if (!saveWipSession({ id: sessionIdRef.current, projectId: sessionProjectRef.current, projectName: projectNameRef.current,
+      startedAt: sessionStartRef.current, wordsStart: wordsAtStartRef.current, currentWords: lastWordCountRef.current,
+      heteronymId: heteronymIdRef.current, heteronymName: heteronymNameRef.current })) setRecoveryError(true);
+
     // Start heartbeat
     heartbeatTimerRef.current = setInterval(() => {
       if (sessionIdRef.current && sessionStartRef.current) {
-        saveWipSession({
+        const checkpointed = saveWipSession({
           id: sessionIdRef.current,
-          projectId: getProjectId(),
+          projectId: sessionProjectRef.current,
           projectName: projectNameRef.current,
           startedAt: sessionStartRef.current,
           wordsStart: wordsAtStartRef.current,
@@ -199,6 +205,7 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
           heteronymId: heteronymIdRef.current,
           heteronymName: heteronymNameRef.current,
         });
+        if (!checkpointed) setRecoveryError(true);
       }
     }, HEARTBEAT_INTERVAL_MS);
   }, [state.title]);
@@ -209,6 +216,16 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       endSession();
     }, IDLE_TIMEOUT_MS);
   }, [endSession]);
+
+  // End the old session before the word-count effect observes a new project.
+  useEffect(() => {
+    if (sessionProjectRef.current !== projectId) {
+      endSession();
+      sessionProjectRef.current = projectId;
+      lastWordCountRef.current = totalWordCount;
+      baselineWordCountRef.current = null;
+    }
+  }, [projectId, totalWordCount, endSession]);
 
   // Watch totalWordCount changes — auto-start and idle detection
   useEffect(() => {
@@ -247,34 +264,26 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
     }
   }, [pathname, endSession]);
 
-  // WIP recovery on mount
-  useEffect(() => {
-    const wip = readWipSession();
-    if (wip) {
-      const wordsAdded = wip.currentWords - wip.wordsStart;
-      if (wordsAdded >= MIN_SESSION_WORDS) {
-        const recovered: WritingSession = {
-          id: wip.id,
-          projectId: wip.projectId,
-          projectName: wip.projectName,
-          startedAt: wip.startedAt,
-          endedAt: new Date().toISOString(),
-          wordsStart: wip.wordsStart,
-          wordsEnd: wip.currentWords,
-          wordsAdded,
-          flowScore: null,
-          heteronymId: wip.heteronymId ?? null,
-          heteronymName: wip.heteronymName ?? null,
-          keystrokeMetrics: null,
-          autoFlowScore: null,
-          flowMoments: null,
-        };
-        addSession(recovered).catch(() => { /* best effort */ });
-      }
-      clearWipSession();
-    }
-     
+  const retryRecovery = useCallback(() => {
+    // Retry rich in-memory records before disk WIP so a failed checkpoint write
+    // does not force loss of metrics or the original completion time.
+    void (async () => {
+      try {
+        for (const session of failedSessionsRef.current.values()) {
+          await saveCompletedSession(session);
+          failedSessionsRef.current.delete(session.id);
+        }
+        await recoverSessions();
+        setRecoveryError(false);
+      } catch { setRecoveryError(true); }
+    })();
   }, []);
+
+  useEffect(() => {
+    retryRecovery();
+    const retry = setInterval(retryRecovery, 60_000);
+    return () => clearInterval(retry);
+  }, [retryRecovery]);
 
   // beforeunload — save WIP
   useEffect(() => {
@@ -282,13 +291,14 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
       if (isActiveRef.current && sessionIdRef.current && sessionStartRef.current) {
         saveWipSession({
           id: sessionIdRef.current,
-          projectId: getProjectId(),
+          projectId: sessionProjectRef.current,
           projectName: projectNameRef.current,
           startedAt: sessionStartRef.current,
           wordsStart: wordsAtStartRef.current,
           currentWords: lastWordCountRef.current,
           heteronymId: heteronymIdRef.current,
           heteronymName: heteronymNameRef.current,
+          abandoned: true,
         });
       }
     };
@@ -306,5 +316,5 @@ export function useSessionTracker(options?: SessionTrackerOptions): SessionTrack
     setPendingFlowScore(null);
   }, []);
 
-  return { pendingFlowScore, dismissFlowScore };
+  return { pendingFlowScore, dismissFlowScore, recoveryError, retryRecovery };
 }

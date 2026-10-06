@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   pgTable,
   text,
@@ -111,6 +112,7 @@ export const chapterVersions = pgTable(
   'chapter_versions',
   {
     id: text('id').primaryKey(),
+    syncedAt: timestamp('synced_at', { withTimezone: true }).default(sql`clock_timestamp()`).notNull(),
     chapterId: text('chapter_id')
       .references(() => chapters.id, { onDelete: 'cascade' })
       .notNull(),
@@ -118,6 +120,7 @@ export const chapterVersions = pgTable(
     data: jsonb('data').notNull(), // full ChapterVersion blob
   },
   (t) => ({
+    syncIdx: index('chapter_versions_sync_idx').on(t.chapterId, t.syncedAt),
     chapterIdx: index('chapter_versions_chapter_idx').on(t.chapterId, t.createdAt),
   }),
 );
@@ -127,6 +130,7 @@ export const storySnapshots = pgTable(
   'story_snapshots',
   {
     id: text('id').primaryKey(),
+    syncedAt: timestamp('synced_at', { withTimezone: true }).default(sql`clock_timestamp()`).notNull(),
     storyId: text('story_id')
       .references(() => stories.id, { onDelete: 'cascade' })
       .notNull(),
@@ -138,6 +142,7 @@ export const storySnapshots = pgTable(
     data: jsonb('data').notNull(), // serialized StoryState payload at snapshot time
   },
   (t) => ({
+    syncIdx: index('story_snapshots_sync_idx').on(t.storyId, t.syncedAt),
     storyIdx: index('snapshots_story_idx').on(t.storyId, t.createdAt),
   }),
 );
@@ -147,6 +152,7 @@ export const sessions = pgTable(
   'sessions',
   {
     id: text('id').primaryKey(),
+    syncedAt: timestamp('synced_at', { withTimezone: true }).default(sql`clock_timestamp()`).notNull(),
     storyId: text('story_id')
       .references(() => stories.id, { onDelete: 'cascade' })
       .notNull(),
@@ -158,24 +164,29 @@ export const sessions = pgTable(
     data: jsonb('data').notNull(), // full WritingSession blob
   },
   (t) => ({
+    syncIdx: index('sessions_sync_idx').on(t.storyId, t.syncedAt),
     storyStartedIdx: index('sessions_story_started_idx').on(t.storyId, t.startedAt),
   }),
 );
 
-// chat_messages — AI copilot history
+// chat_messages — AI and character conversation history
 export const chatMessages = pgTable(
   'chat_messages',
   {
     id: text('id').primaryKey(),
+    syncedAt: timestamp('synced_at', { withTimezone: true }).default(sql`clock_timestamp()`).notNull(),
     storyId: text('story_id')
       .references(() => stories.id, { onDelete: 'cascade' })
       .notNull(),
     chapterId: text('chapter_id'), // nullable — global vs per-chapter
     role: text('role').notNull(), // 'user' | 'assistant'
     content: text('content').notNull(),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    version: integer('version').default(0).notNull(),
     timestamp: timestamp('timestamp').notNull(),
   },
   (t) => ({
+    syncIdx: index('chat_messages_sync_idx').on(t.storyId, t.syncedAt),
     storyTimestampIdx: index('chat_story_timestamp_idx').on(t.storyId, t.timestamp),
   }),
 );
@@ -185,6 +196,7 @@ export const writerInsights = pgTable(
   'writer_insights',
   {
     id: text('id').primaryKey(),
+    syncedAt: timestamp('synced_at', { withTimezone: true }).default(sql`clock_timestamp()`).notNull(),
     storyId: text('story_id')
       .references(() => stories.id, { onDelete: 'cascade' })
       .notNull(),
@@ -196,6 +208,7 @@ export const writerInsights = pgTable(
     pinned: integer('pinned').notNull().default(0), // 0/1
   },
   (t) => ({
+    syncIdx: index('writer_insights_sync_idx').on(t.storyId, t.syncedAt),
     storyCategoryIdx: index('insights_story_category_idx').on(t.storyId, t.category),
   }),
 );
@@ -210,6 +223,7 @@ export const comments = pgTable(
   'comments',
   {
     id: text('id').primaryKey(),
+    syncedAt: timestamp('synced_at', { withTimezone: true }).default(sql`clock_timestamp()`).notNull(),
     storyId: text('story_id')
       .references(() => stories.id, { onDelete: 'cascade' })
       .notNull(),
@@ -218,6 +232,7 @@ export const comments = pgTable(
     data: jsonb('data').notNull(), // full ManuscriptComment
   },
   (t) => ({
+    syncIdx: index('comments_sync_idx').on(t.storyId, t.syncedAt),
     storyChapterIdx: index('comments_story_chapter_idx').on(t.storyId, t.chapterId),
   }),
 );
@@ -237,3 +252,34 @@ export type NewStory = typeof stories.$inferInsert;
 export type StoryCollaborator = typeof storyCollaborators.$inferSelect;
 export type Chapter = typeof chapters.$inferSelect;
 export type NewChapter = typeof chapters.$inferInsert;
+/** Content-free receipts survive entity deletion and reject stale resurrection. */
+export const syncTombstones = pgTable('sync_tombstones', {
+  storyId: text('story_id').notNull().references(() => stories.id, { onDelete: 'cascade' }),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
+}, table => ({ pk: primaryKey({ columns: [table.storyId, table.entityType, table.entityId] }),
+  syncIdx: index('sync_tombstones_sync_idx').on(table.storyId, table.deletedAt) }));
+
+/** Whole-project deletion removes manuscript data but retains delivery/access IDs. */
+export const deletedStories = pgTable('deleted_stories', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  recipients: jsonb('recipients').$type<string[]>().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
+});
+
+/** One durable checkout reservation per user. Immutable parameters make
+ * provider retries safe even if the process dies before saving its response. */
+export const checkoutAttempts = pgTable('checkout_attempts', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id').notNull().unique(),
+  customerId: text('customer_id'),
+  email: text('email').notNull(),
+  priceId: text('price_id').notNull(),
+  plan: text('plan').notNull(),
+  interval: text('interval').notNull(),
+  appUrl: text('app_url').notNull(),
+  sessionId: text('session_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`clock_timestamp()`),
+});

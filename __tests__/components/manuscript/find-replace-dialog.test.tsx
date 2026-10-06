@@ -66,6 +66,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof FindReplaceDial
     <FindReplaceDialog
       open
       onClose={vi.fn()}
+      projectId="project-a"
       chapters={chapters}
       currentChapterId={null}
       onApplyEdits={onApplyEdits}
@@ -87,6 +88,7 @@ describe('FindReplaceDialog', () => {
     cleanup();
     vi.clearAllMocks();
     mockConfirm.mockResolvedValue(true);
+    mockAddVersion.mockResolvedValue(undefined);
   });
 
   it('finds matches across chapters', () => {
@@ -103,6 +105,42 @@ describe('FindReplaceDialog', () => {
     await waitFor(() => expect(onApplyEdits).toHaveBeenCalledTimes(1));
     const edits = onApplyEdits.mock.calls[0][0] as Array<{ chapterId: string; newContent: string }>;
     expect(edits.map(e => e.chapterId).sort()).toEqual(['a', 'b']);
+  });
+
+  it('keeps replacement disabled until persistence completes', async () => {
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    const apply = vi.fn(() => pending);
+    renderDialog({ onApplyEdits: apply });
+    typeQuery('the', 'a');
+    const button = screen.getByText('Replace all') as HTMLButtonElement;
+    fireEvent.click(button);
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+    expect(button.disabled).toBe(true);
+    finish();
+    await waitFor(() => expect(button.disabled).toBe(false));
+  });
+
+  it('reports persistence failure instead of leaving an unhandled rejection', async () => {
+    renderDialog({ onApplyEdits: vi.fn().mockRejectedValue(new Error('Storage unavailable')) });
+    typeQuery('the', 'a');
+    fireEvent.click(screen.getByText('Replace all'));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Could not save replacements'));
+    expect((screen.getByText('Replace all') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('keeps all pre-replacement backups under the original project across an awaited write', async () => {
+    let finish!: () => void;
+    mockAddVersion.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+    const apply = vi.fn();
+    const { rerender } = renderDialog({ onApplyEdits: apply });
+    typeQuery('the', 'a');
+    fireEvent.click(screen.getByText('Replace all'));
+    await waitFor(() => expect(mockAddVersion).toHaveBeenCalledTimes(1));
+    rerender(<FindReplaceDialog open onClose={vi.fn()} projectId="project-b" chapters={chapters} onApplyEdits={apply} />);
+    finish();
+    await waitFor(() => expect(apply).toHaveBeenCalledTimes(1));
+    expect(mockAddVersion.mock.calls.map(call => call[5])).toEqual(['project-a', 'project-a']);
   });
 
   // ── The chapter open in the manuscript editor is excluded from replace:

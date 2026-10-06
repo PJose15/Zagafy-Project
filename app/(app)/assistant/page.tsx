@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useStory, ChatMessage } from '@/lib/store';
+import { useAssistantHistory } from '@/hooks/use-assistant-history';
+import { getActiveProjectId } from '@/lib/projects/active-project';
 import { useSession } from '@/lib/session';
 import { Send, User, Loader2, ShieldAlert, X, AlertTriangle, CheckCircle2, LockKeyhole, Trash2, Feather, BookOpen, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -105,7 +107,10 @@ function RiskBadge({ level }: { level: AuditRisk['level'] }) {
 export default function AssistantPage() {
   const t = useTranslations('assistant');
   const tCommon = useTranslations('common');
-  const { state, updateField } = useStory();
+  const { state, updateField, projectId: loadedProjectId } = useStory();
+  const projectId = loadedProjectId ?? getActiveProjectId();
+  const history = useAssistantHistory(projectId,state.chat_messages);
+  const projectRef = useRef(projectId); projectRef.current=projectId;
   const { session } = useSession();
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -114,7 +119,7 @@ export default function AssistantPage() {
     [t],
   );
   const [messages, setMessages] = useState<Message[]>(() => [welcomeMessage]);
-  const hasLoadedRef = useRef(false);
+
   // Render window: show only the tail of the conversation to avoid rendering
   // thousands of Markdown bubbles + motion nodes. User can expand in chunks.
   const MESSAGE_WINDOW_INITIAL = 50;
@@ -146,15 +151,7 @@ export default function AssistantPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
   };
 
-  // Load saved messages from store on mount
-  useEffect(() => {
-    if (!hasLoadedRef.current) {
-      if (state.chat_messages.length > 0) {
-        setMessages(state.chat_messages.map(m => ({ ...m })));
-      }
-      hasLoadedRef.current = true;
-    }
-  }, [state.chat_messages]);
+  useEffect(() => { if(history.ready) setMessages(history.messages.length ? history.messages : [welcomeMessage]); },[history.messages,history.ready,welcomeMessage]);
 
   useEffect(() => {
     scrollToBottom();
@@ -179,19 +176,8 @@ export default function AssistantPage() {
     return () => { abortRef.current?.abort(); };
   }, []);
 
-  // Persist chat messages to store (strip isThinking) — only after initial load
-  // Cap at 100 messages to prevent localStorage from growing indefinitely
-  useEffect(() => {
-    if (!hasLoadedRef.current) return;
-    const persistable: ChatMessage[] = messages
-      .filter(m => !m.isThinking)
-      .slice(-100)
-      .map(({ id, role, content, isBlockedMode, structured }) => ({ id, role, content, isBlockedMode, structured }));
-    updateField('chat_messages', persistable);
-  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const handleClearChat = async () => {
-    if (messages.length <= 1) return;
+    if (!messages.some(message => message.id !== 'welcome')) return;
     const confirmed = await confirm({
       title: t('clearConfirmTitle'),
       message: t('clearConfirmMessage'),
@@ -199,12 +185,15 @@ export default function AssistantPage() {
       variant: 'danger',
     });
     if (!confirmed) return;
+    try { await history.clear(); } catch { toast(t('historyError'),'error'); return; }
+    if(projectRef.current!==projectId) return;
     setMessages([welcomeMessage]);
     setPendingAudit(null);
     setVisibleCount(MESSAGE_WINDOW_INITIAL);
   };
 
   const handleAudit = async () => {
+    const sentProject=projectId;
     if (!input.trim() || isLoading || isAuditing) return;
 
     setIsAuditing(true);
@@ -238,7 +227,7 @@ export default function AssistantPage() {
       // Mirror handleSend: surface the server's error detail when available
       // instead of only the generic catalog message.
       const isAbort = error instanceof DOMException && error.name === 'AbortError';
-      if (!isAbort) {
+      if (!isAbort && projectRef.current===sentProject) {
         const errorMsg = error instanceof Error && error.message ? error.message : t('auditError');
         toast(errorMsg, 'error');
       }
@@ -249,9 +238,10 @@ export default function AssistantPage() {
 
   const handleSend = async (overrideInput?: string) => {
     const textToSend = overrideInput || input;
-    if (!textToSend.trim() || isLoading) return;
+    if (!textToSend.trim() || isLoading || !history.ready) return;
 
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: textToSend };
+    const sentProject=projectId;
     setMessages((prev) => [...prev, userMsg]);
     if (!overrideInput) setInput('');
     setIsLoading(true);
@@ -282,6 +272,7 @@ export default function AssistantPage() {
       || (session?.blockType && BLOCKED_KEYWORDS.some(kw => inputLower.includes(kw)));
 
     try {
+      await history.append(userMsg);
       const { context, knownEntities } = buildContext(state, {
         userInput: textToSend,
         isBlockedMode: !!isBlockedRequest,
@@ -325,19 +316,18 @@ export default function AssistantPage() {
         structured: data.structured,
       };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      if(projectRef.current===sentProject) setMessages(prev=>[...prev,assistantMsg]);
+      await history.append(assistantMsg);
+      if(projectRef.current!==sentProject) return;
     } catch (error: unknown) {
       const isAbort = error instanceof DOMException && error.name === 'AbortError';
-      if (!isAbort) {
+      if (!isAbort && projectRef.current===sentProject) {
         const errorMsg = error instanceof Error ? error.message : t('somethingWrong');
         toast(errorMsg, 'error');
-        setMessages((prev) => [
-          ...prev,
-          { id: crypto.randomUUID(), role: 'assistant', content: errorMsg },
-        ]);
+
       }
     } finally {
-      setIsLoading(false);
+      if(projectRef.current===sentProject) setIsLoading(false);
     }
   };
 
@@ -361,6 +351,7 @@ export default function AssistantPage() {
     <div className="flex flex-col h-full max-w-5xl mx-auto p-4 md:p-8">
       {/* ─── Header ─── */}
       <div className="mb-4 shrink-0">
+        {history.error && <p role="alert">{t('historyError')} <button onClick={()=>void history.refresh()}>{t('historyRetry')}</button></p>}
         <CarvedHeader
           title={t('title')}
           subtitle={t('subtitle')}
@@ -379,7 +370,7 @@ export default function AssistantPage() {
                     toast(t('copyFailedToast'), 'error');
                   }
                 }}
-                disabled={messages.length <= 1}
+                disabled={!messages.some(message => message.id !== 'welcome')}
                 className="flex items-center gap-2 text-sm text-sepia-600 hover:text-brass-700 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
               >
                 <BookOpen size={16} aria-hidden="true" />
@@ -387,7 +378,7 @@ export default function AssistantPage() {
               </button>
               <button
                 onClick={handleClearChat}
-                disabled={messages.length <= 1 || isLoading || isAuditing}
+                disabled={!messages.some(message => message.id !== 'welcome') || isLoading || isAuditing}
                 className="flex items-center gap-2 text-sm text-sepia-600 hover:text-wax-500 hover:bg-sepia-300/20 px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:hover:text-sepia-600 disabled:hover:bg-transparent"
                 aria-label={t('clearAria')}
               >

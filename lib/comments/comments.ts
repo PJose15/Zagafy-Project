@@ -9,7 +9,7 @@
 
 import { db } from '@/lib/storage/dexie-db';
 import { getActiveProjectId } from '@/lib/projects/active-project';
-import { recordDelta } from '@/lib/sync/sync-queue';
+import { queueLocalMutation, notifyLocalMutation } from '@/lib/sync/local-mutation';
 import type { CommentReply, ManuscriptComment } from '@/lib/types/comment';
 
 export type { CommentReply, ManuscriptComment } from '@/lib/types/comment';
@@ -47,8 +47,11 @@ export async function addComment(
     createdAt: now,
     updatedAt: now,
   };
-  await db.comments.put(comment);
-  void recordDelta('comment', comment.id, 'upsert');
+  await db.transaction('rw', [db.comments, db.syncQueue], async () => {
+    await db.comments.put(comment);
+    await queueLocalMutation(projectId, 'comment', comment.id);
+  });
+  notifyLocalMutation();
   return comment;
 }
 
@@ -73,43 +76,70 @@ export async function listOrphaned(
 }
 
 export async function updateCommentText(id: string, text: string): Promise<void> {
-  await db.comments.update(id, { text, updatedAt: new Date().toISOString() });
-  void recordDelta('comment', id, 'upsert');
+  const result = await db.transaction('rw', [db.comments, db.syncQueue], async () => {
+    const existing = await db.comments.get(id);
+    if (!existing) return;
+    await db.comments.update(id, { text, updatedAt: new Date().toISOString() });
+    await queueLocalMutation(existing.projectId, 'comment', id);
+  });
+  notifyLocalMutation();
+  return result;
 }
 
 export async function deleteComment(id: string): Promise<void> {
-  await db.comments.delete(id);
-  void recordDelta('comment', id, 'delete');
+  const result = await db.transaction('rw', [db.comments, db.syncQueue], async () => {
+    const existing = await db.comments.get(id);
+    if (!existing) return;
+    await db.comments.delete(id);
+    await queueLocalMutation(existing.projectId, 'comment', id, 'delete');
+  });
+  notifyLocalMutation();
+  return result;
 }
 
 export async function addReply(id: string, text: string): Promise<CommentReply | null> {
-  const existing = await db.comments.get(id);
-  if (!existing) return null;
-  const reply: CommentReply = {
-    id: crypto.randomUUID(),
-    text,
-    createdAt: new Date().toISOString(),
-  };
-  await db.comments.update(id, {
-    replies: [...existing.replies, reply],
-    updatedAt: new Date().toISOString(),
+  const result = await db.transaction('rw', [db.comments, db.syncQueue], async () => {
+    const existing = await db.comments.get(id);
+    if (!existing) return null;
+    const reply: CommentReply = {
+      id: crypto.randomUUID(),
+      text,
+      createdAt: new Date().toISOString(),
+    };
+    await db.comments.update(id, {
+      replies: [...existing.replies, reply],
+      updatedAt: new Date().toISOString(),
   });
-  void recordDelta('comment', id, 'upsert');
+  await queueLocalMutation(existing.projectId, 'comment', id);
   return reply;
+  });
+  notifyLocalMutation();
+  return result;
 }
 
 export async function setResolved(id: string, resolved: boolean): Promise<void> {
-  await db.comments.update(id, { resolved, updatedAt: new Date().toISOString() });
-  void recordDelta('comment', id, 'upsert');
+  const result = await db.transaction('rw', [db.comments, db.syncQueue], async () => {
+    const existing = await db.comments.get(id);
+    if (!existing) return;
+    await db.comments.update(id, { resolved, updatedAt: new Date().toISOString() });
+    await queueLocalMutation(existing.projectId, 'comment', id);
+  });
+  notifyLocalMutation();
+  return result;
 }
 
 /** Bulk-persist comments (used after re-anchoring updates offsets/orphan flags). */
 export async function putComments(comments: ManuscriptComment[]): Promise<void> {
   if (comments.length === 0) return;
-  await db.comments.bulkPut(comments);
-  // Callers pass only the comments that actually changed (e.g. reanchorAll's
-  // `changed` set), so syncing each keeps other devices' anchors current.
-  for (const c of comments) void recordDelta('comment', c.id, 'upsert');
+  await db.transaction('rw', [db.comments, db.syncQueue], async () => {
+    for (const comment of comments) {
+      const existing = await db.comments.get(comment.id);
+      if (existing && existing.projectId !== comment.projectId) throw new Error('Comment belongs to another project');
+    }
+    await db.comments.bulkPut(comments);
+    for (const comment of comments) await queueLocalMutation(comment.projectId, 'comment', comment.id);
+  });
+  notifyLocalMutation();
 }
 
 // ─── Pure re-anchoring ───

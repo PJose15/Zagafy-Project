@@ -4,6 +4,7 @@ import { useStory, Chapter, CanonStatus } from '@/lib/store';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useUnsavedChanges } from '@/hooks/use-unsaved-changes';
+import { useManuscriptRecovery } from '@/hooks/use-manuscript-recovery';
 import { Plus, Trash2, Edit3, Save, X, BookOpen, ChevronUp, ChevronDown, BookCopy, GripVertical, Search } from 'lucide-react';
 import { readVersions } from '@/lib/types/chapter-version';
 import { motion, AnimatePresence, Reorder, useDragControls, type DragControls } from 'motion/react';
@@ -77,7 +78,7 @@ export default function ManuscriptPage() {
   const tCommon = useTranslations('common');
   const tVersionLabels = useTranslations('versionLabels');
   const readingTime = useReadingTimeLabel();
-  const { state, updateField } = useStory();
+  const { projectId, state, updateField, saveNow } = useStory();
   const { confirm } = useConfirm();
   const { toast } = useToast();
   // Latest chapters for deferred callbacks (undo restore fires seconds later).
@@ -88,7 +89,10 @@ export default function ManuscriptPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Chapter>>({});
   const [isNewItem, setIsNewItem] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   useUnsavedChanges(editingId !== null);
+  useManuscriptRecovery(projectId, state, editingId, editForm);
 
   // MP-05 — margin comments: latest non-collapsed editor selection (ref so
   // selection churn doesn't re-render) + the selection pinned for composing.
@@ -131,8 +135,11 @@ export default function ManuscriptPage() {
   };
 
   const handleSave = async () => {
-    if (!editingId) return;
+    if (!editingId || savingRef.current) return;
     if (!editForm.title?.trim()) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
 
     // CB-07: snapshot the pre-migration plain text before the rich-text editor
     // first persists Lexical JSON over it, so the conversion stays reversible.
@@ -151,12 +158,18 @@ export default function ManuscriptPage() {
     const updatedChapters = state.chapters.map((c) =>
       c.id === editingId ? { ...c, ...editForm } : c
     );
-    updateField('chapters', updatedChapters as Chapter[]);
+    await saveNow({ ...state, chapters: updatedChapters as Chapter[] });
     toast(t('savedToast'), 'success');
     setEditingId(null);
     setIsNewItem(false);
     setPendingSelection(null);
     selectionRef.current = null;
+    } catch {
+      toast(t('saveError'), 'error');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   // A9: Ctrl/Cmd+S saves the open chapter instead of invoking the browser
@@ -284,7 +297,6 @@ export default function ManuscriptPage() {
   const [compact, setCompact] = useState(false);
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- two-pass hydration-safe storage restore
       if (localStorage.getItem('zagafy_manuscript_compact') === '1') setCompact(true);
     } catch { /* default expanded */ }
   }, []);
@@ -338,16 +350,16 @@ export default function ManuscriptPage() {
   }, []);
 
   const handleFindReplaceApply = useCallback(
-    (edits: Array<{ chapterId: string; newContent: string }>) => {
+    async (edits: Array<{ chapterId: string; newContent: string }>) => {
       const idToContent = new Map(edits.map(e => [e.chapterId, e.newContent]));
-      updateField(
-        'chapters',
-        state.chapters.map(c =>
+      await saveNow({
+        ...state,
+        chapters: state.chapters.map(c =>
           idToContent.has(c.id) ? { ...c, content: idToContent.get(c.id)! } : c,
         ),
-      );
+      });
     },
-    [state.chapters, updateField],
+    [state, saveNow],
   );
 
   return (
@@ -417,7 +429,7 @@ export default function ManuscriptPage() {
             >
             <ParchmentCard padding="none" className="overflow-hidden page-stack">
               {editingId === chapter.id ? (
-                <div className="p-6 space-y-4">
+                <div className="p-6 space-y-4" inert={saving} aria-busy={saving}>
                   <ParchmentInput
                     type="text"
                     value={editForm.title || ''}
@@ -426,8 +438,8 @@ export default function ManuscriptPage() {
                     placeholder={t('titlePlaceholder')}
                     autoFocus
                   />
-                  <div className="flex gap-4 items-start">
-                    <div className="flex-1 min-w-0">
+                  <div className="flex flex-col lg:flex-row gap-4 items-start">
+                    <div className="w-full flex-1 min-w-0">
                       <ManuscriptEditor
                         initialContent={editForm.content || ''}
                         onChange={(json) => setEditForm((f) => ({ ...f, content: json }))}
@@ -451,7 +463,7 @@ export default function ManuscriptPage() {
                     className="h-24"
                     placeholder={t('summaryPlaceholder')}
                   />
-                  <div className="flex items-center gap-3 pt-2">
+                  <div className="flex flex-wrap items-center gap-3 pt-2">
                     <ParchmentSelect
                       value={editForm.canonStatus || 'draft'}
                       onChange={(e) => setEditForm({ ...editForm, canonStatus: e.target.value as CanonStatus })}
@@ -465,8 +477,8 @@ export default function ManuscriptPage() {
                     <InkStampButton variant="ghost" onClick={handleCancel} icon={<X size={18} />}>
                       {tCommon('cancel')}
                     </InkStampButton>
-                    <InkStampButton variant="primary" onClick={handleSave} icon={<Save size={18} />}>
-                      {t('saveChapter')}
+                    <InkStampButton variant="primary" onClick={handleSave} disabled={saving} icon={<Save size={18} />}>
+                      {saving ? t('saving') : t('saveChapter')}
                     </InkStampButton>
                   </div>
                 </div>
@@ -565,6 +577,7 @@ export default function ManuscriptPage() {
       </Reorder.Group>
 
       <FindReplaceDialog
+        projectId={projectId}
         open={findOpen}
         onClose={() => setFindOpen(false)}
         chapters={state.chapters}

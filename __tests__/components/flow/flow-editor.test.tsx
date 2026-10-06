@@ -21,6 +21,14 @@ vi.mock('motion/react', () => {
   };
 });
 
+vi.mock('@/hooks/use-chapter-versions', () => ({
+  useChapterVersions: vi.fn(() => ({
+    versions: [], activeVersion: null, versionCount: 0, error: null,
+    createVersion: vi.fn().mockResolvedValue(true), switchVersion: vi.fn(),
+    markCanonical: vi.fn(), rename: vi.fn(), remove: vi.fn(), refresh: vi.fn(),
+  })),
+}));
+
 vi.mock('@/hooks/use-micro-prompt', () => ({
   useMicroPrompt: vi.fn().mockReturnValue({
     prompt: null,
@@ -317,4 +325,64 @@ describe('FlowEditor', () => {
     expect(textarea.value).toBe('Initial text');
     expect(mockScheduleAutosave).toHaveBeenCalledWith('Initial text');
   });
+  it('keeps current editor text and the version menu when the recovery save fails', async () => {
+    const { useChapterVersions } = await import('@/hooks/use-chapter-versions');
+    const makeVersion = (id: string, label: string, content: string) => ({ id, chapterId: 'ch-1', label, content, createdAt: '', isCanonical: id === 'current', source: 'manual' as const, wordCount: 2 });
+    const current = makeVersion('current', 'Current draft', 'Initial text');
+    const target = makeVersion('old', 'Older draft', 'Old words');
+    const createVersion = vi.fn().mockResolvedValue(false);
+    vi.mocked(useChapterVersions).mockReturnValue({
+      versions: [current, target], activeVersion: current, versionCount: 2, error: null,
+      createVersion, switchVersion: vi.fn().mockReturnValue(target),
+      markCanonical: vi.fn(), rename: vi.fn(), remove: vi.fn(), refresh: vi.fn(),
+    } as never);
+    await renderEditor();
+    fireEvent.click(screen.getByLabelText('Version history'));
+    fireEvent.click(screen.getByText('Older draft'));
+    await waitFor(() => expect(createVersion).toHaveBeenCalled());
+    expect((screen.getByPlaceholderText(/start writing/i) as HTMLTextAreaElement).value).toBe('Initial text');
+    expect(mockScheduleAutosave).not.toHaveBeenCalledWith('Old words');
+    expect(screen.getByText('Older draft')).toBeDefined();
+  });
+
+  it('waits for the recovery commit before switching the editor to an older version', async () => {
+    const { useChapterVersions } = await import('@/hooks/use-chapter-versions');
+    const current = { id: 'current', chapterId: 'ch-1', label: 'Current draft', content: 'Initial text', createdAt: '', isCanonical: true, source: 'manual' as const, wordCount: 2 };
+    const target = { ...current, id: 'old', label: 'Older draft', content: 'Old words', isCanonical: false };
+    let resolve!: (saved: boolean) => void;
+    const createVersion = vi.fn(() => new Promise<boolean>(done => { resolve = done; }));
+    vi.mocked(useChapterVersions).mockReturnValue({
+      versions: [current, target], activeVersion: current, versionCount: 2, error: null,
+      createVersion, switchVersion: vi.fn().mockReturnValue(target),
+      markCanonical: vi.fn(), rename: vi.fn(), remove: vi.fn(), refresh: vi.fn(),
+    } as never);
+    await renderEditor();
+    fireEvent.click(screen.getByLabelText('Version history'));
+    fireEvent.click(screen.getByText('Older draft'));
+    expect((screen.getByPlaceholderText(/start writing/i) as HTMLTextAreaElement).value).toBe('Initial text');
+    resolve(true);
+    await waitFor(() => expect((screen.getByPlaceholderText(/start writing/i) as HTMLTextAreaElement).value).toBe('Old words'));
+    expect(mockScheduleAutosave).toHaveBeenCalledWith('Old words');
+  });
+
+  it('preserves new typing while a version recovery snapshot is committing', async () => {
+    const { useChapterVersions } = await import('@/hooks/use-chapter-versions');
+    const current = { id: 'current', chapterId: 'ch-1', label: 'Current draft', content: 'Initial text', createdAt: '', isCanonical: true, source: 'manual' as const, wordCount: 2 };
+    const target = { ...current, id: 'old', label: 'Older draft', content: 'Old words', isCanonical: false };
+    let resolve!: (saved: boolean) => void;
+    const createVersion = vi.fn(() => new Promise<boolean>(done => { resolve = done; }));
+    vi.mocked(useChapterVersions).mockReturnValue({
+      versions: [current, target], activeVersion: current, versionCount: 2, error: null,
+      createVersion, switchVersion: vi.fn().mockReturnValue(target),
+      markCanonical: vi.fn(), rename: vi.fn(), remove: vi.fn(), refresh: vi.fn(),
+    } as never);
+    await renderEditor();
+    fireEvent.click(screen.getByLabelText('Version history'));
+    fireEvent.click(screen.getByText('Older draft'));
+    fireEvent.change(screen.getByPlaceholderText(/start writing/i), { target: { value: 'Initial text with new typing' } });
+    resolve(true);
+    await waitFor(() => expect((screen.getByPlaceholderText(/start writing/i) as HTMLTextAreaElement).value).toBe('Initial text with new typing'));
+    expect(mockScheduleAutosave).not.toHaveBeenCalledWith('Old words');
+  });
+
 });

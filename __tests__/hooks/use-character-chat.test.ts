@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+import { db } from '@/lib/storage/dexie-db';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { plaintextToLexicalJson } from '@/lib/editor/serialization';
@@ -94,10 +96,13 @@ function installFetch(routes: FetchRouting) {
 }
 
 describe('useCharacterChat', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     localStorage.clear();
     mockState.chapters = [];
     mockState.canon_items = [];
+    localStorage.setItem('zagafy_active_project','project');
+    await db.chatMessages.clear();await db.syncQueue.clear();await db.meta.clear();await db.stories.clear();await db.syncMeta.clear();
+    await db.stories.put({id:'project',data:JSON.stringify(mockState),updatedAt:0});
   });
 
   afterEach(() => {
@@ -109,6 +114,7 @@ describe('useCharacterChat', () => {
     installFetch({ main: { ok: true, body: { getReader: () => stream.reader } } });
 
     const { result } = renderHook(() => useCharacterChat('char-a'));
+    await waitFor(()=>expect(result.current.session).not.toBeNull());
 
     act(() => {
       void result.current.sendMessage('Hello');
@@ -117,6 +123,7 @@ describe('useCharacterChat', () => {
     expect(result.current.isLoading).toBe(true);
     expect(result.current.isStreaming).toBe(true);
 
+    await waitFor(()=>expect(globalThis.fetch).toHaveBeenCalled());
     await act(async () => {
       stream.push('Hi ');
     });
@@ -127,6 +134,7 @@ describe('useCharacterChat', () => {
     expect(result.current.isStreaming).toBe(true);
     expect(result.current.messages.at(-1)?.content).toBe('Hi ');
 
+    await waitFor(()=>expect(globalThis.fetch).toHaveBeenCalled());
     await act(async () => {
       stream.push('there');
       stream.end();
@@ -153,10 +161,12 @@ describe('useCharacterChat', () => {
       ({ id }: { id: string }) => useCharacterChat(id),
       { initialProps: { id: 'char-a' } },
     );
+    await waitFor(()=>expect(result.current.session).not.toBeNull());
 
     act(() => {
       void result.current.sendMessage('Hello');
     });
+    await waitFor(()=>expect(globalThis.fetch).toHaveBeenCalled());
     await act(async () => {
       stream.push('I was thinking');
     });
@@ -171,6 +181,7 @@ describe('useCharacterChat', () => {
 
     // The old stream keeps resolving reads (our fake reader ignores the abort
     // signal) — none of it may reach the new character's chat or live meter.
+    await waitFor(()=>expect(globalThis.fetch).toHaveBeenCalled());
     await act(async () => {
       stream.push(' about the market.');
       stream.end();
@@ -183,8 +194,8 @@ describe('useCharacterChat', () => {
     expect(result.current.liveState?.pressureLevel).toBe('Low'); // Bruno's baseline, not Alice's Critical
 
     // Persistence to the OLD session is still allowed to complete.
-    await waitFor(() => {
-      const oldSession = readChatSessions().find(s => s.characterId === 'char-a');
+    await waitFor(async () => {
+      const oldSession = (await readChatSessions()).find(s => s.characterId === 'char-a');
       expect(oldSession?.messages.at(-1)?.content).toBe('I was thinking about the market.');
     });
   });
@@ -194,6 +205,7 @@ describe('useCharacterChat', () => {
     const { calls } = installFetch({ main: { ok: true, body: { getReader: () => stream.reader } } });
 
     const { result, unmount } = renderHook(() => useCharacterChat('char-a'));
+    await waitFor(()=>expect(result.current.session).not.toBeNull());
 
     act(() => {
       void result.current.sendMessage('Hello');
@@ -212,6 +224,7 @@ describe('useCharacterChat', () => {
     });
 
     const { result } = renderHook(() => useCharacterChat('char-a'));
+    await waitFor(()=>expect(result.current.session).not.toBeNull());
 
     await act(async () => {
       await result.current.sendMessage('Hello');
@@ -234,6 +247,7 @@ describe('useCharacterChat', () => {
     installFetch({ main: { ok: true, body: { getReader: () => stream.reader } } });
 
     const { result } = renderHook(() => useCharacterChat('char-a'));
+    await waitFor(()=>expect(result.current.session).not.toBeNull());
 
     act(() => {
       void result.current.sendMessage('Hello');
@@ -260,6 +274,7 @@ describe('useCharacterChat', () => {
     const { calls } = installFetch({ main: { ok: true, body: { getReader: () => stream.reader } } });
 
     const { result } = renderHook(() => useCharacterChat('char-a'));
+    await waitFor(()=>expect(result.current.session).not.toBeNull());
 
     act(() => {
       void result.current.sendMessage('Hello');
@@ -270,6 +285,7 @@ describe('useCharacterChat', () => {
     expect(body.storyContext.storySoFar).toContain('Alice went to the market');
     expect(body.storyContext.storySoFar).not.toContain('"root"');
 
+    await waitFor(()=>expect(globalThis.fetch).toHaveBeenCalled());
     await act(async () => {
       stream.push('Hi');
       stream.end();
