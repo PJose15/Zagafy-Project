@@ -1477,6 +1477,8 @@
     "filterPlaceholder": "Filtrar este estante…"
   },
   "importPage": {
+    "retrySave": "Reintentar guardar la importación",
+    "saveError": "No se pudo guardar la importación. Mantén esta página abierta y vuelve a intentarlo.",
     "title": "Ingesta de Documentos",
     "subtitle": "Sube tu manuscrito, notas o esquemas para extraer automáticamente la inteligencia de tu historia.",
     "dragDrop": "Arrastra y Suelta los Archivos Aquí",

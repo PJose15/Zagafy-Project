@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useRef, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { useStory, type CharacterState } from '@/lib/store';
+import { useStory, type CharacterState, type StoryState } from '@/lib/store';
 import type {
   ExtractedData,
   ExtractedChapter,
@@ -30,7 +30,7 @@ import { mergeFill, normalizeForMatch } from '@/lib/import/mergeEntities';
 
 export default function ImportPage() {
   const t = useTranslations('importPage');
-  const { state, updateField } = useStory();
+  const { state, saveNow } = useStory();
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   // G17: the dropzone glows brass while a file hovers over it.
@@ -39,6 +39,31 @@ export default function ImportPage() {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'analyzing' | 'review' | 'success'>('idle');
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [importedCount, setImportedCount] = useState(0);
+  const [savingImport, setSavingImport] = useState(false);
+  const [importSaveFailed, setImportSaveFailed] = useState(false);
+  const savingImportRef = useRef(false);
+  const failedImportRef = useRef<{ state: StoryState; count: number; save: typeof saveNow } | null>(null);
+  const commitImport = useCallback(async (next: StoryState, count: number) => {
+    if (savingImportRef.current) return;
+    savingImportRef.current = true;
+    setSavingImport(true);
+    const pending = failedImportRef.current ?? { state: next, count, save: saveNow };
+    failedImportRef.current = pending;
+    try {
+      await pending.save(next);
+      setImportSaveFailed(false);
+      failedImportRef.current = null;
+      setImportedCount(count);
+      setUploadStatus('success');
+      toast(t('toastImported', { count }), 'success');
+    } catch {
+      setImportSaveFailed(true);
+      toast(t('saveError'), 'error');
+    } finally {
+      savingImportRef.current = false;
+      setSavingImport(false);
+    }
+  }, [saveNow, toast, t]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -133,7 +158,14 @@ export default function ImportPage() {
   // CB-11: Handle confirmed import from the review queue. Accepted items are
   // added as new entities; merged items (duplicates of existing entities) fold
   // their details into the existing entity non-destructively.
-  const handleReviewConfirm = useCallback((resolvedItems: ReviewItem[]) => {
+  const handleReviewConfirm = useCallback(async (resolvedItems: ReviewItem[]) => {
+    if (savingImportRef.current) return;
+    if (failedImportRef.current) {
+      const pending = failedImportRef.current;
+      await commitImport(pending.state, pending.count);
+      return;
+    }
+    const next: StoryState = { ...state };
     // Deduplicates incoming against existing AND against itself. O(n+m).
     // `key` is a field name or a custom key extractor. `keepEmptyKeys` passes
     // through items with an empty key instead of dropping them — used for
@@ -449,8 +481,8 @@ export default function ImportPage() {
     }));
 
     // Apply merges (updated existing entities) + deduped new accepted entities.
-    updateField('characters', [...baseCharacters, ...dedup(baseCharacters, newCharacters, 'name')]);
-    updateField('chapters', [...baseChapters, ...dedup(baseChapters, newChapters, 'title')]);
+    next.characters = [...baseCharacters, ...dedup(baseCharacters, newCharacters, 'name')];
+    next.chapters = [...baseChapters, ...dedup(baseChapters, newChapters, 'title')];
     // Scenes carry a generated "Scene N" title, so a title-only key collides
     // across chapters (every chapter has a "Scene 1"). Key on chapter + title
     // (the title encodes order_index within its chapter); scenes without a
@@ -460,45 +492,46 @@ export default function ImportPage() {
       s.title && s.title !== untitledScene
         ? `${s.chapterId}::${s.title}`
         : String(s.id ?? '');
-    updateField('scenes', [...state.scenes, ...dedup(state.scenes, newScenes, sceneDedupKey, true)]);
-    updateField('active_conflicts', [...baseConflicts, ...dedup(baseConflicts, newConflicts, 'title')]);
+    next.scenes = [...state.scenes, ...dedup(state.scenes, newScenes, sceneDedupKey, true)];
+    next.active_conflicts = [...baseConflicts, ...dedup(baseConflicts, newConflicts, 'title')];
     // Timeline events map the extracted `event` text into `date` and the
     // (often empty) immediate_effect into `description` — keying on
     // description dropped every event without one. Key on `date` instead,
     // passing through empty-key events.
-    updateField('timeline_events', [...state.timeline_events, ...dedup(state.timeline_events, newTimelineEvents, 'date', true)]);
-    updateField('world_rules', [...baseWorldRules, ...dedup(baseWorldRules, newWorldRules, 'rule')]);
-    updateField('locations', [...baseLocations, ...dedup(baseLocations, newLocations, 'name')]);
-    updateField('themes', [...baseThemes, ...dedup(baseThemes, newThemes, 'theme')]);
-    updateField('canon_items', [...(state.canon_items || []), ...dedup(state.canon_items || [], newCanonItems, 'description')]);
-    updateField('ambiguities', [...(state.ambiguities || []), ...dedup(state.ambiguities || [], newAmbiguities, 'issue')]);
-    updateField('open_loops', [...state.open_loops, ...dedup(state.open_loops, newOpenLoops, 'description')]);
-    updateField('foreshadowing_elements', [...state.foreshadowing_elements, ...dedup(state.foreshadowing_elements, newForeshadowing, 'clue')]);
+    next.timeline_events = [...state.timeline_events, ...dedup(state.timeline_events, newTimelineEvents, 'date', true)];
+    next.world_rules = [...baseWorldRules, ...dedup(baseWorldRules, newWorldRules, 'rule')];
+    next.locations = [...baseLocations, ...dedup(baseLocations, newLocations, 'name')];
+    next.themes = [...baseThemes, ...dedup(baseThemes, newThemes, 'theme')];
+    next.canon_items = [...(state.canon_items || []), ...dedup(state.canon_items || [], newCanonItems, 'description')];
+    next.ambiguities = [...(state.ambiguities || []), ...dedup(state.ambiguities || [], newAmbiguities, 'issue')];
+    next.open_loops = [...state.open_loops, ...dedup(state.open_loops, newOpenLoops, 'description')];
+    next.foreshadowing_elements = [...state.foreshadowing_elements, ...dedup(state.foreshadowing_elements, newForeshadowing, 'clue')];
 
     // Project metadata
     if (extractedData.project?.title && state.title === 'Untitled Project') {
-      updateField('title', extractedData.project.title);
+      next.title = extractedData.project.title;
     }
     if (extractedData.project?.summary_global && !state.synopsis) {
-      updateField('synopsis', extractedData.project.summary_global);
+      next.synopsis = extractedData.project.summary_global;
     }
     if (extractedData.project?.genre?.length && state.genre.length === 0) {
-      updateField('genre', extractedData.project.genre);
+      next.genre = extractedData.project.genre;
     }
     if (!state.style_profile) {
       const parts = [
         extractedData.project?.tone_profile && t('tonePrefix', { value: extractedData.project.tone_profile }),
         extractedData.project?.narrative_pov && t('povPrefix', { value: extractedData.project.narrative_pov }),
       ].filter(Boolean);
-      if (parts.length) updateField('style_profile', parts.join('. '));
+      if (parts.length) next.style_profile = parts.join('. ');
     }
 
-    setImportedCount(resolvedItems.length);
-    setUploadStatus('success');
-    toast(t('toastImported', { count: resolvedItems.length }), 'success');
-  }, [extractedData, state, updateField, toast, t]);
+    await commitImport(next, resolvedItems.length);
+  }, [extractedData, state, commitImport, t]);
 
   const reset = () => {
+    if (savingImportRef.current) return;
+    failedImportRef.current = null;
+    setImportSaveFailed(false);
     setFiles([]);
     setUploadStatus('idle');
     setExtractedData(null);
@@ -506,7 +539,7 @@ export default function ImportPage() {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-8 max-w-5xl mx-auto space-y-8" inert={savingImport} aria-busy={savingImport}>
       <CarvedHeader
         title={t('title')}
         subtitle={t('subtitle')}
@@ -608,6 +641,15 @@ export default function ImportPage() {
             </div>
           </div>
 
+          {importSaveFailed && (
+            <div role="alert" className="space-y-3">
+              <p>{t('saveError')}</p>
+              <BrassButton onClick={() => { const pending = failedImportRef.current; if (pending) void commitImport(pending.state, pending.count); }}>
+                {t('retrySave')}
+              </BrassButton>
+            </div>
+          )}
+          <div inert={importSaveFailed} className="space-y-6">
           {/* Project Metadata — always editable, separate from per-entity review */}
           {extractedData.project && (
             <ParchmentCard>
@@ -652,6 +694,7 @@ export default function ImportPage() {
             onConfirm={handleReviewConfirm}
             onCancel={reset}
           />
+          </div>
         </div>
       )}
 

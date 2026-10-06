@@ -1,48 +1,36 @@
 import { test, expect } from '@playwright/test';
 import { gotoApp } from './helpers/auth';
 
-/**
- * E2E Flow 3: Flow mode session → braindump → polish → save
- */
-test.describe('Flow mode', () => {
-  test('enter flow mode, write content, and save', async ({ page }) => {
-    await gotoApp(page, '/');
-
-    // Navigate to flow mode
-    const flowLink = page.locator('[href*="flow"], [data-testid="flow-mode"]');
-    if (await flowLink.count() === 0) {
-      test.skip(true, 'Flow mode not found');
-    }
-    await flowLink.first().click();
-    await page.waitForLoadState('networkidle');
-
-    // Find the flow editor / braindump area
-    const flowEditor = page.locator(
-      'textarea[data-testid="flow-editor"], [data-testid="braindump"], textarea'
-    );
-    if (await flowEditor.count() > 0) {
-      await flowEditor.first().click();
-      await flowEditor.first().fill(
-        'The protagonist stepped into the abandoned library. Dust motes danced in the fading light.'
-      );
-    }
-
-    // Look for polish / refine button
-    const polishBtn = page.locator(
-      'button:has-text("Polish"), button:has-text("Refine"), [data-testid="polish"]'
-    );
-    if (await polishBtn.count() > 0) {
-      await polishBtn.first().click();
-      await page.waitForTimeout(3000); // Wait for AI polish
-    }
-
-    // Save
-    const saveBtn = page.locator(
-      'button:has-text("Save"), button:has-text("Keep"), [data-testid="save-flow"]'
-    );
-    if (await saveBtn.count() > 0) {
-      await saveBtn.first().click();
-      await page.waitForTimeout(1000);
-    }
-  });
+// Required controls and real IndexedDB persistence; model quality is tested on staging.
+test('Flow prose autosaves and survives returning to Manuscript and reload', async ({ page }) => {
+  const title = `Flow ledger ${Date.now()}`;
+  const prose = 'The protagonist entered the abandoned library and discovered a letter among the dusty ledgers.';
+  await gotoApp(page, '/manuscript');
+  await page.getByRole('button', { name: 'New Chapter', exact: true }).click();
+  await page.getByPlaceholder('Chapter Title', { exact: true }).fill(title);
+  await page.locator('[contenteditable=true]').first().fill('An old beginning.');
+  await page.getByRole('button', { name: 'Save Chapter', exact: true }).click();
+  await expect(page.getByText(title, { exact: true })).toBeVisible();
+  await page.goto('/flow');
+  await page.getByRole('button').filter({ hasText: title }).click();
+  await page.getByPlaceholder('Start writing... no backspace, no delete, just forward.', { exact: true }).fill(prose);
+  await expect.poll(() => page.evaluate(async ({ title, prose }) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('zagafy');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      const rows = await new Promise<Array<{ title: string; content: string }>>((resolve, reject) => {
+        const request = database.transaction('chapters', 'readonly').objectStore('chapters').getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      return rows.some(row => row.title === title && row.content.includes(prose));
+    } finally { database.close(); }
+  }, { title, prose }), { message: 'Flow autosave must reach durable chapter storage', timeout: 15_000 }).toBe(true);
+  await page.goto('/manuscript');
+  await page.reload();
+  await page.getByRole('button', { name: `Edit ${title}`, exact: true }).click();
+  await expect(page.locator('[contenteditable=true]').first()).toContainText(prose);
 });

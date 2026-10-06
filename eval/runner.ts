@@ -3,11 +3,12 @@
  * AI Eval Pipeline Runner (Phase 7.5 -- MP-14)
  *
  * Runs test cases against AI endpoints and grades responses.
- * Usage: npx tsx eval/runner.ts --base-url http://localhost:3000
+ * Usage: npx tsx eval/runner.ts --base-url https://isolated-staging.example
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { stagingPreflight } from '../scripts/staging-preflight.mjs';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,7 +58,7 @@ function parseArgs(): { baseUrl: string } {
   const baseUrl = idx !== -1 && args[idx + 1] ? args[idx + 1] : process.env.STAGING_URL;
   if (!baseUrl) throw new Error('A running authenticated staging URL is required (--base-url or STAGING_URL)');
   const parsed = new URL(baseUrl);
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Invalid staging URL');
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) throw new Error('An isolated staging HTTPS origin is required');
   return { baseUrl: baseUrl.replace(/\/+$/, '') };
 }
 
@@ -100,6 +101,9 @@ async function main() {
   const { baseUrl } = parseArgs();
   const token = process.env.EVAL_AUTH_TOKEN;
   if (!token) throw new Error('EVAL_AUTH_TOKEN must be a current JWT for a dedicated staging user');
+  // Refuse model requests until the protected probe proves isolation, schema and release SHA.
+  const stagingEnv = { ...process.env, BASE_URL: baseUrl, HEALTH_TOKEN: process.env.STAGING_HEALTH_TOKEN };
+  await stagingPreflight(stagingEnv);
   const casesDir = path.resolve(__dirname, 'cases');
   const resultsDir = path.resolve(__dirname, 'results');
 
@@ -109,6 +113,7 @@ async function main() {
 
   const cases = loadCases(casesDir);
   if (!cases.length) throw new Error('No evaluation cases loaded');
+  if (cases.some(tc => !/^\/api\/[a-z0-9/-]+$/i.test(tc.endpoint))) throw new Error('Evaluation endpoints must be local API paths');
   console.log(`\n  Eval Pipeline -- ${cases.length} test case(s) against ${baseUrl}\n`);
 
   const results: CaseResult[] = [];
@@ -123,6 +128,7 @@ async function main() {
     try {
       const res = await fetch(url, {
         method: 'POST',
+        redirect: 'error',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(tc.input),
         signal: AbortSignal.timeout(30_000),
@@ -175,6 +181,9 @@ async function main() {
     });
   }
 
+  // Reject a deployment that changed while requests were running.
+  await stagingPreflight(stagingEnv);
+
   // Summary
   const summary: RunSummary = {
     qualityReview: 'manual_required',
@@ -200,6 +209,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Eval runner crashed:', err);
+  console.error('Eval runner failed:', err instanceof Error && !/fetch|network|redirect/i.test(err.message) ? err.message : 'staging request failed');
   process.exit(1);
 });

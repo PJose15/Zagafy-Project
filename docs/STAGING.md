@@ -144,3 +144,20 @@ For a local runner, provide the same variables securely, add
 `npm run verify:staging` before the selected Playwright specs. Keep secrets out of
 shell arguments, logs and repository files. Missing staging credentials remain
 an explicit blocked gate, never a successful verification.
+
+## Audit continuation — hosted acceptance prerequisites
+
+The preview for `a1f09563c70f2d2962eac3ea3cdd0dd3bbe9c78a` was ready when inspected on October 6, 2026. This is deployment evidence, not hosted acceptance. The connected Vercel account could not obtain a protection bypass for its readiness probe. Reauthorize the connection for the Zagafy project/team before running protected preview checks.
+
+Preview configuration currently lacks the separate Clerk development keys, isolated database, Redis, staging marker and protected health token required above. Stripe test secrets, webhook signing secret and test price IDs are also absent. Configure these through their owning services; do not copy production database or authentication credentials into staging. Verify isolation before setting `STAGING_ISOLATED=true`.
+
+The AI evaluation workflow now runs the same isolation/readiness/commit preflight before making model requests and repeats it after the run. It requires the staging health token and dedicated Clerk test credentials listed above, plus a current `EVAL_AUTH_TOKEN` for the staging owner. The deployment must match the workflow commit. Evaluation rubrics still require a human quality review; automated phrase matching alone does not establish writing quality.
+
+After configuration, complete and retain these independent gates:
+
+- Run the eight release journeys on the exact preview SHA, with two real development-instance accounts and independent browser contexts. The report verifier checks each named journey and first-attempt result, including import/export, recovery, cloud convergence and account isolation.
+- Exercise Stripe test checkout and webhook delivery: grant entitlement, replay the same event without duplicate effects, cancel, process failed payment, and verify the resulting entitlement and billing UI. Use dedicated fixtures and provider test mode.
+- Run real AI evaluations with valid staging authentication, review generated writing, and exercise provider failure/rate-limit behavior without silently accepting degraded responses.
+- Verify monitoring and alert delivery, execute a logical backup of the isolated database, restore it to another disposable database, and compare records and readable chapter content. Document the recovery procedure and retained evidence.
+
+Local regression tests and CI browser fixtures do not replace these hosted gates. Keep the PR draft and do not promote production until all applicable hosted evidence is complete.

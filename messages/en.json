@@ -1477,6 +1477,8 @@
     "filterPlaceholder": "Filter this shelf…"
   },
   "importPage": {
+    "retrySave": "Retry saving import",
+    "saveError": "Could not save the import. Keep this page open and retry.",
     "title": "Document Ingestion",
     "subtitle": "Upload your manuscript, notes, or outlines to auto-extract story intelligence.",
     "dragDrop": "Drag & Drop Files Here",
